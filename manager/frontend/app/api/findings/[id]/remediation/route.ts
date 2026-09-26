@@ -2,7 +2,8 @@
 import { NextResponse } from "next/server";
 import { backend, bearerFrom, BackendError } from "../../../../../lib/backend";
 
-const SUPPORTED_OS = new Set(["generic", "linux", "windows", "macos"]);
+// "auto" = the backend detects the platform from the finding's asset.
+const SUPPORTED_OS = new Set(["auto", "generic", "linux", "windows", "macos"]);
 
 function fail(error: unknown) {
   const status = error instanceof BackendError ? error.status : 500;
@@ -16,8 +17,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const token = bearerFrom(req);
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { id } = await params;
-  const requestedOs = new URL(req.url).searchParams.get("os")?.toLowerCase() ?? "generic";
-  const os = SUPPORTED_OS.has(requestedOs) ? requestedOs : "generic";
+  const requestedOs = new URL(req.url).searchParams.get("os")?.toLowerCase() ?? "auto";
+  const os = SUPPORTED_OS.has(requestedOs) ? requestedOs : "auto";
   try {
     const plan = await backend<unknown>(`/findings/${id}/remediation`, {
       token,

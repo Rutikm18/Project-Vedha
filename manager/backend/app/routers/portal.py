@@ -59,7 +59,7 @@ from app.services.domain_context import domain_brief_for
 from app.services.llm import AiRuntimeError, ManagerLlmService
 from app.services import posture as posture_service
 from app.services.audit import record_audit
-from app.services.remediation_kb import os_key, recipe_for_finding
+from app.services.remediation_kb import recipe_for_finding
 from app.services.scope_targets import validate_targets_in_scope
 from app.routers.agents import EnqueueJobRequest
 
@@ -222,7 +222,8 @@ async def reopen_portal_finding(
             summary="Structured remediation plan (KB always; AI only once reviewed)")
 async def portal_finding_remediation(
     finding_id: uuid.UUID, user: ClientUser, db: DB,
-    os: str = Query(default="generic"),
+    os: str = Query(default="auto",
+                    description="auto = detect from the asset; or linux|windows|macos|generic"),
 ):
     """Customer-facing structured remediation, replacing the plain `remediation`
     string. The deterministic KB recipe is served ALWAYS; a stored AI plan reaches
@@ -235,7 +236,10 @@ async def portal_finding_remediation(
     if finding is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
 
-    key = os_key(os)
+    from app.routers.remediation import platform_out
+    from app.services.remediation_os import platform_for_request
+    platform = await platform_for_request(db, finding, os)
+    key = platform.os
     row = (await db.execute(
         select(RemediationPlan).where(
             RemediationPlan.finding_id == finding_id,
@@ -250,7 +254,8 @@ async def portal_finding_remediation(
     else:
         plan = recipe_for_finding(finding, key)
         source = plan["source"]
-    return {"finding_id": str(finding_id), "os": key, "source": source, "plan": plan}
+    return {"finding_id": str(finding_id), "os": key, "source": source, "plan": plan,
+            "platform": platform_out(os, platform)}
 
 
 def _posture_select():

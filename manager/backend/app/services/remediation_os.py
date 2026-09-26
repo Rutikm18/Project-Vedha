@@ -16,8 +16,9 @@ would be wrong there, so vendor-neutral guidance is the honest answer.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
-from typing import Any, Iterable
+from typing import Any
 
 from sqlalchemy import select
 

@@ -4,6 +4,8 @@ remediation.py — per-finding remediation plans (operator-facing).
 Two routes on top of a finding:
   * GET  …/remediation?os=      — the cached AI plan if one exists, else the
     deterministic KB recipe. NEVER empty (there is always a KB fallback).
+    `os=auto` (the default) targets the platform detected for the finding's
+    asset (services/remediation_os); any explicit OS is an operator override.
   * POST …/remediation/generate — generate an AI plan (structured, OS-specific,
     command-safety-validated), cache it per (finding, os), optionally publish it
     (reviewed=true) so the customer portal may show it.
@@ -29,7 +31,12 @@ from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.remediation_plan import RemediationPlan
 from app.schemas.remediation import RemediationPlanOut
-from app.services.remediation_kb import os_key, recipe_for_finding
+from app.services.remediation_kb import recipe_for_finding
+from app.services.remediation_os import (
+    PlatformResolution,
+    is_auto,
+    platform_for_request,
+)
 
 router = APIRouter(prefix="/findings", tags=["remediation"])
 logger = structlog.get_logger()
@@ -102,8 +109,14 @@ async def _upsert_plan(db: AsyncSession, *, tenant_id: uuid.UUID,
     return (await db.execute(stmt)).one()
 
 
+def platform_out(requested: str | None, platform: PlatformResolution) -> dict:
+    return {"requested": "auto" if is_auto(requested) else platform.os,
+            **platform.to_dict()}
+
+
 def _serialize(finding_id: uuid.UUID, os: str, plan: dict, *,
-               row: RemediationPlan | None = None) -> dict:
+               row: RemediationPlan | None = None,
+               platform: dict | None = None) -> dict:
     return {
         "finding_id": str(finding_id),
         "os": os,
@@ -113,6 +126,7 @@ def _serialize(finding_id: uuid.UUID, os: str, plan: dict, *,
         "generated_at": row.generated_at.isoformat() if row is not None else None,
         "model": (row.model if row is not None else plan.get("model")),
         "plan": plan,
+        "platform": platform,
     }
 
 
@@ -123,14 +137,17 @@ async def get_remediation(
     finding_id: uuid.UUID,
     db: DB,
     current_user: Annotated[AuthUser, _REMEDIATION_READER],
-    os: str = Query(default="generic"),
+    os: str = Query(default="auto",
+                    description="auto = detect from the asset; or linux|windows|macos|generic"),
 ):
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
-    key = os_key(os)
+    platform = await platform_for_request(db, finding, os)
+    key = platform.os
+    shown = platform_out(os, platform)
     row = await _cached_plan(db, finding_id, key)
     if row is not None:
-        return _serialize(finding_id, key, row.plan, row=row)
-    return _serialize(finding_id, key, recipe_for_finding(finding, key))
+        return _serialize(finding_id, key, row.plan, row=row, platform=shown)
+    return _serialize(finding_id, key, recipe_for_finding(finding, key), platform=shown)
 
 
 @router.post("/{finding_id}/remediation/generate",
@@ -140,13 +157,16 @@ async def generate_remediation(
     finding_id: uuid.UUID,
     db: DB,
     current_user: Annotated[AuthUser, _REMEDIATION_GENERATOR],
-    os: str = Query(default="generic"),
+    os: str = Query(default="auto",
+                    description="auto = detect from the asset; or linux|windows|macos|generic"),
     force: bool = Query(default=False),
     publish: bool = Query(default=False,
                           description="mark reviewed so the customer portal may show it"),
 ):
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
-    key = os_key(os)
+    platform = await platform_for_request(db, finding, os)
+    key = platform.os
+    shown = platform_out(os, platform)
 
     if not force:
         row = await _cached_plan(db, finding_id, key)
@@ -154,7 +174,7 @@ async def generate_remediation(
             if publish and not row.reviewed:
                 row.reviewed = True
                 await db.flush()
-            return _serialize(finding_id, key, row.plan, row=row)
+            return _serialize(finding_id, key, row.plan, row=row, platform=shown)
 
     # Try the AI; on any unavailability fall back to the KB so we always cache a
     # usable plan. The KB result is deterministic and safe.
@@ -175,4 +195,4 @@ async def generate_remediation(
     )
     logger.info("remediation.generated", finding=str(finding_id), os=key,
                 source=plan.get("source"), reviewed=row.reviewed)
-    return _serialize(finding_id, key, plan, row=row)
+    return _serialize(finding_id, key, plan, row=row, platform=shown)

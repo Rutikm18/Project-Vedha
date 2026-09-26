@@ -45,6 +45,17 @@ class RemediationPlanDetailOut(BaseModel):
         return normalized if normalized in {"low", "medium", "high"} else "medium"
 
 
+class RemediationPlatformOut(BaseModel):
+    """Which platform the plan targets and why. `requested` is "auto" when the
+    manager detected it, else the OS the caller explicitly asked for."""
+    requested: str
+    os: str
+    family: str | None = None
+    source: str
+    evidence: str | None = None
+    confidence: float | None = None
+
+
 class RemediationPlanOut(BaseModel):
     finding_id: uuid.UUID
     os: str
@@ -54,3 +65,4 @@ class RemediationPlanOut(BaseModel):
     generated_at: datetime | None = None
     model: str | None = None
     plan: RemediationPlanDetailOut
+    platform: RemediationPlatformOut | None = None
