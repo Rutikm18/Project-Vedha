@@ -28,6 +28,26 @@ _OS_FOR_FAMILY = {"windows": "windows", "linux": "linux", "macos": "macos", "net
                   "unknown": "generic"}
 _RISK_ORDER = {"low": 0, "medium": 1, "high": 2}
 
+# Product → distribution package that ships it (Debian/Ubuntu names; the RHEL
+# name is the same unless noted). Unknown products keep an explicit placeholder
+# rather than a guessed package name.
+_PACKAGES = {
+    "openssh": "openssh-server", "nginx": "nginx", "apache": "apache2", "apache http server": "apache2",
+    "httpd": "httpd", "samba": "samba", "openssl": "openssl", "mysql": "mysql-server",
+    "mariadb": "mariadb-server", "postgresql": "postgresql", "redis": "redis-server",
+    "vsftpd": "vsftpd", "proftpd": "proftpd-basic", "postfix": "postfix", "exim": "exim4",
+    "bind": "bind9", "isc bind": "bind9", "dovecot": "dovecot-core", "haproxy": "haproxy",
+    "tomcat": "tomcat9", "php": "php", "net-snmp": "snmpd", "ntp": "ntp", "rsync": "rsync",
+}
+
+
+def package_for(product: str | None) -> str:
+    key = (product or "").strip().lower()
+    for name, pkg in _PACKAGES.items():
+        if key == name or key.startswith(name + " "):
+            return pkg
+    return f"<package that ships {product}>" if product and product != NOT_RECORDED else "<package>"
+
 
 class _SafeDict(dict):
     def __missing__(self, key: str) -> str:
@@ -61,6 +81,7 @@ def _fields(ctx: RemediationContext, finding: Any, target: str) -> _SafeDict:
         "service": service if service != NOT_RECORDED else "the service",
         "fixed_version": ctx.fixed_version or NOT_RECORDED, "target": target,
         "title": getattr(finding, "title", "") or "this finding",
+        "package": package_for(ctx.product.value if ctx.product.recorded else None),
     }
     return _SafeDict(values)
 
@@ -131,10 +152,15 @@ def _commands_for(step_cmds: dict[str, tuple[str, ...]], os: str, family: str) -
 
 
 def build_plan(finding: Any, ctx: RemediationContext, *, due: dict | None = None,
-               os: str | None = None) -> dict:
+               os: str | None = None, overrides: dict[str, str] | None = None) -> dict:
+    """``overrides`` replaces template fields — a multi-host fix bundle passes
+    {"host": "each host in the checklist", …} so its shared steps are not
+    written about one representative host."""
     recipe = resolve_recipe(ctx, finding)
     target_raw = target_state_for(recipe, ctx)
     values = _fields(ctx, finding, "")
+    if overrides:
+        values.update(overrides)
     target = _fmt(target_raw, values)
     values["target"] = target
 

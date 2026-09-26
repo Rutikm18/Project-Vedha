@@ -28,6 +28,9 @@ from app.remediation.plan import _SafeDict, _severity, build_plan, os_for_contex
 from app.remediation.recipes import resolve_recipe
 
 _URGENCY_RANK = {"act": 3, "attend": 2, "track_star": 1, "track": 0}
+# Template fields for a bundle that spans several hosts (see _assemble).
+MULTI_HOST_FIELDS = {"host": "each host in the checklist", "ip": "each host's IP",
+                     "os": "the OS listed per host", "os_version": "the OS listed per host"}
 _EXCLUDED = {"accepted": "risk accepted", "fp": "false positive"}
 _OPEN = {"open", "confirmed"}
 
@@ -130,12 +133,17 @@ def _assemble(key: str, g: dict) -> dict:
     rep_plan = build_plan(rep_finding, rep_ctx)
     recipe = resolve_recipe(rep_ctx, rep_finding)
 
-    # One representative plan per OS family present → steps grouped by OS.
+    # One representative plan per OS family present → steps grouped by OS. A
+    # bundle spanning hosts speaks to the checklist, never to one sample host.
+    n_hosts = len({ctx.text("ip") for _, ctx, _ in members})
+    shared = MULTI_HOST_FIELDS if n_hosts > 1 else None
+    if shared:
+        rep_plan = build_plan(rep_finding, rep_ctx, overrides=shared)
     steps_by_os: dict[str, list[dict]] = {}
     for f, ctx, _ in members:
         os_name = os_for_context(ctx)
         if os_name not in steps_by_os:
-            steps_by_os[os_name] = build_plan(f, ctx, os=os_name)["steps"]
+            steps_by_os[os_name] = build_plan(f, ctx, os=os_name, overrides=shared)["steps"]
 
     target = rep_plan["target_state"]
     if g["recipe_id"] == "CVE-PATCH":

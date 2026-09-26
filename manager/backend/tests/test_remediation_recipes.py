@@ -20,7 +20,7 @@ pytestmark = pytest.mark.skipif(not EB._ensure_importable(),
                                 reason="detection_engine not importable in this environment")
 
 _ALLOWED_FIELDS = {"host", "ip", "port", "product", "version", "os", "os_version", "service",
-                   "fixed_version", "target", "title"}
+                   "fixed_version", "target", "title", "package"}
 
 
 def _rules():

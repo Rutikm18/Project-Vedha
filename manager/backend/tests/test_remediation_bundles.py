@@ -156,3 +156,16 @@ def test_bundle_carries_max_open_severity_and_kev():
     cold = _smb("10.0.0.2", "b", severity="high")
     [b] = B.build_bundles([hot, cold], now=NOW)
     assert b["max_severity"] == "high" and b["kev"] is True
+
+
+def test_multi_host_bundle_text_is_not_about_one_host():
+    items = [_smb("10.0.0.1", "fs-a"), _smb("10.0.0.2", "fs-b")]
+    [b] = B.build_bundles(items, now=NOW)
+    text = " ".join(s["description"] for s in b["steps_by_os"]["windows"]) + b["verification_check"]["check"]
+    assert "fs-a" not in text and "10.0.0.1" not in text
+    assert "each host in the checklist" in text
+
+
+def test_single_host_bundle_keeps_host_specifics():
+    [b] = B.build_bundles([_smb("10.0.0.1", "fs-a")], now=NOW)
+    assert "fs-a" in " ".join(s["description"] for s in b["steps_by_os"]["windows"])

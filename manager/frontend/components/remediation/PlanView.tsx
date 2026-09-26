@@ -89,7 +89,9 @@ function StepCard({ step }: { step: PlanStep }) {
           <p className="rm-warn"><AlertTriangle size={12} aria-hidden />Unsafe generated commands were removed from this step.</p>
         )}
         <dl className="rm-step-meta">
-          <div><dt>Restart</dt><dd>{step.reboot_required === true ? "Required" : step.reboot_required === false ? "Not required" : "Check vendor guidance"}</dd></div>
+          {step.reboot_required !== null && step.reboot_required !== undefined && (
+            <div><dt>Restart</dt><dd>{step.reboot_required ? "Required" : "Not required"}</dd></div>
+          )}
           <div><dt>Downtime</dt><dd>{step.downtime || "none expected"}</dd></div>
           {step.rollback && <div><dt><Undo2 size={11} aria-hidden /> Rollback</dt><dd>{step.rollback}</dd></div>}
         </dl>

@@ -99,7 +99,13 @@ class TestTargetState:
         plan = P.build_plan(f, build_context(f, _asset(os="Linux", os_version="Ubuntu 20.04"), None))
         assert plan["recipe_id"] == "CVE-PATCH"
         assert plan["target_state"] == "openssh ≥ 9.8p1"
-        assert "9.8p1" in next(s for s in plan["steps"] if s["tier"] == "fix")["description"]
+        fix = next(s for s in plan["steps"] if s["tier"] == "fix")
+        assert "9.8p1" in fix["description"]
+        assert any("--only-upgrade openssh-server" in c for c in fix["commands_for_os"])
+
+    def test_unknown_product_keeps_explicit_placeholder(self):
+        assert P.package_for("WidgetOS") == "<package that ships WidgetOS>"
+        assert P.package_for("OpenSSH") == "openssh-server" and P.package_for("nginx 1.18") == "nginx"
 
     def test_cve_without_fixed_version(self):
         f = _finding({"product": "openssh"}, cve_ids=["CVE-2024-6387"])

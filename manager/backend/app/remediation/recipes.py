@@ -13,7 +13,7 @@ Vocabulary follows published standards:
   * tiers            — contain now → fix properly → stop it recurring
 
 Templates may use {host} {ip} {port} {product} {version} {os} {service}
-{fixed_version} {target}; a missing fact renders "not recorded". Every command
+{fixed_version} {target} {package}; a missing fact renders "not recorded". Every command
 is hand-authored and non-destructive (checked against HallucinationGuard).
 Benchmarks are cited by section NAME only — never an invented control number.
 """
@@ -829,8 +829,8 @@ CVE_PATCH = Recipe(
     (
         S("fix", "Apply the vendor fix",
           "{product} {version} on {host}:{port} is in the affected range. Upgrade to {target}.",
-          lin=("sudo apt-get update && sudo apt-get install --only-upgrade <package>   # Debian/Ubuntu",
-               "sudo dnf upgrade <package>   # RHEL family"),
+          lin=("sudo apt-get update && sudo apt-get install --only-upgrade {package}   # Debian/Ubuntu",
+               "sudo dnf upgrade {package}   # RHEL family (package name may differ)"),
           win=("Install the vendor update (Windows Update / WSUS / vendor installer) for {product}",),
           mac=("softwareupdate --list ; install the {product} update from the vendor",),
           net=("Upgrade the appliance firmware/software to a fixed release",),

@@ -174,7 +174,7 @@ export function RemediationWorkspace({ surface = "manager" }: { surface?: Remedi
             <label>
               <span>Engagement</span>
               <select value={engId} onChange={(e) => { setSelId(e.target.value); setOpenKey(null); }}>
-                {engs.map((e) => <option key={e.id} value={e.id}>{e.name}{e.client ? ` · ${e.client}` : ""}</option>)}
+                {engs.map((e) => <option key={e.id} value={e.id}>{e.name}{e.client && e.client !== "—" ? ` · ${e.client}` : ""}</option>)}
               </select>
             </label>
           ) : <span />}
