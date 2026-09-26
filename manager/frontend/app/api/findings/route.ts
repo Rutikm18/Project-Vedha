@@ -6,49 +6,22 @@ import { NextResponse } from "next/server";
 import { backend } from "../../../lib/backend";
 import { withBackend } from "../../../lib/with-backend";
 import { toUiFinding } from "../../../lib/adapters";
+import { backendFindingFilters, positiveInt } from "../../../lib/findings-query";
 
-// Only these values are valid FastAPI enums on the backend.
-const VALID_SEVERITIES = new Set(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]);
-const STATUS_TO_API: Record<string, string> = {
-  OPEN: "open",
-  CONFIRMED: "confirmed",
-  REMEDIATED: "remediated",
-  ACCEPTED: "accepted",
-  FALSE_POSITIVE: "fp",
-};
 const VALID_SORTS = new Set(["risk", "cvss", "epss", "date"]);
-const VALID_VERIFICATION = new Set(["confirmed", "corroborated", "inferred", "contradicted"]);
-// Exact IP or an IP prefix ("192.168.1."). Same charset the backend accepts.
-const IP_FILTER = /^[0-9A-Fa-f:.]{1,45}$/;
-
-function positiveInt(value: string | null, fallback: number, max: number): number {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback;
-}
 
 export const GET = withBackend(async (req, { token }) => {
   const url = new URL(req.url);
-  const engagementId =
-    url.searchParams.get("engagement_id") ??
-    url.searchParams.get("engagementId") ??
-    undefined;
-  const agentId =
-    url.searchParams.get("agent_id") ??
-    url.searchParams.get("agentId") ??
-    undefined;
-  const rawSeverity = url.searchParams.get("severity");
-  // Sanitize: only forward valid enum values; skip garbage to avoid 422
-  const severity = rawSeverity && VALID_SEVERITIES.has(rawSeverity.toUpperCase())
-    ? rawSeverity.toLowerCase()
-    : undefined;
-  const rawStatus = url.searchParams.get("status");
-  const status = rawStatus ? STATUS_TO_API[rawStatus.toUpperCase()] : undefined;
+  // One sanitised filter mapping, shared with /api/findings/groups.
+  const filters = backendFindingFilters(url);
+  const engagementId = filters.engagement_id;
+  const agentId = filters.agent_id;
+  const severity = filters.severity;
   const paginated = url.searchParams.get("paginated") === "true";
 
   if (paginated) {
     const page = positiveInt(url.searchParams.get("page"), 1, 100_000);
     const pageSize = positiveInt(url.searchParams.get("page_size"), 20, 100);
-    const search = url.searchParams.get("search")?.trim().slice(0, 200) || undefined;
     const rawSort = url.searchParams.get("sort") ?? "risk";
     const sort = VALID_SORTS.has(rawSort) ? rawSort : "risk";
     const data = await backend<{
@@ -59,34 +32,7 @@ export const GET = withBackend(async (req, { token }) => {
       pages?: number;
     }>("/findings", {
       token,
-      query: {
-        engagement_id: engagementId,
-        agent_id: agentId,
-        severity,
-        status,
-        // "still an active exposure" (open|confirmed) — the same tracked set the
-        // summary/SLA/analytics endpoints count. Sent only when asked for, so
-        // the findings page's own "all statuses" view is unaffected.
-        active_only: url.searchParams.get("active_only") === "true" ? true : undefined,
-        search,
-        asset_ip: (() => {
-          const ip = url.searchParams.get("asset_ip")?.trim();
-          return ip && IP_FILTER.test(ip) ? ip : undefined;
-        })(),
-        // Filter to findings a single scan touched (SCN ref, job id, or run id).
-        scan: url.searchParams.get("scan")?.trim().slice(0, 64) || undefined,
-        detection_status: url.searchParams.get("blind") === "true" ? "missed" : undefined,
-        exploit_validated: url.searchParams.get("validated") === "true" ? true : undefined,
-        needs_review: url.searchParams.get("needs_review") === "true" ? true : undefined,
-        verification_state: (() => {
-          const v = url.searchParams.get("verification_state");
-          return v && VALID_VERIFICATION.has(v) ? v : undefined;
-        })(),
-        sla_breached: url.searchParams.get("sla_breached") === "true" ? true : undefined,
-        sort,
-        page,
-        page_size: pageSize,
-      },
+      query: { ...filters, sort, page, page_size: pageSize },
     });
     return NextResponse.json({
       items: (data.items ?? []).map(toUiFinding),

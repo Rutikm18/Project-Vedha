@@ -39,7 +39,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowLeft, BadgeCheck, Brain, Check, CheckCircle,
   ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, EyeOff, FileText, Flag,
-  GitCompare, Keyboard, Link2, ListChecks, LoaderCircle, Monitor, Radar, RefreshCw, RotateCcw,
+  GitCompare, Keyboard, Layers, Link2, List, ListChecks, LoaderCircle, Monitor, Radar, RefreshCw, RotateCcw,
   Search, Server, Shield, SlidersHorizontal, Tag, Terminal, Wrench, X,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
@@ -55,6 +55,7 @@ import {
   portalFindingAssistantHref,
   type FindingsWorkspaceSurface,
 } from "../../lib/findings-workspace-api";
+import type { FindingGroup, FindingGroupKind, FindingGroupPage } from "../../lib/adapters";
 import { DataState, SkeletonRows, EmptyState } from "../../components/states/DataState";
 import { FindingObligations } from "../../components/intel/FindingObligations";
 import { presentEvidence, type EvidenceArtifact } from "../../lib/evidence-presentation";
@@ -90,6 +91,36 @@ type TimelineEvent = {
   synthesized: boolean;
 };
 type FindingTimeline = { finding_id: string; events: TimelineEvent[] };
+
+/* Queue view (grouped vs every finding) is a per-browser preference. An external
+ * store rather than state + effect: the server snapshot is always "grouped", so
+ * hydration never mismatches, and every reader updates together. Storage can
+ * throw (private mode, blocked site data) — the default simply stands. */
+type QueueView = "grouped" | "list";
+const QUEUE_VIEW_KEY = "vedha.findings.view";
+const QUEUE_VIEW_EVENT = "vedha:findings-view";
+function subscribeToQueueView(onChange: () => void) {
+  window.addEventListener(QUEUE_VIEW_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(QUEUE_VIEW_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+function getQueueView(): QueueView {
+  try {
+    return window.localStorage.getItem(QUEUE_VIEW_KEY) === "list" ? "list" : "grouped";
+  } catch {
+    return "grouped";
+  }
+}
+function getServerQueueView(): QueueView {
+  return "grouped";
+}
+function storeQueueView(view: QueueView) {
+  try { window.localStorage.setItem(QUEUE_VIEW_KEY, view); } catch { /* preference only */ }
+  window.dispatchEvent(new Event(QUEUE_VIEW_EVENT));
+}
 
 function subscribeToLocationChange(onChange: () => void) {
   window.addEventListener("popstate", onChange);
@@ -2282,6 +2313,137 @@ function FixFirstStrip({
   );
 }
 
+/* ─── Group row ───────────────────────────────────────────────────────────
+ * One row per "one fix" unit: the same check, the same vulnerable product, the
+ * same CVE, or the same issue title, across every host and port it hit. The
+ * members are the real findings; opening one uses the ordinary detail panel. */
+const GROUP_KIND_LABEL: Record<FindingGroupKind, string> = {
+  rule: "Same check",
+  product: "Same vulnerable product",
+  cve: "Same CVE",
+  title: "Same issue",
+};
+const GROUP_KIND_HINT: Record<FindingGroupKind, string> = {
+  rule: "The same detection rule fired on these hosts and ports.",
+  product: "Every CVE here comes from the same product version — one upgrade fixes them all.",
+  cve: "The same CVE on several hosts.",
+  title: "Findings with the same title on several hosts.",
+};
+
+function groupSearchTerm(g: FindingGroup): string {
+  if (g.kind === "product") return g.key.split(":")[2]?.replace(/_/g, " ") ?? g.label;
+  if (g.kind === "cve") return g.cves[0] ?? g.label;
+  return g.label;
+}
+
+function plural(n: number, one: string, many = `${one}s`) {
+  return `${n.toLocaleString()} ${n === 1 ? one : many}`;
+}
+
+const FindingGroupRow = React.memo(function FindingGroupRow({
+  g, selectedId, onSelect, onShowAll,
+}: {
+  g: FindingGroup;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onShowAll: (g: FindingGroup) => void;
+}) {
+  const containsSelected = g.members.some((m) => m.id === selectedId);
+  const [open, setOpen] = useState(containsSelected);
+  const expanded = open || containsSelected;
+  const panelId = `finding-group-${g.key.replace(/[^a-z0-9]+/gi, "-")}`;
+  const hostText = g.hosts.map((h) => h.hostname ? `${h.ip ?? "?"} (${h.hostname})` : h.ip).filter(Boolean);
+  return (
+    <article
+      className="finding-group"
+      style={{ ["--rail" as string]: SEV_COLOR[g.severity as Severity] }}
+      data-open={expanded || undefined}
+      data-closed={g.openCount === 0 || undefined}
+    >
+      <button
+        type="button"
+        className="finding-group-head"
+        aria-expanded={expanded}
+        aria-controls={panelId}
+        onClick={() => setOpen((p) => !p)}
+      >
+        <div className="finding-card-header">
+          <div className="finding-card-badges">
+            <SevBadge s={g.severity as Severity} />
+            <span className="chip finding-group-kind" title={GROUP_KIND_HINT[g.kind]}>
+              <Layers size={11} aria-hidden /> {GROUP_KIND_LABEL[g.kind]}
+            </span>
+            {g.kev && <KevBadge />}
+            {g.exploitValidated && (
+              <span className="chip" style={{ color: SEV_PALETTE.RED }}><BadgeCheck size={11} aria-hidden /> Exploit confirmed</span>
+            )}
+          </div>
+          <div className="finding-card-risk">
+            <strong>{g.findingCount.toLocaleString()}</strong>
+            <span>{g.findingCount === 1 ? "finding" : "findings"}</span>
+          </div>
+        </div>
+        <h3 className="finding-card-title">{g.label}</h3>
+        <p className="finding-group-scope">
+          <span>{plural(g.hostCount, "host")}</span>
+          {g.unassignedCount > 0 && <span>{plural(g.unassignedCount, "finding")} without an asset</span>}
+          {g.portCount > 0 && (
+            <span>{g.portCount === 1 ? "port" : "ports"} {g.ports.join(", ")}{g.portCount > g.ports.length ? "…" : ""}</span>
+          )}
+          {g.cveCount > 0 && <span>{plural(g.cveCount, "CVE")}</span>}
+          {g.maxCvss != null && <span>max CVSS {g.maxCvss.toFixed(1)}</span>}
+        </p>
+        <p className="finding-group-fix">
+          {g.openCount > 0
+            ? <>One fix closes <b>{plural(g.openCount, "open finding")}</b> on <b>{plural(Math.max(g.hostCount, g.unassignedCount ? 1 : 0), "host")}</b></>
+            : <>Nothing open — every finding here is remediated, accepted or a false positive</>}
+        </p>
+        {hostText.length > 0 && (
+          <p className="finding-group-hosts" title={hostText.join(", ")}>
+            <Server size={11} aria-hidden /> {hostText.slice(0, 4).join(", ")}{g.hostCount > 4 ? ` +${g.hostCount - 4} more` : ""}
+          </p>
+        )}
+        <ChevronDown size={15} aria-hidden className="finding-group-chevron" />
+      </button>
+
+      {expanded && (
+        <ul className="finding-group-members" id={panelId} aria-label={`Findings in ${g.label}`}>
+          {g.members.map((m) => (
+            <li key={m.id}>
+              <button
+                type="button"
+                className="finding-group-member"
+                data-selected={m.id === selectedId || undefined}
+                aria-current={m.id === selectedId || undefined}
+                onClick={() => onSelect(m.id)}
+              >
+                <SevBadge s={m.severity as Severity} />
+                <span className="finding-group-member-host">
+                  <code>{m.assetIp ?? "No asset"}</code>
+                  {m.assetHostname ? <em>{m.assetHostname}</em> : null}
+                  {m.port != null ? <em>:{m.port}</em> : null}
+                </span>
+                <span className="finding-group-member-title" title={m.title}>
+                  {m.cveIds.length ? m.cveIds.slice(0, 2).join(", ") + (m.cveIds.length > 2 ? "…" : "") : m.title}
+                </span>
+                <StatusBadge s={m.status as FindingStatus} />
+              </button>
+            </li>
+          ))}
+          {g.membersTruncated && (
+            <li className="finding-group-more">
+              Showing the {g.members.length} highest-risk of {g.findingCount.toLocaleString()}.{" "}
+              <button type="button" className="findings-inline-action" onClick={() => onShowAll(g)}>
+                Show all in the list
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+    </article>
+  );
+});
+
 /* ─── Queue row ───────────────────────────────────────────────────────────
  * Memoised: a 30s poll re-renders the page, and re-rendering twenty rows that
  * did not change is the difference between a snappy list and a janky one. */
@@ -2724,6 +2886,37 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 }
 .findings-queue { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .findings-list { display: flex; flex-direction: column; gap: 6px; }
+.findings-view-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 2px 0 8px; }
+.findings-view-toggle { display: inline-flex; padding: 2px; border: var(--hairline) solid var(--border-subtle); border-radius: 9px; background: var(--bg-app); }
+.findings-view-toggle button { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 11px; border: 0; border-radius: 7px; color: var(--text-secondary); background: transparent; font: 600 11.5px/1 var(--font-ui); cursor: pointer; }
+.findings-view-toggle button[aria-pressed="true"] { color: var(--text-primary); background: var(--bg-panel); box-shadow: 0 0 0 var(--hairline) var(--border-default); }
+.findings-view-toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.findings-view-count { color: var(--text-muted); font: 500 11px/1.3 var(--font-ui); }
+.finding-group { position: relative; border: var(--hairline) solid var(--border-subtle); border-left: 3px solid var(--rail); border-radius: 10px; background: var(--bg-panel); }
+.finding-group[data-closed] { opacity: .78; }
+.finding-group-head { position: relative; display: block; width: 100%; padding: 13px 38px 13px 14px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; border-radius: 10px; }
+.finding-group-head:hover { background: var(--bg-hover); }
+.finding-group-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.finding-group-chevron { position: absolute; top: 15px; right: 13px; color: var(--text-muted); transition: transform 160ms var(--ease-out); }
+.finding-group[data-open] .finding-group-chevron { transform: rotate(180deg); }
+.finding-group-kind { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); }
+.finding-group-scope { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0 0; color: var(--text-secondary); font: 500 11.5px/1.4 var(--font-ui); }
+.finding-group-fix { margin: 6px 0 0; color: var(--text-primary); font: 500 11.5px/1.4 var(--font-ui); }
+.finding-group-fix b { font-weight: 700; }
+.finding-group-hosts { display: flex; align-items: center; gap: 5px; margin: 5px 0 0; overflow: hidden; color: var(--text-muted); font: 500 11px/1.4 var(--font-mono, monospace); white-space: nowrap; text-overflow: ellipsis; }
+.finding-group-members { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0 8px 8px; list-style: none; border-top: var(--hairline) solid var(--border-subtle); }
+.finding-group-member { display: grid; grid-template-columns: auto minmax(0, 1.1fr) minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; min-height: 36px; margin-top: 4px; padding: 5px 8px; border: var(--hairline) solid transparent; border-radius: 7px; background: transparent; color: var(--text-primary); text-align: left; cursor: pointer; font: 500 11.5px/1.3 var(--font-ui); }
+.finding-group-member:hover { background: var(--bg-hover); }
+.finding-group-member[data-selected] { border-color: var(--accent); background: var(--accent-ghost); }
+.finding-group-member:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+.finding-group-member-host { display: flex; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.finding-group-member-host em { color: var(--text-muted); font-style: normal; }
+.finding-group-member-title { overflow: hidden; color: var(--text-secondary); white-space: nowrap; text-overflow: ellipsis; }
+.finding-group-more { padding: 8px 8px 2px; color: var(--text-muted); font: 500 11px/1.4 var(--font-ui); }
+@media (max-width: 560px) {
+  .finding-group-member { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .finding-group-member-title { display: none; }
+}
 .findings-list[data-refreshing="true"] { opacity: .72; transition: opacity 160ms var(--ease-out); }
 
 /* The rail is the scan target: severity is read down the left edge without
@@ -3342,6 +3535,31 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
 
+  /* Grouped view: the SAME filters as the list (copied from its query string),
+   * its own page counter that snaps back to 1 whenever the filters change. */
+  const queueView = useSyncExternalStore(subscribeToQueueView, getQueueView, getServerQueueView);
+  const groupFilterSig = (() => {
+    const sig = new URLSearchParams(queryString);
+    for (const k of ["page", "page_size", "sort", "paginated"]) sig.delete(k);
+    return sig.toString();
+  })();
+  const [groupPageState, setGroupPageState] = useState({ sig: "", page: 1 });
+  const groupPage = groupPageState.sig === groupFilterSig ? groupPageState.page : 1;
+  const setGroupPage = (next: number) => setGroupPageState({ sig: groupFilterSig, page: next });
+  const groupQueryString = new URLSearchParams(queryString);
+  groupQueryString.delete("paginated");
+  groupQueryString.delete("sort");
+  groupQueryString.set("page", String(groupPage));
+  groupQueryString.set("page_size", String(FINDINGS_PER_PAGE));
+  const groupsQuery = useQuery({
+    queryKey: ["findings-groups", surface, groupQueryString.toString()],
+    queryFn: () => api.groups<FindingGroupPage>(groupQueryString.toString()),
+    enabled: queueView === "grouped",
+    refetchInterval: 30_000,
+    retry: (count, err) => !isUnauthorized(err) && count < 2,
+  });
+  const groups = groupsQuery.data?.items ?? [];
+
   const summaryParams = new URLSearchParams();
   if (engagementId) summaryParams.set("engagement_id", engagementId);
   if (filterAgentId) summaryParams.set("agent_id", filterAgentId);
@@ -3487,6 +3705,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
 
   const invalidateFindingData = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["findings-page"] });
+    void queryClient.invalidateQueries({ queryKey: ["findings-groups"] });
     void queryClient.invalidateQueries({ queryKey: ["findings-summary"] });
     void queryClient.invalidateQueries({ queryKey: ["finding-detail"] });
     void queryClient.invalidateQueries({ queryKey: ["finding-events"] });
@@ -3529,10 +3748,12 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   const selectedRef = useRef<string | null>(null);
   const findingsRef = useRef<Finding[]>(findings);
   const pageCountRef = useRef(1);
+  const queueViewRef = useRef<QueueView>(queueView);
   useEffect(() => {
     selectedRef.current = selectedId;
     findingsRef.current = findings;
     pageCountRef.current = pageCount;
+    queueViewRef.current = queueView;
   });
 
   /* `setSelectedId` is a stable useState setter, but it is still declared:
@@ -3584,6 +3805,8 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
       }
       if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === "/") { event.preventDefault(); searchRef.current?.focus(); return; }
+      // J/K and [ ] walk the flat queue; the grouped view is navigated by Tab.
+      if (queueViewRef.current !== "list") return;
       if (event.key === "j" || event.key === "J") { event.preventDefault(); moveSelection(1); return; }
       if (event.key === "k" || event.key === "K") { event.preventDefault(); moveSelection(-1); return; }
       if (event.key === "[") { setSelectedId(null); setPage((p) => Math.max(1, p - 1)); return; }
@@ -3635,6 +3858,12 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     setPage(1);
     setSelectedId(null);
   };
+  const showGroupInList = useCallback((g: FindingGroup) => {
+    setSearch(groupSearchTerm(g));
+    setPage(1);
+    setSelectedId(null);
+    storeQueueView("list");
+  }, [setSearch, setPage, setSelectedId]);
   const Shell = surface === "portal" ? PortalShell : PageShell;
 
   return (
@@ -4037,6 +4266,59 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
             </section>
           )}
 
+          <div className="findings-view-bar">
+            <div className="findings-view-toggle" role="group" aria-label="Queue view">
+              <button type="button" aria-pressed={queueView === "grouped"} onClick={() => storeQueueView("grouped")}>
+                <Layers size={13} aria-hidden /> Grouped
+              </button>
+              <button type="button" aria-pressed={queueView === "list"} onClick={() => storeQueueView("list")}>
+                <List size={13} aria-hidden /> All findings
+              </button>
+            </div>
+            <span className="findings-view-count" aria-live="polite">
+              {queueView === "grouped"
+                ? groupsQuery.data
+                  ? `${plural(groupsQuery.data.total, "group")} from ${plural(groupsQuery.data.findingTotal, "finding")}`
+                  : ""
+                : `${plural(total, "finding")}`}
+            </span>
+          </div>
+          {queueView === "grouped" && groupsQuery.data?.truncated && (
+            <p className="findings-compare-hint" role="status">
+              This filter matches more findings than can be grouped at once; groups cover the first {groupsQuery.data.findingTotal.toLocaleString()}. Narrow the filters for exact counts.
+            </p>
+          )}
+
+          {queueView === "grouped" ? (
+          <div className="findings-list" data-refreshing={groupsQuery.isFetching && !groupsQuery.isLoading ? "true" : undefined}>
+            <DataState
+              loading={groupsQuery.isLoading}
+              error={groupsQuery.error}
+              isEmpty={groups.length === 0}
+              onRetry={() => groupsQuery.refetch()}
+              skeleton={<SkeletonRows rows={6} height={104} />}
+              empty={
+                <EmptyState
+                  icon={Shield}
+                  title={hasActiveFilters ? "Nothing matches these filters" : "No findings yet"}
+                  hint={hasActiveFilters
+                    ? "Widen or clear a filter to see more."
+                    : "Run a vulnerability scan on an in-scope target. Findings land here, ranked by risk."}
+                />
+              }
+            >
+              {groups.map((g) => (
+                <FindingGroupRow
+                  key={g.key}
+                  g={g}
+                  selectedId={selectedId}
+                  onSelect={toggleFinding}
+                  onShowAll={showGroupInList}
+                />
+              ))}
+            </DataState>
+          </div>
+          ) : (
           <div className="findings-list" data-refreshing={isFetching && !isLoading ? "true" : undefined}>
             <DataState
               loading={isLoading}
@@ -4065,8 +4347,25 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
               ))}
             </DataState>
           </div>
+          )}
 
-          {total > 0 && (
+          {queueView === "grouped" && (groupsQuery.data?.pages ?? 1) > 1 && (
+            <nav className="findings-pagination" aria-label="Group pagination">
+              <div>Page <strong>{groupPage}</strong> of <strong>{groupsQuery.data?.pages}</strong></div>
+              <span>{FINDINGS_PER_PAGE} groups per page</span>
+              <div className="findings-pagination-controls">
+                <button type="button" onClick={() => setGroupPage(Math.max(1, groupPage - 1))} disabled={groupPage === 1} aria-label="Previous page of groups">
+                  <ChevronLeft size={14} aria-hidden />
+                </button>
+                <span>Page {groupPage} of {groupsQuery.data?.pages}</span>
+                <button type="button" onClick={() => setGroupPage(Math.min(groupsQuery.data?.pages ?? 1, groupPage + 1))} disabled={groupPage >= (groupsQuery.data?.pages ?? 1)} aria-label="Next page of groups">
+                  <ChevronRight size={14} aria-hidden />
+                </button>
+              </div>
+            </nav>
+          )}
+
+          {queueView === "list" && total > 0 && (
             <nav className="findings-pagination" aria-label="Findings pagination">
               <div>
                 Showing <strong>{(currentPage - 1) * FINDINGS_PER_PAGE + 1}</strong>–

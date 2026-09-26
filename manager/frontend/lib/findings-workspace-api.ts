@@ -1,10 +1,11 @@
 import {
-  mapAsset, mapCompareResult, mapScanOption, toApiFindingPatch, toUiFinding,
-  type ApiFindingAsset, type ApiScanOption,
+  mapAsset, mapCompareResult, mapFindingGroupPage, mapScanOption, toApiFindingPatch, toUiFinding,
+  type ApiFindingAsset, type ApiFindingGroupPage, type ApiScanOption,
 } from "./adapters";
 export type { FindingAssetOption, ScanOption } from "./adapters";
 import { fetchJson } from "./fetcher";
 import { portalApi } from "./portal-client";
+import { backendQueryString } from "./findings-query";
 
 export type FindingsWorkspaceSurface = "manager" | "portal";
 
@@ -53,6 +54,7 @@ export function createFindingsWorkspaceApi(surface: FindingsWorkspaceSurface) {
   if (surface === "manager") {
     return {
       list: <T>(query: string) => fetchJson<T>(`/api/findings?${query}`),
+      groups: <T>(query: string) => fetchJson<T>(`/api/findings/groups?${query}`),
       summary: <T>(query: string) => fetchJson<T>(`/api/findings/summary${query ? `?${query}` : ""}`),
       assets: <T>(query: string) => fetchJson<T>(`/api/findings/assets${query ? `?${query}` : ""}`),
       scans: <T>(query: string) => fetchJson<T>(`/api/findings/scans${query ? `?${query}` : ""}`),
@@ -76,7 +78,7 @@ export function createFindingsWorkspaceApi(surface: FindingsWorkspaceSurface) {
 
   return {
     list: async <T>(query: string) => {
-      const page = await portalApi<ApiFindingPage>(`/workspace/findings?${query}`);
+      const page = await portalApi<ApiFindingPage>(`/workspace/findings?${backendQueryString(query)}`);
       return {
         items: (page.items ?? []).map(toUiFinding),
         total: page.total ?? 0,
@@ -85,6 +87,9 @@ export function createFindingsWorkspaceApi(surface: FindingsWorkspaceSurface) {
         pages: page.pages ?? 1,
       } as T;
     },
+    groups: async <T>(query: string) => mapFindingGroupPage(
+      await portalApi<ApiFindingGroupPage>(`/workspace/findings/groups?${backendQueryString(query)}`),
+    ) as T,
     summary: async <T>(query: string) => mapSummary(
       await portalApi<ApiFindingSummary>(`/workspace/findings/summary${query ? `?${query}` : ""}`),
     ) as T,
