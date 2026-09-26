@@ -6,7 +6,6 @@ one row per port. Grouping collapses those into "one fix" units:
 
   rule    — same posture rule, any port, any host
   product — same vulnerable product + version (one upgrade fixes every CVE row)
-  cve     — same CVE set when no product was identified
   title   — same normalised title (imports, seed data, anything else)
 """
 from __future__ import annotations
@@ -18,13 +17,14 @@ from app.services.finding_groups import GroupRow, build_groups, group_identity
 
 _NOW = datetime(2026, 9, 27, tzinfo=timezone.utc)
 _ASSETS = [uuid.uuid4() for _ in range(4)]
+_ENG = uuid.uuid4()
 
 
 def _row(title, *, severity="medium", status="open", asset=0, ip=None, port=None,
          rule_id=None, cpe=None, cves=(), risk=100.0, cvss=None, kev=False,
-         validated=False, seen=0):
+         validated=False, seen=0, engagement=None):
     return GroupRow(
-        id=uuid.uuid4(), title=title, severity=severity, status=status,
+        id=uuid.uuid4(), engagement_id=engagement or _ENG, title=title, severity=severity, status=status,
         cvss=cvss, risk=risk, epss=None, cve_ids=tuple(cves),
         asset_id=_ASSETS[asset] if asset is not None else None,
         asset_ip=ip or (f"10.0.0.{asset + 1}" if asset is not None else None),
@@ -57,9 +57,19 @@ def test_identity_product_without_version():
     assert label == "http server — known vulnerabilities"
 
 
-def test_identity_cve_without_cpe_uses_sorted_cves():
-    key, kind, _ = group_identity(_row("x", cves=["cve-2021-2", "CVE-2021-1"]))
-    assert (key, kind) == ("cve:CVE-2021-1,CVE-2021-2", "cve")
+def test_identity_cve_without_cpe_uses_title():
+    key, kind, _ = group_identity(_row("CVE-2021-1", cves=["CVE-2021-1"]))
+    assert (key, kind) == ("title:cve-2021-1", "title")
+
+
+def test_partially_enriched_issue_stays_one_group():
+    # Live seed data: one of three identical rows carried a CVE id, the others
+    # none. Keying on the CVE set split one issue into two groups.
+    rows = [_row("Outdated OpenSSH 7.4 with known CVEs", cves=["CVE-2018-15473"], asset=0),
+            _row("Outdated OpenSSH 7.4 with known CVEs", asset=1),
+            _row("Outdated OpenSSH 7.4 with known CVEs", asset=2)]
+    [g] = build_groups(rows)
+    assert g["finding_count"] == 3 and g["host_count"] == 3 and g["cve_count"] == 1
 
 
 def test_identity_title_is_normalised():
@@ -70,9 +80,14 @@ def test_identity_title_is_normalised():
     assert a[2] == "Weak  TLS 1.0 enabled".replace("  ", " ")
 
 
-def test_malformed_cpe_falls_back_to_cve():
-    key, kind, _ = group_identity(_row("x", cves=["CVE-9"], cpe="not-a-cpe"))
-    assert (key, kind) == ("cve:CVE-9", "cve")
+def test_malformed_cpe_falls_back_to_title():
+    key, kind, _ = group_identity(_row("CVE-9 — thing", cves=["CVE-9"], cpe="not-a-cpe"))
+    assert (key, kind) == ("title:cve-9 — thing", "title")
+
+
+def test_cpe_without_cves_is_not_a_product_group():
+    key, kind, _ = group_identity(_row("Service banner", cpe="cpe:2.3:a:openbsd:openssh:7.4"))
+    assert kind == "title"
 
 
 # ── aggregation ───────────────────────────────────────────────────────────────
@@ -181,6 +196,18 @@ def test_first_and_last_seen_span():
     [g] = build_groups(rows)
     assert g["first_seen"] == _NOW - timedelta(days=10)
     assert g["last_seen"] == _NOW - timedelta(days=2)
+
+
+def test_groups_never_cross_engagements():
+    # Live data: the same IP and issue in two engagements (two customer
+    # networks). One group would claim "one fix closes 2 findings" — false.
+    other = uuid.uuid4()
+    rows = [_row("SMB signing not required", asset=0),
+            _row("SMB signing not required", asset=1, engagement=other)]
+    groups = build_groups(rows)
+    assert len(groups) == 2
+    assert {g["engagement_id"] for g in groups} == {_ENG, other}
+    assert all(g["finding_count"] == 1 for g in groups)
 
 
 def test_empty_input():

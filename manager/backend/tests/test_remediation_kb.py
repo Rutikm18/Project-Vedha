@@ -84,3 +84,15 @@ class TestRecipeForFinding:
     def test_missing_os_defaults_to_generic(self):
         plan = kb.recipe_for_finding(_f(title="SMB signing not required"))
         assert plan["os"] == "generic"
+
+
+def test_linux_package_commands_cover_debian_and_red_hat():
+    # The platform resolver maps every Linux distro to the one `linux` recipe, so
+    # a package-manager command must never be Debian-only: an RHEL host would be
+    # handed apt-get.
+    for category, recipe in kb.RECIPES.items():
+        for step in recipe["steps"]:
+            cmds = step["commands"]["linux"]
+            joined = " ".join(cmds)
+            if "apt-get" in joined:
+                assert "dnf" in joined or "yum" in joined, (category, step["title"])

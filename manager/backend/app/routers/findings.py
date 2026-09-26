@@ -569,7 +569,7 @@ def _group_select() -> Select:
     """Lean columns for grouping — never the whole evidence blob."""
     ev = Finding.evidence
     return select(
-        Finding.id, Finding.title, Finding.severity, Finding.status,
+        Finding.id, Finding.engagement_id, Finding.title, Finding.severity, Finding.status,
         Finding.cvss_score, Finding.risk_score, Finding.epss_score, Finding.cve_ids,
         Finding.asset_id, Finding.exploit_validated, Finding.first_seen,
         Finding.last_seen, Finding.created_at,
@@ -589,7 +589,7 @@ def _group_row(r, identity: dict) -> GroupRow:
     risk = float(r.risk_score if r.risk_score is not None
                  else r.cvss_score * 100 if r.cvss_score is not None else 0)
     return GroupRow(
-        id=r.id, title=r.title,
+        id=r.id, engagement_id=r.engagement_id, title=r.title,
         severity=getattr(r.severity, "value", r.severity),
         status=getattr(r.status, "value", r.status),
         cvss=cvss, risk=risk,

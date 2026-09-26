@@ -25,6 +25,7 @@ from app.schemas.finding_groups import FindingGroupPage
 
 _TENANT = uuid.uuid4()
 _ASSET = uuid.uuid4()
+_ENG = uuid.uuid4()
 
 _ALL_FILTERS = dict(
     severity=FindingSeverity.high, status_filter=FindingStatus.open, active_only=True,
@@ -42,7 +43,7 @@ def _user():
 def _row(title, severity="high", status="open", *, rule_id=None, port=None, cpe=None,
          cves=None, kev=None, enrichment_kev=None, risk=None, cvss=None, asset_id=_ASSET):
     return SimpleNamespace(
-        id=uuid.uuid4(), title=title, severity=FindingSeverity(severity),
+        id=uuid.uuid4(), engagement_id=_ENG, title=title, severity=FindingSeverity(severity),
         status=FindingStatus(status), cvss_score=Decimal(str(cvss)) if cvss is not None else None,
         risk_score=Decimal(str(risk)) if risk is not None else None, epss_score=None,
         cve_ids=cves, asset_id=asset_id, exploit_validated=False,

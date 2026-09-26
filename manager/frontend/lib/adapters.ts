@@ -441,7 +441,7 @@ export function mapAsset(a: ApiFindingAsset): FindingAssetOption {
 // Similar findings collapsed into one-fix units. The operator BFF maps on the
 // server; the portal maps the raw backend payload in the browser — same adapter.
 
-export type FindingGroupKind = "rule" | "product" | "cve" | "title";
+export type FindingGroupKind = "rule" | "product" | "title";
 
 interface ApiFindingGroupMember {
   id: string; title: string; severity: string; status: string;
@@ -450,6 +450,7 @@ interface ApiFindingGroupMember {
 }
 
 interface ApiFindingGroup {
+  engagement_id: string;
   key: string; kind: FindingGroupKind; label: string; severity: string;
   severity_counts?: Record<string, number>; status_counts?: Record<string, number>;
   finding_count: number; open_count: number; host_count: number; unassigned_count?: number;
@@ -474,6 +475,8 @@ export interface FindingGroupMember {
 }
 
 export interface FindingGroup {
+  /** Groups never span engagements; `key` is the identity within one. */
+  engagementId: string;
   key: string; kind: FindingGroupKind; label: string; severity: string;
   severityCounts: Record<string, number>; statusCounts: Record<string, number>;
   findingCount: number; openCount: number; hostCount: number; unassignedCount: number;
@@ -501,6 +504,7 @@ export function mapFindingGroup(g: ApiFindingGroup): FindingGroup {
     statusCounts[FIND_STATUS_TO_UI[k] ?? k.toUpperCase()] = v;
   }
   return {
+    engagementId: g.engagement_id,
     key: g.key,
     kind: g.kind,
     label: g.label,

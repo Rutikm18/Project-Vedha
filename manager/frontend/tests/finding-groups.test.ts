@@ -45,6 +45,7 @@ describe("mapFindingGroupPage", () => {
   test("maps the backend payload to the UI shape", () => {
     const page = mapFindingGroupPage({
       items: [{
+        engagement_id: "eng-1",
         key: "product:openbsd:openssh:7.4", kind: "product", label: "openssh 7.4 — known vulnerabilities",
         severity: "critical", severity_counts: { critical: 2, medium: 4 }, status_counts: { open: 5, fp: 1 },
         finding_count: 6, open_count: 5, host_count: 2, unassigned_count: 0,
@@ -59,6 +60,7 @@ describe("mapFindingGroupPage", () => {
       total: 1, page: 1, page_size: 20, pages: 1, finding_total: 6, truncated: false,
     });
     const [g] = page.items;
+    assert.equal(g.engagementId, "eng-1");
     assert.equal(g.severity, "CRITICAL");
     assert.deepEqual(g.severityCounts, { CRITICAL: 2, MEDIUM: 4 });
     assert.deepEqual(g.statusCounts, { OPEN: 5, FALSE_POSITIVE: 1 });

@@ -295,7 +295,8 @@ RECIPES: dict[str, dict] = {
             _step(
                 "Update OpenSSH",
                 "Install the current OpenSSH package to clear known CVEs.",
-                linux=["sudo apt-get update && sudo apt-get install --only-upgrade openssh-server"],
+                linux=["sudo apt-get update && sudo apt-get install --only-upgrade openssh-server   # Debian/Ubuntu",
+                       "sudo dnf upgrade openssh-server                                              # RHEL/Fedora"],
                 generic=["Upgrade the SSH server to the current supported release."],
                 verification="`ssh -V` reports a current, supported version.",
                 risk="low"),

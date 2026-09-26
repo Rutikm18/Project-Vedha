@@ -2320,19 +2320,16 @@ function FixFirstStrip({
 const GROUP_KIND_LABEL: Record<FindingGroupKind, string> = {
   rule: "Same check",
   product: "Same vulnerable product",
-  cve: "Same CVE",
   title: "Same issue",
 };
 const GROUP_KIND_HINT: Record<FindingGroupKind, string> = {
   rule: "The same detection rule fired on these hosts and ports.",
   product: "Every CVE here comes from the same product version — one upgrade fixes them all.",
-  cve: "The same CVE on several hosts.",
   title: "Findings with the same title on several hosts.",
 };
 
 function groupSearchTerm(g: FindingGroup): string {
   if (g.kind === "product") return g.key.split(":")[2]?.replace(/_/g, " ") ?? g.label;
-  if (g.kind === "cve") return g.cves[0] ?? g.label;
   return g.label;
 }
 
@@ -2341,9 +2338,11 @@ function plural(n: number, one: string, many = `${one}s`) {
 }
 
 const FindingGroupRow = React.memo(function FindingGroupRow({
-  g, selectedId, onSelect, onShowAll,
+  g, engagementName, selectedId, onSelect, onShowAll,
 }: {
   g: FindingGroup;
+  /** Shown when the queue spans several engagements. */
+  engagementName?: string | null;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onShowAll: (g: FindingGroup) => void;
@@ -2351,7 +2350,7 @@ const FindingGroupRow = React.memo(function FindingGroupRow({
   const containsSelected = g.members.some((m) => m.id === selectedId);
   const [open, setOpen] = useState(containsSelected);
   const expanded = open || containsSelected;
-  const panelId = `finding-group-${g.key.replace(/[^a-z0-9]+/gi, "-")}`;
+  const panelId = `finding-group-${`${g.engagementId}-${g.key}`.replace(/[^a-z0-9]+/gi, "-")}`;
   const hostText = g.hosts.map((h) => h.hostname ? `${h.ip ?? "?"} (${h.hostname})` : h.ip).filter(Boolean);
   return (
     <article
@@ -2373,6 +2372,9 @@ const FindingGroupRow = React.memo(function FindingGroupRow({
             <span className="chip finding-group-kind" title={GROUP_KIND_HINT[g.kind]}>
               <Layers size={11} aria-hidden /> {GROUP_KIND_LABEL[g.kind]}
             </span>
+            {engagementName && (
+              <span className="chip finding-group-engagement" title="Engagement">{engagementName}</span>
+            )}
             {g.kev && <KevBadge />}
             {g.exploitValidated && (
               <span className="chip" style={{ color: SEV_PALETTE.RED }}><BadgeCheck size={11} aria-hidden /> Exploit confirmed</span>
@@ -2900,6 +2902,7 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 .finding-group-chevron { position: absolute; top: 15px; right: 13px; color: var(--text-muted); transition: transform 160ms var(--ease-out); }
 .finding-group[data-open] .finding-group-chevron { transform: rotate(180deg); }
 .finding-group-kind { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); }
+.finding-group-engagement { max-width: 220px; overflow: hidden; color: var(--text-secondary); white-space: nowrap; text-overflow: ellipsis; }
 .finding-group-scope { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0 0; color: var(--text-secondary); font: 500 11.5px/1.4 var(--font-ui); }
 .finding-group-fix { margin: 6px 0 0; color: var(--text-primary); font: 500 11.5px/1.4 var(--font-ui); }
 .finding-group-fix b { font-weight: 700; }
@@ -3655,6 +3658,10 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     queryFn: () => api.engagements<{ engagements: EngagementOption[] }>(),
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
+  const engagementNames = useMemo(
+    () => new Map((engagementOptionsQuery.data?.engagements ?? []).map((e) => [e.id, e.name] as const)),
+    [engagementOptionsQuery.data],
+  );
   const agentOptionsQuery = useQuery({
     queryKey: ["agents", surface],
     queryFn: () => api.agents<VedhaAgentOption[]>(),
@@ -4309,8 +4316,9 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
             >
               {groups.map((g) => (
                 <FindingGroupRow
-                  key={g.key}
+                  key={`${g.engagementId}:${g.key}`}
                   g={g}
+                  engagementName={engagementId ? null : engagementNames.get(g.engagementId) ?? null}
                   selectedId={selectedId}
                   onSelect={toggleFinding}
                   onShowAll={showGroupInList}

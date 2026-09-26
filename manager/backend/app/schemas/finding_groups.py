@@ -25,8 +25,9 @@ class FindingGroupMember(BaseModel):
 
 
 class FindingGroupOut(BaseModel):
-    key: str
-    kind: Literal["rule", "product", "cve", "title"]
+    engagement_id: uuid.UUID   # groups never span engagements
+    key: str                   # identity within the engagement
+    kind: Literal["rule", "product", "title"]
     label: str
     severity: str
     severity_counts: dict[str, int]
