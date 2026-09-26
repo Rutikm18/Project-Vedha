@@ -77,6 +77,17 @@ def _version_in_ranges(version: str, ranges: list[dict]) -> tuple[bool, str | No
     return False, None
 
 
+def _fixed_bound(interval: str | None) -> str | None:
+    """The first non-vulnerable release of a matched ``[introduced, fixed)``
+    interval — the upgrade target a remediation plan names. A ``last_affected``
+    interval (closed ``]``) or an unbounded one has no known fixed release, so it
+    returns None rather than guessing."""
+    if not interval or not interval.endswith(")"):
+        return None
+    hi = interval[1:-1].split(",", 1)[-1].strip()
+    return None if hi in ("", "unbounded") else hi
+
+
 def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[Finding]:
     """All Findings this single CPE candidate produces against the snapshot.
     Empty list if the product isn't in the snapshot or no range matches —
@@ -139,6 +150,7 @@ def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[
                     db_snapshot_hash=db.meta.content_hash,
                     created_at=datetime.now(timezone.utc).isoformat(),
                     matched_version=version,
+                    fixed_version=_fixed_bound(interval),
                     ai_assisted=candidate.ai_assisted,
                     notes=[f"{candidate.basis} | matched range {interval}"]
                           + (["version-inferred, backport-possible"] if not is_authoritative else [])

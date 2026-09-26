@@ -175,6 +175,10 @@ class Finding:
     evidence_reason: str | None = None
     checks: dict = field(default_factory=dict)
     notes: list[str] = field(default_factory=list)
+    # First non-vulnerable release from the matched [introduced, fixed) range
+    # (matcher._fixed_bound). None for last_affected / unbounded ranges — the
+    # remediation plan then says "confirm the fixed version", never guesses.
+    fixed_version: str | None = None
 
     def __post_init__(self) -> None:
         # Structural guarantee, not a convention: no evidence, no Finding.

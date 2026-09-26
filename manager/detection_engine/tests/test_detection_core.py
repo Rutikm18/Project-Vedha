@@ -16,7 +16,7 @@ from models import (
 )
 from ingest import ingest_file, ingest_files, IngestResult, _validate, _classify_confidence, _is_ip
 from cvss import base_score, parse_vector, _roundup
-from matcher import _version_in_ranges, _safe_compare, match_candidate
+from matcher import _version_in_ranges, _safe_compare, match_candidate, _fixed_bound
 from correlate import (
     _product_from_cpe,
     correlate_smb_patch,
@@ -516,6 +516,48 @@ class TestMatchCandidate:
         findings = match_candidate("10.0.0.1", c, db)
         assert findings[0].ai_assisted is True
         assert any("AI-assisted" in n for n in findings[0].notes)
+
+    def test_fixed_version_carried_from_half_open_range(self):
+        records = {"openssh": [{
+            "id": "OSV-1", "upstream": ["CVE-2023-0001"],
+            "affected": [{"package": {"name": "openssh"}, "ranges": [
+                {"type": "ECOSYSTEM", "events": [
+                    {"introduced": "1.0"}, {"fixed": "9.8p1"}
+                ]}
+            ]}]
+        }]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="8.0", lookup_key="openssh")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert findings[0].fixed_version == "9.8p1"
+        assert findings[0].to_dict()["fixed_version"] == "9.8p1"
+
+    def test_last_affected_range_has_no_fixed_version(self):
+        records = {"openssh": [{
+            "id": "OSV-1", "upstream": ["CVE-2023-0001"],
+            "affected": [{"package": {"name": "openssh"}, "ranges": [
+                {"type": "ECOSYSTEM", "events": [
+                    {"introduced": "1.0"}, {"last_affected": "9.0"}
+                ]}
+            ]}]
+        }]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="8.0", lookup_key="openssh")
+        assert match_candidate("10.0.0.1", c, db)[0].fixed_version is None
+
+
+class TestFixedBound:
+    def test_half_open_interval_yields_fixed(self):
+        assert _fixed_bound("[1.0, 2.4.50)") == "2.4.50"
+
+    def test_last_affected_has_no_fixed(self):
+        assert _fixed_bound("[1.0, 2.4.49]") is None
+
+    def test_unbounded_has_no_fixed(self):
+        assert _fixed_bound("[1.0, unbounded)") is None
+
+    def test_none(self):
+        assert _fixed_bound(None) is None
 
 
 # ═══════════════════════════════════════════════════════════════════════════
