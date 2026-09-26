@@ -5,6 +5,7 @@ import {
   Sparkles, Terminal, Wrench,
 } from "lucide-react";
 import type { AdvisorVM } from "../../lib/assistant";
+import { copyText } from "../../lib/clipboard";
 
 /** Inline renderer: split on **bold** spans; everything else is secondary text. */
 function RichText({ text }: { text: string }) {
@@ -25,20 +26,22 @@ function RichText({ text }: { text: string }) {
 }
 
 function CopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const label = state === "copied" ? "Copied" : state === "failed" ? "Copy failed — select and copy manually" : "Copy command";
   return (
     <button
       type="button"
       className="advisor-copy"
-      aria-label={copied ? "Copied" : "Copy command"}
+      aria-label={label}
+      title={label}
       onClick={() => {
-        void navigator.clipboard.writeText(value).then(() => {
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1200);
+        void copyText(value).then((ok) => {
+          setState(ok ? "copied" : "failed");
+          window.setTimeout(() => setState("idle"), 1600);
         });
       }}
     >
-      {copied ? <Check size={13} /> : <Copy size={13} />}
+      {state === "copied" ? <Check size={13} /> : state === "failed" ? <AlertTriangle size={13} /> : <Copy size={13} />}
     </button>
   );
 }

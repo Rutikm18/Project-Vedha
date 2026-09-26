@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { SEVERITY, SEVERITY_ORDER, type Severity } from "../../lib/severity";
+import { copyText } from "../../lib/clipboard";
 import {
   assess, provenanceOf, redact, triageSort, TIER_META,
   type AssessedFinding, type RawEvidence, type RawFinding, type RemediationTier,
@@ -68,16 +69,17 @@ function SevTag({ sev, size = "md" }: { sev: Severity; size?: "sm" | "md" }) {
 
 /** Copies whatever is on screen — never the unredacted original. */
 function CopyButton({ text, label }: { text: string; label: string }) {
-  const [done, setDone] = useState(false);
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const copy = useCallback(() => {
-    void navigator.clipboard.writeText(text).then(() => {
-      setDone(true);
-      window.setTimeout(() => setDone(false), 1400);
+    void copyText(text).then((ok) => {
+      setState(ok ? "copied" : "failed");
+      window.setTimeout(() => setState("idle"), 1600);
     });
   }, [text]);
+  const shownLabel = state === "copied" ? "Copied" : state === "failed" ? "Copy failed — select and copy manually" : label;
   return (
-    <button type="button" className="vf-icon-btn no-print" onClick={copy} aria-label={done ? "Copied" : label}>
-      {done ? <CheckCircle2 size={12} className="vf-ok" /> : <Copy size={12} />}
+    <button type="button" className="vf-icon-btn no-print" onClick={copy} aria-label={shownLabel} title={shownLabel}>
+      {state === "copied" ? <CheckCircle2 size={12} className="vf-ok" /> : state === "failed" ? <AlertTriangle size={12} /> : <Copy size={12} />}
     </button>
   );
 }

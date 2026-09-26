@@ -58,6 +58,7 @@ import {
 import { DataState, SkeletonRows, EmptyState } from "../../components/states/DataState";
 import { FindingObligations } from "../../components/intel/FindingObligations";
 import { presentEvidence, type EvidenceArtifact } from "../../lib/evidence-presentation";
+import { copyText } from "../../lib/clipboard";
 import {
   SEV_COLOR, STATUS_COLOR, STATUS_LABEL, MATURITY_COLOR, COVERAGE_COLOR,
   PRIORITY_COLOR, PRIORITY_LABEL, KILL_CHAIN_PHASE_COLOR, riskScoreColor, epssColor, SEV_PALETTE,
@@ -349,12 +350,7 @@ function prefersReducedMotion() {
 function CopyBtn({ text, label = "command", showLabel = false }: { text: string; label?: string; showLabel?: boolean }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setState("copied");
-    } catch {
-      setState("failed");
-    }
+    setState((await copyText(text)) ? "copied" : "failed");
     window.setTimeout(() => setState("idle"), 2000);
   };
   return (
