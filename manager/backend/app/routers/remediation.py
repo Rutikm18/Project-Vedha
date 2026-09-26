@@ -29,11 +29,14 @@ from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.remediation_plan import RemediationPlan
 from app.schemas.remediation import RemediationPlanOut
+from app.remediation import service as remediation_service
+from app.remediation.bundles import bundle_link
 from app.remediation.loader import load_finding_context, resolve_due
 from app.remediation.plan import build_plan, os_for_context
 from app.services.remediation_kb import os_key
 
 router = APIRouter(prefix="/findings", tags=["remediation"])
+bundles_router = APIRouter(prefix="/engagements", tags=["remediation"])
 logger = structlog.get_logger()
 
 _REMEDIATION_READER = require_role(["admin", "manager", "tester", "analyst", "auditor"])
@@ -105,8 +108,9 @@ async def _upsert_plan(db: AsyncSession, *, tenant_id: uuid.UUID,
 
 
 def _serialize(finding_id: uuid.UUID, os: str, plan: dict, *,
-               row: RemediationPlan | None = None) -> dict:
+               row: RemediationPlan | None = None, bundle: dict | None = None) -> dict:
     return {
+        "bundle": bundle,
         "finding_id": str(finding_id),
         "os": os,
         "source": plan.get("source", "deterministic_kb"),
@@ -132,10 +136,11 @@ async def get_remediation(
     key = os_key(os) if os else os_for_context(ctx)
     row = await _cached_plan(db, finding_id, key)
     due = await resolve_due(db, finding, current_user.tenant_id)
+    link = bundle_link(finding, ctx)
     if row is not None:
         # The due date is live (extensions/policy changes), never the cached one.
-        return _serialize(finding_id, key, {**row.plan, "due": due}, row=row)
-    return _serialize(finding_id, key, build_plan(finding, ctx, os=key, due=due))
+        return _serialize(finding_id, key, {**row.plan, "due": due}, row=row, bundle=link)
+    return _serialize(finding_id, key, build_plan(finding, ctx, os=key, due=due), bundle=link)
 
 
 @router.post("/{finding_id}/remediation/generate",
@@ -182,3 +187,44 @@ async def generate_remediation(
     logger.info("remediation.generated", finding=str(finding_id), os=key,
                 source=plan.get("source"), reviewed=row.reviewed)
     return _serialize(finding_id, key, plan, row=row)
+
+
+# ── fix bundles (engagement-level) ───────────────────────────────────────────
+
+async def _tenant_engagement(db: AsyncSession, engagement_id: uuid.UUID,
+                             tenant_id: uuid.UUID) -> Engagement:
+    eng = (await db.execute(
+        select(Engagement).where(Engagement.id == engagement_id, Engagement.tenant_id == tenant_id)
+    )).scalar_one_or_none()
+    if eng is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engagement not found")
+    return eng
+
+
+@bundles_router.get("/{engagement_id}/remediation/bundles",
+                    summary="Fix bundles for an engagement (by fix or by host)")
+async def get_engagement_bundles(
+    engagement_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, _REMEDIATION_READER],
+    view: str = Query(default="fix", pattern="^(fix|host)$"),
+):
+    eng = await _tenant_engagement(db, engagement_id, current_user.tenant_id)
+    data = await remediation_service.engagement_bundles(db, eng, current_user.tenant_id)
+    return remediation_service.view_payload(data["bundles"], view, data["sla_source"])
+
+
+@bundles_router.get("/{engagement_id}/remediation/bundles/{fix_key}",
+                    summary="One fix bundle with its per-host checklist")
+async def get_engagement_bundle(
+    engagement_id: uuid.UUID,
+    fix_key: str,
+    db: DB,
+    current_user: Annotated[AuthUser, _REMEDIATION_READER],
+):
+    eng = await _tenant_engagement(db, engagement_id, current_user.tenant_id)
+    data = await remediation_service.engagement_bundles(db, eng, current_user.tenant_id)
+    bundle = remediation_service.find_bundle(data["bundles"], fix_key)
+    if bundle is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bundle not found")
+    return bundle

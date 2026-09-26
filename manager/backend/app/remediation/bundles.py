@@ -226,6 +226,12 @@ def _assemble(key: str, g: dict) -> dict:
     }
 
 
+def bundle_link(finding: Any, ctx: RemediationContext) -> dict:
+    """The fix bundle a single finding belongs to (key + display ref)."""
+    key, recipe_id, _ = _key_for(finding, ctx)
+    return {"fix_key": key, "ref": fix_ref(key), "recipe_id": recipe_id}
+
+
 def by_host(bundles: list[dict]) -> list[dict]:
     """Pivot bundles into host → the bundles it needs, soonest due first."""
     hosts: dict[str, dict] = {}
@@ -255,4 +261,5 @@ def _due_sort(d: datetime | None) -> tuple[bool, float]:
     return (d is None, d.timestamp() if d is not None else 0.0)
 
 
-__all__ = ["NOT_RECORDED", "build_bundles", "by_host", "fix_key_for", "fix_ref", "product_family"]
+__all__ = ["NOT_RECORDED", "build_bundles", "bundle_link", "by_host", "fix_key_for", "fix_ref",
+           "product_family"]

@@ -59,6 +59,8 @@ from app.services.domain_context import domain_brief_for
 from app.services.llm import AiRuntimeError, ManagerLlmService
 from app.services import posture as posture_service
 from app.services.audit import record_audit
+from app.remediation import service as remediation_service
+from app.remediation.bundles import bundle_link
 from app.remediation.loader import load_finding_context, resolve_due
 from app.remediation.plan import build_plan, os_for_context
 from app.services.remediation_kb import os_key
@@ -255,7 +257,37 @@ async def portal_finding_remediation(
     else:
         plan = build_plan(finding, ctx, os=key, due=due)
         source = plan["source"]
-    return {"finding_id": str(finding_id), "os": key, "source": source, "plan": plan}
+    return {"finding_id": str(finding_id), "os": key, "source": source, "plan": plan,
+            "bundle": bundle_link(finding, ctx)}
+
+
+async def _client_engagement(user, db) -> Engagement:
+    eng = (await db.execute(
+        select(Engagement).where(Engagement.id == assert_client(user))
+    )).scalar_one_or_none()
+    if eng is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engagement not found")
+    return eng
+
+
+@router.get("/remediation/bundles", summary="Fix bundles for your engagement (by fix or by host)")
+async def portal_remediation_bundles(user: ClientUser, db: DB,
+                                     view: str = Query(default="fix", pattern="^(fix|host)$")):
+    """The same deterministic bundles the operator sees (KB content only — AI
+    refinements reach customers per finding, once reviewed)."""
+    eng = await _client_engagement(user, db)
+    data = await remediation_service.engagement_bundles(db, eng, user.tenant_id)
+    return remediation_service.view_payload(data["bundles"], view, data["sla_source"])
+
+
+@router.get("/remediation/bundles/{fix_key}", summary="One fix bundle in your engagement")
+async def portal_remediation_bundle(fix_key: str, user: ClientUser, db: DB):
+    eng = await _client_engagement(user, db)
+    data = await remediation_service.engagement_bundles(db, eng, user.tenant_id)
+    bundle = remediation_service.find_bundle(data["bundles"], fix_key)
+    if bundle is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bundle not found")
+    return bundle
 
 
 def _posture_select():
