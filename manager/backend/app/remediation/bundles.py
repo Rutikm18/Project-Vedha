@@ -146,6 +146,7 @@ def _assemble(key: str, g: dict) -> dict:
 
     hosts: dict[str, dict] = {}
     resolves: list[str] = []
+    open_ids: list[str] = []
     excluded: list[dict] = []
     open_count = closed_count = 0
     open_dues: list[tuple[datetime, str | None]] = []
@@ -174,6 +175,7 @@ def _assemble(key: str, g: dict) -> dict:
             h["closed_at"] = getattr(f, "resolved_at", None) or h["closed_at"]
             continue
         open_count += 1
+        open_ids.append(fid)
         at = _as_dt(due.get("at"))
         if at is not None:
             open_dues.append((at, due.get("source")))
@@ -215,6 +217,7 @@ def _assemble(key: str, g: dict) -> dict:
         "references": rep_plan["references"],
         "hosts": host_rows,
         "resolves": resolves,
+        "open_finding_ids": open_ids,
         "excluded": excluded,
         "open_count": open_count,
         "closed_count": closed_count,

@@ -60,6 +60,7 @@ from app.services.llm import AiRuntimeError, ManagerLlmService
 from app.services import posture as posture_service
 from app.services.audit import record_audit
 from app.remediation import service as remediation_service
+from app.schemas.extension import ExtensionCreate
 from app.remediation.bundles import bundle_link
 from app.remediation.loader import load_finding_context, resolve_due
 from app.remediation.plan import build_plan, os_for_context
@@ -1295,3 +1296,43 @@ async def portal_agents(user: ClientUser, db: DB):
         "current_job_id": str(agent.current_job_id) if agent.current_job_id else None,
         "online": online,
     }]
+
+
+# ── deadline extensions (customer side) ──────────────────────────────────────
+
+@router.get("/extensions", summary="Your deadline-extension requests")
+async def portal_list_extensions(user: ClientUser, db: DB):
+    from app.models.deadline_extension import DeadlineExtensionRequest
+    from app.services import extensions as ext
+    rows = (await db.execute(
+        select(DeadlineExtensionRequest)
+        .where(DeadlineExtensionRequest.engagement_id == assert_client(user))
+        .order_by(DeadlineExtensionRequest.requested_at.desc())
+    )).scalars().all()
+    return {"items": [ext.to_out(r) for r in rows]}
+
+
+@router.post("/extensions", status_code=status.HTTP_201_CREATED,
+             summary="Request a later due date for a finding or a fix bundle")
+async def portal_request_extension(body: ExtensionCreate, user: ClientUser, db: DB):
+    from app.services import extensions as ext
+    eng = await _client_engagement(user, db)
+    req = await ext.create_request(
+        db, engagement=eng, user=user, subject_type=body.subject_type, finding_id=body.finding_id,
+        fix_key=body.fix_key, requested_due_at=body.requested_due_at, reason=body.reason,
+        compensating_control=body.compensating_control)
+    return ext.to_out(req)
+
+
+@router.post("/extensions/{request_id}/withdraw", summary="Withdraw a pending extension request")
+async def portal_withdraw_extension(request_id: uuid.UUID, user: ClientUser, db: DB):
+    from app.models.deadline_extension import DeadlineExtensionRequest
+    from app.services import extensions as ext
+    req = (await db.execute(
+        select(DeadlineExtensionRequest).where(
+            DeadlineExtensionRequest.id == request_id,
+            DeadlineExtensionRequest.engagement_id == assert_client(user))
+    )).scalar_one_or_none()
+    if req is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Extension request not found")
+    return ext.to_out(await ext.withdraw(db, request=req, user=user))

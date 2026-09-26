@@ -42,6 +42,7 @@ from app.routers.probe_enrollment import router as probe_enrollment_router
 from app.routers.integrations import router as integrations_router
 from app.routers.remediation import router as remediation_router
 from app.routers.remediation import bundles_router as remediation_bundles_router
+from app.routers.extensions import router as extensions_router
 from app.routers.sla_policy import engagement_router as engagement_sla_policy_router
 from app.routers.sla_policy import router as sla_policy_router
 from app.routers.scan_schedules import router as scan_schedules_router
@@ -239,6 +240,7 @@ app.include_router(portal_router)
 app.include_router(findings_router)
 app.include_router(remediation_router)
 app.include_router(remediation_bundles_router)
+app.include_router(extensions_router)
 app.include_router(sla_policy_router)
 app.include_router(engagement_sla_policy_router)
 app.include_router(integrations_router)
