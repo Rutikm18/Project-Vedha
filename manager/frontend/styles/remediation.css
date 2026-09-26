@@ -61,7 +61,7 @@
 .rm-target strong { font-size: 13.5px; color: var(--text-primary); }
 
 /* context card */
-.rm-context h4, .rm-tier h4, .rm-verify h4, .rm-closeout h4, .rm-ext h4, .rm-notes h4 {
+.rm-context h4, .rm-tier h4, .rm-verify h4, .rm-closeout h4, .rm-ext h4, .rm-notes h4, .rm-section-h {
   display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 11px; font-weight: 800;
   letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary);
 }

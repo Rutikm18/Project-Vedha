@@ -151,6 +151,8 @@ def _assemble(key: str, g: dict) -> dict:
     open_count = closed_count = 0
     open_dues: list[tuple[datetime, str | None]] = []
     urgency = "track"
+    sev_rank = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
+    max_sev, any_kev = "info", False
     for f, ctx, due in members:
         fid = str(getattr(f, "id", ""))
         state, reason = _member_state(f)
@@ -181,7 +183,11 @@ def _assemble(key: str, g: dict) -> dict:
             open_dues.append((at, due.get("source")))
             if h["due_at"] is None or at < h["due_at"]:
                 h["due_at"], h["due_source"] = at, due.get("source")
-        u = urgency_for(ctx, _severity(f))["label"]
+        sev = _severity(f)
+        if sev_rank.get(sev, 0) > sev_rank[max_sev]:
+            max_sev = sev
+        any_kev = any_kev or ctx.kev
+        u = urgency_for(ctx, sev)["label"]
         if _URGENCY_RANK[u] > _URGENCY_RANK[urgency]:
             urgency = u
 
@@ -224,6 +230,9 @@ def _assemble(key: str, g: dict) -> dict:
         "due_at": due_at,
         "due_source": due_source,
         "urgency": urgency,
+        # Open members only — drives the "compensating control required" rule.
+        "max_severity": max_sev if open_count else None,
+        "kev": any_kev,
         "progress": {"closed": closed_count, "total": open_count + closed_count},
         "status": "open" if open_count else "done",
     }

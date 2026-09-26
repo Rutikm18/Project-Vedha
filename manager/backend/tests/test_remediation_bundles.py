@@ -148,3 +148,11 @@ class TestByHost:
         assert len(hosts) == 1
         assert [x["recipe_id"] for x in hosts[0]["bundles"]] == [
             "POSTURE-TLS-DEPRECATED-VERSION", "POSTURE-SMB-V1-ENABLED"]
+
+
+def test_bundle_carries_max_open_severity_and_kev():
+    hot = _item(_f({"rule_id": "POSTURE-SMB-V1-ENABLED", "port": 445, "kev": True}, severity="medium"),
+                _asset("10.0.0.1", "a"), _svc(445, "SMB"))
+    cold = _smb("10.0.0.2", "b", severity="high")
+    [b] = B.build_bundles([hot, cold], now=NOW)
+    assert b["max_severity"] == "high" and b["kev"] is True

@@ -174,3 +174,24 @@ export function ExtensionPanel({
     </section>
   );
 }
+
+/** Operator queue: every PENDING request in the engagement, newest first. */
+export function ExtensionQueue({ api, engagementId }: { api: RemediationApi; engagementId: string }) {
+  const qc = useQueryClient();
+  const key = ["remediation-extensions", api.surface, engagementId];
+  const { data } = useQuery({
+    queryKey: key, queryFn: () => api.extensions(engagementId), enabled: Boolean(engagementId), staleTime: 15_000,
+  });
+  const pending = (data?.items ?? []).filter((r) => r.status === "pending");
+  if (!pending.length) return null;
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: key });
+    void qc.invalidateQueries({ queryKey: ["remediation-bundles"] });
+  };
+  return (
+    <section className="rm-queue">
+      <h4><Clock size={14} aria-hidden /> {pending.length} extension request{pending.length === 1 ? "" : "s"} awaiting a decision</h4>
+      <ul className="rm-ext-list">{pending.map((r) => <RequestRow key={r.id} r={r} api={api} onDone={refresh} />)}</ul>
+    </section>
+  );
+}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Shield, Brain, AlertTriangle, FileText,
-  Terminal, Briefcase, Settings, RadioTower, Users, X, Radar,
+  Terminal, Briefcase, Settings, RadioTower, Users, X, Radar, Wrench,
 } from "lucide-react";
 
 // Resolved at build time from the repo-root VERSION file (see next.config.mjs).
@@ -34,6 +34,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
     items: [
       { icon: Brain,         label: "AI Brain",   href: "/aibrain"  },
       { icon: AlertTriangle, label: "Findings",   href: "/findings" },
+      { icon: Wrench,        label: "Remediation", href: "/remediation" },
     ],
   },
   {
@@ -62,6 +63,7 @@ const PORTAL_NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
     items: [
       { icon: Brain,         label: "AI Brain", href: "/portal/assistant" },
       { icon: AlertTriangle, label: "Findings", href: "/portal/findings" },
+      { icon: Wrench,        label: "Remediation", href: "/portal/remediation" },
     ],
   },
   {

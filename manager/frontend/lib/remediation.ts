@@ -94,6 +94,8 @@ export interface Bundle {
   open_finding_ids: string[]; excluded: { finding_id: string; reason: string }[];
   open_count: number; closed_count: number; due_at: string | null; due_source: DueSource;
   urgency: Urgency; progress: { closed: number; total: number }; status: "open" | "done";
+  /** Worst severity among OPEN members, and whether any is on CISA KEV. */
+  max_severity: string | null; kev: boolean;
 }
 
 export interface HostRow {
