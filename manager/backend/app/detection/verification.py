@@ -18,6 +18,7 @@ this; they can only lower confidence or flag review — never raise it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, Protocol
 
 VERIFICATION_STATES = frozenset({"confirmed", "corroborated", "inferred", "contradicted"})
 
@@ -32,6 +33,12 @@ class VerificationVerdict:
     needs_review: bool
     rationale: str
     method: str = "passive"
+
+
+class VerificationLlm(Protocol):
+    """Minimal model adapter needed by the optional verification review seam."""
+
+    async def verify_rationale(self, evidence: dict[str, Any]) -> dict[str, Any]: ...
 
 
 def _int_confidence(evidence: dict) -> int:
@@ -72,21 +79,28 @@ import structlog  # noqa: E402  (grouped with the LLM entrypoint below)
 logger = structlog.get_logger()
 
 
-def _qualifies_for_llm(verdict: VerificationVerdict, evidence: dict) -> bool:
+def needs_llm_review(verdict: VerificationVerdict, evidence: dict) -> bool:
     """Only spend an LLM call where a rationale / FP-triage is worth it:
     uncertain AND high-stakes. Everything else keeps the cheap verdict."""
     priority = (evidence.get("priority") or "").lower()
-    return verdict.needs_review or priority in ("critical", "high")
+    return (
+        verdict.state != "confirmed"
+        and (verdict.needs_review or priority in ("critical", "high"))
+    )
 
 
-async def verify_finding(evidence: dict, llm=None) -> VerificationVerdict:
-    """Deterministic verdict, optionally enriched by an LLM rationale. The LLM
-    (duck-typed: must expose `async verify_rationale(evidence) -> dict`) can only
-    add a rationale, flag needs_review, and — when confidence is already low —
-    mark the verdict contradicted. It can NEVER raise confidence or override a
-    confirmed verdict. Any LLM failure yields the pure deterministic verdict."""
-    verdict = compute_verdict(evidence)
-    if llm is None or verdict.state == "confirmed" or not _qualifies_for_llm(verdict, evidence):
+async def review_verdict(
+    verdict: VerificationVerdict,
+    evidence: dict,
+    llm: VerificationLlm | None,
+) -> VerificationVerdict:
+    """Apply a bounded model review to an existing deterministic verdict.
+
+    The adapter can add rationale, request human review, or downgrade weak
+    evidence. It cannot raise confidence or replace authoritative evidence.
+    Any adapter failure returns the original verdict unchanged.
+    """
+    if llm is None or not needs_llm_review(verdict, evidence):
         return verdict
     try:
         out = await llm.verify_rationale(evidence)
@@ -103,6 +117,22 @@ async def verify_finding(evidence: dict, llm=None) -> VerificationVerdict:
     new_state = verdict.state
     if fp and verdict.confidence < _CORROBORATED_FLOOR:
         new_state = "contradicted"
-    return VerificationVerdict(state=new_state, confidence=verdict.confidence,
-                               needs_review=needs_review, rationale=new_reason,
-                               method="passive")
+    return VerificationVerdict(
+        state=new_state,
+        confidence=verdict.confidence,
+        needs_review=needs_review,
+        rationale=new_reason,
+        method="passive",
+    )
+
+
+async def verify_finding(
+    evidence: dict, llm: VerificationLlm | None = None,
+) -> VerificationVerdict:
+    """Deterministic verdict, optionally enriched by an LLM rationale. The LLM
+    (duck-typed: must expose `async verify_rationale(evidence) -> dict`) can only
+    add a rationale, flag needs_review, and — when confidence is already low —
+    mark the verdict contradicted. It can NEVER raise confidence or override a
+    confirmed verdict. Any LLM failure yields the pure deterministic verdict."""
+    verdict = compute_verdict(evidence)
+    return await review_verdict(verdict, evidence, llm)

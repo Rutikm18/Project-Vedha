@@ -15,6 +15,17 @@ class AiMessage(BaseModel):
     content: str = Field(min_length=1, max_length=6_000)
 
 
+class InternalAiMessage(BaseModel):
+    """Larger, server-authored prompt used by trusted Manager workflows.
+
+    Keeping this separate from ``AiMessage`` prevents the public ``/ai/generate``
+    contract from silently accepting report-sized user input.
+    """
+
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=32_000)
+
+
 class AiGenerateRequest(BaseModel):
     task: Literal["advisor", "security_brief", "security_followup", "advisor_flow",
                   "client_assistant"]
@@ -30,6 +41,27 @@ class AiGenerateRequest(BaseModel):
             raise ValueError("conversation exceeds 24,000 characters")
         if len(json.dumps(self.context, default=str, separators=(",", ":"))) > 32_000:
             raise ValueError("context exceeds 32,000 characters")
+        if self.model and not MODEL_ID.fullmatch(self.model):
+            raise ValueError("model contains unsupported characters")
+        return self
+
+
+class InternalAiGenerateRequest(BaseModel):
+    """Manager-only generation contract; never exposed by the public AI route."""
+
+    task: Literal["report_generation", "advisor_recommendation"] = "report_generation"
+    messages: list[InternalAiMessage] = Field(min_length=1, max_length=8)
+    context: dict[str, Any] = Field(default_factory=dict)
+    provider: Literal["ollama", "openrouter", "anthropic", "openai"] | None = None
+    model: str | None = Field(default=None, min_length=1, max_length=160)
+    max_tokens: int = Field(default=2_048, ge=128, le=4_096)
+
+    @model_validator(mode="after")
+    def validate_bounded_input(self):
+        if sum(len(message.content) for message in self.messages) > 32_000:
+            raise ValueError("internal conversation exceeds 32,000 characters")
+        if len(json.dumps(self.context, default=str, separators=(",", ":"))) > 32_000:
+            raise ValueError("internal context exceeds 32,000 characters")
         if self.model and not MODEL_ID.fullmatch(self.model):
             raise ValueError("model contains unsupported characters")
         return self

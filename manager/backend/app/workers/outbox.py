@@ -147,6 +147,17 @@ async def _handle_facts_ready(event: Event) -> None:
             ).limit(1)
         )).first()
         if already is not None:
+            # A prior delivery may have committed the run and its finding links
+            # before crashing ahead of the outbox ACK. Re-applying the exact
+            # ScanResult -> DetectionRun link is idempotent and avoids leaving
+            # scanner-produced findings unlinked on redelivery.
+            from app.services.finding_scan_provenance import (
+                attach_detection_run_to_scan_findings,
+            )
+            await attach_detection_run_to_scan_findings(
+                db, sr.engagement_id, sr.id, already[0]
+            )
+            await db.commit()
             logger.info("outbox.facts_ready.already_detected",
                         scan_result_id=event.scan_result_id)
             return
@@ -176,6 +187,19 @@ async def _handle_facts_ready(event: Event) -> None:
             {"facts": sr.facts, "scanner_runs": scanner_runs},
             scan_result_id=sr.id,
         )
+        completed_run_id = (await db.execute(
+            _select(DetectionRun.id).where(
+                DetectionRun.scan_result_id == sr.id,
+                DetectionRun.status == RUN_COMPLETED,
+            ).order_by(DetectionRun.started_at.desc()).limit(1)
+        )).scalar_one_or_none()
+        if completed_run_id is not None:
+            from app.services.finding_scan_provenance import (
+                attach_detection_run_to_scan_findings,
+            )
+            await attach_detection_run_to_scan_findings(
+                db, sr.engagement_id, sr.id, completed_run_id
+            )
         # All finding-producing paths for this scan have now run (engine here,
         # service_vuln/finding_translator at submit); stamp the unified
         # risk_score so nothing lands unprioritized. Best-effort.

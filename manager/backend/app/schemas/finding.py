@@ -1,6 +1,8 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
+import re
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -18,6 +20,90 @@ class FindingFilter(BaseModel):
     page_size: int = Field(default=20, ge=1, le=100)
 
 
+class FindingClosureEvidenceArtifact(BaseModel):
+    label: str = Field(min_length=1, max_length=200)
+    content: Any
+    evidence_type: str = Field(min_length=1, max_length=64)
+    tool: str | None = Field(default=None, min_length=1, max_length=128)
+    source: str | None = Field(default=None, min_length=1, max_length=128)
+    command: str | None = Field(default=None, max_length=10_000)
+    captured_at: datetime
+    captured_by: str = Field(min_length=1, max_length=200)
+    source_host: str | None = Field(default=None, min_length=1, max_length=255)
+    sha256: str = Field(min_length=64, max_length=64)
+
+    @model_validator(mode="after")
+    def validate_provenance(self) -> "FindingClosureEvidenceArtifact":
+        if not (self.tool or self.source):
+            raise ValueError("closure evidence requires tool or source")
+        if self.captured_at.tzinfo is None or self.captured_at.utcoffset() is None:
+            raise ValueError("closure evidence captured_at must include a timezone")
+        if re.fullmatch(r"[0-9a-fA-F]{64}", self.sha256) is None:
+            raise ValueError("closure evidence sha256 must be 64 hexadecimal characters")
+        return self
+
+
+class FindingRetestRecord(BaseModel):
+    passed: bool
+    requested_at: datetime
+    started_at: datetime
+    completed_at: datetime
+    verified_at: datetime
+    tested_by: str = Field(min_length=1, max_length=200)
+    verified_by: str = Field(min_length=1, max_length=200)
+    scope: dict[str, Any]
+    vantage_point: str = Field(min_length=1, max_length=500)
+    authentication_context: str = Field(min_length=1, max_length=500)
+    method: str = Field(min_length=1, max_length=2_000)
+    tool_configuration: dict[str, Any]
+    expected_result: str = Field(min_length=1, max_length=5_000)
+    actual_result: str = Field(min_length=1, max_length=5_000)
+    coverage_comparison: dict[str, Any]
+    change_reference: str = Field(min_length=1, max_length=500)
+    residual_risk: str = Field(min_length=1, max_length=5_000)
+    before_evidence: list[FindingClosureEvidenceArtifact] = Field(min_length=1)
+    after_evidence: list[FindingClosureEvidenceArtifact] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_retest(self) -> "FindingRetestRecord":
+        times = (
+            self.requested_at,
+            self.started_at,
+            self.completed_at,
+            self.verified_at,
+        )
+        if any(value.tzinfo is None or value.utcoffset() is None for value in times):
+            raise ValueError("retest timestamps must include a timezone")
+        if any(later < earlier for earlier, later in zip(times, times[1:])):
+            raise ValueError("retest timestamps must be chronological")
+        if not self.scope:
+            raise ValueError("retest scope must not be empty")
+        if not self.tool_configuration:
+            raise ValueError("retest tool_configuration must not be empty")
+        if not self.coverage_comparison:
+            raise ValueError("retest coverage_comparison must not be empty")
+        return self
+
+
+class FindingClosurePacket(BaseModel):
+    reason: str = Field(min_length=3, max_length=1_000)
+    reviewed_by: str = Field(min_length=1, max_length=200)
+    retest: FindingRetestRecord
+
+
+class FindingActionTrackingPatch(BaseModel):
+    non_closure_reason: str = Field(min_length=3, max_length=5_000)
+    planned_closure_at: datetime
+    action_reference: str | None = Field(default=None, min_length=1, max_length=500)
+
+    @field_validator("planned_closure_at")
+    @classmethod
+    def validate_planned_closure_at(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("planned_closure_at must include a timezone")
+        return value
+
+
 class FindingPatch(BaseModel):
     """All fields optional — PATCH semantics."""
     status: FindingStatus | None = None
@@ -32,6 +118,10 @@ class FindingPatch(BaseModel):
     risk_score: Decimal | None = Field(default=None, ge=0, le=1000)
     # Stored only on the immutable lifecycle event, never on the finding row.
     action_reason: str | None = Field(default=None, max_length=1000)
+    # A structured, immutable closure packet. It is accepted only with a
+    # transition to remediated and is stored on that lifecycle event.
+    closure: FindingClosurePacket | None = None
+    action_tracking: FindingActionTrackingPatch | None = None
 
     @field_validator("action_reason")
     @classmethod
@@ -39,6 +129,18 @@ class FindingPatch(BaseModel):
         if value is None:
             return None
         return value.strip() or None
+
+    @model_validator(mode="after")
+    def validate_closure_packet(self) -> "FindingPatch":
+        if self.closure is None:
+            return self
+        if self.status != FindingStatus.remediated:
+            raise ValueError("closure packet requires status=remediated")
+        if not self.closure.retest.passed:
+            raise ValueError("a remediated closure packet requires a passed retest")
+        if self.action_reason and self.action_reason != self.closure.reason:
+            raise ValueError("action_reason and closure.reason must match")
+        return self
 
 
 class FindingReopen(BaseModel):
@@ -139,13 +241,27 @@ class FindingOut(BaseModel):
     detection_status: DetectionStatus
     evidence: dict | None
     remediation: str | None
+    remediation_updated_at: datetime | None = None
+    remediation_updated_by: str | None = None
+    # Recorded observation provenance. These are distinct from created/updated:
+    # updating an analyst note must never look like a new scan observation in a
+    # customer report.
+    first_seen: datetime | None = None
+    last_seen: datetime | None = None
+    # Initial is immutable discovery provenance; detection_run_id is latest touch.
+    initial_detection_run_id: uuid.UUID | None = None
+    detection_run_id: uuid.UUID | None = None
+    detected_db_version: str | None = None
     # P2 passive verification verdict (normalized, dashboard-facing).
     verification_state: str | None = None
     verification_confidence: int | None = None
     verification_rationale: str | None = None
+    verification_method: str | None = None
     needs_review: bool = False
     # P1 resolution lifecycle (auto-resolution / manual reopen surfacing).
     resolution_method: str | None = None
+    resolution_run_id: uuid.UUID | None = None
+    resolution_miss_count: int = 0
     reopened_count: int = 0
     resolved_at: datetime | None = None
     # P4 unified priority (computed; see services/risk_rank.py).

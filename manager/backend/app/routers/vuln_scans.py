@@ -21,6 +21,7 @@ from app.models.engagement import Engagement
 from app.models.enums import FindingStatus, ScanJobStatus, ScanJobType
 from app.models.finding import Finding
 from app.models.scan_job import ScanJob
+from app.services.finding_scan_provenance import record_scan_observation
 from app.utils.db import get_or_404
 from app.vuln.nessus import NessusScanner
 from app.vuln.nuclei import NucleiRunReport, NucleiScanError, NucleiScanner
@@ -219,44 +220,33 @@ async def import_findings(
     background_tasks: BackgroundTasks,
     current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
 ):
-    eng = await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
-    from app.models.enums import FindingSeverity
-    from decimal import Decimal
-
-    created = 0
-    for item in body:
-        try:
-            sev = FindingSeverity(item.severity.lower())
-        except ValueError:
-            sev = FindingSeverity.info
-
-        finding = Finding(
-            engagement_id=engagement_id,
-            asset_id=uuid.UUID(item.asset_id) if item.asset_id else None,
-            title=item.title,
-            description=item.description,
-            severity=sev,
-            status=FindingStatus.open,
-            cve_ids=item.cve_ids or None,
-            cvss_score=Decimal(str(item.cvss_score)) if item.cvss_score else None,
-            evidence=item.evidence,
-        )
-        db.add(finding)
-        created += 1
-
-    await db.flush()
-
-    # Auto-trigger enrichment
+    recorded_at = datetime.now(timezone.utc)
     job = ScanJob(
         engagement_id=engagement_id,
         job_type=ScanJobType.vuln_scan,
         status=ScanJobStatus.completed,
-        result={"scanner": "import", "count": created},
+        result={"scanner": "import", "count": 0},
+        completed_at=recorded_at,
     )
     db.add(job)
     await db.flush()
     await db.refresh(job)
+
+    created = 0
+    for item in body:
+        finding = _import_finding(
+            engagement_id,
+            item,
+            scan_job_id=job.id,
+            recorded_at=recorded_at,
+        )
+        db.add(finding)
+        created += 1
+
+    job.result = {"scanner": "import", "count": created}
+    await db.flush()
 
     background_tasks.add_task(
         run_post_scan_enrichment, str(engagement_id), str(job.id)
@@ -325,12 +315,18 @@ async def _run_nuclei_and_save(
     created = 0
     rejected = 0
     report = scanner.last_run_report
+    recorded_at = datetime.now(timezone.utc)
     try:
         async with AsyncSessionLocal() as db:
             for item in raw_findings:
                 try:
                     async with db.begin_nested():
-                        db.add(_nuclei_finding(engagement_uuid, item))
+                        db.add(_nuclei_finding(
+                            engagement_uuid,
+                            item,
+                            scan_job_id=job_uuid,
+                            recorded_at=recorded_at,
+                        ))
                         await db.flush()
                     created += 1
                 except Exception as exc:
@@ -404,14 +400,73 @@ _NUCLEI_REMEDIATION = {
 }
 
 
-def _nuclei_finding(engagement_id: uuid.UUID, item: dict) -> Finding:
+def _import_finding(
+    engagement_id: uuid.UUID,
+    item: FindingImport,
+    *,
+    scan_job_id: uuid.UUID,
+    recorded_at: datetime,
+) -> Finding:
+    from decimal import Decimal
+
     from app.models.enums import FindingSeverity
 
+    try:
+        severity = FindingSeverity(item.severity.lower())
+    except ValueError:
+        severity = FindingSeverity.info
+    evidence = record_scan_observation(
+        item.evidence,
+        scan_result_id=None,
+        scan_job_id=scan_job_id,
+        scan_type="finding_import",
+        source="external_import",
+        tool=None,
+        recorded_at=recorded_at,
+        initial=True,
+    )
+    return Finding(
+        engagement_id=engagement_id,
+        asset_id=uuid.UUID(item.asset_id) if item.asset_id else None,
+        title=item.title,
+        description=item.description,
+        severity=severity,
+        status=FindingStatus.open,
+        cve_ids=item.cve_ids or None,
+        cvss_score=Decimal(str(item.cvss_score)) if item.cvss_score else None,
+        evidence=evidence,
+        first_seen=recorded_at,
+        last_seen=recorded_at,
+        initial_detection_run_id=None,
+        detection_run_id=None,
+    )
+
+
+def _nuclei_finding(
+    engagement_id: uuid.UUID,
+    item: dict,
+    *,
+    scan_job_id: uuid.UUID | None = None,
+    recorded_at: datetime | None = None,
+) -> Finding:
+    from app.models.enums import FindingSeverity
+
+    observed_at = recorded_at or datetime.now(timezone.utc)
     severity_value = item.get("severity") or FindingSeverity.info
     severity = (
         severity_value
         if isinstance(severity_value, FindingSeverity)
         else FindingSeverity(str(severity_value).lower())
+    )
+    evidence = record_scan_observation(
+        item.get("evidence"),
+        scan_result_id=None,
+        scan_job_id=scan_job_id,
+        scan_type="vuln_scan",
+        source="manager_scanner",
+        tool="nuclei",
+        recorded_at=observed_at,
+        initial=True,
     )
     return Finding(
         engagement_id=engagement_id,
@@ -423,7 +478,11 @@ def _nuclei_finding(engagement_id: uuid.UUID, item: dict) -> Finding:
         cvss_score=item.get("cvss_score"),
         mitre_techniques=item.get("mitre_techniques"),
         exploitable=item.get("exploitable", False),
-        evidence=item.get("evidence"),
+        evidence=evidence,
+        first_seen=observed_at,
+        last_seen=observed_at,
+        initial_detection_run_id=None,
+        detection_run_id=None,
     )
 
 

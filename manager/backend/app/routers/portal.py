@@ -4,8 +4,8 @@ client's one live engagement binding via `client_scoped` / `assert_client`, so a
 route cannot read or mutate another engagement's data.
 
 Data-exposure controls:
-  * findings are serialized through the ClientFindingOut whitelist (no internal
-    triage/exploit/evidence fields)
+  * findings are serialized through portal-owned customer whitelists (no
+    internal triage/exploit/evidence fields)
   * reports are gated to review_status == approved (drafts/internal never leak)
 """
 from __future__ import annotations
@@ -51,6 +51,8 @@ from app.schemas.portal import (
     ClientScanRequestOut,
     ClientSummaryOut,
     ClientTrendsOut,
+    ClientWorkspaceFindingOut,
+    ClientWorkspaceFindingPage,
     ScanRequestCreate,
 )
 from app.services import portal_metrics
@@ -720,7 +722,11 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
 # Unlike the reports and remediation routes, replies are NOT operator-reviewed:
 # this was an explicit product decision, so the UI labels every answer as
 # AI-generated and unverified rather than presenting it as assessed fact.
-_ASSISTANT_MAX_FINDINGS = 40
+_ASSISTANT_MAX_FINDINGS = 16
+
+
+def _assistant_text(value: object, maximum: int) -> str:
+    return " ".join(str(value or "").replace("\x00", " ").split())[:maximum]
 
 
 def _assistant_finding_view(f: Finding) -> dict:
@@ -729,14 +735,16 @@ def _assistant_finding_view(f: Finding) -> dict:
     evidence blobs or exploit metadata."""
     return {
         "id": str(f.id),
-        "title": f.title,
+        "title": _assistant_text(f.title, 240),
         "severity": getattr(f.severity, "value", f.severity),
         "status": getattr(f.status, "value", f.status),
         "cvss_score": float(f.cvss_score) if f.cvss_score is not None else None,
-        "risk_score": f.risk_score,
-        "cve_ids": f.cve_ids,
+        "risk_score": float(f.risk_score) if f.risk_score is not None else None,
+        "cve_ids": [
+            _assistant_text(value, 32) for value in (f.cve_ids or [])[:12]
+        ],
         "first_seen": f.first_seen.isoformat() if f.first_seen else None,
-        "remediation": f.remediation,
+        "remediation": _assistant_text(f.remediation, 600) or None,
     }
 
 
@@ -759,6 +767,13 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
             .limit(_ASSISTANT_MAX_FINDINGS),
             user, Finding.engagement_id)
     )).scalars().all()
+    open_count = int((await db.execute(
+        client_scoped(
+            select(func.count()).select_from(Finding).where(Finding.status.in_(_OPEN_STATES)),
+            user,
+            Finding.engagement_id,
+        )
+    )).scalar_one() or 0)
 
     focus = None
     if body.finding_id is not None:
@@ -774,12 +789,16 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
 
     context = {
         "engagement": {
-            "name": eng.name,
+            "name": _assistant_text(eng.name, 255),
             "status": getattr(eng.status, "value", eng.status),
-            "authorised_scope": list(eng.scope_cidrs or []),
+            "authorised_scope": list(eng.scope_cidrs or [])[:100],
         },
-        "open_finding_count": len(open_rows),
+        "open_finding_count": open_count,
         "open_findings": [_assistant_finding_view(f) for f in open_rows],
+        "open_findings_window": (
+            f"Highest-risk {_ASSISTANT_MAX_FINDINGS} open findings; "
+            "open_finding_count is the exact engagement total."
+        ),
     }
     if focus is not None:
         context["question_is_about"] = focus
@@ -804,17 +823,17 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
     await db.flush()
     return ClientAssistantReply(
         content=content, provider=runtime.provider, model=runtime.model,
-        grounded=bool(open_rows or focus),
+        grounded=bool(open_count or focus),
         generated_at=datetime.now(timezone.utc),
     )
 
 
 # ── console parity: the same analytics the operator dashboard renders ─────────
-# The customer console shows the SAME components as the operator console
-# (components/dashboard/*), so it needs the SAME response shapes. Rather than
-# fork the aggregation — which would drift the moment either side changed — these
-# routes DELEGATE to the operator handlers with `engagement_id` pinned to the
-# caller's own engagement.
+# The customer console reuses the operator components (components/dashboard/*),
+# but it must not reuse the operator response exposure. Rather than fork query
+# aggregation — which would drift the moment either side changed — these routes
+# DELEGATE to operator handlers with `engagement_id` pinned to the caller's own
+# engagement, then project finding responses into portal-owned whitelists.
 #
 # Those handlers already take an optional engagement_id and filter on it, and
 # they scope every query by `current_user.tenant_id` on top. A client token
@@ -826,7 +845,11 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
 # aggregation reaches the customer console automatically, because it is the same
 # function.
 
-@router.get("/workspace/findings", summary="Manager-parity finding queue for the assigned engagement")
+@router.get(
+    "/workspace/findings",
+    response_model=ClientWorkspaceFindingPage,
+    summary="Manager-parity finding queue for the assigned engagement",
+)
 async def portal_workspace_findings(
     user: ClientUser,
     db: DB,
@@ -849,7 +872,7 @@ async def portal_workspace_findings(
     # same query implementation as the manager. The next extraction moves this
     # query body into a shared service without changing either contract.
     from app.routers.findings import list_findings as _operator_findings
-    return await _operator_findings(
+    operator_page = await _operator_findings(
         db=db,
         current_user=user,
         severity=severity,
@@ -868,6 +891,19 @@ async def portal_workspace_findings(
         page=page,
         page_size=page_size,
     )
+    # The delegated query returns the operator DTO. Project it here, before the
+    # response boundary, so internal fields cannot survive direct handler use or
+    # a future change to FastAPI response serialization.
+    return ClientWorkspaceFindingPage(
+        items=[
+            ClientWorkspaceFindingOut.model_validate(item)
+            for item in operator_page.items
+        ],
+        total=operator_page.total,
+        page=operator_page.page,
+        page_size=operator_page.page_size,
+        pages=operator_page.pages,
+    )
 
 
 @router.get("/workspace/findings/summary", summary="Manager-parity finding summary for the assigned engagement")
@@ -885,8 +921,11 @@ async def portal_workspace_finding_summary(
     )
 
 
-@router.get("/workspace/findings/{finding_id}", response_model=FindingOut,
-            summary="Manager-parity finding detail for the assigned engagement")
+@router.get(
+    "/workspace/findings/{finding_id}",
+    response_model=ClientWorkspaceFindingOut,
+    summary="Manager-parity finding detail for the assigned engagement",
+)
 async def portal_workspace_finding_detail(finding_id: uuid.UUID, user: ClientUser, db: DB):
     finding = await finding_workflow.get_finding_for_action(
         db,
@@ -895,7 +934,9 @@ async def portal_workspace_finding_detail(finding_id: uuid.UUID, user: ClientUse
         engagement_id=assert_client(user),
     )
     from app.routers.findings import _finding_detail_out
-    return await _finding_detail_out(db, finding)
+    operator_detail = await _finding_detail_out(db, finding)
+    return ClientWorkspaceFindingOut.model_validate(operator_detail)
+
 
 @router.get("/analytics/exposure", summary="Protocol risk + zone health for your engagement")
 async def portal_exposure(user: ClientUser, db: DB):

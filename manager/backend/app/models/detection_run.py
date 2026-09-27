@@ -11,9 +11,10 @@ diff the result. A DetectionRun records:
   * WHICH vuln-DB it ran against (vuln_db_version = snapshot content hash)
   * WHAT changed                 (findings_new / findings_reaffirmed / current)
 
-Each Finding is stamped with first_seen, last_seen, and the detection_run_id
-that last touched it — so a run's delta is a query, and a finding open across
-many runs shows a stable first_seen with an advancing last_seen.
+Each Finding is stamped with first_seen, last_seen, initial_detection_run_id,
+and the detection_run_id that last touched it — so discovery provenance remains
+stable while a finding open across many runs shows an advancing last_seen/latest
+run.
 """
 from __future__ import annotations
 

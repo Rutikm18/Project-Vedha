@@ -10,7 +10,7 @@ import asyncio
 import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -20,7 +20,12 @@ from app.models.enums import EngagementStatus, FindingSeverity, FindingStatus
 from app.models.scan_request import ScanRequest
 from app.routers import portal
 from app.schemas.auth import CurrentUser
-from app.schemas.portal import ClientFindingOut, ScanRequestCreate
+from app.schemas.portal import (
+    ClientFindingOut,
+    ClientWorkspaceFindingOut,
+    ClientWorkspaceFindingPage,
+    ScanRequestCreate,
+)
 
 
 def _client(engagement: uuid.UUID | None = None) -> CurrentUser:
@@ -57,10 +62,19 @@ def _db_scalar(*vals):
 
 def _finding_with_internal():
     """A finding-like ORM object carrying BOTH whitelisted and internal fields."""
+    now = datetime.now(timezone.utc)
     return SimpleNamespace(
-        id=uuid.uuid4(), title="Unauth RCE", description="bad", severity=FindingSeverity.critical,
-        status=FindingStatus.open, cvss_score=None, cve_ids=["CVE-2024-1"], risk_score=None,
-        remediation="patch now", first_seen=None,
+        id=uuid.uuid4(), asset_id=uuid.uuid4(), title="Unauth RCE", description="bad",
+        severity=FindingSeverity.critical, status=FindingStatus.open, cvss_score=None,
+        cvss_vector="CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        cve_ids=["CVE-2024-1"], risk_score=None, risk_rank=975,
+        remediation="patch now", first_seen=now, resolved_at=None, created_at=now,
+        asset_context=SimpleNamespace(
+            id=uuid.uuid4(), ip_address="192.0.2.10", hostname="web-01",
+            fqdn="web-01.example.test", os="Linux", os_version="6.8",
+            asset_type="server", criticality="critical", owner="Platform",
+            environment="production", internal_provenance="scanner-db-primary",
+        ),
         # internal — MUST NOT appear in customer output:
         exploitable=True, exploit_validated=True, detection_status="missed",
         needs_review=True, verification_rationale="internal analyst note",
@@ -75,7 +89,8 @@ _INTERNAL = {
     "verification_state", "verification_confidence", "verification_rationale",
     "verification_method", "resolution_miss_count", "resolution_method",
     "resolution_run_id", "detected_db_version", "reopened_count",
-    "detection_run_id", "evidence", "last_seen", "mitre_techniques", "epss_score",
+    "initial_detection_run_id", "detection_run_id", "evidence", "last_seen",
+    "mitre_techniques", "epss_score",
 }
 
 
@@ -92,6 +107,65 @@ class TestClientFindingWhitelist:
         assert not (set(d) & _INTERNAL), f"leaked: {set(d) & _INTERNAL}"
         assert d["remediation"] == "patch now"
         assert d["cve_ids"] == ["CVE-2024-1"]
+
+
+class TestClientWorkspaceFindingBoundary:
+    def test_schema_is_a_customer_whitelist(self):
+        fields = set(ClientWorkspaceFindingOut.model_fields)
+        leaks = fields & _INTERNAL
+        assert not leaks, f"ClientWorkspaceFindingOut leaks internal fields: {leaks}"
+        assert {
+            "id", "asset_id", "title", "severity", "status", "remediation",
+            "cve_ids", "cvss_vector", "risk_rank", "asset_context", "created_at",
+        } <= fields
+
+    def test_list_route_projects_operator_page_to_customer_dto(self):
+        operator_row = _finding_with_internal()
+        operator_page = SimpleNamespace(
+            items=[operator_row], total=1, page=1, page_size=20, pages=1,
+        )
+        with patch(
+            "app.routers.findings.list_findings",
+            new=AsyncMock(return_value=operator_page),
+        ):
+            out = asyncio.run(portal.portal_workspace_findings(
+                user=_client(), db=MagicMock(), severity=None, status_filter=None,
+                asset_id=None, agent_id=None, mitre_technique=None, search=None,
+                detection_status=None, exploit_validated=None,
+                verification_state=None, needs_review=None, sla_breached=False,
+                sort="risk", page=1, page_size=20,
+            ))
+
+        assert isinstance(out, ClientWorkspaceFindingPage)
+        assert out.total == 1
+        row = out.items[0].model_dump()
+        assert not (set(row) & _INTERNAL), f"leaked: {set(row) & _INTERNAL}"
+        assert row["risk_rank"] == 975
+        assert row["asset_context"]["hostname"] == "web-01"
+        assert "internal_provenance" not in row["asset_context"]
+
+    def test_detail_route_projects_operator_detail_to_customer_dto(self):
+        operator_row = _finding_with_internal()
+        with (
+            patch.object(
+                portal.finding_workflow,
+                "get_finding_for_action",
+                new=AsyncMock(return_value=SimpleNamespace(id=operator_row.id)),
+            ),
+            patch(
+                "app.routers.findings._finding_detail_out",
+                new=AsyncMock(return_value=operator_row),
+            ),
+        ):
+            out = asyncio.run(portal.portal_workspace_finding_detail(
+                operator_row.id, _client(), MagicMock(),
+            ))
+
+        assert isinstance(out, ClientWorkspaceFindingOut)
+        row = out.model_dump()
+        assert not (set(row) & _INTERNAL), f"leaked: {set(row) & _INTERNAL}"
+        assert row["cvss_vector"].startswith("CVSS:3.1/")
+        assert row["asset_context"]["fqdn"] == "web-01.example.test"
 
 
 class TestPortalFindings:

@@ -86,8 +86,8 @@ export function detectFindingId(text: string): string | null {
   return null;
 }
 
-function isExploited(f: any): boolean {
-  return Boolean(f.activelyExploited ?? f.exploitable);
+function isExploitValidated(f: any): boolean {
+  return Boolean(f.exploitValidated);
 }
 
 /** Whole days since an ISO timestamp, floored at 0. null for missing/unparseable input. */
@@ -115,7 +115,7 @@ function lifecycleOf(f: any): LifecycleFacts {
 
 function plainWhyItMatters(f: any): string {
   const bits: string[] = [];
-  if (isExploited(f)) bits.push("attackers are actively exploiting this in the wild");
+  if (f.exploitedInWild) bits.push("attackers are actively exploiting this in the wild");
   if (f.kevListed) bits.push("it is on CISA's Known Exploited Vulnerabilities list");
   const epssPct = Math.round((f.epssScore ?? 0) * 100);
   if (epssPct >= 10) bits.push(`there is a ${epssPct}% modelled chance of exploitation (EPSS)`);
@@ -151,7 +151,9 @@ export function toFactCard(f: any): FactCardVM {
     epssPct: Math.round((f.epssScore ?? 0) * 100),
     risk: Math.round(f.riskScore ?? 0),
     kev: Boolean(f.kevListed),
-    exploited: isExploited(f),
+    // This field backs the UI's "EXPLOIT VALIDATED" badge. Keep it distinct
+    // from KEV membership, general exploitability, and exploitation in the wild.
+    exploited: isExploitValidated(f),
     status: String(f.status ?? "OPEN"),
     host,
     cveIds,

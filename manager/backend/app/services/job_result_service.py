@@ -367,7 +367,12 @@ async def process_job_result(
             from app.discovery.finding_translator import create_findings_from_probe_result
             async with db.begin_nested():
                 findings_created = await create_findings_from_probe_result(
-                    db, row.engagement_id, result,
+                    db,
+                    row.engagement_id,
+                    result,
+                    scan_result_id=scan_result_row.id if scan_result_row else None,
+                    scan_job_id=row.id,
+                    recorded_at=row.completed_at,
                 )
         except Exception as exc:  # noqa: BLE001
             logger.warning("job.findings_failed", job_id=str(job_id), error=str(exc))
@@ -380,7 +385,12 @@ async def process_job_result(
             from app.discovery.service_vuln import create_service_vuln_findings
             async with db.begin_nested():
                 findings_created += await create_service_vuln_findings(
-                    db, row.engagement_id, result,
+                    db,
+                    row.engagement_id,
+                    result,
+                    scan_result_id=scan_result_row.id if scan_result_row else None,
+                    scan_job_id=row.id,
+                    recorded_at=row.completed_at,
                 )
         except Exception as exc:  # noqa: BLE001
             logger.warning("job.service_vuln_failed", job_id=str(job_id), error=str(exc))
@@ -416,7 +426,12 @@ async def process_job_result(
             from app.discovery.finding_translator import create_scan_health_finding
             async with db.begin_nested():
                 findings_created += await create_scan_health_finding(
-                    db, row.engagement_id, result,
+                    db,
+                    row.engagement_id,
+                    result,
+                    scan_result_id=scan_result_row.id if scan_result_row else None,
+                    scan_job_id=row.id,
+                    recorded_at=row.completed_at,
                 )
         except Exception as exc:  # noqa: BLE001
             logger.warning("job.scan_health_failed", job_id=str(job_id), error=str(exc))

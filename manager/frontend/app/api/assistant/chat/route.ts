@@ -7,11 +7,13 @@
 import { NextResponse } from "next/server";
 import { backend, bearerFrom, BackendError } from "../../../../lib/backend";
 import { resolveSecurityReference, SecurityContextError } from "../../../../lib/security-context";
+import { parseAiModelSelection } from "../../../../lib/ai-model-selection";
 
 interface ManagerAiResponse {
   content: string;
   provider: string;
   model: string;
+  fallback?: boolean;
 }
 const MAX_MESSAGES = 16;
 const MAX_MESSAGE_CHARS = 4_000;
@@ -22,7 +24,12 @@ export async function POST(req: Request) {
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const body = (await req.json().catch(() => null)) as
-    | { findingId?: string; messages?: { role: string; content: string }[] }
+    | {
+      findingId?: string;
+      messages?: { role: string; content: string }[];
+      provider?: unknown;
+      model?: unknown;
+    }
     | null;
   if (!body?.findingId || !Array.isArray(body.messages) || body.messages.length === 0) {
     return NextResponse.json({ error: "findingId and messages[] required" }, { status: 400 });
@@ -38,6 +45,10 @@ export async function POST(req: Request) {
     || body.messages.reduce((total, message) => total + message.content.length, 0) > MAX_TOTAL_CHARS
   ) {
     return NextResponse.json({ error: "Conversation exceeds the safe context limit" }, { status: 400 });
+  }
+  const modelSelection = parseAiModelSelection(body.provider, body.model);
+  if (!modelSelection) {
+    return NextResponse.json({ error: "Unsupported AI provider or model" }, { status: 400 });
   }
 
   let factCard;
@@ -60,6 +71,7 @@ export async function POST(req: Request) {
         })),
         context: { securityBrief: factCard },
         max_tokens: 600,
+        ...modelSelection,
       },
     });
     return NextResponse.json({
@@ -67,6 +79,7 @@ export async function POST(req: Request) {
       factCard,
       provider: result.provider,
       model: result.model,
+      fallback: Boolean(result.fallback),
     });
   } catch (e) {
     const status = e instanceof BackendError ? e.status : 502;

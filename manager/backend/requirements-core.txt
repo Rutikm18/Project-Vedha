@@ -1,6 +1,6 @@
 # Core runtime — everything the API needs to boot and serve every endpoint.
-# Heavy/optional integrations (AI, AD, Neo4j) live in requirements-extras.txt and
-# are imported defensively, so the platform runs fully without them.
+# Heavy/optional provider SDKs, ML, AD, and Neo4j integrations live in
+# requirements-extras.txt and are imported defensively.
 fastapi==0.115.5
 uvicorn[standard]==0.32.1
 sqlalchemy[asyncio]==2.0.36
@@ -24,3 +24,5 @@ pyyaml==6.0.2
 networkx==3.4.2
 msgpack==1.1.0
 prometheus-fastapi-instrumentator==7.0.0
+# Verification workflow orchestration is a production path, not an optional extra.
+langgraph==0.2.60

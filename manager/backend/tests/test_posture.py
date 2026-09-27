@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 
-from app.routers.ai_report import build_posture_report_section
+from app.models.enums import ReviewStatus
+from app.routers.ai_report import build_posture_output, build_posture_report_section
 from app.routers.analytics import _finding_views
 from app.services.posture import (
     FindingView, Scores, aggregate, build_posture, compute_scores, grade_for,
@@ -166,3 +168,18 @@ def test_posture_report_section_renders_scores_and_matrix():
 
 def test_posture_report_section_omitted_without_runs():
     assert build_posture_report_section({"has_runs": False}) is None
+
+
+def test_posture_report_output_requires_human_review():
+    engagement_id = uuid.uuid4()
+    generated_at = datetime(2026, 9, 26, tzinfo=timezone.utc)
+
+    row = build_posture_output(
+        engagement_id,
+        "**Posture Score: 72 (C)**",
+        generated_at=generated_at,
+    )
+
+    assert row.engagement_id == engagement_id
+    assert row.review_status == ReviewStatus.pending
+    assert row.generated_at == generated_at

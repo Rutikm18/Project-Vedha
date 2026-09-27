@@ -28,6 +28,7 @@ from app.models.asset import Asset
 from app.models.enums import AssetType, FindingSeverity, FindingStatus
 from app.models.finding import Finding
 from app.models.service import Service
+from app.services.finding_scan_provenance import record_scan_observation
 
 logger = structlog.get_logger()
 
@@ -151,6 +152,10 @@ async def _find_open_duplicate(
 
 async def create_findings_from_probe_result(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
+    *,
+    scan_result_id: uuid.UUID | None = None,
+    scan_job_id: uuid.UUID | None = None,
+    recorded_at: datetime | None = None,
 ) -> int:
     """Convert a probe's self-assessed `findings` list into persisted Finding rows.
 
@@ -166,7 +171,7 @@ async def create_findings_from_probe_result(
     if not raw_findings:
         return 0
 
-    now = datetime.now(timezone.utc)
+    now = recorded_at or datetime.now(timezone.utc)
     created = 0
     for f in raw_findings:
         if not isinstance(f, dict):
@@ -180,9 +185,19 @@ async def create_findings_from_probe_result(
             if dup is not None:
                 # Still relevant and still present — touch evidence (bumps
                 # updated_at) and advance last_seen rather than creating a
-                # literal duplicate row. (No detection_run: this is the probe's
-                # own self-assessed path, not the detection engine.)
-                dup.evidence = {**f, "scan_type": scan_type, "engine": result.get("engine")}
+                # literal duplicate row. The real DetectionRun is attached by
+                # the outbox worker after it exists; never invent one here.
+                dup.evidence = record_scan_observation(
+                    {**f, "scan_type": scan_type, "engine": result.get("engine")},
+                    scan_result_id=scan_result_id,
+                    scan_job_id=scan_job_id,
+                    scan_type=scan_type,
+                    source="probe",
+                    tool=result.get("engine") or result.get("scanner"),
+                    recorded_at=now,
+                    initial=False,
+                    previous_evidence=dup.evidence,
+                )
                 dup.last_seen = now
                 continue
 
@@ -192,6 +207,16 @@ async def create_findings_from_probe_result(
             if exposure == "external":
                 evidence["exposure_escalated"] = True
                 evidence["exposure"] = exposure
+            evidence = record_scan_observation(
+                evidence,
+                scan_result_id=scan_result_id,
+                scan_job_id=scan_job_id,
+                scan_type=scan_type,
+                source="probe",
+                tool=result.get("engine") or result.get("scanner"),
+                recorded_at=now,
+                initial=True,
+            )
             db.add(Finding(
                 engagement_id=engagement_id,
                 asset_id=asset_id,
@@ -217,6 +242,10 @@ _SCAN_HEALTH_TITLE = "Scan coverage degraded — results may under-report exposu
 
 async def create_scan_health_finding(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
+    *,
+    scan_result_id: uuid.UUID | None = None,
+    scan_job_id: uuid.UUID | None = None,
+    recorded_at: datetime | None = None,
 ) -> int:
     """Raise ONE engagement-level finding when the probe's own metrics say the
     scan was degraded/incomplete (a false-NEGATIVE risk: real services may have
@@ -230,15 +259,35 @@ async def create_scan_health_finding(
     summary = scan_health_summary(result)
     if not summary["should_warn"]:
         return 0
-    now = datetime.now(timezone.utc)
+    now = recorded_at or datetime.now(timezone.utc)
     try:
         dup = await _find_open_duplicate(db, engagement_id, None, _SCAN_HEALTH_TITLE)
         evidence = {"scan_health": summary, "scan_type": result.get("scan_type"),
                     "engine": result.get("engine")}
         if dup is not None:
-            dup.evidence = evidence
+            dup.evidence = record_scan_observation(
+                evidence,
+                scan_result_id=scan_result_id,
+                scan_job_id=scan_job_id,
+                scan_type=result.get("scan_type"),
+                source="probe",
+                tool=result.get("engine") or result.get("scanner"),
+                recorded_at=now,
+                initial=False,
+                previous_evidence=dup.evidence,
+            )
             dup.last_seen = now
             return 0
+        evidence = record_scan_observation(
+            evidence,
+            scan_result_id=scan_result_id,
+            scan_job_id=scan_job_id,
+            scan_type=result.get("scan_type"),
+            source="probe",
+            tool=result.get("engine") or result.get("scanner"),
+            recorded_at=now,
+            initial=True,
+        )
         db.add(Finding(
             engagement_id=engagement_id,
             asset_id=None,

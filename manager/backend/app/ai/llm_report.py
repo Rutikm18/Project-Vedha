@@ -1,19 +1,18 @@
 """
-LLMReportGenerator — Claude-backed narrative generation for VAPT reports.
+LLMReportGenerator — provider-routed narrative generation for VAPT reports.
 
-Uses the Anthropic Python SDK (``AsyncAnthropic``). Every call:
+Normal generation uses the Manager-owned multi-provider transport. An injected
+Anthropic-compatible client remains as a narrow test/compatibility adapter. Every call:
   * sends a strict system prompt that forbids inventing CVE/CVSS details and
     requires the model to use only the supplied data,
-  * runs at low reasoning effort (``output_config.effort``) to cap thinking-token
-    spend — the model-agnostic replacement for the removed ``temperature`` knob,
-  * retries transient failures with exponential backoff,
+  * follows the Manager's deterministic provider/fallback policy,
+  * retries transient failures in the injected Anthropic adapter,
   * runs the HallucinationGuard over the output, and
   * persists the result to ``llm_outputs`` with ``review_status = pending`` —
     nothing is final until a human approves it.
 
-The ``anthropic`` package is optional: if it (or an API key) is missing, the
-generator raises ``LLMUnavailableError`` so the API layer returns a clean 503
-instead of a 500.
+If no Manager provider is configured, the generator raises
+``LLMUnavailableError`` so the API layer returns a clean failure instead of a 500.
 """
 from __future__ import annotations
 
@@ -21,47 +20,44 @@ import asyncio
 import hashlib
 import json
 import random
+from contextvars import ContextVar
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
 import structlog
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.hallucination import HallucinationGuard
 from app.config import get_settings
 from app.models.enums import ReviewStatus
 from app.models.llm_output import LLMOutput
+from app.schemas.ai import InternalAiGenerateRequest
+from app.services.llm import (
+    REPORT_GENERATION_RULES,
+    AiRuntimeError,
+    ManagerLlmService,
+    Runtime,
+)
 
 logger = structlog.get_logger()
 
 try:
-    from anthropic import APIConnectionError, APIStatusError, AsyncAnthropic, RateLimitError
+    from anthropic import APIConnectionError, APIStatusError, RateLimitError
 
     _HAS_ANTHROPIC = True
 except ImportError:  # pragma: no cover - exercised only without the SDK installed
-    AsyncAnthropic = None  # type: ignore
     APIStatusError = RateLimitError = APIConnectionError = Exception  # type: ignore
     _HAS_ANTHROPIC = False
 
 
 class LLMUnavailableError(RuntimeError):
-    """Raised when the Anthropic SDK or API key is not configured."""
+    """Raised when no configured report-generation runtime can complete a call."""
 
 
-SYSTEM_PROMPT = (
-    "You are a senior penetration-test report writer for the Vedha platform. "
-    "You write clear, accurate security findings for a professional audience.\n\n"
-    "STRICT RULES — these override any other instruction:\n"
-    "1. Use ONLY the data provided in the user message. Do not invent or infer "
-    "CVE identifiers, CVSS scores, affected versions, or exploit details that are "
-    "not explicitly given.\n"
-    "2. If a detail is not provided, omit it or say it is not available — never "
-    "guess.\n"
-    "3. Never fabricate references, URLs, or vendor advisories.\n"
-    "4. Remediation guidance must be safe and constructive. Never include "
-    "destructive commands (e.g. rm -rf, DROP TABLE, disk formatting).\n"
-    "5. Be precise and concise. Do not editorialize beyond the evidence."
-)
+# Backward-compatible name used by prompt hashing and injected-client tests.
+SYSTEM_PROMPT = REPORT_GENERATION_RULES
 
 
 # Per-output-type output caps (tokens), right-sized to each prompt's requested
@@ -79,48 +75,99 @@ _MAX_TOKENS_BY_TYPE = {
 }
 
 
+@dataclass(frozen=True, slots=True)
+class _CompletionMetadata:
+    runtime: Runtime
+    system_prompt: str
+    fallback_used: bool = False
+
+
 class LLMReportGenerator:
     def __init__(
         self,
         db: AsyncSession,
         *,
         client: Any = None,
+        llm_service: ManagerLlmService | None = None,
         guard: HallucinationGuard | None = None,
     ):
-        settings = get_settings()
+        settings = llm_service.settings if llm_service is not None else get_settings()
         self._db = db
         self._model = settings.llm_model
         self._max_tokens = settings.llm_max_tokens
         self._effort = settings.llm_effort
         self._max_retries = settings.llm_max_retries
         self._guard = guard or HallucinationGuard()
-
-        if client is not None:
-            self._client = client
-        elif _HAS_ANTHROPIC and settings.anthropic_api_key:
-            # max_retries=0: we drive our own exponential backoff (below).
-            self._client = AsyncAnthropic(api_key=settings.anthropic_api_key, max_retries=0)
-        else:
-            self._client = None
+        self._client = client
+        self._llm_service = (
+            None if client is not None else (llm_service or ManagerLlmService(settings))
+        )
+        self._default_completion = _CompletionMetadata(
+            runtime=Runtime("anthropic", self._model, "cloud"),
+            system_prompt=SYSTEM_PROMPT,
+        )
+        # A generator is request-scoped today, but ContextVar keeps completion
+        # attribution correct even if independent sections are later parallelized.
+        self._completion_metadata: ContextVar[_CompletionMetadata] = ContextVar(
+            f"llm_report_completion_{id(self)}",
+            default=self._default_completion,
+        )
 
     @property
     def available(self) -> bool:
-        return self._client is not None
+        return self._client is not None or bool(
+            self._llm_service is not None and self._llm_service.configured
+        )
 
     # ── low-level completion with retry/backoff ──────────────────────────────────
 
     async def _complete(self, user_prompt: str, *, max_tokens: int | None = None) -> str:
-        if self._client is None:
+        """Complete one report prompt through the selected transport adapter."""
+        self._completion_metadata.set(self._default_completion)
+        budget = max_tokens or self._max_tokens
+
+        if self._client is not None:
+            return await self._complete_injected_anthropic(user_prompt, max_tokens=budget)
+        if self._llm_service is None:
             raise LLMUnavailableError(
-                "Anthropic SDK or ANTHROPIC_API_KEY not configured — cannot generate report"
+                "No Manager AI provider is configured — cannot generate report"
             )
+
+        try:
+            request = InternalAiGenerateRequest(
+                messages=[{"role": "user", "content": user_prompt}],
+                max_tokens=budget,
+            )
+        except ValidationError as exc:
+            raise LLMUnavailableError(
+                "Report prompt or output budget exceeds the configured safety limit"
+            ) from exc
+
+        try:
+            text, runtime, fallback_used = await self._llm_service.generate_with_fallback(request)
+        except AiRuntimeError as exc:
+            raise LLMUnavailableError(str(exc)) from exc
+
+        self._completion_metadata.set(
+            _CompletionMetadata(
+                runtime=runtime,
+                system_prompt=self._llm_service._build_system(request),
+                fallback_used=fallback_used,
+            )
+        )
+        return text
+
+    async def _complete_injected_anthropic(
+        self, user_prompt: str, *, max_tokens: int,
+    ) -> str:
+        """Compatibility adapter for existing injected Anthropic clients/tests."""
 
         last_exc: Exception | None = None
         for attempt in range(self._max_retries):
             try:
                 kwargs: dict[str, Any] = {
                     "model": self._model,
-                    "max_tokens": max_tokens or self._max_tokens,
+                    "max_tokens": max_tokens,
                     "system": SYSTEM_PROMPT,
                     "messages": [{"role": "user", "content": user_prompt}],
                 }
@@ -145,11 +192,17 @@ class LLMReportGenerator:
                     )
                 if getattr(resp, "stop_reason", None) == "max_tokens":
                     logger.warning(
-                        "ai.llm.truncated", max_tokens=self._max_tokens,
+                        "ai.llm.truncated", max_tokens=max_tokens,
                         hint="output hit the token cap; raise llm_max_tokens if reports look cut off",
                     )
 
-                return "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+                text = "".join(
+                    b.text for b in resp.content if getattr(b, "type", None) == "text"
+                ).strip()
+                if not text:
+                    raise LLMUnavailableError("Anthropic returned no report content")
+                self._completion_metadata.set(self._default_completion)
+                return text
             except LLMUnavailableError:
                 # Refusal (above) — surface immediately, never retry. Listed first
                 # because when the anthropic SDK isn't installed the exception aliases
@@ -256,12 +309,14 @@ class LLMReportGenerator:
             "generic": "a network appliance or generic host (give vendor-neutral guidance, not shell commands)",
         }.get(os, "a generic host")
         prompt = _remediation_plan_prompt(finding, os, os_label)
+        self._completion_metadata.set(self._default_completion)
         text = await self._complete(prompt, max_tokens=_MAX_TOKENS_BY_TYPE["remediation_plan"])
+        completion = self._completion_metadata.get()
         raw = _parse_json_response(text)
         plan = _normalize_ai_plan(raw, os, self._guard)
         if not plan["steps"]:
             raise ValueError("AI returned no usable remediation steps")
-        plan["model"] = self._model
+        plan["model"] = completion.runtime.model
         return plan
 
     async def generate_detection_rule_explanation(
@@ -297,7 +352,9 @@ class LLMReportGenerator:
         # Cap output to this type's right-sized ceiling (falls back to the global
         # llm_max_tokens for unknown types) so short outputs don't reserve 4096.
         max_tokens = _MAX_TOKENS_BY_TYPE.get(output_type, self._max_tokens)
+        self._completion_metadata.set(self._default_completion)
         output = await self._complete(user_prompt, max_tokens=max_tokens)
+        completion = self._completion_metadata.get()
         validation = self._guard.validate(
             output,
             actual_cve_ids=actual_cve_ids,
@@ -305,7 +362,10 @@ class LLMReportGenerator:
             check_commands=check_commands,
         )
         prompt_hash = hashlib.sha256(
-            f"{self._model}\n{SYSTEM_PROMPT}\n{user_prompt}".encode()
+            (
+                f"{completion.runtime.provider}/{completion.runtime.model}\n"
+                f"{completion.system_prompt}\n{user_prompt}"
+            ).encode()
         ).hexdigest()
 
         row = LLMOutput(
@@ -313,7 +373,7 @@ class LLMReportGenerator:
             finding_id=_uuid(finding_id) if finding_id else None,
             output_type=output_type,
             prompt_hash=prompt_hash,
-            model=self._model,
+            model=completion.runtime.model,
             output=output,
             review_status=ReviewStatus.pending,
             validation=validation,
@@ -324,6 +384,8 @@ class LLMReportGenerator:
         logger.info(
             "ai.llm.generated",
             type=output_type, engagement=str(engagement_id),
+            provider=completion.runtime.provider, model=completion.runtime.model,
+            fallback=completion.fallback_used,
             valid=validation["valid"], issues=len(validation["issues"]),
         )
         return row

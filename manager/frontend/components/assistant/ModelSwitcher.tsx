@@ -1,11 +1,12 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { Cpu, ChevronDown } from "lucide-react";
+import type { AiProvider } from "../../lib/ai-model-selection";
 
-export type ModelSelection = { provider: string; model: string };
+export type ModelSelection = { provider: AiProvider; model: string };
 
 interface ProviderStatus {
-  id: string;
+  id: AiProvider;
   label: string;
   configured: boolean;
   privacy: "local" | "cloud";
@@ -14,7 +15,7 @@ interface ProviderStatus {
   reason?: string | null;
 }
 interface AiStatus {
-  provider: string | null;   // null = no cloud provider configured
+  provider: AiProvider | null;   // null = no cloud provider configured
   model: string;
   providers: ProviderStatus[];
 }
@@ -26,7 +27,13 @@ function readStored(): ModelSelection | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<ModelSelection>;
-    if (parsed?.provider && parsed?.model) return { provider: parsed.provider, model: parsed.model };
+    if (
+      parsed?.provider
+      && parsed?.model
+      && ["ollama", "openrouter", "anthropic", "openai"].includes(parsed.provider)
+    ) {
+      return { provider: parsed.provider as AiProvider, model: parsed.model };
+    }
   } catch { /* ignore malformed */ }
   return null;
 }
@@ -50,7 +57,10 @@ export function ModelSwitcher({
         // Restore a still-valid stored choice, else fall back to the server default.
         const stored = readStored();
         const configured = data.providers.filter((p) => p.configured);
-        const valid = stored && configured.some((p) => p.id === stored.provider);
+        const valid = stored && configured.some((p) =>
+          p.id === stored.provider
+          && (p.default_model === stored.model || p.models.includes(stored.model))
+        );
         if (valid && stored) onChange(stored);
         // Only preselect a default when the server actually has a usable provider
         // (null = no cloud key configured — leave the selection empty).
@@ -64,7 +74,7 @@ export function ModelSwitcher({
   const handleChange = (raw: string) => {
     const [provider, ...rest] = raw.split("::");
     const model = rest.join("::");
-    const next = { provider, model };
+    const next = { provider: provider as AiProvider, model };
     onChange(next);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* private mode */ }
   };
@@ -76,7 +86,7 @@ export function ModelSwitcher({
     : status.provider ? `${status.provider}::${status.model}` : "";
 
   return (
-    <label className="model-switcher" title="AI model — falls back to a free model when the paid provider is out of credit">
+    <label className="model-switcher" title="AI model — may use an approved fallback when the selected provider is unavailable">
       <Cpu size={12} aria-hidden />
       <div className="model-switcher-select">
         <select
@@ -84,6 +94,7 @@ export function ModelSwitcher({
           value={current}
           onChange={(e) => handleChange(e.target.value)}
         >
+          {!current && <option value="" disabled>No AI provider configured</option>}
           {status.providers.map((p) => (
             <optgroup
               key={p.id}

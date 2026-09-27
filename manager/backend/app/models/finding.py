@@ -45,15 +45,26 @@ class Finding(Base, TimestampMixin):
     )
     evidence: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     remediation: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    remediation_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    remediation_updated_by: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
 
     # ── Temporal / provenance (detection-run time series) ──────────────────────
     # first_seen: when detection FIRST produced this finding (stable across runs).
     # last_seen:  the most recent run that reaffirmed it (advances each run).
     # A finding whose last_seen lags the engagement's latest run was NOT observed
     # in that run — i.e. a resolution candidate (surfaced, never auto-closed).
+    # initial_detection_run_id: the run that first created it (stable across runs).
     # detection_run_id: the run that last touched it (null for non-engine sources).
     first_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    initial_detection_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("detection_runs.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
     detection_run_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("detection_runs.id", ondelete="SET NULL"),
         nullable=True, index=True,

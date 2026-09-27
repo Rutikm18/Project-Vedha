@@ -2356,6 +2356,11 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   margin-bottom: 12px;
 }
 
+.portal-report-live[data-screen-active="false"],
+.portal-report-tab-pane[data-active="false"] {
+  display: none;
+}
+
 /* KPI grid — responsive columns */
 .report-kpi-grid {
   display: grid;
@@ -2382,6 +2387,9 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 
 /* Print styles */
 @media print {
+  .portal-report-tab-pane { display: block !important; }
+  .portal-report-live { display: block !important; }
+  .portal-report-tab-pane + .portal-report-tab-pane { break-before: page; }
   .report-document-v2 { max-width: none; }
   .report-cover-v2 { color-adjust: exact; print-color-adjust: exact; border-radius: 0; }
   .report-notice, .report-foot { display: none; }

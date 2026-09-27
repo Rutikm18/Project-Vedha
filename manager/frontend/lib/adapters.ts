@@ -177,6 +177,27 @@ export function toUiFinding(api: any): any {
     : api.risk_score != null
       ? Number(api.risk_score)
       : cvss * 100;
+  const evidenceRecord = api.evidence && typeof api.evidence === "object" && !Array.isArray(api.evidence)
+    ? api.evidence as Record<string, unknown>
+    : null;
+  const assetContext = api.asset_context && typeof api.asset_context === "object"
+    ? api.asset_context as Record<string, unknown>
+    : null;
+  const affectedHost = assetContext?.fqdn
+    ?? assetContext?.hostname
+    ?? assetContext?.ip_address
+    ?? api.affected_host
+    ?? api.asset_ip
+    ?? api.asset_id
+    ?? "—";
+  const kevRecorded = api.kev_listed != null || evidenceRecord?.kev != null;
+  const kevListed = Boolean(api.kev_listed ?? evidenceRecord?.kev ?? false);
+  const exploitedInWild = Boolean(
+    api.actively_exploited
+    ?? evidenceRecord?.actively_exploited
+    ?? evidenceRecord?.exploited_in_wild
+    ?? false,
+  );
   return {
     id: api.id,
     title: api.title ?? "Untitled finding",
@@ -185,8 +206,10 @@ export function toUiFinding(api: any): any {
     cvssVector: api.cvss_vector ?? "",
     category: api.category ?? api.finding_type ?? "General",
     status: FIND_STATUS_TO_UI[String(api.status ?? "open").toLowerCase()] ?? "OPEN",
-    affectedHost: api.affected_host ?? api.asset_ip ?? api.asset_id ?? "—",
-    discoveredAt: api.created_at ?? api.discovered_at ?? new Date().toISOString(),
+    affectedHost: String(affectedHost),
+    // Detection observation time is authoritative. Row creation/update time is
+    // persistence metadata and must not make an old finding look newly found.
+    discoveredAt: api.first_seen ?? api.discovered_at ?? api.created_at ?? "",
     description: api.description ?? "",
     technicalDetails: api.technical_details ?? "",
     attackPath: api.attack_path ?? "",
@@ -200,22 +223,22 @@ export function toUiFinding(api: any): any {
     cves: api.cve_ids ?? [],
     riskScore: Math.round(risk),
     riskBreakdown: api.risk_breakdown ?? {
-      cvss, epss: Math.round(epss * 100), kev: api.kev_listed ? 100 : 0,
+      cvss, epss: Math.round(epss * 100), kev: kevListed ? 100 : 0,
       exploit: 0, asset: 0, lateral: 0,
     },
     epssScore: epss,
     epssPercentile: api.epss_percentile ?? 0,
     epssRecorded: api.epss_score != null,
-    kevListed: api.kev_listed ?? false,
-    kevStatusRecorded: api.kev_listed != null,
+    kevListed,
+    kevStatusRecorded: kevRecorded,
     kevDateAdded: api.kev_date_added ?? undefined,
     exploitMaturity: api.exploit_maturity ?? "THEORETICAL",
     exploitMaturityRecorded: api.exploit_maturity != null,
     pocAvailable: api.poc_available ?? false,
     // Keep these signals distinct. Reproducing an exploit in an authorised
     // assessment is not the same claim as exploitation in the wild or KEV.
-    activelyExploited: api.actively_exploited ?? api.kev_listed ?? false,
-    exploitedInWild: api.actively_exploited ?? false,
+    activelyExploited: exploitedInWild,
+    exploitedInWild,
     exploitValidated: api.exploit_validated ?? false,
     detectionCoverage: DETECTION_TO_UI[api.detection_status] ?? "PARTIAL",
     detectionNote: api.detection_note ?? undefined,
@@ -240,13 +263,19 @@ export function toUiFinding(api: any): any {
     resolutionMethod: api.resolution_method ?? null,
     reopenedCount: api.reopened_count ?? 0,
     resolvedAt: api.resolved_at ?? null,
-    lastSeen: api.updated_at ?? null,
+    firstSeen: api.first_seen ?? null,
+    lastSeen: api.last_seen ?? api.updated_at ?? null,
+    initialDetectionRunId: api.initial_detection_run_id ?? null,
+    detectionRunId: api.detection_run_id ?? null,
+    resolutionRunId: api.resolution_run_id ?? null,
+    verificationMethod: api.verification_method ?? null,
+    detectedDbVersion: api.detected_db_version ?? null,
     // `evidence.regression` is set by the engine when a resolved finding reappears.
     regression:
       api.evidence && typeof api.evidence === "object" && !Array.isArray(api.evidence)
         ? Boolean((api.evidence as Record<string, unknown>).regression)
         : false,
-    assetContext: api.asset_context ? {
+    assetContext: assetContext ? {
       id: api.asset_context.id,
       ipAddress: api.asset_context.ip_address ?? null,
       hostname: api.asset_context.hostname ?? null,
@@ -290,6 +319,8 @@ export function toApiFindingPatch(ui: any): any {
   const out: any = {};
   if (ui.status) out.status = FIND_STATUS_TO_API[String(ui.status).toUpperCase()] ?? "open";
   if (ui.actionReason != null) out.action_reason = String(ui.actionReason);
+  if (ui.closure != null) out.closure = ui.closure;
+  if (ui.actionTracking != null) out.action_tracking = ui.actionTracking;
   if (ui.notes != null) out.notes = ui.notes;
   if (ui.remediation != null) out.remediation = ui.remediation;
   if (typeof ui.exploitable === "boolean") out.exploitable = ui.exploitable;

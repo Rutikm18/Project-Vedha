@@ -61,7 +61,9 @@ For OpenRouter, set `LLM_PROVIDER=openrouter`, `OPENROUTER_API_KEY`, and any
 model enabled for the account in `OPENROUTER_MODEL`. The default is the zero-cost
 `openrouter/free` router; free-tier limits and provider data terms still apply.
 Provider keys are read only by Manager. Existing Anthropic deployments remain
-supported with `LLM_PROVIDER=anthropic`.
+supported with `LLM_PROVIDER=anthropic`. OpenAI is available with
+`LLM_PROVIDER=openai`, `OPENAI_API_KEY`, and the deployment-enabled
+`OPENAI_MODEL`.
 
 The root deployment can install and persist the selected Ollama model:
 

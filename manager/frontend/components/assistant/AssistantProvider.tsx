@@ -12,7 +12,9 @@ import {
 type Ctx = {
   open: boolean;
   findingId: string | null;
+  findingIds: string[];
   explain: (id: string) => void;
+  explainMany: (ids: string[]) => void;
   openBlank: () => void;
   close: () => void;
 };
@@ -37,6 +39,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [openPathname, setOpenPathname] = useState<string | null>(null);
   const open = assistantEnabled && openPathname === pathname;
   const [findingId, setFindingId] = useState<string | null>(null);
+  const [findingIds, setFindingIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!routeEnabled) return;
@@ -66,10 +69,18 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
 
   const explain = useCallback((id: string) => {
     setFindingId(id);
+    setFindingIds([id]);
+    setOpenPathname(pathname);
+  }, [pathname]);
+  const explainMany = useCallback((ids: string[]) => {
+    const selected = [...new Set(ids)].slice(0, 20);
+    setFindingIds(selected);
+    setFindingId(selected.length === 1 ? selected[0] : null);
     setOpenPathname(pathname);
   }, [pathname]);
   const openBlank = useCallback(() => {
     setFindingId(null);
+    setFindingIds([]);
     setOpenPathname(pathname);
   }, [pathname]);
   const close = useCallback(() => setOpenPathname(null), []);
@@ -80,6 +91,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setFindingId(null);
+        setFindingIds([]);
         setOpenPathname((current) => current === pathname ? null : pathname);
       }
       if (e.key === "Escape") setOpenPathname(null);
@@ -89,10 +101,10 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   }, [assistantEnabled, pathname]);
 
   return (
-    <AssistantCtx.Provider value={{ open, findingId, explain, openBlank, close }}>
+    <AssistantCtx.Provider value={{ open, findingId, findingIds, explain, explainMany, openBlank, close }}>
       {children}
       {assistantEnabled && <AssistantFab />}
-      {assistantEnabled && <AssistantDrawer key={findingId ?? "blank"} />}
+      {assistantEnabled && <AssistantDrawer key={findingIds.join(":") || "blank"} />}
     </AssistantCtx.Provider>
   );
 }

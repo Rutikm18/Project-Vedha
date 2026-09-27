@@ -57,12 +57,15 @@ def _engagement(name="Acme", scope=("192.168.1.0/24",)):
                            status=EngagementStatus.active, scope_cidrs=list(scope))
 
 
-def _db(engagement, findings, focus="__unset__"):
-    """execute() → engagement, then findings, then (optionally) the focus finding."""
+def _db(engagement, findings, focus="__unset__", open_count=None):
+    """execute() → engagement, finding window, exact count, optional focus."""
     eng_res = MagicMock(scalar_one_or_none=MagicMock(return_value=engagement))
     find_res = MagicMock()
     find_res.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=findings)))
-    results = [eng_res, find_res]
+    count_res = MagicMock(
+        scalar_one=MagicMock(return_value=len(findings) if open_count is None else open_count)
+    )
+    results = [eng_res, find_res, count_res]
     if focus != "__unset__":
         results.append(MagicMock(scalar_one_or_none=MagicMock(return_value=focus)))
     db = MagicMock()
@@ -107,6 +110,7 @@ def test_context_is_built_server_side_from_the_callers_own_engagement():
     assert ctx["engagement"]["authorised_scope"] == ["192.168.1.0/24"]
     assert ctx["open_finding_count"] == 1
     assert ctx["open_findings"][0]["title"] == "SMBv1 enabled"
+    assert "exact engagement total" in ctx["open_findings_window"]
     assert reply.grounded is True
 
 
@@ -130,6 +134,35 @@ def test_only_the_whitelisted_finding_fields_reach_the_model():
     assert set(sent) == {"id", "title", "severity", "status", "cvss_score",
                          "risk_score", "cve_ids", "first_seen", "remediation"}
     assert "internal_notes" not in sent and "evidence_blob" not in sent
+
+
+def test_exact_count_is_not_the_size_of_the_bounded_evidence_window():
+    eng = _engagement()
+    captured: dict = {}
+    with patch.object(portal, "ManagerLlmService", return_value=_llm(captured)), \
+         patch.object(portal, "record_audit", MagicMock()):
+        asyncio.run(portal.portal_assistant_chat(
+            _ask(), _client(eng.id), _db(eng, [_finding()], open_count=73)))
+
+    ctx = captured["request"].context
+    assert ctx["open_finding_count"] == 73
+    assert len(ctx["open_findings"]) == 1
+
+
+def test_model_context_truncates_untrusted_finding_text():
+    eng = _engagement()
+    captured: dict = {}
+    noisy = _finding(title="x" * 1_000, remediation="y" * 10_000,
+                     cve_ids=[f"CVE-2026-{index:04d}" for index in range(30)])
+    with patch.object(portal, "ManagerLlmService", return_value=_llm(captured)), \
+         patch.object(portal, "record_audit", MagicMock()):
+        asyncio.run(portal.portal_assistant_chat(
+            _ask(), _client(eng.id), _db(eng, [noisy])))
+
+    sent = captured["request"].context["open_findings"][0]
+    assert len(sent["title"]) == 240
+    assert len(sent["remediation"]) == 600
+    assert len(sent["cve_ids"]) == 12
 
 
 def test_focus_finding_outside_the_engagement_is_404_not_403():

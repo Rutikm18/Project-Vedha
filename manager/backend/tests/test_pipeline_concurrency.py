@@ -97,10 +97,15 @@ def _event(scan_result_id):
                            payload={}, attempts=1)
 
 
-def _db_with(scan_result, existing_run):
+def _db_with(scan_result, existing_run, completed_run_id=None):
     db = MagicMock()
     db.get = AsyncMock(return_value=scan_result)
-    db.execute = AsyncMock(return_value=MagicMock(first=lambda: existing_run))
+    query_results = [MagicMock(first=lambda: existing_run)]
+    if scan_result is not None and existing_run is None:
+        query_results.append(
+            MagicMock(scalar_one_or_none=lambda: completed_run_id)
+        )
+    db.execute = AsyncMock(side_effect=query_results)
     db.commit = AsyncMock()
     db.__aenter__ = AsyncMock(return_value=db)
     db.__aexit__ = AsyncMock(return_value=False)
@@ -114,14 +119,21 @@ async def test_a_redelivered_submission_is_not_detected_twice():
     # job's scanner_runs for coverage); None here = an older submission with none.
     sr = SimpleNamespace(id=sr_id, engagement_id=uuid.uuid4(), job_id=None,
                          facts=[{"scanner": "x"}])
-    db = _db_with(sr, existing_run=(uuid.uuid4(),))      # a completed run exists
+    run_id = uuid.uuid4()
+    db = _db_with(sr, existing_run=(run_id,))      # a completed run exists
     create = AsyncMock(return_value=3)
+    attach = AsyncMock(return_value=1)
 
     with patch.object(OB, "AsyncSessionLocal", return_value=db), \
-         patch("app.detection.engine_bridge.create_findings_from_facts", create):
+         patch("app.detection.engine_bridge.create_findings_from_facts", create), \
+         patch(
+             "app.services.finding_scan_provenance.attach_detection_run_to_scan_findings",
+             attach,
+         ):
         await OB._handle_facts_ready(_event(sr_id))
 
     assert create.await_count == 0, "detection re-ran for an already-detected submission"
+    attach.assert_awaited_once_with(db, sr.engagement_id, sr_id, run_id)
 
 
 @pytest.mark.asyncio
@@ -132,15 +144,22 @@ async def test_a_first_delivery_still_runs_detection():
     # job's scanner_runs for coverage); None here = an older submission with none.
     sr = SimpleNamespace(id=sr_id, engagement_id=uuid.uuid4(), job_id=None,
                          facts=[{"scanner": "x"}])
-    db = _db_with(sr, existing_run=None)                 # no completed run yet
+    run_id = uuid.uuid4()
+    db = _db_with(sr, existing_run=None, completed_run_id=run_id)
     create = AsyncMock(return_value=3)
+    attach = AsyncMock(return_value=1)
 
     with patch.object(OB, "AsyncSessionLocal", return_value=db), \
          patch("app.detection.engine_bridge.create_findings_from_facts", create), \
+         patch(
+             "app.services.finding_scan_provenance.attach_detection_run_to_scan_findings",
+             attach,
+         ), \
          patch("app.detection.prioritization.prioritize_engagement_findings", AsyncMock()):
         await OB._handle_facts_ready(_event(sr_id))
 
     assert create.await_count == 1
+    attach.assert_awaited_once_with(db, sr.engagement_id, sr_id, run_id)
 
 
 @pytest.mark.asyncio

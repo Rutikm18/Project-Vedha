@@ -105,7 +105,7 @@ async def test_workspace_queries_pin_engagement_and_forward_agent_filter(monkeyp
     agent_id = uuid.uuid4()
     user = _client(engagement_id)
     db = MagicMock()
-    list_result = object()
+    list_result = SimpleNamespace(items=[], total=0, page=1, page_size=20, pages=0)
     summary_result = object()
     list_findings = AsyncMock(return_value=list_result)
     finding_summary = AsyncMock(return_value=summary_result)
@@ -123,7 +123,13 @@ async def test_workspace_queries_pin_engagement_and_forward_agent_filter(monkeyp
         agent_id=agent_id,
     )
 
-    assert listed is list_result
+    assert listed.model_dump() == {
+        "items": [],
+        "total": 0,
+        "page": 1,
+        "page_size": 20,
+        "pages": 0,
+    }
     assert summarized is summary_result
     assert list_findings.await_args.kwargs["engagement_id"] == engagement_id
     assert list_findings.await_args.kwargs["agent_id"] == agent_id

@@ -63,8 +63,19 @@ export const GET = withBackend(async (req, { token }) => {
         severity,
         status,
         search,
-        detection_status: url.searchParams.get("blind") === "true" ? "missed" : undefined,
-        exploit_validated: url.searchParams.get("validated") === "true" ? true : undefined,
+        // The Findings workspace uses the canonical backend parameter names.
+        // Keep the legacy aliases for old bookmarks, but never let the BFF
+        // silently drop the current UI's filters.
+        detection_status:
+          url.searchParams.get("detection_status") === "missed"
+          || url.searchParams.get("blind") === "true"
+            ? "missed"
+            : undefined,
+        exploit_validated:
+          url.searchParams.get("exploit_validated") === "true"
+          || url.searchParams.get("validated") === "true"
+            ? true
+            : undefined,
         needs_review: url.searchParams.get("needs_review") === "true" ? true : undefined,
         verification_state: (() => {
           const v = url.searchParams.get("verification_state");

@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { backend, bearerFrom, BackendError } from "../../../../lib/backend";
 import { resolveSecurityReference, SecurityContextError } from "../../../../lib/security-context";
 import { parseAdvisor } from "../../../../lib/assistant";
+import { parseAiModelSelection } from "../../../../lib/ai-model-selection";
 
 interface ManagerAiResponse {
   content: string;
@@ -23,10 +24,14 @@ export async function POST(req: Request) {
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const body = (await req.json().catch(() => null)) as {
-    findingId?: string; mode?: string; provider?: string; model?: string;
+    findingId?: string; mode?: string; provider?: unknown; model?: unknown;
   } | null;
   if (!body?.findingId) {
     return NextResponse.json({ error: "findingId is required" }, { status: 400 });
+  }
+  const modelSelection = parseAiModelSelection(body.provider, body.model);
+  if (!modelSelection) {
+    return NextResponse.json({ error: "Unsupported AI provider or model" }, { status: 400 });
   }
 
   let resolved;
@@ -52,8 +57,7 @@ export async function POST(req: Request) {
         max_tokens: 1600,
         // Operator-selected model (optional). Manager cascades to a free model
         // when the chosen/paid provider is out of credit.
-        ...(body.provider ? { provider: body.provider } : {}),
-        ...(body.model ? { model: body.model } : {}),
+        ...modelSelection,
       },
     });
     const advisor = parseAdvisor(result.content);

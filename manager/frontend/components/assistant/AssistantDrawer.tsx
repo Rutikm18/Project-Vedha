@@ -19,7 +19,7 @@ type ExplainResponse = {
 };
 
 export function AssistantDrawer() {
-  const { open, findingId, close } = useAssistant();
+  const { open, findingId, findingIds, close } = useAssistant();
   const [input, setInput] = useState("");
   const [activeId, setActiveId] = useState<string | null>(findingId);
   const [card, setCard] = useState<FactCardVM | null>(null);
@@ -108,18 +108,32 @@ export function AssistantDrawer() {
       setInput("");
       setLoading(true);
       try {
-        const d = await fetchJson<{ content?: string; error?: string }>("/api/assistant/chat", {
+        const d = await fetchJson<{
+          content?: string;
+          error?: string;
+          provider?: string;
+          model?: string;
+          fallback?: boolean;
+        }>("/api/assistant/chat", {
           method: "POST",
-          body: JSON.stringify({ findingId: activeId, messages: next }),
+          body: JSON.stringify({
+            findingId: activeId,
+            messages: next,
+            provider: selectedModel?.provider,
+            model: selectedModel?.model,
+          }),
         });
         setThread([...next, { role: "assistant", content: d.content ?? `[${d.error ?? "no reply"}]` }]);
+        if (d.provider && d.model) {
+          setServed({ provider: d.provider, model: d.model, fallback: Boolean(d.fallback) });
+        }
       } catch (e) {
         setThread([...next, { role: "assistant", content: `[${errorMessage(e)}]` }]);
       } finally {
         setLoading(false);
       }
     },
-    [activeId, thread],
+    [activeId, selectedModel, thread],
   );
 
   const sendGeneral = useCallback(async (text: string) => {
@@ -129,17 +143,34 @@ export function AssistantDrawer() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetchJson<{ content?: string }>("/api/brain", {
+      const response = await fetchJson<{
+        content?: string;
+        provider?: string;
+        model?: string;
+        fallback?: boolean;
+      }>("/api/brain", {
         method: "POST",
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({
+          messages: next,
+          ...(findingIds.length > 0 ? { findingIds } : {}),
+          provider: selectedModel?.provider,
+          model: selectedModel?.model,
+        }),
       });
       setThread([...next, { role: "assistant", content: response.content ?? "The model returned no response." }]);
+      if (response.provider && response.model) {
+        setServed({
+          provider: response.provider,
+          model: response.model,
+          fallback: Boolean(response.fallback),
+        });
+      }
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
       setLoading(false);
     }
-  }, [thread]);
+  }, [findingIds, selectedModel, thread]);
 
   const submit = () => {
     const text = input.trim();
@@ -171,17 +202,28 @@ export function AssistantDrawer() {
         </header>
 
         <div className="assistant-drawer-body">
+          {findingIds.length > 1 && (
+            <div className="assistant-model-note" role="status">
+              Grounded on {findingIds.length} selected findings. Vedha resolves their current tenant-scoped records on the server before asking the model.
+            </div>
+          )}
           {!card && !loading && !error && (
             <div className="assistant-drawer-welcome">
               <span><Sparkles size={18} /></span>
-              <h3>Understand risk. Decide what to fix.</h3>
-              <p>Paste any published CVE or a Vedha finding ID. The answer separates public vulnerability facts from verified organizational exposure.</p>
+              <h3>{findingIds.length > 1 ? "Prioritize the selected findings." : "Understand risk. Decide what to fix."}</h3>
+              <p>{findingIds.length > 1
+                ? "Ask for a risk-ranked summary, shared remediation themes, or a safe rollout order. Only the selected records are added as organizational evidence."
+                : "Paste any published CVE or a Vedha finding ID. The answer separates public vulnerability facts from verified organizational exposure."}</p>
               <div>
-                {[
+                {(findingIds.length > 1 ? [
+                  "Prioritize these findings and explain why",
+                  "Group these by remediation approach",
+                  "Propose a safe validation order",
+                ] : [
                   "Explain CVE-2021-44228",
                   "What should I remediate first?",
                   "How do I validate a critical finding?",
-                ].map((prompt) => <button type="button" key={prompt} onClick={() => setInput(prompt)}>{prompt}</button>)}
+                ]).map((prompt) => <button type="button" key={prompt} onClick={() => setInput(prompt)}>{prompt}</button>)}
               </div>
             </div>
           )}
@@ -190,7 +232,7 @@ export function AssistantDrawer() {
           {served?.fallback && (
             <div className="assistant-fallback-chip" role="status">
               <Zap size={12} />
-              <span>Answered by <code>{served.model}</code> — free fallback, the selected provider was out of credit.</span>
+              <span>Answered by <code>{served.model}</code> — the selected provider was unavailable, so an approved fallback served this response.</span>
             </div>
           )}
           {card && advisor && <AdvisorFlow vm={advisor} />}
@@ -213,7 +255,13 @@ export function AssistantDrawer() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
             }}
-            placeholder={loading ? "Analyzing…" : activeId ? "Ask about impact, score, evidence, or remediation…" : "Paste CVE-YYYY-NNNN or ask a security question…"}
+            placeholder={loading
+              ? "Analyzing…"
+              : activeId
+                ? "Ask about impact, score, evidence, or remediation…"
+                : findingIds.length > 1
+                  ? `Ask about the ${findingIds.length} selected findings…`
+                  : "Paste CVE-YYYY-NNNN or ask a security question…"}
             aria-label="Assistant input"
             disabled={loading}
             rows={2}

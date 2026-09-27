@@ -4,9 +4,10 @@ agent_advisor.py — API for the agentic AI advisor (recommend-only).
 POST /engagements/{id}/advisor/run              — run the advisor over the engagement
 GET  /engagements/{id}/advisor/recommendations  — list its recommendations (pending review)
 
-The advisor reasons over real engagement data via a read-only Claude tool-use loop
-and writes recommendations that a human approves before anything acts on them.
-Running it is admin/manager-gated; it 503s cleanly when no API key is configured.
+The advisor reasons over a bounded, read-only engagement snapshot through the
+Manager AI provider and writes recommendations that a human approves before
+anything acts on them. Running it is admin/manager-gated; it 503s cleanly when
+no Manager AI provider is configured.
 """
 from __future__ import annotations
 
@@ -58,7 +59,7 @@ async def run_advisor(
     if not engine.available:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "AI advisor unavailable — ANTHROPIC_API_KEY is not configured",
+            "AI advisor unavailable — no Manager AI provider is configured",
         )
     try:
         summary = await engine.run(engagement_id)

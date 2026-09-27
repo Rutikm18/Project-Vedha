@@ -42,8 +42,12 @@ What `make up` does, in order:
 JWT_SECRET=...                     # >= 32 chars. Generate: openssl rand -base64 48
 SEED_ADMIN_EMAIL=admin@vedha.io  # must be a real TLD (NOT .local — email validation rejects it)
 SEED_ADMIN_PASSWORD=ChangeMe123!
-INSTALL_EXTRAS=0                   # 1 = build image with AI/AD/ML libs (heavy, slow)
-ANTHROPIC_API_KEY=                 # set to enable AI reports
+INSTALL_EXTRAS=0                   # 1 = build image with AD/ML extras (heavy, slow)
+LLM_PROVIDER=                      # empty auto-detects a configured cloud provider
+OPENAI_API_KEY=                    # or configure Anthropic/OpenRouter below
+ANTHROPIC_API_KEY=
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=openrouter/free
 ```
 
 ## A3. Verify it's up — easiest is the dashboard (handles auth/token for you)

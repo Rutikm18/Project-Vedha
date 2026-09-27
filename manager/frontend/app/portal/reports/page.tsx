@@ -495,9 +495,9 @@ function ExecutiveTab({ summary, trends, findings }: {
           color="var(--sev-critical-color)"
         />
         <MetricCard
-          label="Remediated" value={summary.closed_findings ?? 0}
-          sub="Verified and closed"
-          color="var(--nominal-color)"
+          label="Terminal dispositions" value={summary.closed_findings ?? 0}
+          sub="Recorded outcomes; verification may be absent"
+          color="var(--text-secondary)"
         />
       </div>
 
@@ -578,6 +578,34 @@ function FindingsTab({ findings }: { findings: PortalFinding[] }) {
         {sorted.map((f, i) => <FindingCard key={f.id} f={f} index={i} />)}
       </div>
     </SectionBlock>
+  );
+}
+
+export function PortalReportTabContent({ tab, summary, trends, findings }: {
+  tab: Exclude<Tab, "documents">;
+  summary: PortalSummary;
+  trends: PortalTrends;
+  findings: PortalFinding[];
+}) {
+  return (
+    <>
+      <div
+        className="portal-report-tab-pane"
+        data-active={tab === "executive"}
+        data-report-section="executive"
+        aria-hidden={tab !== "executive"}
+      >
+        <ExecutiveTab summary={summary} trends={trends} findings={findings} />
+      </div>
+      <div
+        className="portal-report-tab-pane"
+        data-active={tab === "findings"}
+        data-report-section="findings"
+        aria-hidden={tab !== "findings"}
+      >
+        <FindingsTab findings={findings} />
+      </div>
+    </>
   );
 }
 
@@ -721,16 +749,21 @@ export default function PortalReports() {
     finally { setLoadingId(null); }
   }
 
-  const coreLoading = eng.isLoading || summary.isLoading || trends.isLoading;
-  const coreError   = eng.error || summary.error || trends.error;
+  const coreLoading = eng.isLoading || summary.isLoading || trends.isLoading || findings.isLoading;
+  const coreError   = eng.error || summary.error || trends.error || findings.error;
+  const liveReportReady = !coreLoading && !coreError && Boolean(eng.data && summary.data && trends.data);
 
   return (
     <PortalShell
       title="Reports"
       subtitle={eng.data?.name ?? "Assessment deliverables"}
       headerActions={
-        <button className="btn btn-secondary no-print" onClick={() => window.print()}>
-          <Printer size={13} /> Print / PDF
+        <button
+          className="btn btn-secondary no-print"
+          onClick={() => window.print()}
+          disabled={!liveReportReady}
+        >
+          <Printer size={13} /> Print complete live report
         </button>
       }
     >
@@ -764,21 +797,23 @@ export default function PortalReports() {
 
       {/* Documents tab — separate data source */}
       {tab === "documents" && (
-        <DataState
-          loading={reports.isLoading} error={reports.error}
-          isEmpty={(reports.data ?? []).length === 0}
-          onRetry={() => reports.refetch()}
-          onLogin={() => { window.location.href = "/portal/login"; }}
-          skeleton={<div className="panel" style={{ padding: 16 }}><SkeletonRows rows={4} /></div>}
-          empty={<div className="panel"><EmptyState icon={FileArchive} title="No documents yet"
-            hint="Approved assessment reports for your engagement will appear here." /></div>}
-        >
-          <DocumentsTab reports={reports.data ?? []} onView={viewDoc} loadingId={loadingId} />
-        </DataState>
+        <div className="no-print">
+          <DataState
+            loading={reports.isLoading} error={reports.error}
+            isEmpty={(reports.data ?? []).length === 0}
+            onRetry={() => reports.refetch()}
+            onLogin={() => { window.location.href = "/portal/login"; }}
+            skeleton={<div className="panel" style={{ padding: 16 }}><SkeletonRows rows={4} /></div>}
+            empty={<div className="panel"><EmptyState icon={FileArchive} title="No documents yet"
+              hint="Approved assessment reports for your engagement will appear here." /></div>}
+          >
+            <DocumentsTab reports={reports.data ?? []} onView={viewDoc} loadingId={loadingId} />
+          </DataState>
+        </div>
       )}
 
-      {/* Executive + Findings tabs — share the same data */}
-      {tab !== "documents" && (
+      {/* Keep both live sections mounted so print/PDF is never limited to the active tab. */}
+      <div className="portal-report-live" data-screen-active={tab !== "documents"}>
         <DataState
           loading={coreLoading} error={coreError}
           isEmpty={!eng.data || !summary.data || !trends.data}
@@ -834,16 +869,12 @@ export default function PortalReports() {
 
               {/* Tab content */}
               <div className="report-body">
-                {tab === "executive" && (
-                  <ExecutiveTab
-                    summary={summary.data}
-                    trends={trends.data}
-                    findings={findings.data ?? []}
-                  />
-                )}
-                {tab === "findings" && (
-                  <FindingsTab findings={findings.data ?? []} />
-                )}
+                <PortalReportTabContent
+                  tab={tab === "findings" ? "findings" : "executive"}
+                  summary={summary.data}
+                  trends={trends.data}
+                  findings={findings.data ?? []}
+                />
               </div>
 
               {/* Footer */}
@@ -854,7 +885,7 @@ export default function PortalReports() {
             </div>
           )}
         </DataState>
-      )}
+      </div>
 
       {modal && <ReportModal report={modal} onClose={() => { setModal(null); triggerRef.current?.focus(); }} />}
     </PortalShell>

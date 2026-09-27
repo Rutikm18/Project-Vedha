@@ -40,6 +40,7 @@ from app.detection.prioritization import _posture_risk_on_manager_scale
 from app.detection.resolution import build_coverage, evaluate_resolutions
 from app.ai.verification_graph import run_verification
 from app.config import get_settings
+from app.services.finding_events import record_event
 
 logger = structlog.get_logger()
 
@@ -293,6 +294,39 @@ def _apply_regression_reopen(finding, run_id, now) -> None:
     finding.evidence = ev
 
 
+async def _record_regression_reopen(db, finding, run_id, now) -> None:
+    """Reopen a regression and persist who/what observed the repeat."""
+    previous_status = finding.status
+    prior_method = finding.resolution_method
+    prior_run_id = finding.resolution_run_id
+    prior_resolved_at = finding.resolved_at
+    _apply_regression_reopen(finding, run_id, now)
+    await record_event(
+        db,
+        finding,
+        "reopened",
+        actor="detection-engine",
+        actor_type="system",
+        from_status=previous_status,
+        to_status=FindingStatus.open,
+        detail={
+            "origin": "detection_engine_regression",
+            "reason": "finding re-observed in a later detection run",
+            "run_id": str(run_id),
+            "observed_at": now.isoformat(),
+            "prior_resolution_method": prior_method,
+            "prior_resolution_run_id": (
+                str(prior_run_id) if prior_run_id is not None else None
+            ),
+            "prior_resolved_at": (
+                prior_resolved_at.isoformat()
+                if prior_resolved_at is not None
+                else None
+            ),
+        },
+    )
+
+
 async def _find_remediated_match(db, engagement_id, asset_id, title):
     """A remediated finding with the same (engagement, asset, title) — the
     regression candidate. Mirrors _find_open_duplicate but for the closed set."""
@@ -347,7 +381,7 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
 
             regressed = await _find_remediated_match(db, engagement_id, asset_id, title)
             if regressed is not None:
-                _apply_regression_reopen(regressed, run_id, now)
+                await _record_regression_reopen(db, regressed, run_id, now)
                 regressed.evidence = {**(regressed.evidence or {}), **p, "regression": True}
                 regressed.risk_score = Decimal(str(manager_risk)) if manager_risk is not None else None
                 touched.append(regressed)
@@ -372,6 +406,7 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                 evidence=p,
                 first_seen=now,
                 last_seen=now,
+                initial_detection_run_id=run_id,
                 detection_run_id=run_id,
                 detected_db_version=db_version,
             )
@@ -441,6 +476,14 @@ async def _persist_attack_paths(
                 dup.detection_run_id = run.id
                 dup.resolution_miss_count = 0
                 continue
+            regressed = await _find_remediated_match(
+                db, engagement_id, asset_id, title
+            )
+            if regressed is not None:
+                await _record_regression_reopen(db, regressed, run.id, now)
+                regressed.severity = d["severity"]
+                regressed.evidence = {**evidence, "regression": True}
+                continue
             db.add(Finding(
                 engagement_id=engagement_id,
                 asset_id=asset_id,
@@ -454,6 +497,7 @@ async def _persist_attack_paths(
                 evidence=evidence,
                 first_seen=now,
                 last_seen=now,
+                initial_detection_run_id=run.id,
                 detection_run_id=run.id,
             ))
             created += 1
@@ -557,7 +601,7 @@ async def create_findings_from_facts(
                 if regressed is not None:
                     # An auto/manually-resolved issue is back → reopen the SAME row
                     # and flag the regression (its history is preserved).
-                    _apply_regression_reopen(regressed, run.id, now)
+                    await _record_regression_reopen(db, regressed, run.id, now)
                     regressed.evidence = {**(regressed.evidence or {}), **d, "regression": True}
                     touched.append(regressed)
                     reaffirmed += 1
@@ -579,6 +623,7 @@ async def create_findings_from_facts(
                     evidence=d,
                     first_seen=now,
                     last_seen=now,
+                    initial_detection_run_id=run.id,
                     detection_run_id=run.id,
                     detected_db_version=db_version,
                 )

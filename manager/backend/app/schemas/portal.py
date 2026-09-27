@@ -37,6 +37,50 @@ class ClientFindingOut(BaseModel):
     first_seen: datetime | None = None
 
 
+class ClientFindingAssetContext(BaseModel):
+    """Customer-safe asset identity embedded in a workspace finding.
+
+    This is portal-owned rather than reusing the operator asset schema so a
+    future operator-only field cannot silently widen the customer contract.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    ip_address: str | None = None
+    hostname: str | None = None
+    fqdn: str | None = None
+    os: str | None = None
+    os_version: str | None = None
+    asset_type: str
+    criticality: str
+    owner: str | None = None
+    environment: str | None = None
+
+
+class ClientWorkspaceFindingOut(ClientFindingOut):
+    """The richer finding shape used by the shared customer workspace UI.
+
+    Only presentation fields needed by that workspace are added to the base
+    customer whitelist. Raw evidence, analyst verification, exploit/detection
+    verdicts, and scan/run provenance are intentionally absent.
+    """
+
+    asset_id: uuid.UUID | None = None
+    cvss_vector: str | None = None
+    risk_rank: int | None = None
+    resolved_at: datetime | None = None
+    asset_context: ClientFindingAssetContext | None = None
+    created_at: datetime
+
+
+class ClientWorkspaceFindingPage(BaseModel):
+    items: list[ClientWorkspaceFindingOut]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
 class ClientEngagementOut(BaseModel):
     id: uuid.UUID
     name: str

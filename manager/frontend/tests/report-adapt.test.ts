@@ -98,3 +98,19 @@ test("evidence provenance survives the adapter", () => {
   assert.equal(raw.evidence[0].capturedAt, "2026-09-06T12:00:00Z");
   assert.equal(raw.evidence[0].sha256, "abc123");
 });
+
+test("resolution does not manufacture a retest timestamp", () => {
+  const raw = toRawFinding(finding({
+    status: "REMEDIATED",
+    resolvedAt: "2026-09-20T08:00:00Z",
+  }));
+  assert.equal(raw.retestedAt, undefined);
+});
+
+test("a separately recorded retest timestamp is preserved", () => {
+  const raw = toRawFinding(finding({
+    status: "REMEDIATED",
+    retestedAt: "2026-09-21T09:30:00Z",
+  }));
+  assert.equal(raw.retestedAt, "2026-09-21T09:30:00Z");
+});

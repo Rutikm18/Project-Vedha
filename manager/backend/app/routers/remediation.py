@@ -14,6 +14,7 @@ Tenant-scoped through the engagement join (findings carry no tenant_id).
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated
 
 import structlog
@@ -23,19 +24,178 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_report import LLMReportGenerator, LLMUnavailableError
+from app.ai.remediation_workspace import (
+    Advisory,
+    AdvisoryRequest,
+    FindingContext,
+    InvalidWorkspaceInput,
+    RemediationWorkspace,
+)
 from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
 from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.remediation_plan import RemediationPlan
-from app.schemas.remediation import RemediationPlanOut
+from app.schemas.ai import AiGenerateRequest, AiMessage
+from app.schemas.remediation import (
+    RemediationPlanOut,
+    RemediationWorkspacePreviewOut,
+    RemediationWorkspacePreviewRequest,
+)
+from app.services.audit import record_audit
+from app.services.llm import ManagerLlmService
 from app.services.remediation_kb import os_key, recipe_for_finding
+from app.services.remediation_workspace_context import (
+    RemediationContextConflict,
+    RemediationContextNotFound,
+    load_workspace_contexts,
+)
 
 router = APIRouter(prefix="/findings", tags=["remediation"])
 logger = structlog.get_logger()
 
 _REMEDIATION_READER = require_role(["admin", "manager", "tester", "analyst", "auditor"])
 _REMEDIATION_GENERATOR = require_role(["admin", "manager"])
+
+
+class _WorkspaceAdvisory:
+    """Optional explanatory AI port; executable artifacts are already hashed."""
+
+    def __init__(self, findings: list[FindingContext]):
+        self._findings = findings
+
+    async def advise(self, request: AdvisoryRequest) -> Advisory:
+        context = {
+            "workspace": {
+                "contextSha256": request.context_sha256,
+                "findingCount": len(request.finding_ids),
+                "templateIds": list(request.template_ids),
+                "artifactSha256s": list(request.artifact_sha256s),
+                "reviewOnly": True,
+            },
+            "selectedFindings": [
+                {
+                    "id": str(item.finding_id),
+                    "title": item.title,
+                    "assetId": str(item.asset_id) if item.asset_id else None,
+                    "osFamily": item.os_family.value,
+                    "osVersion": item.os_version,
+                    "remediationKey": item.remediation_key,
+                }
+                for item in self._findings
+            ],
+        }
+        ai_request = AiGenerateRequest(
+            task="advisor",
+            messages=[AiMessage(
+                role="user",
+                content=(
+                    "Review this deterministic, review-only remediation workspace. "
+                    "In a concise paragraph, explain sequencing, prerequisites, "
+                    "validation, and rollback decisions an operator must review. "
+                    "Do not provide commands and do not claim that any change ran."
+                ),
+            )],
+            context=context,
+            max_tokens=450,
+        )
+        content, runtime, fallback = await ManagerLlmService().generate_with_fallback(ai_request)
+        notes = [f"Advisory served by {runtime.provider}/{runtime.model}."]
+        if fallback:
+            notes.append("The configured primary provider was unavailable; an approved fallback served this advisory.")
+        return Advisory(summary=content, notes=tuple(notes))
+
+
+def _serialize_workspace(result, *, finding_count: int) -> dict:
+    return {
+        "engagement_id": result.engagement_id,
+        "catalog_version": result.catalog_version,
+        "context_sha256": result.context_sha256,
+        "generated_at": datetime.now(timezone.utc),
+        "review_only": True,
+        "finding_count": finding_count,
+        "operation_count": len(result.operations),
+        "artifacts": [
+            {
+                "artifact_id": item.artifact_id,
+                "asset_id": item.asset_id,
+                "os_family": item.os_family.value,
+                "format": item.format.value,
+                "filename": item.filename,
+                "finding_ids": list(item.finding_ids),
+                "context_sha256": item.context_sha256,
+                "content_sha256": item.content_sha256,
+                "content": item.content,
+            }
+            for item in result.artifacts
+        ],
+        "blocked": [
+            {
+                "finding_id": item.finding_id,
+                "asset_id": item.asset_id,
+                "code": item.code,
+                "detail": item.detail,
+            }
+            for item in result.blocked
+        ],
+        "advisory": (
+            {"summary": result.advisory.summary, "notes": list(result.advisory.notes)}
+            if result.advisory else None
+        ),
+        "warnings": list(result.warnings),
+    }
+
+
+@router.post(
+    "/remediation-workspaces/preview",
+    response_model=RemediationWorkspacePreviewOut,
+    summary="Build review-only remediation artifacts for an exact finding selection",
+)
+async def preview_remediation_workspace(
+    payload: RemediationWorkspacePreviewRequest,
+    db: DB,
+    current_user: Annotated[AuthUser, _REMEDIATION_GENERATOR],
+):
+    try:
+        contexts = await load_workspace_contexts(
+            db,
+            tenant_id=current_user.tenant_id,
+            finding_ids=payload.finding_ids,
+        )
+        advisory = _WorkspaceAdvisory(contexts) if payload.include_advisory else None
+        result = await RemediationWorkspace(advisory=advisory).prepare(contexts)
+    except RemediationContextNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except (RemediationContextConflict, InvalidWorkspaceInput) as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+
+    record_audit(
+        db,
+        actor_id=current_user.user_id,
+        action="remediation.workspace_previewed",
+        engagement_id=result.engagement_id,
+        resource_type="remediation_workspace",
+        detail={
+            "finding_count": len(contexts),
+            "finding_ids": [str(item.finding_id) for item in contexts],
+            "context_sha256": result.context_sha256,
+            "catalog_version": result.catalog_version,
+            "artifact_sha256s": [item.content_sha256 for item in result.artifacts],
+            "blocked_count": len(result.blocked),
+            "advisory_requested": payload.include_advisory,
+            "advisory_available": result.advisory is not None,
+        },
+    )
+    await db.flush()
+    logger.info(
+        "remediation.workspace_previewed",
+        engagement=str(result.engagement_id),
+        findings=len(contexts),
+        artifacts=len(result.artifacts),
+        blocked=len(result.blocked),
+        context_sha256=result.context_sha256,
+    )
+    return _serialize_workspace(result, finding_count=len(contexts))
 
 
 async def _tenant_finding(db: AsyncSession, finding_id: uuid.UUID,

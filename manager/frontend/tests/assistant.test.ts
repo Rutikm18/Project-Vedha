@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
-import { describe, test } from "node:test";
+import { afterEach, describe, test } from "node:test";
 import { NextRequest } from "next/server";
 import { cveRecordToFactCard, detectFindingId, toFactCard } from "../lib/assistant";
-import { POST as brainPost } from "../app/api/brain/route";
+import { POST as brainPost, selectedFindingIds } from "../app/api/brain/route";
+import { POST as assistantChatPost } from "../app/api/assistant/chat/route";
+
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
 
 describe("detectFindingId", () => {
   test("finds a UUID anywhere in pasted text", () => {
@@ -199,5 +206,197 @@ describe("AI Brain authentication", () => {
     }));
 
     assert.equal(response.status, 400);
+  });
+
+  test("accepts only a bounded unique UUID selection", () => {
+    const first = "11111111-1111-4111-8111-111111111111";
+    const second = "22222222-2222-4222-8222-222222222222";
+    assert.deepEqual(selectedFindingIds(undefined), []);
+    assert.deepEqual(selectedFindingIds([]), []);
+    assert.deepEqual(selectedFindingIds([first, second]), [first, second]);
+    assert.equal(selectedFindingIds([first, first]), null);
+    assert.equal(selectedFindingIds(["../../another-tenant"]), null);
+    assert.equal(selectedFindingIds(Array.from({ length: 21 }, (_, index) =>
+      `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`
+    )), null);
+  });
+
+  test("rejects invalid selected finding context before calling dependencies", async () => {
+    const response = await brainPost(new NextRequest("http://localhost/api/brain", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: "vedha_token=test-browser-session",
+      },
+      body: JSON.stringify({
+        findingIds: ["not-a-finding"],
+        messages: [{ role: "user", content: "prioritize these" }],
+      }),
+    }));
+
+    assert.equal(response.status, 400);
+  });
+
+  test("keeps general questions working when there is no finding selection", async () => {
+    let generatedBody: any = null;
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname === "/ai/generate") {
+        generatedBody = JSON.parse(String(init?.body));
+        return new Response(JSON.stringify({
+          content: "Start with confirmed critical findings.",
+          provider: "ollama",
+          model: "test-model",
+          privacy: "local",
+          fallback: false,
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response("not found", { status: 404 });
+    };
+
+    const response = await brainPost(new NextRequest("http://localhost/api/brain", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: "vedha_token=test-browser-session",
+      },
+      body: JSON.stringify({
+        findingIds: [],
+        messages: [{ role: "user", content: "What should I fix first?" }],
+      }),
+    }));
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(generatedBody.context, {});
+  });
+
+  test("resolves selected IDs into exact server-side finding context", async () => {
+    const ids = [
+      "11111111-1111-4111-8111-111111111111",
+      "22222222-2222-4222-8222-222222222222",
+    ];
+    let generatedBody: any = null;
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname.startsWith("/findings/")) {
+        const id = url.pathname.split("/").pop()!;
+        return new Response(JSON.stringify({
+          id,
+          title: id === ids[0] ? "SMB signing disabled" : "Outdated package",
+          severity: id === ids[0] ? "critical" : "high",
+          status: "open",
+          risk_score: id === ids[0] ? 900 : 700,
+          asset_context: { fqdn: id === ids[0] ? "dc01.example.test" : "app01.example.test" },
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (url.pathname === "/ai/generate") {
+        generatedBody = JSON.parse(String(init?.body));
+        return new Response(JSON.stringify({
+          content: "Prioritize SMB signing first.",
+          provider: "ollama",
+          model: "test-model",
+          privacy: "local",
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response("not found", { status: 404 });
+    };
+
+    const response = await brainPost(new NextRequest("http://localhost/api/brain", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: "vedha_token=test-browser-session",
+      },
+      body: JSON.stringify({
+        findingIds: ids,
+        provider: "openai",
+        model: "gpt-5-mini",
+        messages: [{ role: "user", content: "prioritize these findings" }],
+      }),
+    }));
+
+    assert.equal(response.status, 200);
+    assert.equal(generatedBody.context.selectedFindingEvidence.selectionMode, "exact");
+    assert.equal(generatedBody.context.selectedFindingEvidence.selectedCount, 2);
+    assert.equal(generatedBody.provider, "openai");
+    assert.equal(generatedBody.model, "gpt-5-mini");
+    assert.deepEqual(
+      generatedBody.context.selectedFindingEvidence.findings.map((finding: any) => finding.id),
+      ids,
+    );
+    assert.equal(
+      generatedBody.context.selectedFindingEvidence.findings[0].affectedHost,
+      "dc01.example.test",
+    );
+  });
+
+  test("rejects an unsupported model selection before calling dependencies", async () => {
+    globalThis.fetch = async () => {
+      throw new Error("dependencies must not be called");
+    };
+    const response = await brainPost(new NextRequest("http://localhost/api/brain", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: "vedha_token=test-browser-session",
+      },
+      body: JSON.stringify({
+        provider: "command-executor",
+        model: "anything",
+        messages: [{ role: "user", content: "prioritize these findings" }],
+      }),
+    }));
+
+    assert.equal(response.status, 400);
+  });
+});
+
+describe("grounded assistant follow-up", () => {
+  test("forwards the selected model only after re-resolving the finding", async () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    let generatedBody: any = null;
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname === `/findings/${id}`) {
+        return new Response(JSON.stringify({
+          id,
+          title: "SMB signing disabled",
+          severity: "critical",
+          status: "open",
+          risk_score: 900,
+          asset_context: { fqdn: "dc01.example.test" },
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (url.pathname === "/ai/generate") {
+        generatedBody = JSON.parse(String(init?.body));
+        return new Response(JSON.stringify({
+          content: "Validate SMB signing after the approved change window.",
+          provider: "openai",
+          model: "gpt-5-mini",
+          privacy: "cloud",
+          fallback: false,
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response("not found", { status: 404 });
+    };
+
+    const response = await assistantChatPost(new NextRequest("http://localhost/api/assistant/chat", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie: "vedha_token=test-browser-session",
+      },
+      body: JSON.stringify({
+        findingId: id,
+        provider: "openai",
+        model: "gpt-5-mini",
+        messages: [{ role: "user", content: "How should I validate the fix?" }],
+      }),
+    }));
+
+    assert.equal(response.status, 200);
+    assert.equal(generatedBody.provider, "openai");
+    assert.equal(generatedBody.model, "gpt-5-mini");
+    assert.equal(generatedBody.context.securityBrief.id, id);
   });
 });

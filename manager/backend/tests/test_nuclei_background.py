@@ -160,4 +160,10 @@ async def test_partial_nuclei_run_preserves_findings_and_diagnostics() -> None:
     assert sessions.job.result["findings_created"] == 1
     assert sessions.job.result["scanner_run"]["error_code"] == "timeout"
     assert len(sessions.added) == 1
+    saved = sessions.added[0]
+    provenance = saved.evidence["scan_provenance"]
+    assert provenance["initial"]["scan_job_id"] == job_id
+    assert provenance["initial"]["scan_result_id"] is None
+    assert saved.initial_detection_run_id is None
+    assert saved.detection_run_id is None
     enrichment.assert_awaited_once_with(engagement_id, job_id)

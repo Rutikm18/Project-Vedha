@@ -1,9 +1,9 @@
-"""
-agent.py — AgentDecisionEngine: the agentic AI advisor.
+"""AgentDecisionEngine — provider-routed, recommend-only security advisor.
 
-WHAT IT IS: a Claude tool-use loop that reasons over an engagement's REAL data
-(read-only tools that query Postgres) and proposes recommendations across three
-use cases: finding triage, next-action orchestration, and attack-path reasoning.
+The default path gathers a deterministic, bounded snapshot through read-only
+Postgres methods and asks the Manager LLM adapter for one structured recommendation
+batch. An injected Anthropic-compatible client retains the legacy tool-use loop as
+a narrow compatibility/test seam.
 
 WHY IT IS SAFE (recommend-only, by construction):
   * The tool surface is READ-ONLY plus a single terminal `submit_recommendations`
@@ -15,22 +15,19 @@ WHY IT IS SAFE (recommend-only, by construction):
   * Grounded: the model is told to use only tool-returned data — no invented CVEs,
     scores, or hosts.
 
-Modern-model compatible (Sonnet 4.6 / Opus 4.6+ / Fable 5): sends NO `temperature`
-(400s on Opus 4.7/4.8 and Fable), uses `output_config.effort` to cap thinking-token
-spend, and handles a `stop_reason == "refusal"` (pentest content can trip
-classifiers) instead of silently producing nothing.
-
-The `anthropic` package + API key are optional: absent either, `available` is
-False and `run()` raises AgentUnavailableError so the API returns a clean 503.
+The injected-client adapter sends no temperature, caps reasoning effort, and
+handles model refusals instead of silently producing nothing. The default path
+requires any Manager-configured provider; no Anthropic SDK is required.
 """
 from __future__ import annotations
 
 import json
 import uuid
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, Literal
 
 import structlog
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,21 +39,13 @@ from app.models.asset import Asset
 from app.models.attack_path import AttackPath
 from app.models.finding import Finding
 from app.models.service import Service
+from app.schemas.ai import InternalAiGenerateRequest
+from app.services.llm import AiRuntimeError, ManagerLlmService
 
 logger = structlog.get_logger()
 
-try:
-    from anthropic import APIConnectionError, APIStatusError, AsyncAnthropic, RateLimitError
-
-    _HAS_ANTHROPIC = True
-except ImportError:  # pragma: no cover
-    AsyncAnthropic = None  # type: ignore
-    APIStatusError = RateLimitError = APIConnectionError = Exception  # type: ignore
-    _HAS_ANTHROPIC = False
-
-
 class AgentUnavailableError(RuntimeError):
-    """Raised when the Anthropic SDK or API key is not configured."""
+    """Raised when no configured advisor runtime can produce a valid result."""
 
 
 _CATEGORIES = {CAT_TRIAGE, CAT_NEXT_ACTION, CAT_ATTACK_PATH}
@@ -69,6 +58,10 @@ ALLOWED_ACTIONS = [
 ]
 
 _SEV_RANK = {"critical": 5, "high": 4, "medium": 3, "low": 2, "info": 1}
+_TARGET_TYPES = {"finding", "asset", "attack_path", "engagement"}
+_PRIORITIES = {"critical", "high", "medium", "low"}
+_MAX_RECOMMENDATIONS = 20
+_CONTEXT_CHAR_LIMIT = 28_000
 
 SYSTEM_PROMPT = (
     "You are the Vedha security advisor — an assistant that reviews an authorized "
@@ -158,33 +151,122 @@ _SUBMIT_TOOL = {
 _TOOLS = _READ_TOOLS + [_SUBMIT_TOOL]
 
 
+class _RecommendationCandidate(BaseModel):
+    """Strict server-side validation for one model-proposed recommendation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    category: Literal["triage", "next_action", "attack_path"]
+    title: str = Field(min_length=1, max_length=500)
+    rationale: str = Field(min_length=1, max_length=6_000)
+    target_type: Literal["finding", "asset", "attack_path", "engagement"] | None = None
+    target_id: uuid.UUID | None = None
+    action: Literal[
+        "run_discovery_scan",
+        "run_targeted_scan",
+        "request_exploit_validation",
+        "recheck_finding",
+        "mark_false_positive",
+        "escalate_finding",
+        "no_action",
+    ] | None = None
+    confidence: float | None = Field(default=None, ge=0, le=100)
+    priority: Literal["critical", "high", "medium", "low"] | None = None
+
+    @model_validator(mode="after")
+    def validate_semantics(self):
+        self.title = self.title.strip()
+        self.rationale = self.rationale.strip()
+        if not self.title or not self.rationale:
+            raise ValueError("title and rationale must contain text")
+        if self.category == CAT_NEXT_ACTION and self.action is None:
+            raise ValueError("next_action requires an allowlisted action")
+        if self.category != CAT_NEXT_ACTION and self.action is not None:
+            raise ValueError("only next_action may carry an action")
+        if (self.target_type is None) != (self.target_id is None):
+            raise ValueError("target_type and target_id must be supplied together")
+        return self
+
+
 class AgentDecisionEngine:
-    def __init__(self, db: AsyncSession, *, client: Any = None):
-        settings = get_settings()
+    def __init__(
+        self,
+        db: AsyncSession,
+        *,
+        client: Any = None,
+        llm_service: ManagerLlmService | None = None,
+    ):
+        settings = llm_service.settings if llm_service is not None else get_settings()
         self._db = db
         self._model = settings.llm_model
         self._effort = settings.llm_effort
         self._max_tokens = settings.llm_max_tokens
         self._max_iters = 8
-
-        if client is not None:
-            self._client = client
-        elif _HAS_ANTHROPIC and settings.anthropic_api_key:
-            self._client = AsyncAnthropic(api_key=settings.anthropic_api_key, max_retries=2)
-        else:
-            self._client = None
+        self._client = client
+        self._llm_service = (
+            None if client is not None else (llm_service or ManagerLlmService(settings))
+        )
 
     @property
     def available(self) -> bool:
-        return self._client is not None
+        return self._client is not None or bool(
+            self._llm_service is not None and self._llm_service.configured
+        )
 
     # ── main agentic loop ─────────────────────────────────────────────────────────
 
     async def run(self, engagement_id: uuid.UUID) -> dict:
-        if self._client is None:
+        if self._client is not None:
+            return await self._run_injected_tool_loop(engagement_id)
+        if self._llm_service is None or not self._llm_service.configured:
             raise AgentUnavailableError(
-                "Anthropic SDK or ANTHROPIC_API_KEY not configured — advisor unavailable"
+                "No Manager AI provider is configured — advisor unavailable"
             )
+
+        return await self._run_manager_generation(engagement_id)
+
+    async def _run_manager_generation(self, engagement_id: uuid.UUID) -> dict:
+        """Gather bounded local context, then make one provider-agnostic JSON call."""
+        run_id = uuid.uuid4()
+        context = await self._gather_context(engagement_id)
+        try:
+            request = InternalAiGenerateRequest(
+                task="advisor_recommendation",
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        "Review the supplied engagement snapshot and return the "
+                        "recommendation JSON object required by the system rules."
+                    ),
+                }],
+                context=context,
+                max_tokens=max(128, min(self._max_tokens, 4_096)),
+            )
+            text, runtime, fallback_used = await self._llm_service.generate_with_fallback(request)
+        except (AiRuntimeError, ValidationError) as exc:
+            raise AgentUnavailableError(str(exc)) from exc
+
+        submit_input = _parse_submission(text)
+        stored = await self._persist(
+            engagement_id,
+            run_id,
+            submit_input,
+            model=runtime.model,
+            allowed_targets=_allowed_target_pairs(context),
+        )
+        logger.info(
+            "agent.run_complete",
+            engagement=str(engagement_id),
+            run_id=str(run_id),
+            stored=stored,
+            provider=runtime.provider,
+            model=runtime.model,
+            fallback=fallback_used,
+        )
+        return {"run_id": str(run_id), "recommendations_stored": stored}
+
+    async def _run_injected_tool_loop(self, engagement_id: uuid.UUID) -> dict:
+        """Legacy Anthropic tool-use adapter retained for injected clients/tests."""
 
         run_id = uuid.uuid4()
         messages: list[dict] = [{
@@ -196,6 +278,7 @@ class AgentDecisionEngine:
         }]
 
         stored = 0
+        allowed_targets: set[tuple[str, uuid.UUID]] = {("engagement", engagement_id)}
         for iteration in range(self._max_iters):
             resp = await self._create(messages)
 
@@ -218,11 +301,17 @@ class AgentDecisionEngine:
                     tool_results.append(_tool_result(tu.id, {"ok": True, "received": n}))
                 else:
                     out = await self._exec_read_tool(tu.name, tu.input or {}, engagement_id)
+                    allowed_targets.update(_target_pairs_from_read(tu.name, out))
                     tool_results.append(_tool_result(tu.id, out))
             messages.append({"role": "user", "content": tool_results})
 
             if submit_input is not None:
-                stored = await self._persist(engagement_id, run_id, submit_input)
+                stored = await self._persist(
+                    engagement_id,
+                    run_id,
+                    submit_input,
+                    allowed_targets=allowed_targets,
+                )
                 break
         else:
             logger.warning("agent.no_submit", engagement=str(engagement_id),
@@ -243,6 +332,34 @@ class AgentDecisionEngine:
         if self._effort:
             kwargs["output_config"] = {"effort": self._effort}  # cap thinking-token spend
         return await self._client.messages.create(**kwargs)
+
+    async def _gather_context(self, engagement_id: uuid.UUID) -> dict:
+        """Use the existing read-tool seam to build a bounded grounding snapshot."""
+        overview = await self._exec_read_tool(
+            "get_engagement_overview", {}, engagement_id,
+        )
+        findings = await self._exec_read_tool(
+            "list_findings", {"limit": 50}, engagement_id,
+        )
+        attack_paths = await self._exec_read_tool(
+            "list_attack_paths", {"limit": 20}, engagement_id,
+        )
+        assets = await self._exec_read_tool(
+            "list_assets", {"limit": 25}, engagement_id,
+        )
+        # Dependency errors are useful in server logs but should not be sent to a
+        # third-party model. Replace their potentially sensitive detail with a flag.
+        for payload in (overview, findings, attack_paths, assets):
+            if "error" in payload:
+                payload.clear()
+                payload["unavailable"] = True
+        return _build_bounded_context(
+            engagement_id,
+            overview=overview,
+            findings=findings,
+            attack_paths=attack_paths,
+            assets=assets,
+        )
 
     # ── read tools (the model's only window into the data) ──────────────────────────
 
@@ -344,8 +461,19 @@ class AgentDecisionEngine:
 
     # ── persistence (the ONLY write; everything lands pending) ───────────────────────
 
-    async def _persist(self, eid: uuid.UUID, run_id: uuid.UUID, submit_input: dict) -> int:
+    async def _persist(
+        self,
+        eid: uuid.UUID,
+        run_id: uuid.UUID,
+        submit_input: dict,
+        *,
+        model: str | None = None,
+        allowed_targets: set[tuple[str, uuid.UUID]] | None = None,
+    ) -> int:
         recs = submit_input.get("recommendations") or []
+        if not isinstance(recs, list):
+            return 0
+        recs = recs[:_MAX_RECOMMENDATIONS]
         stored = 0
         for r in recs:
             if not isinstance(r, dict):
@@ -363,19 +491,54 @@ class AgentDecisionEngine:
                     continue
             else:
                 action = None  # triage / attack_path rows don't carry an action
+
+            target_type = str(r.get("target_type") or "").strip() or None
+            raw_target_id = r.get("target_id")
+            target_id = _maybe_uuid(raw_target_id)
+            if target_type is not None and target_type not in _TARGET_TYPES:
+                logger.info("agent.dropped_target_type", target_type=target_type)
+                continue
+            if (target_type is None) != (target_id is None):
+                logger.info("agent.dropped_target", reason="incomplete_or_invalid")
+                continue
+            if (
+                allowed_targets is not None
+                and target_type is not None
+                and (target_type, target_id) not in allowed_targets
+            ):
+                logger.info(
+                    "agent.dropped_target",
+                    reason="not_in_grounding_context",
+                    target_type=target_type,
+                )
+                continue
+
+            priority = str(r.get("priority") or "").strip().lower() or None
+            if priority is not None and priority not in _PRIORITIES:
+                logger.info("agent.dropped_priority", priority=priority)
+                continue
+            raw_confidence = r.get("confidence")
+            confidence = _maybe_decimal(raw_confidence)
+            if raw_confidence is not None and confidence is None:
+                logger.info("agent.dropped_confidence", confidence="invalid")
+                continue
+            if confidence is not None and not (Decimal("0") <= confidence <= Decimal("100")):
+                logger.info("agent.dropped_confidence", confidence=str(confidence))
+                continue
+
             self._db.add(AgentRecommendation(
                 engagement_id=eid, run_id=run_id,
                 category=category,
-                target_type=(str(r["target_type"])[:32] if r.get("target_type") else None),
-                target_id=_maybe_uuid(r.get("target_id")),
+                target_type=target_type,
+                target_id=target_id,
                 action=action,
                 title=title[:500],
-                rationale=(str(r["rationale"]) if r.get("rationale") else None),
-                confidence=_maybe_decimal(r.get("confidence")),
-                priority=(str(r["priority"])[:16] if r.get("priority") else None),
+                rationale=(str(r["rationale"])[:6_000] if r.get("rationale") else None),
+                confidence=confidence,
+                priority=priority,
                 status=STATUS_PENDING,
                 evidence=r,
-                model=self._model,
+                model=(model or self._model)[:64],
             ))
             stored += 1
         if stored:
@@ -384,6 +547,218 @@ class AgentDecisionEngine:
 
 
 # ── helpers ─────────────────────────────────────────────────────────────────────
+
+def _parse_submission(text: str) -> dict:
+    """Parse and validate the provider's single structured recommendation batch."""
+    value = (text or "").strip()
+    fence = chr(96) * 3
+    if value.startswith(fence):
+        parts = value.split(fence)
+        if len(parts) >= 2:
+            value = parts[1]
+            if value.startswith("json"):
+                value = value[4:]
+            value = value.strip()
+    try:
+        raw = json.loads(value)
+    except json.JSONDecodeError:
+        start, end = value.find("{"), value.rfind("}") + 1
+        try:
+            raw = json.loads(value[start:end]) if 0 <= start < end else None
+        except json.JSONDecodeError as exc:
+            raise AgentUnavailableError(
+                "AI advisor returned invalid structured output"
+            ) from exc
+    if not isinstance(raw, dict) or not isinstance(raw.get("recommendations"), list):
+        raise AgentUnavailableError("AI advisor returned an invalid recommendation schema")
+    raw_recommendations = raw["recommendations"]
+    if len(raw_recommendations) > _MAX_RECOMMENDATIONS:
+        raise AgentUnavailableError(
+            f"AI advisor exceeded the {_MAX_RECOMMENDATIONS}-recommendation limit"
+        )
+
+    validated: list[dict] = []
+    for index, candidate in enumerate(raw_recommendations):
+        try:
+            parsed = _RecommendationCandidate.model_validate(candidate)
+        except ValidationError:
+            logger.info("agent.dropped_recommendation", index=index, reason="schema")
+            continue
+        validated.append(parsed.model_dump(mode="json"))
+    if raw_recommendations and not validated:
+        raise AgentUnavailableError("AI advisor returned no valid recommendations")
+    return {"recommendations": validated}
+
+
+def _build_bounded_context(
+    engagement_id: uuid.UUID,
+    *,
+    overview: dict,
+    findings: dict,
+    attack_paths: dict,
+    assets: dict,
+) -> dict:
+    """Build a deterministic snapshot with an explicit inclusion/omission manifest."""
+    context: dict[str, Any] = {
+        "context_version": 1,
+        "engagement_id": str(engagement_id),
+        "overview": _compact_overview(overview),
+        "findings": [],
+        "attack_paths": [],
+        "assets": [],
+    }
+    record_budget = _CONTEXT_CHAR_LIMIT - 1_000  # reserve for coverage metadata
+
+    def append_if_fits(bucket: str, item: dict) -> None:
+        context[bucket].append(item)
+        if _json_chars(context) > record_budget:
+            context[bucket].pop()
+
+    finding_rows = findings.get("findings") if isinstance(findings, dict) else []
+    path_rows = attack_paths.get("attack_paths") if isinstance(attack_paths, dict) else []
+    asset_rows = assets.get("assets") if isinstance(assets, dict) else []
+    for item in finding_rows if isinstance(finding_rows, list) else []:
+        if isinstance(item, dict):
+            append_if_fits("findings", _compact_finding(item))
+    for item in path_rows if isinstance(path_rows, list) else []:
+        if isinstance(item, dict):
+            append_if_fits("attack_paths", _compact_attack_path(item))
+    for item in asset_rows if isinstance(asset_rows, list) else []:
+        if isinstance(item, dict):
+            append_if_fits("assets", _compact_asset(item))
+
+    totals = {
+        "findings": _safe_count(
+            overview.get("total_findings"),
+            findings.get("count"),
+            len(finding_rows) if isinstance(finding_rows, list) else 0,
+        ),
+        "attack_paths": _safe_count(
+            overview.get("attack_path_count"),
+            attack_paths.get("count"),
+            len(path_rows) if isinstance(path_rows, list) else 0,
+        ),
+        "assets": _safe_count(
+            overview.get("asset_count"),
+            assets.get("count"),
+            len(asset_rows) if isinstance(asset_rows, list) else 0,
+        ),
+    }
+    included = {
+        name: len(context[name])
+        for name in ("findings", "attack_paths", "assets")
+    }
+    context["coverage"] = {
+        "included": included,
+        "total": totals,
+        "omitted": {name: max(0, totals[name] - included[name]) for name in totals},
+        "context_limit_chars": _CONTEXT_CHAR_LIMIT,
+    }
+    if _json_chars(context) > _CONTEXT_CHAR_LIMIT:  # defensive invariant
+        raise AgentUnavailableError("Advisor context could not be bounded safely")
+    return context
+
+
+def _compact_overview(value: dict) -> dict:
+    if value.get("unavailable"):
+        return {"unavailable": True}
+    counts = value.get("findings_by_severity")
+    return {
+        "findings_by_severity": counts if isinstance(counts, dict) else {},
+        "total_findings": _safe_count(value.get("total_findings"), 0),
+        "asset_count": _safe_count(value.get("asset_count"), 0),
+        "service_count": _safe_count(value.get("service_count"), 0),
+        "attack_path_count": _safe_count(value.get("attack_path_count"), 0),
+    }
+
+
+def _compact_finding(value: dict) -> dict:
+    cves = value.get("cve_ids") if isinstance(value.get("cve_ids"), list) else []
+    return {
+        "id": str(value.get("id") or "")[:36],
+        "title": str(value.get("title") or "")[:500],
+        "severity": str(value.get("severity") or "")[:16],
+        "cvss": value.get("cvss"),
+        "status": str(value.get("status") or "")[:32],
+        "cve_ids": [str(item)[:32] for item in cves[:20]],
+        "exploitable": bool(value.get("exploitable")),
+    }
+
+
+def _compact_attack_path(value: dict) -> dict:
+    return {
+        "id": str(value.get("id") or "")[:36],
+        "risk_score": value.get("risk_score"),
+        "hops": _safe_count(value.get("hops"), 0),
+        "chokepoints": _safe_count(value.get("chokepoints"), 0),
+    }
+
+
+def _compact_asset(value: dict) -> dict:
+    services = value.get("services") if isinstance(value.get("services"), list) else []
+    compact_services = []
+    for service in services[:12]:
+        if not isinstance(service, dict):
+            continue
+        compact_services.append({
+            "port": service.get("port"),
+            "proto": str(service.get("proto") or "")[:16],
+            "product": str(service.get("product") or "")[:120],
+            "version": str(service.get("version") or "")[:120],
+        })
+    return {
+        "id": str(value.get("id") or "")[:36],
+        "ip": str(value.get("ip") or "")[:64],
+        "hostname": str(value.get("hostname") or "")[:255],
+        "os": str(value.get("os") or "")[:255],
+        "services": compact_services,
+    }
+
+
+def _allowed_target_pairs(context: dict) -> set[tuple[str, uuid.UUID]]:
+    allowed = {("engagement", uuid.UUID(str(context["engagement_id"])))}
+    for bucket, target_type in (
+        ("findings", "finding"),
+        ("assets", "asset"),
+        ("attack_paths", "attack_path"),
+    ):
+        for item in context.get(bucket, []):
+            target_id = _maybe_uuid(item.get("id")) if isinstance(item, dict) else None
+            if target_id is not None:
+                allowed.add((target_type, target_id))
+    return allowed
+
+
+def _target_pairs_from_read(name: str, output: dict) -> set[tuple[str, uuid.UUID]]:
+    bucket_and_type = {
+        "list_findings": ("findings", "finding"),
+        "list_assets": ("assets", "asset"),
+        "list_attack_paths": ("attack_paths", "attack_path"),
+    }.get(name)
+    if bucket_and_type is None or not isinstance(output, dict):
+        return set()
+    bucket, target_type = bucket_and_type
+    pairs: set[tuple[str, uuid.UUID]] = set()
+    for item in output.get(bucket, []):
+        target_id = _maybe_uuid(item.get("id")) if isinstance(item, dict) else None
+        if target_id is not None:
+            pairs.add((target_type, target_id))
+    return pairs
+
+
+def _safe_count(*values: Any) -> int:
+    counts: list[int] = []
+    for value in values:
+        try:
+            counts.append(max(0, int(value)))
+        except (TypeError, ValueError):
+            continue
+    return max(counts, default=0)
+
+
+def _json_chars(value: Any) -> int:
+    return len(json.dumps(value, default=str, separators=(",", ":")))
+
 
 def _tool_result(tool_use_id: str, obj: Any) -> dict:
     return {"type": "tool_result", "tool_use_id": tool_use_id,
@@ -407,6 +782,7 @@ def _maybe_decimal(value: Any):
     if value is None:
         return None
     try:
-        return Decimal(str(value))
+        parsed = Decimal(str(value))
+        return parsed if parsed.is_finite() else None
     except (InvalidOperation, ValueError, TypeError):
         return None

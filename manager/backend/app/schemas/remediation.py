@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.ai.remediation_workspace import MAX_FINDINGS
+
 
 RemediationRisk = Literal["low", "medium", "high"]
 
@@ -54,3 +56,53 @@ class RemediationPlanOut(BaseModel):
     generated_at: datetime | None = None
     model: str | None = None
     plan: RemediationPlanDetailOut
+
+
+class RemediationWorkspacePreviewRequest(BaseModel):
+    finding_ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_FINDINGS)
+    include_advisory: bool = False
+
+    @field_validator("finding_ids")
+    @classmethod
+    def require_unique_findings(cls, value: list[uuid.UUID]) -> list[uuid.UUID]:
+        if len(value) != len(set(value)):
+            raise ValueError("finding_ids must be unique")
+        return value
+
+
+class RemediationArtifactOut(BaseModel):
+    artifact_id: uuid.UUID
+    asset_id: uuid.UUID | None
+    os_family: Literal["linux", "windows", "macos", "generic"]
+    format: Literal["bash", "powershell", "markdown"]
+    filename: str
+    finding_ids: list[uuid.UUID]
+    context_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    content: str
+
+
+class RemediationBlockedFindingOut(BaseModel):
+    finding_id: uuid.UUID
+    asset_id: uuid.UUID | None
+    code: str
+    detail: str
+
+
+class RemediationAdvisoryOut(BaseModel):
+    summary: str
+    notes: list[str] = Field(default_factory=list)
+
+
+class RemediationWorkspacePreviewOut(BaseModel):
+    engagement_id: uuid.UUID
+    catalog_version: str
+    context_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    generated_at: datetime
+    review_only: Literal[True] = True
+    finding_count: int = Field(ge=1, le=MAX_FINDINGS)
+    operation_count: int = Field(ge=1)
+    artifacts: list[RemediationArtifactOut]
+    blocked: list[RemediationBlockedFindingOut] = Field(default_factory=list)
+    advisory: RemediationAdvisoryOut | None = None
+    warnings: list[str] = Field(default_factory=list)

@@ -136,6 +136,9 @@ export function toRawFinding(input: unknown, dueAt?: string | null): RawFinding 
     attackPath,
     dueAt: dueAt ?? undefined,
     assignedTo: text(finding.assignee),
-    retestedAt: text(finding.resolvedAt),
+    // Resolution and retest are different lifecycle facts. A finding can be
+    // marked resolved without a retest, so never manufacture a retest date
+    // from the close timestamp.
+    retestedAt: text(finding.retestedAt),
   };
 }

@@ -85,6 +85,7 @@ class FindingEventType(str, enum.Enum):
     status_changed = "status_changed"        # any other lifecycle transition
     verification_changed = "verification_changed"  # verdict changed (confirmed/inferred/…)
     risk_changed = "risk_changed"            # CVSS / risk score revised
+    action_tracking_updated = "action_tracking_updated"  # owner/target/reason
     note = "note"                            # free-text operator annotation
 
 
