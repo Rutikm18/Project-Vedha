@@ -84,6 +84,14 @@ describe("grouped view wiring", () => {
     assert.match(findingsPage, /const groupQueryString = new URLSearchParams\(queryString\);/);
   });
 
+  test("All findings is the default view and comes first; Grouped is second", () => {
+    assert.match(findingsPage, /function getServerQueueView\(\): QueueView \{\s*return "list";/);
+    assert.match(findingsPage, /=== "grouped" \? "grouped" : "list";/);
+    const all = findingsPage.indexOf("<List size={13} aria-hidden /> All findings");
+    const grouped = findingsPage.indexOf("<Layers size={13} aria-hidden /> Grouped");
+    assert.ok(all > 0 && grouped > all, "All findings button renders before Grouped");
+  });
+
   test("a group member opens the shared detail panel", () => {
     assert.match(findingsPage, /onSelect=\{toggleFinding\}[\s\S]{0,200}<\/FindingGroupRow>|<FindingGroupRow[\s\S]{0,400}onSelect=\{toggleFinding\}/);
   });

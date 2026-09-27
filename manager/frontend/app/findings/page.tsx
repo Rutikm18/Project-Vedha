@@ -93,8 +93,9 @@ type TimelineEvent = {
 };
 type FindingTimeline = { finding_id: string; events: TimelineEvent[] };
 
-/* Queue view (grouped vs every finding) is a per-browser preference. An external
- * store rather than state + effect: the server snapshot is always "grouped", so
+/* Queue view (every finding vs grouped) is a per-browser preference. "All
+ * findings" is the default and comes first; Grouped is opt-in. An external
+ * store rather than state + effect: the server snapshot is always "list", so
  * hydration never mismatches, and every reader updates together. Storage can
  * throw (private mode, blocked site data) — the default simply stands. */
 type QueueView = "grouped" | "list";
@@ -110,13 +111,13 @@ function subscribeToQueueView(onChange: () => void) {
 }
 function getQueueView(): QueueView {
   try {
-    return window.localStorage.getItem(QUEUE_VIEW_KEY) === "list" ? "list" : "grouped";
+    return window.localStorage.getItem(QUEUE_VIEW_KEY) === "grouped" ? "grouped" : "list";
   } catch {
-    return "grouped";
+    return "list";
   }
 }
 function getServerQueueView(): QueueView {
-  return "grouped";
+  return "list";
 }
 function storeQueueView(view: QueueView) {
   try { window.localStorage.setItem(QUEUE_VIEW_KEY, view); } catch { /* preference only */ }
@@ -4031,11 +4032,11 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
 
           <div className="findings-view-bar">
             <div className="findings-view-toggle" role="group" aria-label="Queue view">
-              <button type="button" aria-pressed={queueView === "grouped"} onClick={() => storeQueueView("grouped")}>
-                <Layers size={13} aria-hidden /> Grouped
-              </button>
               <button type="button" aria-pressed={queueView === "list"} onClick={() => storeQueueView("list")}>
                 <List size={13} aria-hidden /> All findings
+              </button>
+              <button type="button" aria-pressed={queueView === "grouped"} onClick={() => storeQueueView("grouped")}>
+                <Layers size={13} aria-hidden /> Grouped
               </button>
             </div>
             <span className="findings-view-count" aria-live="polite">
