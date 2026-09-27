@@ -80,4 +80,19 @@ describe("findings detail layout", () => {
     assert.match(findingsPage, /Copy includes all masked lines\./);
     assert.doesNotMatch(findingsPage, /\{false && tab === "evidence"/);
   });
+
+  test("remediation plan auto-detects the platform instead of asking for an OS", () => {
+    // The Fix plan tab is the shared FindingRemediation component; the manager
+    // resolves the platform (services/remediation_os) — the client never guesses.
+    const panel = readFileSync(new URL("../components/remediation/FindingRemediation.tsx", import.meta.url), "utf8");
+    const lib = readFileSync(new URL("../lib/remediation.ts", import.meta.url), "utf8");
+    assert.match(findingsPage, /<FindingRemediation/);
+    // No OS chosen ⇒ the request carries no `os`, so the backend default "auto" applies.
+    assert.match(panel, /useState<PlanOs \| undefined>\(undefined\)/);
+    assert.match(lib, /plan: \(findingId: string, os\?: PlanOs\) =>/);
+    // The detection is explained, and an override can be undone.
+    assert.match(panel, /platformExplanation\(data\.platform\)/);
+    assert.match(panel, /Use detected platform/);
+    assert.doesNotMatch(findingsPage, /function remediationOsFor/);
+  });
 });

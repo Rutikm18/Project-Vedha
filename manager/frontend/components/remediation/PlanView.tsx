@@ -16,6 +16,7 @@ import {
   CONTEXT_FIELDS, DUE_SOURCE_LABEL, TIER_LABEL, TYPE_LABEL, URGENCY_LABEL, dueState, factText, fmtIst,
   type PlanStep, type RemediationPlan, type Tier,
 } from "../../lib/remediation";
+import { copyText } from "../../lib/clipboard";
 
 const TIERS: Tier[] = ["containment", "fix", "hardening"];
 
@@ -28,7 +29,8 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       data-state={state}
       aria-label={state === "copied" ? `Copied ${label}` : `Copy ${label}`}
       onClick={async () => {
-        try { await navigator.clipboard.writeText(text); setState("copied"); } catch { setState("failed"); }
+        // copyText falls back to a hidden textarea on non-HTTPS origins.
+        setState((await copyText(text)) ? "copied" : "failed");
         window.setTimeout(() => setState("idle"), 1800);
       }}
     >

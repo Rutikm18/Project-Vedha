@@ -41,6 +41,7 @@ from app.remediation.loader import load_finding_context, resolve_due
 from app.remediation.plan import build_plan, os_for_context
 from app.schemas.remediation import RemediationPlanOut
 from app.services.remediation_kb import os_key
+from app.services.remediation_os import PlatformResolution, is_auto
 
 router = APIRouter(prefix="/findings", tags=["remediation"])
 bundles_router = APIRouter(prefix="/engagements", tags=["remediation"])
@@ -127,8 +128,10 @@ def _build_bundle_upsert_stmt(*, tenant_id: uuid.UUID, engagement_id: uuid.UUID,
 
 
 def _serialize(finding_id: uuid.UUID, os: str, plan: dict, *,
-               row: Any = None, bundle: dict | None = None, stale: bool = False) -> dict:
+               row: Any = None, bundle: dict | None = None, stale: bool = False,
+               platform: dict | None = None) -> dict:
     return {
+        "platform": platform,
         "bundle": bundle,
         "finding_id": str(finding_id),
         "os": os,
@@ -140,6 +143,21 @@ def _serialize(finding_id: uuid.UUID, os: str, plan: dict, *,
         "stale": stale,
         "plan": plan,
     }
+
+
+def platform_for(requested: str | None, ctx: Any) -> PlatformResolution:
+    """`auto` (default) → the platform detected for the asset (services/
+    remediation_os, resolved once in the loader); any explicit OS overrides."""
+    if is_auto(requested):
+        return ctx.platform or PlatformResolution("generic", None, "no_asset", None, None)
+    return PlatformResolution(os_key(requested), None, "requested", None, None)
+
+
+def platform_out(requested: str | None, platform: PlatformResolution) -> dict:
+    return {"requested": "auto" if is_auto(requested) else platform.os, **platform.to_dict()}
+
+
+_OS_QUERY = "auto = detect from the asset; or linux|windows|macos|generic"
 
 
 def _is_stale(row: Any, fingerprint: str) -> bool:
@@ -160,19 +178,22 @@ async def get_remediation(
     finding_id: uuid.UUID,
     db: DB,
     current_user: Annotated[AuthUser, _REMEDIATION_READER],
-    os: str | None = Query(default=None, description="omit to use the OS the scan detected"),
+    os: str = Query(default="auto", description=_OS_QUERY),
 ):
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
     ctx = await load_finding_context(db, finding)
-    key = os_key(os) if os else os_for_context(ctx)
+    platform = platform_for(os, ctx)
+    key = platform.os
+    shown = platform_out(os, platform)
     row = await _cached_plan(db, finding_id, key)
     due = await resolve_due(db, finding, current_user.tenant_id)
     link = bundle_link(finding, ctx)
     if row is not None:
         # The due date is live (extensions/policy changes), never the cached one.
         return _serialize(finding_id, key, {**row.plan, "due": due}, row=row, bundle=link,
-                          stale=_is_stale(row, ai_refine.facts_fingerprint([ctx])))
-    return _serialize(finding_id, key, build_plan(finding, ctx, os=key, due=due), bundle=link)
+                          stale=_is_stale(row, ai_refine.facts_fingerprint([ctx])), platform=shown)
+    return _serialize(finding_id, key, build_plan(finding, ctx, os=key, due=due), bundle=link,
+                      platform=shown)
 
 
 @router.post("/{finding_id}/remediation/refine",
@@ -182,14 +203,16 @@ async def refine_remediation(
     finding_id: uuid.UUID,
     db: DB,
     current_user: Annotated[AuthUser, _REMEDIATION_GENERATOR],
-    os: str | None = Query(default=None, description="omit to use the OS the scan detected"),
+    os: str = Query(default="auto", description=_OS_QUERY),
     force: bool = Query(default=False),
     publish: bool = Query(default=False,
                           description="mark reviewed so the customer portal may show it"),
 ):
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
     ctx = await load_finding_context(db, finding)
-    key = os_key(os) if os else os_for_context(ctx)
+    platform = platform_for(os, ctx)
+    key = platform.os
+    shown = platform_out(os, platform)
     fingerprint = ai_refine.facts_fingerprint([ctx])
     link = bundle_link(finding, ctx)
 
@@ -199,7 +222,7 @@ async def refine_remediation(
             if publish and not row.reviewed:
                 row.reviewed = True
                 await db.flush()
-            return _serialize(finding_id, key, row.plan, row=row, bundle=link)
+            return _serialize(finding_id, key, row.plan, row=row, bundle=link, platform=shown)
 
     due = await resolve_due(db, finding, current_user.tenant_id)
     kb = build_plan(finding, ctx, os=key, due=due)
@@ -219,7 +242,7 @@ async def refine_remediation(
         os=key, plan=plan, publish=publish, facts_fingerprint=fingerprint,
     ))).one()
     logger.info("remediation.refine_cached", finding=str(finding_id), os=key, reviewed=row.reviewed)
-    return _serialize(finding_id, key, plan, row=row, bundle=link)
+    return _serialize(finding_id, key, plan, row=row, bundle=link, platform=shown)
 
 
 @router.post("/{finding_id}/remediation/generate",
@@ -229,7 +252,7 @@ async def generate_remediation(
     finding_id: uuid.UUID,
     db: DB,
     current_user: Annotated[AuthUser, _REMEDIATION_GENERATOR],
-    os: str | None = Query(default=None),
+    os: str = Query(default="auto", description=_OS_QUERY),
     force: bool = Query(default=False),
     publish: bool = Query(default=False),
 ):
@@ -243,11 +266,12 @@ async def publish_remediation(
     finding_id: uuid.UUID,
     db: DB,
     current_user: Annotated[AuthUser, _REMEDIATION_GENERATOR],
-    os: str | None = Query(default=None),
+    os: str = Query(default="auto", description=_OS_QUERY),
 ):
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
     ctx = await load_finding_context(db, finding)
-    key = os_key(os) if os else os_for_context(ctx)
+    platform = platform_for(os, ctx)
+    key = platform.os
     row = await _cached_plan(db, finding_id, key)
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No AI refinement to publish for this OS")
@@ -260,7 +284,8 @@ async def publish_remediation(
     record_audit(db, actor_id=current_user.user_id, action="remediation.published",
                  engagement_id=finding.engagement_id, resource_type="finding", resource_id=finding.id,
                  detail={"os": key, "model": row.model})
-    return _serialize(finding_id, key, row.plan, row=row, bundle=bundle_link(finding, ctx))
+    return _serialize(finding_id, key, row.plan, row=row, bundle=bundle_link(finding, ctx),
+                      platform=platform_out(os, platform))
 
 
 # ── fix bundles (engagement-level) ───────────────────────────────────────────

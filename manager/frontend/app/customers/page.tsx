@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
+import { copyText } from "../../lib/clipboard";
 
 interface Customer {
   id: string;
@@ -148,10 +149,9 @@ export default function CustomersPage() {
   }
 
   function copy(text: string) {
-    navigator.clipboard?.writeText(text).then(
-      () => toast.success("Copied"),
-      () => toast.error("Copy failed"),
-    );
+    void copyText(text).then((ok) => (
+      ok ? toast.success("Copied") : toast.error("Copy failed — select the text and copy it manually")
+    ));
   }
 
   // Builds a one-click access link. Credentials go in the URL fragment (#) which

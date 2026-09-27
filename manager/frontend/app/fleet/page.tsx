@@ -8,6 +8,7 @@ import {
 import { PageShell } from "../../components/PageShell";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { useToast } from "../../hooks/useToast";
+import { copyText } from "../../lib/clipboard";
 import { createFleetWorkspaceApi, type FleetWorkspaceSurface } from "../../lib/fleet-workspace-api";
 import FleetJobs from "./FleetJobs";
 
@@ -169,7 +170,9 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
   const runCommand = `sudo sh install.sh --manager ${managerUrl}`;
 
   const copyCommand = (cmd: string) =>
-    void navigator.clipboard.writeText(cmd).then(() => toast.success("Command copied"));
+    void copyText(cmd).then((ok) => (
+      ok ? toast.success("Command copied") : toast.error("Copy failed — select the command and copy it manually")
+    ));
 
   async function approve(event: React.FormEvent) {
     event.preventDefault();

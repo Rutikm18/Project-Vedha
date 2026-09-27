@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import Text, and_, cast, func, or_, select
+from sqlalchemy import Select, Text, and_, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import require_role
@@ -22,6 +22,7 @@ from app.models.detection_run_finding import (
 from app.models.scan_job import ScanJob
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
 from app.schemas.common import PaginatedResponse, paginate
+from app.schemas.finding_groups import FindingGroupPage
 from app.schemas.finding import (
     FindingAssetContext, FindingAssetOption, FindingEventOut, FindingOut, FindingPatch, FindingReopen,
     FindingScanRef, FindingSummary, FindingTimeline, ScanCompareCounts, ScanCompareOut,
@@ -32,11 +33,13 @@ from app.services.finding_metrics import compute_mttr
 from app.services import finding_workflow
 from app.services import sla as sla_service
 from app.services.finding_enrichment import detail_enrichment
+from app.services.finding_groups import GroupRow, build_groups
 from app.services.finding_priority import severity_order_case
 from app.services.risk_rank import compute_risk_rank
 from app.routers.sla_policy import resolve_windows
 from app.services.deadlines import engagement_windows
 from app.utils.pagination import paginate_query
+from app.detection.resolution import normalize_port
 
 router = APIRouter(prefix="/findings", tags=["findings"])
 logger = structlog.get_logger()
@@ -372,51 +375,37 @@ async def finding_metrics(
     }
 
 
-@router.get("", response_model=PaginatedResponse[FindingOut], summary="List findings with filters")
-async def list_findings(
-    db: DB,
+async def _filtered_findings(
+    base: Select,
+    db: AsyncSession,
     current_user: AuthUser,
-    severity: FindingSeverity | None = Query(default=None),
-    status_filter: FindingStatus | None = Query(default=None, alias="status"),
-    active_only: bool = Query(
-        default=False,
-        description=(
-            "Restrict to findings that are still an active exposure "
-            "(status open or confirmed) — the same 'tracked' set /summary, "
-            "/sla-summary and the analytics endpoints count. Use this instead "
-            "of status=open, which drops confirmed findings."
-        ),
-    ),
-    asset_id: uuid.UUID | None = Query(default=None),
-    asset_ip: str | None = Query(
-        default=None, min_length=1, max_length=45,
-        description="Affected asset IP — exact address, or a prefix such as 192.168.1.",
-    ),
-    mitre_technique: str | None = Query(default=None),
-    engagement_id: uuid.UUID | None = Query(default=None),
-    agent_id: uuid.UUID | None = Query(default=None),
-    scan: str | None = Query(
-        default=None, min_length=1, max_length=64,
-        description=(
-            "Restrict to findings a single scan TOUCHED — new, reaffirmed or "
-            "resolved — via the per-run membership table. Accepts an "
-            "SCN-YYMMDD-XXXXXX reference, a scan-job id, or a detection-run id. "
-            "An unknown scan returns an empty page."
-        ),
-    ),
-    search: str | None = Query(default=None, min_length=1, max_length=200),
-    detection_status: DetectionStatus | None = Query(default=None),
-    exploit_validated: bool | None = Query(default=None),
-    verification_state: str | None = Query(default=None),
-    needs_review: bool | None = Query(default=None),
-    sla_breached: bool = Query(default=False),
-    sort: Literal["risk", "cvss", "epss", "date"] = Query(default="risk"),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
-):
+    *,
+    severity: FindingSeverity | None = None,
+    status_filter: FindingStatus | None = None,
+    active_only: bool = False,
+    asset_id: uuid.UUID | None = None,
+    asset_ip: str | None = None,
+    mitre_technique: str | None = None,
+    engagement_id: uuid.UUID | None = None,
+    agent_id: uuid.UUID | None = None,
+    scan: str | None = None,
+    search: str | None = None,
+    detection_status: DetectionStatus | None = None,
+    exploit_validated: bool | None = None,
+    verification_state: str | None = None,
+    needs_review: bool | None = None,
+    sla_breached: bool = False,
+) -> tuple[Select | None, set[uuid.UUID] | None]:
+    """Apply the findings-queue filters to ``base`` (any select over Finding).
+
+    The ONE definition of "which findings does this filter set mean", shared by
+    the list and the grouped view so the two can never disagree. Returns
+    ``(None, set())`` when a scan filter resolves to no run — the caller answers
+    with an empty result without querying findings at all.
+    """
     # Scope to tenant via engagement join
     q = (
-        select(Finding)
+        base
         .join(Engagement, Finding.engagement_id == Engagement.id)
         .where(Engagement.tenant_id == current_user.tenant_id)
     )
@@ -440,7 +429,7 @@ async def list_findings(
         scan_run_ids = await _resolve_scan_run_ids(
             db, scan, current_user.tenant_id, engagement_id=engagement_id)
         if not scan_run_ids:
-            return paginate([], 0, page, page_size)
+            return None, scan_run_ids
         q = q.where(Finding.id.in_(
             select(DetectionRunFinding.finding_id)
             .where(DetectionRunFinding.run_id.in_(scan_run_ids))
@@ -485,6 +474,62 @@ async def list_findings(
                 ),
             ),
         )
+    return q, scan_run_ids
+
+
+@router.get("", response_model=PaginatedResponse[FindingOut], summary="List findings with filters")
+async def list_findings(
+    db: DB,
+    current_user: AuthUser,
+    severity: FindingSeverity | None = Query(default=None),
+    status_filter: FindingStatus | None = Query(default=None, alias="status"),
+    active_only: bool = Query(
+        default=False,
+        description=(
+            "Restrict to findings that are still an active exposure "
+            "(status open or confirmed) — the same 'tracked' set /summary, "
+            "/sla-summary and the analytics endpoints count. Use this instead "
+            "of status=open, which drops confirmed findings."
+        ),
+    ),
+    asset_id: uuid.UUID | None = Query(default=None),
+    asset_ip: str | None = Query(
+        default=None, min_length=1, max_length=45,
+        description="Affected asset IP — exact address, or a prefix such as 192.168.1.",
+    ),
+    mitre_technique: str | None = Query(default=None),
+    engagement_id: uuid.UUID | None = Query(default=None),
+    agent_id: uuid.UUID | None = Query(default=None),
+    scan: str | None = Query(
+        default=None, min_length=1, max_length=64,
+        description=(
+            "Restrict to findings a single scan TOUCHED — new, reaffirmed or "
+            "resolved — via the per-run membership table. Accepts an "
+            "SCN-YYMMDD-XXXXXX reference, a scan-job id, or a detection-run id. "
+            "An unknown scan returns an empty page."
+        ),
+    ),
+    search: str | None = Query(default=None, min_length=1, max_length=200),
+    detection_status: DetectionStatus | None = Query(default=None),
+    exploit_validated: bool | None = Query(default=None),
+    verification_state: str | None = Query(default=None),
+    needs_review: bool | None = Query(default=None),
+    sla_breached: bool = Query(default=False),
+    sort: Literal["risk", "cvss", "epss", "date"] = Query(default="risk"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+):
+    q, scan_run_ids = await _filtered_findings(
+        select(Finding), db, current_user,
+        severity=severity, status_filter=status_filter, active_only=active_only,
+        asset_id=asset_id, asset_ip=asset_ip, mitre_technique=mitre_technique,
+        engagement_id=engagement_id, agent_id=agent_id, scan=scan, search=search,
+        detection_status=detection_status, exploit_validated=exploit_validated,
+        verification_state=verification_state, needs_review=needs_review,
+        sla_breached=sla_breached,
+    )
+    if q is None:
+        return paginate([], 0, page, page_size)
 
     effective_risk = func.coalesce(
         Finding.risk_score,
@@ -513,6 +558,120 @@ async def list_findings(
         outcomes = await _scan_outcomes(db, scan_run_ids, [f.id for f in page_out])
         page_out = [f.model_copy(update={"scan_outcome": outcomes.get(f.id)}) for f in page_out]
     return paginate(page_out, total, page, page_size)
+
+
+# Rows loaded to build groups. Far above any real engagement; a hit is reported
+# (truncated=true) rather than silently producing partial counts.
+GROUP_ROW_CAP = 25_000
+_JSON_FALSEY = {"", "false", "0", "null", "none"}
+
+
+def _json_flag(value: str | None) -> bool:
+    return value is not None and value.strip().lower() not in _JSON_FALSEY
+
+
+def _json_port(value: str | None) -> int | None:
+    try:
+        return normalize_port(value)
+    except ValueError:
+        return None
+
+
+def _group_select() -> Select:
+    """Lean columns for grouping — never the whole evidence blob."""
+    ev = Finding.evidence
+    return select(
+        Finding.id, Finding.engagement_id, Finding.title, Finding.severity, Finding.status,
+        Finding.cvss_score, Finding.risk_score, Finding.epss_score, Finding.cve_ids,
+        Finding.asset_id, Finding.exploit_validated, Finding.first_seen,
+        Finding.last_seen, Finding.created_at,
+        ev["rule_id"].astext.label("rule_id"),
+        ev["port"].astext.label("port"),
+        ev["cpe"].astext.label("cpe"),
+        ev["kev"].astext.label("kev"),
+        ev["enrichment"]["kev"].astext.label("enrichment_kev"),
+    )
+
+
+def _group_row(r, identity: dict) -> GroupRow:
+    ip, host = identity.get(r.asset_id, (None, None))
+    cvss = float(r.cvss_score) if r.cvss_score is not None else None
+    # Same effective risk the list's "risk" sort uses: risk_score, else CVSS×100.
+    # Decimal arithmetic, as in SQL, so 9.8 × 100 is exactly 980.
+    risk = float(r.risk_score if r.risk_score is not None
+                 else r.cvss_score * 100 if r.cvss_score is not None else 0)
+    return GroupRow(
+        id=r.id, engagement_id=r.engagement_id, title=r.title,
+        severity=getattr(r.severity, "value", r.severity),
+        status=getattr(r.status, "value", r.status),
+        cvss=cvss, risk=risk,
+        epss=float(r.epss_score) if r.epss_score is not None else None,
+        cve_ids=tuple(r.cve_ids or ()),
+        asset_id=r.asset_id, asset_ip=ip, asset_hostname=host,
+        port=_json_port(r.port), rule_id=r.rule_id or None, cpe=r.cpe or None,
+        kev=_json_flag(r.kev) or _json_flag(r.enrichment_kev),
+        exploit_validated=bool(r.exploit_validated),
+        first_seen=r.first_seen or r.created_at, last_seen=r.last_seen,
+    )
+
+
+@router.get("/groups", response_model=FindingGroupPage,
+            summary="Similar findings grouped into one-fix units, in priority order")
+async def list_finding_groups(
+    db: DB,
+    current_user: AuthUser,
+    severity: FindingSeverity | None = Query(default=None),
+    status_filter: FindingStatus | None = Query(default=None, alias="status"),
+    active_only: bool = Query(default=False),
+    asset_id: uuid.UUID | None = Query(default=None),
+    asset_ip: str | None = Query(default=None, min_length=1, max_length=45),
+    mitre_technique: str | None = Query(default=None),
+    engagement_id: uuid.UUID | None = Query(default=None),
+    agent_id: uuid.UUID | None = Query(default=None),
+    scan: str | None = Query(default=None, min_length=1, max_length=64),
+    search: str | None = Query(default=None, min_length=1, max_length=200),
+    detection_status: DetectionStatus | None = Query(default=None),
+    exploit_validated: bool | None = Query(default=None),
+    verification_state: str | None = Query(default=None),
+    needs_review: bool | None = Query(default=None),
+    sla_breached: bool = Query(default=False),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+):
+    """The same filter set as ``GET /findings`` (shared ``_filtered_findings``),
+    grouped by services/finding_groups. Each group carries its members, so the
+    UI can expand a group and open any finding without a second filter."""
+    q, _scan_runs = await _filtered_findings(
+        _group_select(), db, current_user,
+        severity=severity, status_filter=status_filter, active_only=active_only,
+        asset_id=asset_id, asset_ip=asset_ip, mitre_technique=mitre_technique,
+        engagement_id=engagement_id, agent_id=agent_id, scan=scan, search=search,
+        detection_status=detection_status, exploit_validated=exploit_validated,
+        verification_state=verification_state, needs_review=needs_review,
+        sla_breached=sla_breached,
+    )
+    if q is None:
+        return FindingGroupPage(items=[], total=0, page=page, page_size=page_size,
+                                pages=1, finding_total=0)
+    rows = (await db.execute(q.order_by(Finding.id).limit(GROUP_ROW_CAP + 1))).all()
+    truncated = len(rows) > GROUP_ROW_CAP
+    rows = rows[:GROUP_ROW_CAP]
+
+    asset_ids = {r.asset_id for r in rows if r.asset_id is not None}
+    identity: dict = {}
+    if asset_ids:
+        identity = {aid: (ip, host) for aid, ip, host in (await db.execute(
+            select(Asset.id, Asset.ip_address, Asset.hostname).where(Asset.id.in_(asset_ids))
+        )).all()}
+
+    groups = build_groups(_group_row(r, identity) for r in rows)
+    total = len(groups)
+    pages = max(1, -(-total // page_size))
+    start = (page - 1) * page_size
+    return FindingGroupPage(
+        items=groups[start:start + page_size], total=total, page=page,
+        page_size=page_size, pages=pages, finding_total=len(rows), truncated=truncated,
+    )
 
 
 @router.get("/assets", response_model=list[FindingAssetOption],

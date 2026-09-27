@@ -16,7 +16,9 @@ import { AlertTriangle, BadgeCheck, Boxes, RefreshCw, RotateCcw, Sparkles } from
 import { SkeletonRows } from "../states/DataState";
 import { ExtensionPanel } from "./ExtensionPanel";
 import { PlanView } from "./PlanView";
-import { createRemediationApi, fmtIst, type PlanOs, type RemediationSurface } from "../../lib/remediation";
+import {
+  createRemediationApi, fmtIst, platformChipLabel, platformExplanation, type PlanOs, type RemediationSurface,
+} from "../../lib/remediation";
 
 const OS_OPTIONS: Array<[PlanOs, string]> = [
   ["windows", "Windows"], ["linux", "Linux"], ["macos", "macOS"], ["generic", "Network appliance / generic"],
@@ -91,7 +93,7 @@ export function FindingRemediation({
             <span>Platform</span>
             <select value={current} onChange={(e) => setOs(e.target.value as PlanOs)}>
               {OS_OPTIONS.map(([v, l]) => (
-                <option key={v} value={v}>{l}{data.plan.os_auto === v ? " (detected)" : ""}</option>
+                <option key={v} value={v}>{l}{data.platform?.requested === "auto" && data.platform.os === v ? " (detected)" : ""}</option>
               ))}
             </select>
           </label>
@@ -108,6 +110,14 @@ export function FindingRemediation({
           )}
         </div>
       </div>
+      {data.platform && (
+        <p className="rm-muted" title={data.platform.evidence ?? undefined}>
+          <strong>{platformChipLabel(data.platform)}</strong> — {platformExplanation(data.platform)}
+          {data.platform.source === "requested" && (
+            <> <button type="button" className="findings-inline-action" onClick={() => setOs(undefined)}>Use detected platform</button></>
+          )}
+        </p>
+      )}
       {(refine.error || publish.error) && <p className="rm-error">{errorText(refine.error || publish.error)}</p>}
       {refine.isPending && <p className="rm-muted">Refining through the AI gateway — the knowledge-base plan stays the floor; only the changes are shown as AI-refined.</p>}
 

@@ -66,7 +66,18 @@ export interface RemediationPlan {
   model?: string | null;
 }
 
+/** Which platform the plan targets and why (backend services/remediation_os). */
+export interface RemediationPlatform {
+  requested: string;
+  os: PlanOs;
+  family: string | null;
+  source: "manual_tag" | "asset_os" | "service_banner" | "requested" | "no_asset" | "not_detected" | string;
+  evidence: string | null;
+  confidence: number | null;
+}
+
 export interface PlanResponse {
+  platform?: RemediationPlatform | null;
   finding_id: string;
   os: PlanOs;
   source: string;
@@ -260,4 +271,31 @@ export function factText(ctx: Record<string, FactValue> | null | undefined, key:
 export function minExtensionDate(currentDue: string | null | undefined, now: number = Date.now()): string {
   const base = currentDue ? Math.max(new Date(currentDue).getTime(), now) : now;
   return new Date(base + 86_400_000).toISOString().slice(0, 10);
+}
+
+const REM_OS_LABEL: Record<string, string> = {
+  windows: "Windows", linux: "Linux", macos: "macOS", generic: "Platform-neutral",
+};
+const REM_FAMILY_LABEL: Record<string, string> = { bsd: "BSD", network_os: "Network device OS" };
+
+/** One sentence on where the plan's platform came from. */
+export function platformExplanation(p: RemediationPlatform | null | undefined): string {
+  if (!p) return "Platform-neutral steps.";
+  switch (p.source) {
+    case "manual_tag": return "Set by an operator tag on the asset.";
+    case "asset_os": return `Detected from the asset's OS${p.evidence ? ` (${p.evidence.replace(/^os:\s*/, "")})` : ""}.`;
+    case "service_banner": return `Detected from a service banner${p.evidence ? ` — ${p.evidence}` : ""}.`;
+    case "requested": return "Chosen manually for this view.";
+    case "no_asset": return "This finding is not linked to an asset, so vendor-neutral steps are shown.";
+    default: return "The asset's operating system has not been detected, so vendor-neutral steps are shown.";
+  }
+}
+
+export function platformChipLabel(p: RemediationPlatform | null | undefined): string {
+  if (!p) return REM_OS_LABEL.generic;
+  if (p.os === "generic" && p.family && REM_FAMILY_LABEL[p.family]) {
+    return `${REM_FAMILY_LABEL[p.family]} — vendor-neutral steps`;
+  }
+  if (p.os === "generic" && (p.source === "not_detected" || p.source === "no_asset")) return "Platform not detected";
+  return REM_OS_LABEL[p.os] ?? p.os;
 }

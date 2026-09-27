@@ -12,6 +12,7 @@ import {
 import { PageShell } from "../../components/PageShell";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { fetchJson } from "../../lib/fetcher";
+import { copyText } from "../../lib/clipboard";
 import {
   createSettingsWorkspaceApi,
   type SettingsWorkspaceSurface,
@@ -197,13 +198,18 @@ function inlineInput(style?: React.CSSProperties): React.CSSProperties {
 }
 
 function CopyBtn({ text }: { text: string }) {
-  const [done, setDone] = useState(false);
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const label = state === "copied" ? "Copied" : state === "failed" ? "Copy failed — select and copy manually" : "Copy";
   return (
     <button
-      onClick={() => void navigator.clipboard.writeText(text).then(() => { setDone(true); setTimeout(() => setDone(false), 1400); })}
-      title="Copy" className="settings-copy-btn"
+      type="button"
+      onClick={() => void copyText(text).then((ok) => {
+        setState(ok ? "copied" : "failed");
+        setTimeout(() => setState("idle"), 1600);
+      })}
+      title={label} aria-label={label} className="settings-copy-btn"
     >
-      {done ? <CheckCircle2 size={12} /> : <Copy size={12} />}
+      {state === "copied" ? <CheckCircle2 size={12} /> : state === "failed" ? <TriangleAlert size={12} /> : <Copy size={12} />}
     </button>
   );
 }

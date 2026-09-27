@@ -85,3 +85,22 @@ class TestPortalRemediation:
             asyncio.run(portal.portal_finding_remediation(
                 uuid.uuid4(), _client(), db, os="linux"))
         assert e.value.status_code == 404
+
+
+class TestPortalAutoPlatform:
+    def test_auto_resolves_from_asset(self):
+        f = _finding()
+        f.asset_id = uuid.uuid4()
+        f.engagement_id = uuid.uuid4()
+        asset = SimpleNamespace(id=f.asset_id, ip_address="10.0.0.2", hostname=None, fqdn=None,
+                                os="Ubuntu 22.04", asset_type="server", device_role=None,
+                                role_detail=None, role_confidence=None, tags=None)
+        a = MagicMock(); a.scalar_one_or_none = MagicMock(return_value=asset)
+        s = MagicMock(); s.scalars.return_value.all.return_value = []
+        fr = MagicMock(); fr.scalar_one_or_none = MagicMock(return_value=f)
+        none = MagicMock(); none.scalar_one_or_none = MagicMock(return_value=None)
+        # finding, asset, services, cached plan, engagement + tenant SLA (due date)
+        db = MagicMock(); db.execute = AsyncMock(side_effect=[fr, a, s, none, none, none])
+        res = asyncio.run(portal.portal_finding_remediation(uuid.uuid4(), _client(), db, os="auto"))
+        assert res["os"] == "linux"
+        assert res["platform"]["source"] == "asset_os"

@@ -63,8 +63,7 @@ from app.remediation import service as remediation_service
 from app.schemas.extension import ExtensionCreate
 from app.remediation.bundles import bundle_link
 from app.remediation.loader import load_finding_context, resolve_due
-from app.remediation.plan import build_plan, os_for_context
-from app.services.remediation_kb import os_key
+from app.remediation.plan import build_plan
 from app.services.scope_targets import validate_targets_in_scope
 from app.routers.agents import EnqueueJobRequest
 
@@ -227,7 +226,8 @@ async def reopen_portal_finding(
             summary="Structured remediation plan (KB always; AI only once reviewed)")
 async def portal_finding_remediation(
     finding_id: uuid.UUID, user: ClientUser, db: DB,
-    os: str | None = Query(default=None),
+    os: str = Query(default="auto",
+                    description="auto = detect from the asset; or linux|windows|macos|generic"),
 ):
     """Customer-facing structured remediation, replacing the plain `remediation`
     string. The contextual KB plan is served ALWAYS; a stored AI plan reaches the
@@ -240,8 +240,10 @@ async def portal_finding_remediation(
     if finding is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
 
+    from app.routers.remediation import platform_for, platform_out
     ctx = await load_finding_context(db, finding)
-    key = os_key(os) if os else os_for_context(ctx)
+    platform = platform_for(os, ctx)
+    key = platform.os
     row = (await db.execute(
         select(RemediationPlan).where(
             RemediationPlan.finding_id == finding_id,
@@ -259,7 +261,7 @@ async def portal_finding_remediation(
         plan = build_plan(finding, ctx, os=key, due=due)
         source = plan["source"]
     return {"finding_id": str(finding_id), "os": key, "source": source, "plan": plan,
-            "bundle": bundle_link(finding, ctx)}
+            "bundle": bundle_link(finding, ctx), "platform": platform_out(os, platform)}
 
 
 async def _client_engagement(user, db) -> Engagement:
@@ -739,6 +741,53 @@ async def portal_workspace_findings(
         needs_review=needs_review,
         sla_breached=sla_breached,
         sort=sort,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/workspace/findings/groups",
+            summary="Similar findings grouped into one-fix units for the assigned engagement")
+async def portal_workspace_finding_groups(
+    user: ClientUser,
+    db: DB,
+    severity: FindingSeverity | None = Query(default=None),
+    status_filter: FindingStatus | None = Query(default=None, alias="status"),
+    active_only: bool = Query(default=False),
+    asset_id: uuid.UUID | None = Query(default=None),
+    asset_ip: str | None = Query(default=None, min_length=1, max_length=45),
+    agent_id: uuid.UUID | None = Query(default=None),
+    mitre_technique: str | None = Query(default=None),
+    scan: str | None = Query(default=None, min_length=1, max_length=64),
+    search: str | None = Query(default=None, min_length=1, max_length=200),
+    detection_status: DetectionStatus | None = Query(default=None),
+    exploit_validated: bool | None = Query(default=None),
+    verification_state: str | None = Query(default=None),
+    needs_review: bool | None = Query(default=None),
+    sla_breached: bool = Query(default=False),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+):
+    # Pinned to the client's own engagement, exactly like the list delegate.
+    from app.routers.findings import list_finding_groups as operator_groups
+    return await operator_groups(
+        db=db,
+        current_user=user,
+        severity=severity,
+        status_filter=status_filter,
+        active_only=active_only,
+        asset_id=asset_id,
+        asset_ip=asset_ip,
+        mitre_technique=mitre_technique,
+        engagement_id=assert_client(user),
+        agent_id=agent_id,
+        scan=scan,
+        search=search,
+        detection_status=detection_status,
+        exploit_validated=exploit_validated,
+        verification_state=verification_state,
+        needs_review=needs_review,
+        sla_breached=sla_breached,
         page=page,
         page_size=page_size,
     )

@@ -33,7 +33,7 @@ async def load_finding_context(db: AsyncSession, finding: Any) -> RemediationCon
             services = list((await db.execute(
                 select(Service).where(Service.asset_id == asset_id)
             )).scalars().all())
-    return build_context(finding, asset, pick_service(finding, services))
+    return build_context(finding, asset, pick_service(finding, services), services)
 
 
 async def resolve_due(db: AsyncSession, finding: Any, tenant_id: uuid.UUID) -> dict:
@@ -65,6 +65,6 @@ async def load_engagement_items(db: AsyncSession, engagement_id: uuid.UUID,
     items: list[tuple[Any, RemediationContext]] = []
     for f in findings:
         asset = assets.get(f.asset_id)
-        service = pick_service(f, by_asset.get(f.asset_id, []))
-        items.append((f, build_context(f, asset, service)))
+        svcs = by_asset.get(f.asset_id, [])
+        items.append((f, build_context(f, asset, pick_service(f, svcs), svcs)))
     return items

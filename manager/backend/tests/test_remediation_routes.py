@@ -305,3 +305,65 @@ class TestContextualGet:
                       _scalar_result(None)])
         res = asyncio.run(remediation.get_remediation(f.id, db, _operator(), os="linux"))
         assert res["os"] == "linux"
+
+# ── platform auto-detection (os=auto, the default) ────────────────────────────
+
+def _asset_result(asset):
+    r = MagicMock()
+    r.scalar_one_or_none = MagicMock(return_value=asset)
+    return r
+
+
+def _services_result(services):
+    r = MagicMock()
+    r.scalars.return_value.all.return_value = services
+    return r
+
+
+def _windows_asset():
+    return SimpleNamespace(id=uuid.uuid4(), ip_address="10.0.0.9", hostname="dc01", fqdn=None,
+                           os="Windows Server 2019", asset_type="server", device_role=None,
+                           role_detail=None, role_confidence=None, tags=None)
+
+
+class TestAutoPlatform:
+    def test_get_auto_resolves_asset_os(self):
+        f = _finding("SMB signing not required")
+        f.asset_id = uuid.uuid4()
+        db = _FakeDB([_scalar_result(f), _asset_result(_windows_asset()),
+                      _services_result([]), _scalar_result(None)])
+        res = asyncio.run(remediation.get_remediation(uuid.uuid4(), db, _operator(), os="auto"))
+        RemediationPlanOut.model_validate(res)
+        assert res["os"] == "windows"
+        assert res["platform"]["requested"] == "auto"
+        assert res["platform"]["source"] == "asset_os"
+        assert res["platform"]["family"] == "windows"
+        # Windows commands are served, not the generic fallback.
+        step_cmds = " ".join(c for s in res["plan"]["steps"] for c in s["commands_for_os"])
+        assert "Set-SmbServerConfiguration -RequireSecuritySignature" in step_cmds
+
+    def test_get_auto_without_asset_is_generic_not_detected(self):
+        f = _finding()
+        f.asset_id = None
+        db = _FakeDB([_scalar_result(f), _scalar_result(None)])
+        res = asyncio.run(remediation.get_remediation(uuid.uuid4(), db, _operator(), os="auto"))
+        assert res["os"] == "generic"
+        assert res["platform"]["source"] == "no_asset"
+        assert db.executed == 4          # finding, cache, engagement + tenant SLA (due date)
+
+    def test_explicit_os_is_an_override(self):
+        f = _finding()
+        f.asset_id = uuid.uuid4()
+        db = _FakeDB([_scalar_result(f), _scalar_result(None)])
+        res = asyncio.run(remediation.get_remediation(uuid.uuid4(), db, _operator(), os="macos"))
+        assert res["os"] == "macos"
+        assert res["platform"] == {"requested": "macos", "os": "macos", "family": None,
+                                   "source": "requested", "evidence": None, "confidence": None}
+        mac = " ".join(c for s in res["plan"]["steps"] for c in s["commands_for_os"])
+        assert "Set-ItemProperty" not in mac     # the override really selects other commands
+
+    def test_default_query_value_is_auto(self):
+        import inspect
+        for fn in (remediation.get_remediation, remediation.generate_remediation,
+                   remediation.refine_remediation, remediation.publish_remediation):
+            assert inspect.signature(fn).parameters["os"].default.default == "auto"

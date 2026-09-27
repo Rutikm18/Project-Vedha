@@ -438,3 +438,122 @@ export interface FindingAssetOption {
 export function mapAsset(a: ApiFindingAsset): FindingAssetOption {
   return { assetId: a.asset_id, ip: a.ip_address, hostname: a.hostname ?? null, findings: a.findings };
 }
+
+// ─── Grouped findings (GET /findings/groups) ─────────────────────────────────
+// Similar findings collapsed into one-fix units. The operator BFF maps on the
+// server; the portal maps the raw backend payload in the browser — same adapter.
+
+export type FindingGroupKind = "rule" | "product" | "title";
+
+interface ApiFindingGroupMember {
+  id: string; title: string; severity: string; status: string;
+  asset_ip?: string | null; asset_hostname?: string | null; port?: number | null;
+  cve_ids?: string[] | null; risk?: number | null; cvss?: number | null;
+}
+
+interface ApiFindingGroup {
+  engagement_id: string;
+  key: string; kind: FindingGroupKind; label: string; severity: string;
+  severity_counts?: Record<string, number>; status_counts?: Record<string, number>;
+  finding_count: number; open_count: number; host_count: number; unassigned_count?: number;
+  hosts?: { ip?: string | null; hostname?: string | null }[];
+  ports?: number[]; port_count?: number; cve_count?: number; cves?: string[];
+  max_risk?: number | null; max_cvss?: number | null; max_epss?: number | null;
+  kev?: boolean; exploit_validated?: boolean;
+  first_seen?: string | null; last_seen?: string | null;
+  top_finding_id: string;
+  members?: ApiFindingGroupMember[]; members_truncated?: boolean;
+}
+
+export interface ApiFindingGroupPage {
+  items?: ApiFindingGroup[]; total?: number; page?: number; page_size?: number;
+  pages?: number; finding_total?: number; truncated?: boolean;
+}
+
+export interface FindingGroupMember {
+  id: string; title: string; severity: string; status: string;
+  assetIp: string | null; assetHostname: string | null; port: number | null;
+  cveIds: string[]; risk: number; cvss: number | null;
+}
+
+export interface FindingGroup {
+  /** Groups never span engagements; `key` is the identity within one. */
+  engagementId: string;
+  key: string; kind: FindingGroupKind; label: string; severity: string;
+  severityCounts: Record<string, number>; statusCounts: Record<string, number>;
+  findingCount: number; openCount: number; hostCount: number; unassignedCount: number;
+  hosts: { ip: string | null; hostname: string | null }[];
+  ports: number[]; portCount: number; cveCount: number; cves: string[];
+  maxRisk: number; maxCvss: number | null; maxEpss: number | null;
+  kev: boolean; exploitValidated: boolean;
+  firstSeen: string | null; lastSeen: string | null;
+  topFindingId: string;
+  members: FindingGroupMember[]; membersTruncated: boolean;
+}
+
+export interface FindingGroupPage {
+  items: FindingGroup[]; total: number; page: number; pageSize: number;
+  pages: number; findingTotal: number; truncated: boolean;
+}
+
+const sevUi = (s: string | undefined) => SEV_TO_UI[String(s ?? "").toLowerCase()] ?? "INFO";
+
+export function mapFindingGroup(g: ApiFindingGroup): FindingGroup {
+  const severityCounts: Record<string, number> = {};
+  for (const [k, v] of Object.entries(g.severity_counts ?? {})) severityCounts[sevUi(k)] = v;
+  const statusCounts: Record<string, number> = {};
+  for (const [k, v] of Object.entries(g.status_counts ?? {})) {
+    statusCounts[FIND_STATUS_TO_UI[k] ?? k.toUpperCase()] = v;
+  }
+  return {
+    engagementId: g.engagement_id,
+    key: g.key,
+    kind: g.kind,
+    label: g.label,
+    severity: sevUi(g.severity),
+    severityCounts,
+    statusCounts,
+    findingCount: g.finding_count ?? 0,
+    openCount: g.open_count ?? 0,
+    hostCount: g.host_count ?? 0,
+    unassignedCount: g.unassigned_count ?? 0,
+    hosts: (g.hosts ?? []).map((h) => ({ ip: h.ip ?? null, hostname: h.hostname ?? null })),
+    ports: g.ports ?? [],
+    portCount: g.port_count ?? (g.ports ?? []).length,
+    cveCount: g.cve_count ?? 0,
+    cves: g.cves ?? [],
+    maxRisk: g.max_risk ?? 0,
+    maxCvss: g.max_cvss ?? null,
+    maxEpss: g.max_epss ?? null,
+    kev: Boolean(g.kev),
+    exploitValidated: Boolean(g.exploit_validated),
+    firstSeen: g.first_seen ?? null,
+    lastSeen: g.last_seen ?? null,
+    topFindingId: g.top_finding_id,
+    members: (g.members ?? []).map((m) => ({
+      id: m.id,
+      title: m.title,
+      severity: sevUi(m.severity),
+      status: FIND_STATUS_TO_UI[String(m.status ?? "open").toLowerCase()] ?? "OPEN",
+      assetIp: m.asset_ip ?? null,
+      assetHostname: m.asset_hostname ?? null,
+      port: m.port ?? null,
+      cveIds: m.cve_ids ?? [],
+      risk: m.risk ?? 0,
+      cvss: m.cvss ?? null,
+    })),
+    membersTruncated: Boolean(g.members_truncated),
+  };
+}
+
+export function mapFindingGroupPage(p: ApiFindingGroupPage): FindingGroupPage {
+  return {
+    items: (p.items ?? []).map(mapFindingGroup),
+    total: p.total ?? 0,
+    page: p.page ?? 1,
+    pageSize: p.page_size ?? 20,
+    pages: p.pages ?? 1,
+    findingTotal: p.finding_total ?? 0,
+    truncated: Boolean(p.truncated),
+  };
+}

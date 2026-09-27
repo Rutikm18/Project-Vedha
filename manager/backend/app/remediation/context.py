@@ -72,6 +72,9 @@ class RemediationContext:
     fixed_version: str | None
     scanner: str | None
     category: str | None
+    # services/remediation_os.PlatformResolution — the ONE platform detector
+    # (manual os_family tag > asset OS > service banner). None without an asset.
+    platform: Any = None
 
     def text(self, name: str) -> str:
         """The fact's value as display text, or the literal "not recorded"."""
@@ -197,7 +200,13 @@ def _float(v: Any) -> float | None:
 
 # ── public ───────────────────────────────────────────────────────────────────
 
-def build_context(finding: Any, asset: Any | None = None, service: Any | None = None) -> RemediationContext:
+_KB_FAMILY = {"windows": "windows", "linux": "linux", "macos": "macos"}
+
+
+def build_context(finding: Any, asset: Any | None = None, service: Any | None = None,
+                  services: Iterable[Any] | None = None) -> RemediationContext:
+    """``services`` = all of the asset's services (for platform detection from
+    banners); ``service`` = the one on the finding's port."""
     ev = _evidence(finding)
     nested = ev.get("evidence") if isinstance(ev.get("evidence"), dict) else {}
 
@@ -229,6 +238,18 @@ def build_context(finding: Any, asset: Any | None = None, service: Any | None = 
     environment = getattr(asset, "environment", None) if asset is not None else None
     kev = bool(ev.get("kev") or ev.get("kev_listed") or ev.get("actively_exploited"))
 
+    platform = None
+    family = "unknown"
+    if asset is not None:
+        from app.services.remediation_os import resolve_platform
+        pool = list(services) if services is not None else ([service] if service is not None else [])
+        platform = resolve_platform(asset, pool)
+        if platform.source not in ("not_detected", "no_asset"):
+            family = _KB_FAMILY.get(platform.os) or "network"   # bsd / network_os → vendor-neutral
+    if family == "unknown":
+        # Fallback only when the resolver found nothing: device type (printer, iot…).
+        family = os_family(None, None, asset_type)
+
     cves = tuple(str(c).upper() for c in (getattr(finding, "cve_ids", None) or []) if c)
     if not cves and ev.get("cve_id"):
         cves = (str(ev["cve_id"]).upper(),)
@@ -242,9 +263,7 @@ def build_context(finding: Any, asset: Any | None = None, service: Any | None = 
         fqdn=_fact(getattr(asset, "fqdn", None) if asset is not None else None, "asset_record"),
         os=_fact(getattr(asset, "os", None) if asset is not None else None, "asset_record"),
         os_version=_fact(getattr(asset, "os_version", None) if asset is not None else None, "asset_record"),
-        os_family=os_family(getattr(asset, "os", None) if asset is not None else None,
-                            getattr(asset, "os_version", None) if asset is not None else None,
-                            asset_type),
+        os_family=family,
         port=_fact(port_value, "scan"),
         protocol=_fact((getattr(service, "protocol", None) if service is not None else None)
                        or ev.get("proto"), "scan"),
@@ -269,4 +288,5 @@ def build_context(finding: Any, asset: Any | None = None, service: Any | None = 
         fixed_version=str(ev["fixed_version"]) if ev.get("fixed_version") else None,
         scanner=str(ev.get("scanner")) if ev.get("scanner") else None,
         category=str(nested.get("category") or ev.get("category") or "") or None,
+        platform=platform,
     )
