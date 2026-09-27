@@ -6,7 +6,11 @@ from pydantic import ValidationError
 
 from app.config import Settings
 from app.schemas.ai import AiGenerateRequest
-from app.services.llm import AiRuntimeError, ManagerLlmService
+from app.services.llm import AiRuntimeError, ManagerLlmService, _MAX_TRANSIENT_RETRIES
+
+
+async def _noop_sleep(_seconds):  # skip backoff delay in retry tests
+    return None
 from app.services.llm_http_client import AsyncLlmHttpClient
 
 
@@ -210,6 +214,157 @@ async def test_manager_rejects_ollama_cloud_proxy_as_local():
         await service.generate(request)
 
     assert exc_info.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_billing_400_surfaces_actionable_credit_message():
+    # Anthropic returns credit exhaustion as a 400 invalid_request_error; the old
+    # handler flattened it to "anthropic returned HTTP 400". Operators must see it.
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json={"type": "error", "error": {
+            "type": "invalid_request_error",
+            "message": "Your credit balance is too low to access the Anthropic API. "
+                       "Please go to Plans & Billing to upgrade or purchase credits.",
+        }})
+
+    service = ManagerLlmService(
+        Settings(llm_provider="anthropic", anthropic_api_key="configured"),
+        transport=httpx.MockTransport(handler),
+    )
+    request = AiGenerateRequest(task="advisor", messages=[{"role": "user", "content": "Explain CVE-2021-44228"}])
+
+    with pytest.raises(AiRuntimeError, match="out of credits or quota") as exc_info:
+        await service.generate(request)
+
+    assert exc_info.value.status_code == 402
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_surfaces_retry_message():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, json={"type": "error", "error": {
+            "type": "rate_limit_error", "message": "Number of requests has exceeded your rate limit.",
+        }})
+
+    service = ManagerLlmService(
+        Settings(llm_provider="anthropic", anthropic_api_key="configured"),
+        transport=httpx.MockTransport(handler),
+    )
+    request = AiGenerateRequest(task="advisor", messages=[{"role": "user", "content": "Hello"}])
+
+    with pytest.raises(AiRuntimeError, match="rate limited") as exc_info:
+        await service.generate(request)
+
+    assert exc_info.value.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_openai_insufficient_quota_429_is_billing_not_rate_limit():
+    # OpenAI encodes credit exhaustion as 429 insufficient_quota; it must classify
+    # as billing (add credits), not a transient rate limit.
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, json={"error": {
+            "type": "insufficient_quota",
+            "message": "You exceeded your current quota, please check your plan and billing details.",
+        }})
+
+    service = ManagerLlmService(
+        Settings(llm_provider="openai", openai_api_key="configured"),
+        transport=httpx.MockTransport(handler),
+    )
+    request = AiGenerateRequest(task="advisor", messages=[{"role": "user", "content": "Hello"}])
+
+    with pytest.raises(AiRuntimeError, match="out of credits or quota") as exc_info:
+        await service.generate(request)
+
+    assert exc_info.value.status_code == 402
+
+
+@pytest.mark.asyncio
+async def test_auth_401_surfaces_key_message_without_leaking_body():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"type": "error", "error": {
+            "type": "authentication_error", "message": "invalid x-api-key",
+        }})
+
+    service = ManagerLlmService(
+        Settings(llm_provider="anthropic", anthropic_api_key="configured"),
+        transport=httpx.MockTransport(handler),
+    )
+    request = AiGenerateRequest(task="advisor", messages=[{"role": "user", "content": "Hello"}])
+
+    with pytest.raises(AiRuntimeError, match="rejected the configured API key") as exc_info:
+        await service.generate(request)
+
+    assert exc_info.value.status_code == 502
+
+
+@pytest.mark.asyncio
+async def test_transient_503_retries_then_succeeds(monkeypatch):
+    # Free tiers intermittently 503 under load; a couple of retries should recover.
+    monkeypatch.setattr("app.services.llm.asyncio.sleep", _noop_sleep)
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] < 3:
+            return httpx.Response(503, json={"error": {"message": "The model is overloaded."}})
+        return httpx.Response(200, json={"content": [{"type": "text", "text": "OK result"}]})
+
+    service = ManagerLlmService(
+        Settings(llm_provider="anthropic", anthropic_api_key="configured"),
+        transport=httpx.MockTransport(handler),
+    )
+    request = AiGenerateRequest(task="advisor", messages=[{"role": "user", "content": "Hi"}])
+
+    text, _ = await service.generate(request)
+    assert "OK result" in text
+    assert calls["n"] == 3  # 2 transient failures, succeeded on the 3rd
+
+
+@pytest.mark.asyncio
+async def test_persistent_503_surfaces_after_bounded_retries(monkeypatch):
+    monkeypatch.setattr("app.services.llm.asyncio.sleep", _noop_sleep)
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(503, json={"error": {"message": "Service temporarily unavailable."}})
+
+    service = ManagerLlmService(
+        Settings(llm_provider="anthropic", anthropic_api_key="configured"),
+        transport=httpx.MockTransport(handler),
+    )
+    request = AiGenerateRequest(task="advisor", messages=[{"role": "user", "content": "Hi"}])
+
+    with pytest.raises(AiRuntimeError) as exc_info:
+        await service.generate(request)
+
+    assert exc_info.value.status_code == 502
+    assert calls["n"] == _MAX_TRANSIENT_RETRIES + 1  # bounded: no infinite retry
+
+
+@pytest.mark.asyncio
+async def test_billing_400_is_not_retried(monkeypatch):
+    # A 4xx (billing/auth/malformed) must surface immediately — never retried.
+    monkeypatch.setattr("app.services.llm.asyncio.sleep", _noop_sleep)
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(400, json={"error": {"message": "Your credit balance is too low."}})
+
+    service = ManagerLlmService(
+        Settings(llm_provider="anthropic", anthropic_api_key="configured", llm_effort=""),
+        transport=httpx.MockTransport(handler),
+    )
+    request = AiGenerateRequest(task="advisor", messages=[{"role": "user", "content": "Hi"}])
+
+    with pytest.raises(AiRuntimeError, match="out of credits") as exc_info:
+        await service.generate(request)
+
+    assert exc_info.value.status_code == 402
+    assert calls["n"] == 1  # no retry on billing 400
 
 
 def test_ai_request_rejects_unsafe_model_and_oversized_context():

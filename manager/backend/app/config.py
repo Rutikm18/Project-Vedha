@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     # Get a key at aistudio.google.com/apikey (standard keys look like `AIza...`).
     # Set LLM_PROVIDER=gemini to make it the default; otherwise it is selectable.
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-flash-latest"  # 'gemini-2.0-flash' was retired (404); the -latest alias self-heals
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     llm_max_tokens: int = 4096
     # Reasoning depth = token spend. Report writing is straightforward generation, so

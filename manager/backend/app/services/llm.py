@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import re
@@ -16,6 +17,13 @@ from app.services.llm_http_client import AsyncLlmHttpClient
 logger = structlog.get_logger()
 
 _ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+
+# Transient provider failures worth a short retry: overload/service-unavailable
+# statuses (NOT 4xx billing/auth/malformed, NOT 429 which surfaces its own
+# guidance). Free tiers (e.g. Gemini flash) intermittently 503 under load; a
+# couple of short backoff retries turn a user-visible failure into a brief pause.
+_TRANSIENT_STATUS = frozenset({502, 503, 529})
+_MAX_TRANSIENT_RETRIES = 2  # 3 attempts total
 
 
 def _provider_error_reason(response: httpx.Response) -> str:
@@ -38,6 +46,48 @@ def _provider_error_reason(response: httpx.Response) -> str:
         if data.get("message"):
             return str(data["message"])[:300]
     return str(data)[:300]
+
+
+# Signals in a provider's error body that identify an account/configuration state
+# the OPERATOR can act on. Anthropic returns credit exhaustion as a 400
+# invalid_request_error whose message says "credit balance is too low" — which the
+# old handler flattened to an opaque "anthropic returned HTTP 400", indistinguishable
+# from a malformed request. These curated categories describe the deployment's OWN
+# provider-account state (no secrets, no tenant data, no prompt content), so the
+# resulting message is safe to surface on both the operator console and the portal.
+_BILLING_SIGNALS = (
+    "credit balance", "purchase credit", "billing", "insufficient_quota",
+    "insufficient quota", "insufficient funds", "payment required", "out of credit",
+)
+_AUTH_SIGNALS = (
+    "invalid x-api-key", "authentication_error", "invalid api key", "invalid_api_key",
+    "could not authenticate", "unauthorized",
+)
+
+
+def _provider_error_message(provider: str, status_code: int, reason: str) -> tuple[str, int]:
+    """Map a provider HTTP error to a SAFE, actionable (message, status).
+
+    Billing/quota/auth failures get a clear message telling the operator what to do;
+    everything else stays the generic status-code message so raw provider internals
+    (model quirks, request-shape details) never reach a response. The full provider
+    reason is always logged separately for operator diagnosis."""
+    low = reason.lower()
+    # Billing must be checked BEFORE the rate-limit status: OpenAI encodes quota
+    # exhaustion as `429 insufficient_quota`, so a status-first check would mislabel
+    # "out of credits" as a transient "rate limited" and send the operator chasing
+    # the wrong fix.
+    if any(sig in low for sig in _BILLING_SIGNALS):
+        return (
+            f"{provider} rejected the request: the account is out of credits or quota. "
+            f"Add credits with {provider}, or set LLM_PROVIDER to a funded provider.",
+            402,
+        )
+    if status_code == 429 or "rate limit" in low or "rate_limit" in low or "overloaded" in low:
+        return f"{provider} is rate limited — retry in a moment.", 429
+    if status_code in (401, 403) or any(sig in low for sig in _AUTH_SIGNALS):
+        return f"{provider} rejected the configured API key — verify the key for this provider.", 502
+    return f"{provider} returned HTTP {status_code}", 502
 
 
 def _is_local_ollama_model(model: str) -> bool:
@@ -680,36 +730,66 @@ class ManagerLlmService:
             messages = [{**m, "content": pseudo.pseudonymize(m["content"])} for m in messages]
             logger.info("ai.gateway.pseudonymized", provider=runtime.provider,
                         profile=self.settings.deployment_profile, replaced=pseudo.replaced)
-        try:
+        async def _call_provider() -> str:
             if runtime.provider == "ollama":
-                content = await self._ollama(runtime, system, messages, max_tokens, json_mode)
-            elif runtime.provider == "local_openai":
-                content = await self._local_openai(runtime, system, messages, max_tokens, json_mode)
-            elif runtime.provider == "openrouter":
-                content = await self._openrouter(runtime, system, messages, max_tokens, json_mode)
-            elif runtime.provider == "openai":
-                content = await self._openai(runtime, system, messages, max_tokens, json_mode)
-            elif runtime.provider == "gemini":
-                content = await self._gemini(runtime, system, messages, max_tokens, json_mode)
-            else:
-                content = await self._anthropic(runtime, system, messages, max_tokens, json_mode)
+                return await self._ollama(runtime, system, messages, max_tokens, json_mode)
+            if runtime.provider == "local_openai":
+                return await self._local_openai(runtime, system, messages, max_tokens, json_mode)
+            if runtime.provider == "openrouter":
+                return await self._openrouter(runtime, system, messages, max_tokens, json_mode)
+            if runtime.provider == "openai":
+                return await self._openai(runtime, system, messages, max_tokens, json_mode)
+            if runtime.provider == "gemini":
+                return await self._gemini(runtime, system, messages, max_tokens, json_mode)
+            return await self._anthropic(runtime, system, messages, max_tokens, json_mode)
+
+        try:
+            # Retry only transient overloads (502/503/529) and transient network
+            # errors — a bounded loop with exponential backoff. Everything else
+            # (4xx billing/auth/malformed, 429, timeouts) falls straight through to
+            # the handlers below and surfaces on the first attempt.
+            content = ""
+            for attempt in range(_MAX_TRANSIENT_RETRIES + 1):
+                try:
+                    content = await _call_provider()
+                    break
+                except httpx.HTTPStatusError as exc:
+                    transient = exc.response.status_code in _TRANSIENT_STATUS
+                    if not (transient and attempt < _MAX_TRANSIENT_RETRIES):
+                        raise
+                    logger.info(
+                        "ai.provider.transient_retry", provider=runtime.provider,
+                        model=runtime.model, status_code=exc.response.status_code,
+                        attempt=attempt + 1,
+                    )
+                    await asyncio.sleep(0.5 * (2 ** attempt))
+                except (httpx.ConnectError, httpx.ReadError, httpx.RemoteProtocolError):
+                    if attempt >= _MAX_TRANSIENT_RETRIES:
+                        raise
+                    logger.info(
+                        "ai.provider.transient_retry", provider=runtime.provider,
+                        model=runtime.model, status_code="network", attempt=attempt + 1,
+                    )
+                    await asyncio.sleep(0.5 * (2 ** attempt))
         except AiRuntimeError:
             raise
         except httpx.TimeoutException as exc:
             raise AiRuntimeError(f"{runtime.provider} timed out", 504) from exc
         except httpx.HTTPStatusError as exc:
-            status = 429 if exc.response.status_code == 429 else 502
             # Log the provider's own error message so a 400/422 is diagnosable
-            # instead of an opaque status code. Kept out of the raised message so
-            # provider internals never reach a customer-facing response.
+            # instead of an opaque status code. The raised message is curated to a
+            # safe, actionable category (billing/quota/auth) for the known cases and
+            # stays generic otherwise, so provider internals never reach a response.
+            reason = _provider_error_reason(exc.response)
             logger.warning(
                 "ai.provider.http_error",
                 provider=runtime.provider,
                 model=runtime.model,
                 status_code=exc.response.status_code,
-                reason=_provider_error_reason(exc.response),
+                reason=reason,
             )
-            raise AiRuntimeError(f"{runtime.provider} returned HTTP {exc.response.status_code}", status) from exc
+            message, status = _provider_error_message(runtime.provider, exc.response.status_code, reason)
+            raise AiRuntimeError(message, status) from exc
         except UnicodeEncodeError as exc:
             # A non-ASCII API key (or header value) can't be encoded into the HTTP
             # request. The _usable_key guard normally stops this at selection time;
