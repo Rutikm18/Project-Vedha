@@ -1,11 +1,25 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Resolve .env to ABSOLUTE paths so the backend loads the same secrets no matter
+# which working directory it is started from. A relative ".env" only resolved when
+# the process happened to start at the repo root, so a plain `uvicorn app.main:app`
+# run from manager/backend/ silently loaded ZERO keys — leaving /ai/status with no
+# provider and disabling the AI Brain composer.
+# app/config.py → app → backend → manager → repo root.
+_BACKEND_DIR = Path(__file__).resolve().parent.parent          # manager/backend
+_REPO_ROOT = _BACKEND_DIR.parent.parent                        # repo root
+# Later files override earlier ones; a local manager/backend/.env wins over the
+# repo-root .env. In containers neither may exist and injected environment
+# variables take precedence regardless, so this is a safe no-op there.
+_ENV_FILES = (_REPO_ROOT / ".env", _BACKEND_DIR / ".env")
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ENV_FILES, env_file_encoding="utf-8", extra="ignore")
 
     # Database
     database_url: str = "postgresql+asyncpg://vapt:secret@localhost:5432/vapt_db"

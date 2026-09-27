@@ -120,9 +120,10 @@ export async function POST(req: Request) {
         context,
         provider: body.provider,
         model: body.model,
-        // The Manager prompt caps single-vulnerability briefs at 250 words.
-        // 500 tokens leaves enough room for headings without inviting sprawl.
-        max_tokens: 500,
+        // The Manager prompt structures single-vulnerability briefs to ~600 words.
+        // 1500 tokens leaves headroom for the full structured brief plus headings
+        // without truncating the remediation/hardening sections mid-answer.
+        max_tokens: 1500,
         // The Manager loads this engagement's sector/jurisdiction profile itself
         // (tenant-scoped) and answers as that sector's domain expert.
         engagement_id: body.engagementId || undefined,

@@ -57,7 +57,7 @@ interface Engagement {
 const STARTER_PROMPTS = [
   {
     title: "Analyze any CVE",
-    prompt: "Explain CVE-2021-44228 in 250 words or fewer: summary paragraph, key facts, impact bullets, recorded severity and score, verification, ordered remediation actions, OS-specific hardening, and evidence gaps.",
+    prompt: "Explain CVE-2021-44228 in depth: summary paragraph, key facts, impact bullets, recorded severity and score, verification, ordered remediation actions, OS-specific hardening, and evidence gaps.",
   },
   {
     title: "Executive risk brief",
@@ -355,7 +355,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
               "Keeps recommendations defensive and non-destructive",
               "Never receives provider credentials from the browser",
               "Public CVE data is not treated as proof of client exposure",
-              "Single-vulnerability briefs are structured and capped at 250 words",
+              "Single-vulnerability briefs are structured and detailed (up to 600 words)",
             ].map((item) => <div key={item}><CheckCircle2 size={13} /><span>{item}</span></div>)}
           </section>
 

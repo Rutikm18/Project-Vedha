@@ -177,7 +177,7 @@ Use organization-specific claims only when supported by recorded tenant evidence
 Public CVE metadata describes a vulnerability; it never proves the organization is affected.
 Separate confirmed facts from hypotheses and unknowns. Keep recommendations defensive and non-destructive."""
 
-_VULNERABILITY_BRIEF_CONTRACT = """When the request concerns one vulnerability or finding, keep the complete brief within 250 words and use these exact headings:
+_VULNERABILITY_BRIEF_CONTRACT = """When the request concerns one vulnerability or finding, write a thorough brief of up to 600 words and use these exact headings:
 ## What is the vulnerability?
 Write one plain-language paragraph.
 ## Key facts
@@ -203,7 +203,7 @@ For a full explanation follow the vulnerability brief contract below.
 Do not provide exploit instructions.""",
     "advisor": """Help the authorized team understand exposure, attack paths, validation evidence, detection gaps, and remediation priorities.
 When the question concerns one CVE or finding, follow the vulnerability brief contract below.
-Otherwise, answer as a concise decision brief and state evidence limitations.
+Otherwise, answer as a thorough, well-structured decision brief: use short headings and bullets, walk through exposure, attack paths, validation evidence, detection gaps, and prioritized remediation, and state evidence limitations.
 When lifecycle facts are supplied (finding age, reopened count, regression, resolution state), factor the material ones into urgency and validation advice — a regressed/reopened finding means an earlier fix did not hold. Use only the supplied values; never invent dates or counts.""",
     "advisor_flow": """Produce a decision-grade vulnerability brief as a SINGLE JSON object and nothing else (no markdown, no code fences, no commentary). Schema:
 {"whatIs": string, "impact": string[], "verify": {"command": string|null, "statement": string, "caveat": string|null}, "patch": {"available": "yes"|"no"|"unknown", "summary": string}, "patchSteps": [{"command": string|null, "description": string, "grounded": boolean}], "improvements": string[]}

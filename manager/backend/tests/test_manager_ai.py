@@ -259,7 +259,7 @@ def test_advisor_prompt_enforces_the_vulnerability_brief_contract():
 
     system = service._build_system(request)
 
-    assert "250 words" in system
+    assert "600 words" in system
     assert "## Key facts" in system
     assert "impact bullets" in system.lower()
     assert "## Severity and score" in system
