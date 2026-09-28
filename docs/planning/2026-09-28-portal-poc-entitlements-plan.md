@@ -140,6 +140,41 @@ Order of effectiveness:
 **Recommendation:** (1) + (2) + (4) now. They are cheap and close real bypasses.
 Then (5). Offer (8) only when a customer's contract needs it.
 
-## Status
+## Status (2026-09-28)
 
-- [ ] P0-1 · [ ] P0-2 · [ ] P0-3 · [ ] P1-1 · [ ] P1-2 · [ ] P2 · [ ] P3
+| # | Item | State |
+|---|---|---|
+| P0-1 | Portal aggressive block (both paths, uc codes, tuning strip) | ✅ done, live-verified |
+| P0-2 | Entitlements + quota/expiry enforcement, refunds (migration 0049) | ✅ done, live-verified on Postgres |
+| P0-3 | Operator plan API (GET/PUT/adjust) | ✅ done |
+| P1-1 | Customers page: Engagement → Plan → Login; per-customer Plan panel | ✅ done |
+| P1-2 | Portal plan strip, scanner gating, Settings → Plan & licence | ✅ done |
+| P2 | Sealed-build licence bypass closed (compiled-in constants) | ✅ done, verified on the real Nuitka binary |
+| P3 | Portal bug sweep | ✅ first pass done (see below) |
+
+### Bugs found and fixed during the sweep
+1. Migration 0049 failed on a **fresh install** (uncommitted enum literal in one transaction).
+2. One-click **access link never signed in** (fragment erased → remount cancelled the login);
+   then a failed link showed **no error**; a link opened on an already-open login page did nothing.
+3. **API outage rendered as "0 open findings"**: React Query pauses retries in an unfocused
+   window and paused queries reported not-loading. Affects operator and portal.
+4. Page **header tools painted over the title** (Findings, even at 1440 px); sign-out could scroll away.
+5. "The last scan came back clean" shown when **no scan had ever run**.
+6. Header showed "Customer" instead of the signed-in email (new `GET /portal/me`).
+7. Engagement "Time remaining" showed **NaNd** with no end date.
+8. Stale licence key shown on a POC; deep-only use case refused as "unknown use case".
+
+### Still open (not fixed in this pass)
+- The sweep ran on an empty tenant: data-dependent views (findings detail, reports with
+  content, remediation bundles) need a pass on a tenant with a completed scan.
+- Fleet page shows customers the operator's "Set MANAGER_PUBLIC_URL" warning when unset.
+- `install.sh` still defaults to the plaintext image, and `Dockerfile.sealed` still calls itself
+  a non-shipping artifact. Promoting the sealed image to the customer default is a release
+  decision (it now passes parity plus the bypass check).
+- Footer clock is UTC while the project renders IST; footer ENGINE/API/DB dots are static.
+
+### Research: verified facts (not assumptions)
+- Customers **today receive the plaintext Python image** (`install.sh:206` → `vedha-agent:local`).
+- Before this branch, `docker run -e LICENSE_ENFORCED=false -e HW_BIND_FINGERPRINT=` disabled both
+  gates on the sealed binary, and a customer-supplied `PROBE_LICENSE_PUBKEY` accepted a
+  self-signed licence. Both are now refused by the compiled binary (tested).
