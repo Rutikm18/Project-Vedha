@@ -11,6 +11,7 @@ from dataclasses import dataclass, replace
 import httpx
 import structlog
 
+from app.ai.answer_store import AnswerStore, StoredAnswer
 from app.ai.failures import (
     AUTH_RECHECK_S,
     AUTH_SIGNALS,
@@ -485,6 +486,7 @@ class ManagerLlmService:
         self._kv = kv or default_kv()
         self.health = ProviderHealth(self._kv)
         self.spend = SpendMeter(self._kv, self.settings)
+        self.answers = AnswerStore(self._kv, self.settings.ai_answer_cache_ttl_seconds)
 
     def _sovereign(self) -> bool:
         return (self.settings.deployment_profile or "").strip().lower() == "sovereign"
@@ -986,6 +988,15 @@ class ManagerLlmService:
         json_mode: bool, candidates: list[Runtime],
     ) -> tuple[str, Runtime, bool]:
         policy = task_policy(task)
+        store_key = None
+        if (policy.cacheable and self.answers.ttl_s > 0
+                and len(messages) == 1 and messages[0].get("role") == "user"):
+            store_key = AnswerStore.key(task, system, messages, policy.lowest_tier)
+            hit = await self.answers.get(store_key)
+            if hit is not None and await self._stored_answer_is_best(hit, candidates):
+                logger.info("ai.answer_store.hit", task=task, provider=hit.provider, tier=hit.tier)
+                served = Runtime(hit.provider, hit.model, hit.privacy, hit.tier or None)
+                return hit.text, served, hit.provider != candidates[0].provider
         loop = asyncio.get_running_loop()
         deadline = loop.time() + policy.deadline_s
         last: AiRuntimeError | None = None
@@ -1024,6 +1035,9 @@ class ManagerLlmService:
                 elapsed = loop.time() - started
                 await self._after_success(runtime, meta)
                 self._log_attempt(task, runtime, index, "served", elapsed, None)
+                if store_key is not None:
+                    await self.answers.put(store_key, StoredAnswer(
+                        text, runtime.provider, runtime.model, runtime.privacy, runtime.tier or ""))
                 return text, runtime, index > 0
             finally:
                 _REPLY_META.reset(token)
@@ -1033,6 +1047,19 @@ class ManagerLlmService:
             self._log_attempt(task, runtime, index, "failed", loop.time() - started,
                               failure.kind if failure else str(last))
         raise last or AiRuntimeError("AI deadline exceeded before any provider answered", 504)
+
+    async def _stored_answer_is_best(self, hit: StoredAnswer, candidates: list[Runtime]) -> bool:
+        """Upgrade on read: an answer a lower tier wrote while premium was down is
+        reused only while every premium candidate is still unavailable."""
+        if hit.tier == PREMIUM:
+            return True
+        for candidate in candidates:
+            if candidate.tier != PREMIUM:
+                continue
+            state = await self.health.state(candidate.provider)
+            if ProviderHealth.allows(state) and not await self.spend.over_cap(candidate.provider):
+                return False
+        return True
 
     async def _attempt(self, runtime: Runtime, system: str, messages: list[dict[str, str]],
                        max_tokens: int, json_mode: bool) -> str:

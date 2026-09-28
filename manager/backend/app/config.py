@@ -62,10 +62,11 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     # Manager-owned AI runtime. The dashboard never receives provider credentials
-    # and never calls a model directly. Cloud-only by default: an empty provider
-    # auto-detects a configured cloud key (openai → anthropic → gemini → openrouter)
-    # and fails closed if none is set. "ollama" is an explicit local-dev opt-in and
-    # is never selected automatically or used as an implicit fallback.
+    # and never calls a model directly. Cloud-only by default: every configured cloud
+    # key joins an automatic premium-first chain (anthropic → openai → gemini →
+    # groq → openrouter) and the manager fails closed if none is set. A pinned
+    # LLM_PROVIDER is tried first. "ollama" is an explicit local-dev opt-in and is
+    # never selected automatically or used as an implicit fallback.
     llm_provider: str = ""
     # Ordered, automatic fallback chain (app/ai/routing.py), e.g.
     # "anthropic,openai,gemini,groq,openrouter". Empty = that premium-first default
@@ -125,6 +126,9 @@ class Settings(BaseSettings):
     # Extra model prices (USD per 1M tokens, input:output), e.g. "gpt-4.1=2:8".
     # claude-sonnet-4-6 is built in; unpriced models are not metered.
     ai_model_prices: str = ""
+    # Reuse window for answers to byte-identical one-shot requests (briefs,
+    # refinement, compliance, report sections). 0 disables reuse.
+    ai_answer_cache_ttl_seconds: int = 604800
     llm_max_tokens: int = 4096
     # Reasoning depth = token spend. Report writing is straightforward generation, so
     # "low" minimizes thinking-token cost on thinking-capable models (Sonnet 4.6,
