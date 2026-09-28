@@ -112,7 +112,11 @@ class ScanRequestCreate(BaseModel):
     # Specific hosts / sub-ranges to scan. Each MUST be inside the engagement
     # scope (re-validated server-side). None/empty → the whole engagement scope.
     targets: list[str] | None = None
-    intensity: Literal["light", "standard", "deep"] | None = None
+    # Portal intensities: stealth (= light) or normal (= standard). "deep" /
+    # "aggressive" still parse so the route can refuse them with a clear 403
+    # instead of a generic schema error.
+    intensity: Literal["light", "standard", "stealth", "normal",
+                       "deep", "aggressive"] | None = None
     note: str | None = None
 
 

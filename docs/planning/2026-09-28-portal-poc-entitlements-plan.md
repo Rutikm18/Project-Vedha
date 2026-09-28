@@ -1,0 +1,145 @@
+# Customer portal — POC / licence entitlements, scan policy, agent IP protection
+
+Date: 2026-09-28 · Branch: `feat/portal-poc-entitlements`
+
+## What was asked
+
+1. Portal offers **stealth and normal** scanning only; **aggressive is blocked**.
+2. A **scan quota** per customer, set by the operator; the customer dashboard shows
+   how many scans they have left.
+3. An operator **configuration section** per customer: **POC** (with a POC duration)
+   or **full use** (with a licence term). The login and credentials are issued
+   and shown once the configuration exists.
+4. Research on **protecting manager + agent code** when the agent is installed in a
+   customer environment.
+5. Fix bugs across the customer portal and improve its design.
+
+## Ground truth (what the code does today)
+
+| Fact | Where |
+|---|---|
+| Portal has TWO scan paths: request→operator approval, and direct launch | `portal.py::create_scan_request`, `portal.py::portal_workspace_scan_launch` |
+| "stealth/normal/aggressive" are UI aliases for probe presets `light/standard/deep` | `agents.py::_INTENSITY_ALIASES` |
+| A job with no intensity gets the **use-case default** — `uc_full_port_audit` and `uc_deep_port_sweep` default to `deep` | `agents._USE_CASES`, `probe/agent/use_cases.py` |
+| Probe honours raw tuning overrides `rate/concurrency/timeout/retries/disc_timeout/max_host_seconds` in params — an "aggressive" scan can be rebuilt without saying `deep` | `probe/agent/engine.py::_tuning_from_params` |
+| `require_client` re-reads the user from the DB on **every** portal request | `auth/portal_scope.py` — the natural place for an expiry gate |
+| Sealed probe: license pubkey, HW fingerprint and `LICENSE_ENFORCED` are **runtime env vars** | `probe/agent/license.py`, `probe/Dockerfile.sealed` |
+| Default installer runs `vedha-agent:local` (the plaintext image), not the sealed one | `probe/install.sh:206` |
+
+## Decisions (defaults I chose — change any of them)
+
+- **Where the entitlement lives:** a new `customer_entitlements` table, 1:1 with the
+  engagement (the portal login is already 1:1 with the engagement).
+- **Plan types:** `poc` (start + duration in days → `expires_at`) and `licensed`
+  (licence term start/end + a generated licence key `VDH-XXXX-XXXX-XXXX-XXXX`).
+- **What counts as a scan:** one portal scan launch, or one scan request. It is
+  **refunded** if the operator rejects the request, or if the customer cancels the
+  job before the probe picks it up. Operator-launched scans never count.
+- **Race safety:** quota is consumed under `SELECT … FOR UPDATE` on the entitlement row,
+  so two parallel launches cannot both take the last scan.
+- **On expiry:** the portal becomes **read-only** (findings, reports and remediation stay
+  visible; every scan path returns 403 with the reason). The operator can still
+  disable the login entirely (that already exists). Read-only, not locked out, so
+  the customer can see *why* and the POC findings keep selling.
+- **No entitlement configured** → the portal cannot scan at all ("ask your security
+  team to activate your plan"). Existing customers without a row: the migration
+  creates a `licensed`, unlimited, non-expiring row so nothing breaks on deploy.
+- **Aggressive block is server-side and unconditional for the portal**, not just a UI
+  hide: effective intensity (explicit, else the use-case default) must be
+  `light` or `standard`; `deep` → 403. Raw tuning overrides are stripped from portal
+  jobs. The two deep-only use cases are removed from the portal catalogue.
+
+## Plan — priority ordered
+
+### P0-1 · Portal scan policy: block aggressive (backend)  ✅ first
+- `services/portal_scan_policy.py` (pure, unit-tested): `PORTAL_ALLOWED_INTENSITIES`,
+  `effective_intensity()`, `assert_portal_intensity()`, `strip_tuning_overrides()`.
+- Apply in `create_scan_request` and `portal_workspace_scan_launch`; filter
+  `deep`-default use cases out of both portal catalogues.
+- Schema: `ScanRequestCreate.intensity` → `light|standard|stealth|normal`.
+
+### P0-2 · Entitlements model + enforcement (backend)
+- Migration `0049_customer_entitlements` + backfill (unlimited licensed for existing).
+- `services/entitlements.py`: `status_of()` (active / expired / not_started /
+  unconfigured / exhausted), `consume_scan()` (row lock), `refund_scan()`.
+- Enforced on both portal scan paths; refund on reject and on pending-cancel.
+- Portal: `GET /portal/entitlement` (plan, scans used/left, days left, state).
+
+### P0-3 · Operator configuration API
+- `GET/PUT /engagements/{id}/entitlement` (admin/manager, audited): plan type, POC
+  days / licence dates, scan quota, notes; licence key generated on first `licensed`.
+- `POST …/entitlement/adjust` to add scans or extend days (audited delta).
+
+### P1-1 · Operator UI — Customers → Configuration
+- Per-customer panel on `/customers`: POC vs Full, duration / term, quota,
+  licence key, usage bar, then the credentials block (email, reveal, reset).
+
+### P1-2 · Portal UI
+- Dashboard usage card: "7 of 10 scans left · POC ends in 9 days".
+- Scan page: intensity dial shows Stealth + Normal only on the portal; launch
+  disabled with the reason when quota is exhausted or the plan has expired.
+- Global banner when expired / near expiry (≤ 3 days) / ≤ 1 scan left.
+
+### P2 · Agent code protection (research + the concrete fixes)
+See the section below. Fixes to implement: bake licence constants into the sealed
+build (close the env bypass), manager-side licence enforcement (agent cannot run
+jobs for an expired entitlement), installer defaults to the sealed image.
+
+### P3 · Portal bug sweep + design pass
+Live QA of every portal section on an isolated stack (`-p vedha-portalqa`), with a
+bug list and fixes, one section at a time: Overview → Scans → Findings →
+Remediation → Reports → Scope → Probe → Assistant → Settings.
+
+## Agent / code protection — research
+
+**Threat model.** The customer has root on the machine running the agent. Anything
+shipped there can eventually be read by a determined attacker; the goal is to make
+copying/reusing it **expensive, detectable and useless without your server**.
+Order of effectiveness:
+
+1. **Don't ship the valuable parts (strongest, already mostly true).** CVE
+   matching, posture rules, correlation, risk scoring, AI and reports run on the
+   manager. The agent only collects facts. Keep it that way: any new "smart"
+   logic goes manager-side. A stolen agent with no manager is a port scanner.
+2. **Server-side entitlement is the real licence.** A licence file checked only on
+   the customer's box can be defeated by setting the clock back or patching the
+   binary. The manager is authoritative: an expired or disabled entitlement means the
+   manager dispatches no jobs and accepts no facts from that agent. (P0-2 plus the
+   P2 hook on job dispatch and ingest.)
+3. **Native compilation (have it).** Nuitka turns Python into C and then machine code:
+   no `.py` or `.pyc` in the image. The free edition leaves string constants readable;
+   **Nuitka Commercial** adds constant encryption and anti-debug. Cython is similar
+   but covers less. PyArmor is weaker (bytecode obfuscation plus a runtime that decrypts
+   into memory) and is not recommended over Nuitka.
+4. **Close the gaps in today's sealed build:**
+   - `LICENSE_ENFORCED`, `PROBE_LICENSE_PUBKEY`, `HW_BIND_FINGERPRINT` are read from
+     env at runtime → `docker run -e LICENSE_ENFORCED=false …` or a
+     self-generated key pair **bypasses the licence entirely**. Fix: generate an
+     `agent/_sealed_consts.py` inside `Dockerfile.sealed` before Nuitka compiles,
+     so the values are compiled-in constants and env is ignored when `SEALED=True`.
+   - `install.sh` defaults to the plaintext image. Default customer installs to the
+     sealed image; keep plaintext only for the lab.
+   - Expiry uses the local clock. Combine it with (2): the manager checks the time.
+5. **Image supply chain.** Sign images with **cosign** and verify the signature in
+   `install.sh` (the installer already pins a tar SHA-256; a signature proves who
+   built it). Distribute from a private registry with per-customer pull tokens
+   that you can revoke.
+6. **Encrypted images** (ocicrypt / `ctr` encrypted layers) protect the image in
+   transit and at rest, but the runtime must decrypt it to run it, so they add little
+   against someone with root. Low priority.
+7. **Runtime hardening that also protects IP:** read-only root FS, `cap_drop` all except
+   NET_RAW, no shell in the image (distroless), no debug tools, `no-new-privileges`,
+   seccomp profile. This leaves an intruder with fewer tools to dump the process.
+8. **Hardware roots of trust (enterprise tier):** TPM-sealed secrets or remote
+   attestation (TPM quote, or a confidential VM such as SEV-SNP/TDX) before the
+   manager issues a token. Strong but heavy; offer it as an option for BFSI customers.
+9. **Legal and detection.** EULA/licence terms, per-customer watermark in the
+   binary (a build ID tied to the customer), and heartbeat telemetry so a copied probe
+   shows up as a second agent with the same build ID.
+
+**Recommendation:** (1) + (2) + (4) now. They are cheap and close real bypasses.
+Then (5). Offer (8) only when a customer's contract needs it.
+
+## Status
+
+- [ ] P0-1 · [ ] P0-2 · [ ] P0-3 · [ ] P1-1 · [ ] P1-2 · [ ] P2 · [ ] P3

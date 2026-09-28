@@ -310,13 +310,13 @@ class TestCreateScanRequest:
         db = _db_for_create(eng, pending_count=0)
         out = asyncio.run(portal.create_scan_request(
             ScanRequestCreate(scan_type="vuln_scan", targets=["10.0.0.5"],
-                              intensity="deep", note="please rescan"), user, db))
+                              intensity="normal", note="please rescan"), user, db))
         assert out.status == "pending"
         sr = _added(db, ScanRequest)
         assert sr is not None and sr.scan_type == "vuln_scan"
         # target normalized to a /32 and persisted; intensity carried through
         assert sr.targets == ["10.0.0.5/32"]
-        assert sr.intensity == "deep"
+        assert sr.intensity == "standard"      # UI alias stored as the probe preset
         assert _added(db, AuditLog) is not None          # client action audited
 
     def test_whole_scope_when_no_targets(self):
@@ -363,6 +363,24 @@ class TestCreateScanRequest:
             asyncio.run(portal.create_scan_request(
                 ScanRequestCreate(scan_type="vuln_scan"), user, db))
         assert e.value.status_code == 409
+
+    @pytest.mark.parametrize("intensity", ["deep", "aggressive"])
+    def test_aggressive_request_is_forbidden(self, intensity):
+        user = _client()
+        eng = _engagement(user.client_engagement_id)
+        db = _db_for_create(eng)
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(portal.create_scan_request(
+                ScanRequestCreate(scan_type="vuln_scan", intensity=intensity), user, db))
+        assert e.value.status_code == 403
+        assert _added(db, ScanRequest) is None            # nothing queued
+
+    def test_unset_intensity_is_materialized_as_normal(self):
+        user = _client()
+        db = _db_for_create(_engagement(user.client_engagement_id))
+        asyncio.run(portal.create_scan_request(
+            ScanRequestCreate(scan_type="discovery"), user, db))
+        assert _added(db, ScanRequest).intensity == "standard"
 
     def test_operator_cannot_create(self):
         with pytest.raises(HTTPException) as e:

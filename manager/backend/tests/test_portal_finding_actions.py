@@ -297,3 +297,58 @@ async def test_portal_enrollment_binds_device_to_session_engagement_scope(monkey
     assert site.authorized_cidrs == ["192.0.2.0/24"]
     assert site.excluded_cidrs == ["192.0.2.128/25"]
     assert provision.await_args.kwargs["probe_name"] == "edge-agent"
+
+
+from app.routers.agents import _USE_CASE_CODES
+
+_DEEP_SWEEP_UC = next(c for c, u in _USE_CASE_CODES.items() if u == "uc_deep_port_sweep")
+
+
+def _launch_fixture(monkeypatch):
+    engagement_id = uuid.uuid4()
+    user = _client(engagement_id)
+    engagement = SimpleNamespace(id=engagement_id, tenant_id=user.tenant_id,
+                                 assigned_agent_id=uuid.uuid4())
+    db = MagicMock()
+    db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: engagement))
+    db.flush = AsyncMock()
+    db.add = MagicMock()
+    from app.routers import agents as agent_routes
+    enqueue = AsyncMock(return_value={"job_id": str(uuid.uuid4()), "status": "pending"})
+    monkeypatch.setattr(agent_routes, "enqueue_agent_job", enqueue)
+    return user, db, enqueue
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kwargs", [
+    {"params": {"intensity": "aggressive"}},
+    {"intensity": "deep"},
+    {"intensity": 3},
+    {"use_case_id": "uc_full_port_audit"},
+    {"uc": _DEEP_SWEEP_UC},        # deep-only use case by numeric code
+])
+async def test_portal_scan_launch_refuses_aggressive(monkeypatch, kwargs):
+    from fastapi import HTTPException
+    user, db, enqueue = _launch_fixture(monkeypatch)
+    body = EnqueueJobRequest(engagement_id=uuid.uuid4(), **kwargs)
+    with pytest.raises(HTTPException) as e:
+        await portal_workspace_scan_launch(body=body, user=user, db=db, redis=MagicMock())
+    assert e.value.status_code == 403
+    enqueue.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_portal_scan_launch_strips_tuning_and_pins_a_safe_preset(monkeypatch):
+    user, db, enqueue = _launch_fixture(monkeypatch)
+    body = EnqueueJobRequest(
+        engagement_id=uuid.uuid4(), use_case_id="uc_network_va",
+        params={"intensity": "stealth", "rate": 9000, "concurrency": 2000,
+                "allow_degraded_kernel": True},
+        allow_fragile=True, fragile_override_reason="customer says it is fine really",
+    )
+    await portal_workspace_scan_launch(body=body, user=user, db=db, redis=MagicMock())
+    pinned = enqueue.await_args.kwargs["body"]
+    assert pinned.intensity == "light"
+    assert "rate" not in pinned.params and "concurrency" not in pinned.params
+    assert "allow_degraded_kernel" not in pinned.params
+    assert pinned.allow_fragile is False

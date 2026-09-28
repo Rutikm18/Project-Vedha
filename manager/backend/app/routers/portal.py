@@ -65,6 +65,7 @@ from app.remediation.bundles import bundle_link
 from app.remediation.loader import load_finding_context, resolve_due
 from app.remediation.plan import build_plan
 from app.services.scope_targets import validate_targets_in_scope
+from app.services import portal_scan_policy
 from app.routers.agents import EnqueueJobRequest
 from app.routers.findings import FindingFilters, finding_filters
 
@@ -105,7 +106,8 @@ def _portal_use_cases() -> dict:
     """The operator use-case catalog (single source of truth), curated to what a
     customer may request. Lazy import breaks the router import cycle."""
     from app.routers.agents import _USE_CASES
-    return {uid: _USE_CASES[uid] for uid in _PORTAL_USE_CASE_IDS if uid in _USE_CASES}
+    return {uid: _USE_CASES[uid] for uid in _PORTAL_USE_CASE_IDS
+            if uid in _USE_CASES and portal_scan_policy.portal_use_case_allowed(uid)}
 
 
 def _enum_val(v) -> str:
@@ -514,6 +516,10 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
         scan_type = body.scan_type
         use_case_id = None
 
+    # Stealth / normal only — aggressive is refused here, before anything queues.
+    intensity = portal_scan_policy.resolve_portal_intensity(
+        body.intensity, use_case_id=use_case_id)
+
     eng = (await db.execute(
         select(Engagement).where(Engagement.id == eng_id)
     )).scalar_one_or_none()
@@ -549,7 +555,7 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
     sr = ScanRequest(
         tenant_id=user.tenant_id, engagement_id=eng_id, requested_by=user.user_id,
         scan_type=scan_type, use_case_id=use_case_id, status=SR_PENDING, note=body.note,
-        targets=normalized_targets, intensity=body.intensity,
+        targets=normalized_targets, intensity=intensity,
     )
     db.add(sr)
     await db.flush()
@@ -560,7 +566,7 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
     record_audit(db, actor_id=user.user_id, action="scan_request.created",
                  engagement_id=eng_id, resource_type="scan_request", resource_id=sr.id,
                  detail={"scan_type": scan_type, "use_case_id": use_case_id,
-                         "targets": normalized_targets, "intensity": body.intensity})
+                         "targets": normalized_targets, "intensity": intensity})
     await db.flush()
     return ClientScanRequestOut(id=sr.id, scan_type=sr.scan_type, use_case_id=sr.use_case_id,
                                 status=sr.status, targets=sr.targets, intensity=sr.intensity,
@@ -973,7 +979,9 @@ async def portal_workspace_import_facts(
 async def portal_workspace_scan_use_cases(user: ClientUser):
     assert_client(user)
     from app.routers.agents import list_use_cases
-    return await list_use_cases(current_user=user)
+    # Aggressive-only capabilities are operator-only; don't offer them here.
+    return [uc for uc in await list_use_cases(current_user=user)
+            if portal_scan_policy.portal_use_case_allowed(uc["use_case_id"])]
 
 
 @router.get("/workspace/scan/jobs",
@@ -1017,7 +1025,18 @@ async def portal_workspace_scan_launch(
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "No vedha-agent is assigned to this engagement")
 
-    params = dict(body.params)
+    # Customers get a named preset (stealth / normal) and nothing else: no deep,
+    # and no raw rate/concurrency overrides that would rebuild one.
+    from app.routers.agents import _USE_CASE_CODES
+    params = portal_scan_policy.strip_tuning_overrides(body.params)
+    # Resolve the use case the same way enqueue does (id, else numeric code), so a
+    # deep-only capability can't slip in as `uc` without a use_case_id.
+    use_case_id = body.use_case_id or (
+        _USE_CASE_CODES.get(body.uc) if body.uc is not None else None)
+    intensity = portal_scan_policy.resolve_portal_intensity(
+        body.intensity if body.intensity is not None else params.get("intensity"),
+        use_case_id=use_case_id)
+    params.pop("intensity", None)
     requested_agent = params.get("preferred_agent_id")
     if requested_agent and str(requested_agent) != str(eng.assigned_agent_id):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -1025,7 +1044,8 @@ async def portal_workspace_scan_launch(
     # A crafted client cannot route work to another tenant probe. The session's
     # engagement binding is authoritative for both fields.
     params["preferred_agent_id"] = str(eng.assigned_agent_id)
-    pinned = body.model_copy(update={"engagement_id": eng_id, "params": params})
+    pinned = body.model_copy(update={"engagement_id": eng_id, "params": params,
+                                     "intensity": intensity, "allow_fragile": False})
 
     from app.routers.agents import enqueue_agent_job
     result = await enqueue_agent_job(
@@ -1035,7 +1055,8 @@ async def portal_workspace_scan_launch(
         db, actor_id=user.user_id, action="scan_job.created",
         engagement_id=eng_id, resource_type="scan_job",
         resource_id=uuid.UUID(result["job_id"]),
-        detail={"origin": "portal", "use_case_id": body.use_case_id},
+        detail={"origin": "portal", "use_case_id": body.use_case_id,
+                "intensity": intensity},
     )
     await db.flush()
     return result
