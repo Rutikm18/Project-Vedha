@@ -24,7 +24,7 @@ import uuid
 from typing import Annotated, Any
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,6 +35,7 @@ from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.remediation_plan import RemediationPlan
 from app.remediation import ai_refine
+from app.routers import findings as findings_router
 from app.remediation import service as remediation_service
 from app.remediation.bundles import bundle_link
 from app.remediation.loader import load_finding_context, resolve_due
@@ -420,8 +421,16 @@ async def export_remediation(
     engagement_id: uuid.UUID, db: DB,
     current_user: Annotated[AuthUser, _REMEDIATION_READER],
     format: str = Query(default="xlsx", pattern="^(xlsx|csv)$"),
+    sheet: str | None = Query(default=None, pattern="^(findings|by_fix|by_host)$",
+                              description="With format=csv: return this one sheet as a .csv, not the zip"),
+    filters: Annotated[findings_router.FindingFilters, Depends(findings_router.finding_filters)] = None,
 ):
+    """Accepts the findings-list filters (severity, status, search, asset_ip,
+    scan, …) so a filtered report exports exactly what it shows."""
     eng = await _tenant_engagement(db, engagement_id, current_user.tenant_id)
-    content, media, filename = await remediation_service.export_tracker(db, eng, current_user.tenant_id, format)
+    ids = await findings_router.filtered_finding_ids(
+        db, current_user, eng.id, filters or findings_router.FindingFilters())
+    content, media, filename = await remediation_service.export_tracker(
+        db, eng, current_user.tenant_id, format, sheet, ids)
     return Response(content=content, media_type=media,
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})

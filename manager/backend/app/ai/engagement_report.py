@@ -303,8 +303,8 @@ def _fallback_writeup(r: dict) -> dict:
 
 
 def _public_finding(r: dict, w: dict | None, full: bool) -> dict:
-    out = {k: v for k, v in r.items() if not k.startswith("_") and k not in ("domain", "status",
-                                                                             "remediation_hint")}
+    # "status" is published: the report shows each finding's lifecycle state.
+    out = {k: v for k, v in r.items() if not k.startswith("_") and k not in ("domain", "remediation_hint")}
     out["first_seen"] = r["first_seen"].isoformat() if isinstance(r["first_seen"], datetime) else r["first_seen"]
     out["due_at"] = r["due_at"].isoformat() if isinstance(r["due_at"], datetime) else r["due_at"]
     base = _fallback_writeup(r)

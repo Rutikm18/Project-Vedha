@@ -109,7 +109,19 @@
   color: var(--text-muted); font-size: 11px;
 }
 .vf-ref { font-family: var(--font-mono); font-weight: 700; color: var(--text-secondary); }
-.vf-status { text-transform: capitalize; }
+/* Lifecycle status tag — open / closed / risk accepted, coloured by state. */
+.vf-status-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: var(--radius-sm);
+  font: 750 10.5px var(--font-body); white-space: nowrap;
+  color: var(--vf-status);
+  background: color-mix(in srgb, var(--vf-status) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vf-status) 40%, transparent);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.vf-status-tag::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--vf-status);
+}
 .vf-chevron { color: var(--text-muted); margin-top: 3px; transition: transform var(--dur-fast) var(--ease-out); }
 .vf-card[data-open="true"] .vf-chevron { transform: rotate(180deg); }
 
@@ -556,8 +568,11 @@ a.vf-chip:hover { border-color: var(--border-strong); color: var(--text-primary)
   .vf-chevron, .vf-filters, .vf-blockers, .vf-notready,
   .vf-artifact-tools, .vf-icon-btn, .vf-text-btn { display: none !important; }
 
+  /* A fully-open card with evidence is often taller than a page; "avoid"
+     would strand a blank half-page before each one. Keep the header attached. */
   .vf-card {
-    break-inside: avoid;
+    break-inside: auto;
+    overflow: visible;
     border: 1px solid #cbd5e1;
     border-left: 3px solid var(--vf-sev);
     box-shadow: none;
@@ -566,6 +581,8 @@ a.vf-chip:hover { border-color: var(--border-strong); color: var(--text-primary)
   }
   .vf-block { break-inside: avoid; }
   .vf-head:hover { background: none; }
+  .vf-head { break-after: avoid; }
+  .vf-body[hidden] { display: block !important; }
 
   /* Terminal-dark output wastes toner and prints muddy. */
   .vf-artifact-out, .vf-repro {

@@ -2128,6 +2128,57 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   font: 600 11px var(--font-body); cursor: pointer;
 }
 .report-controls [role="tab"][data-active="true"] { border-color: var(--accent); background: var(--accent-ghost); color: var(--accent); }
+/* Report filters — same vocabulary as the Findings page, applied to the whole
+   report and its exports. */
+.report-filters {
+  display: grid; gap: 10px; padding: 12px; margin: -4px 0 12px;
+  border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--bg-panel);
+}
+.report-filters-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.report-filters label { display: grid; gap: 5px; min-width: 150px; flex: 1 1 150px; }
+.report-filters label.report-filters-search { flex: 2 1 240px; }
+.report-filters label > span, .report-filters legend {
+  font: 600 9px/1.2 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted);
+}
+.report-filters input, .report-filters select {
+  height: 34px; padding: 0 10px; border: 1px solid var(--border-default); border-radius: 7px;
+  background: var(--bg-surface); color: var(--text-primary); font: 500 12px var(--font-body); min-width: 0;
+}
+.report-filters fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 5px; }
+.report-filters-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.report-filters-chips button, .report-filters-toggle {
+  height: 30px; padding: 0 10px; border-radius: 99px; cursor: pointer;
+  border: 1px solid var(--border-subtle); background: transparent; color: var(--text-secondary);
+  font: 650 11px var(--font-body); display: inline-flex; align-items: center; gap: 5px;
+}
+.report-filters-chips button[aria-pressed="true"], .report-filters-toggle[aria-pressed="true"] {
+  border-color: var(--chip-tone, var(--accent)); color: var(--chip-tone, var(--accent));
+  background: color-mix(in srgb, var(--chip-tone, var(--accent)) 12%, transparent);
+}
+.report-filters-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 11.5px; color: var(--text-muted); }
+.report-filters-foot strong { color: var(--text-primary); }
+.report-filters-reset { margin-left: auto; border: 0; background: none; color: var(--accent); font: 600 11.5px var(--font-body); cursor: pointer; }
+.report-filters-reset:disabled { color: var(--text-faint); cursor: default; }
+
+/* Finding status breakdown — open / closed / risk accepted at a glance. */
+.report-status-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+.report-status-strip > span {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--st) 35%, transparent);
+  background: color-mix(in srgb, var(--st) 8%, transparent);
+  font-size: 11.5px; color: var(--text-secondary);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.report-status-strip b { font: 750 15px var(--font-mono); color: var(--st); }
+.report-status-pill {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+  font-size: 10px; font-weight: 750; letter-spacing: .02em; color: var(--st);
+  background: color-mix(in srgb, var(--st) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--st) 38%, transparent);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.report-status-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--st); }
+
 .report-document {
   max-width: 1120px; margin: 0 auto; border: 1px solid var(--border-default);
   border-radius: 12px; background: var(--bg-panel); overflow: hidden;
@@ -2180,6 +2231,31 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 .report-severity-key strong { color: var(--text-primary); }
 .report-priorities { display: grid; gap: 9px; margin: 0; padding-left: 25px; color: var(--text-primary); font-size: 12px; line-height: 1.55; }
 .report-priorities li::marker { color: var(--accent); font-family: var(--font-mono); font-weight: 700; }
+/* Report export menu (PDF / Word / Excel / CSV) */
+.report-export { position: relative; }
+.report-export > .btn { display: inline-flex; align-items: center; gap: 6px; }
+.report-export-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; min-width: 260px;
+  display: grid; padding: 4px; border-radius: 10px;
+  background: var(--bg-panel); border: 1px solid var(--border-default);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+}
+.report-export-menu button {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px 10px;
+  border: 0; border-radius: 7px; background: none; color: var(--text-primary);
+  text-align: left; cursor: pointer;
+}
+.report-export-menu button:hover, .report-export-menu button:focus-visible { background: var(--bg-hover); outline: none; }
+.report-export-menu button svg { flex-shrink: 0; margin-top: 1px; color: var(--text-muted); }
+.report-export-menu strong { display: block; font-size: 12.5px; font-weight: 650; }
+.report-export-menu small { display: block; font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.report-export-error {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; width: max-content; max-width: 340px;
+  display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 8px;
+  font-size: 11.5px; color: var(--text-primary);
+  background: var(--sev-critical-bg); border: 1px solid var(--sev-critical-color);
+}
+.report-export-error button { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 14px; line-height: 1; }
 .report-table-wrap { overflow-x: auto; }
 .report-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .report-table th { padding: 7px 9px; border-bottom: 1px solid var(--border-default); color: var(--text-muted); text-align: left; font: 600 9px var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
@@ -2239,7 +2315,10 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   .report-finding-stack dl { grid-template-columns: 1fr 1fr; }
 }
 @media print {
-  .report-document { max-width: none; border: 0; box-shadow: none; }
+  .report-document { max-width: none; border: 0; box-shadow: none; overflow: visible; border-radius: 0; }
+  .report-table-wrap { overflow: visible; }
+  .report-table thead { display: table-header-group; }   /* repeat header on each page */
+  .report-table tr { break-inside: avoid; }
   .report-section, .report-metric, .report-finding-stack > article { break-inside: avoid; }
   .report-cover { color-adjust: exact; print-color-adjust: exact; }
 }
@@ -2548,7 +2627,21 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 @media print {
   .no-print, aside, .vedha-page-header, .vedha-page-footer { display: none !important; }
   body { background: white !important; color: #0F172A !important; }
+
+  /* The app shell is a 100vh viewport with an inner scrolling <main>. Printed
+     as-is, the browser paginates only what fits in that viewport — the
+     "PDF has one page" bug. On paper every level must grow with its content. */
+  html, body,
+  .vedha-shell, .vedha-shell-body, .vedha-page-main {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .vedha-page-main, .vedha-page-container { padding: 0 !important; max-width: none !important; }
 }
+@page { margin: 14mm 12mm; }
 
 /* ════════════════════════════════════════════════════════════════════════════
    REPORTS v2 — professional VAPT report components
@@ -3268,7 +3361,12 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 /* ── Print: clean up interactive elements ───────────────── */
 @media print {
   .rpt-metrics { grid-template-columns: repeat(4, 1fr); }
-  .rpt-section { break-inside: avoid; }
+  /* Sections can run longer than a page (top-findings table, AI register).
+     "avoid" on those pushes each one to a fresh page and leaves half-empty
+     pages behind — keep the heading with its content instead. */
+  .rpt-section { break-inside: auto; }
+  .rpt-section-head { break-after: avoid; }
+  .rpt-metric { break-inside: avoid; }
   .fc-section--rem { break-inside: avoid; }
 }
 

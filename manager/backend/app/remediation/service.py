@@ -18,9 +18,15 @@ from app.services.deadlines import due_for, windows_for
 from app.services.project_time import project_now
 
 
-async def engagement_bundles(db: AsyncSession, engagement: Any, tenant_id: uuid.UUID) -> dict:
-    """``{"bundles": [...], "sla_source": str, "items": [(finding, ctx, due)]}``."""
+async def engagement_bundles(db: AsyncSession, engagement: Any, tenant_id: uuid.UUID,
+                             finding_ids: set[uuid.UUID] | None = None) -> dict:
+    """``{"bundles": [...], "sla_source": str, "items": [(finding, ctx, due)]}``.
+
+    ``finding_ids`` restricts everything — bundles, host rows, counts — to those
+    findings (a filtered report export). None means the whole engagement."""
     items = await load_engagement_items(db, engagement.id)
+    if finding_ids is not None:
+        items = [(f, ctx) for f, ctx in items if f.id in finding_ids]
     windows, source = await windows_for(db, tenant_id, engagement)
     triples = [(f, ctx, due_for(f, windows, source)) for f, ctx in items]
     bundles = build_bundles(triples, now=project_now())
@@ -54,23 +60,33 @@ def find_bundle(bundles: list[dict], fix_key: str) -> dict | None:
     return next((b for b in bundles if b["fix_key"] == fix_key), None)
 
 
-async def export_tracker(db: AsyncSession, engagement: Any, tenant_id: uuid.UUID, fmt: str) -> tuple[bytes, str, str]:
-    """(content, media_type, filename) for the XLSX/CSV remediation tracker."""
+async def export_tracker(db: AsyncSession, engagement: Any, tenant_id: uuid.UUID, fmt: str,
+                         sheet: str | None = None,
+                         finding_ids: set[uuid.UUID] | None = None) -> tuple[bytes, str, str]:
+    """(content, media_type, filename) for the XLSX/CSV remediation tracker.
+
+    ``sheet`` (a key of export.SHEET_KEYS) with fmt="csv" returns that one sheet
+    as a plain .csv instead of the three-sheet zip — the Reports page's
+    "CSV" download is the findings register, not an archive."""
     import re as _re
 
     from sqlalchemy import select
 
     from app.models.deadline_extension import DeadlineExtensionRequest
-    from app.remediation.export import build_rows, to_csv_zip, to_xlsx
+    from app.remediation.export import SHEET_KEYS, build_rows, to_csv, to_csv_zip, to_xlsx
     from app.services.project_time import project_file_stamp
 
-    data = await engagement_bundles(db, engagement, tenant_id)
+    data = await engagement_bundles(db, engagement, tenant_id, finding_ids)
     extensions = list((await db.execute(
         select(DeadlineExtensionRequest).where(DeadlineExtensionRequest.engagement_id == engagement.id)
     )).scalars().all())
     sheets = build_rows(data["bundles"], data["items"], extensions)
     slug = _re.sub(r"[^A-Za-z0-9]+", "-", str(getattr(engagement, "name", "engagement"))).strip("-")[:40] or "engagement"
     stem = f"vedha-remediation-{slug}-{project_file_stamp()}"
+    if fmt == "csv" and sheet in SHEET_KEYS:
+        kind = "findings" if sheet == "findings" else f"remediation-{sheet.replace('_', '-')}"
+        return (to_csv(sheets, SHEET_KEYS[sheet]), "text/csv; charset=utf-8",
+                f"vedha-{kind}-{slug}-{project_file_stamp()}.csv")
     if fmt == "csv":
         return to_csv_zip(sheets), "application/zip", f"{stem}.zip"
     return (to_xlsx(sheets, title=f"Remediation tracker — {getattr(engagement, 'name', '')}"),

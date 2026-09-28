@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import React, { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
+import { useQueries, useQuery, useMutation } from "@tanstack/react-query";
 import {
   AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2,
-  FileText, Flame, Globe, Lock, Minus, Printer, RefreshCw, ShieldAlert,
+  FileText, Flame, Globe, Lock, Minus, RefreshCw, ShieldAlert,
   ShieldCheck, Sparkles, Target, Zap,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
@@ -25,6 +25,15 @@ import {
 } from "../../lib/prompts/report";
 import { type ReportResult } from "../../lib/ai-engine";
 import { FindingsSection } from "../../components/report/FindingReport";
+import { ExportMenu, type ExportFormat } from "../../components/report/ExportMenu";
+import { downloadFile } from "../../lib/report/download";
+import { exportReportToWord, reportFilename } from "../../lib/report/export-word";
+import { usePrintMode } from "../../lib/print-mode";
+import {
+  DEFAULT_REPORT_FILTERS, REPORT_STATUS, REPORT_STATUSES, describeReportFilters, isReportFiltered,
+  reportFilterQuery, reportStatus, type ReportFilters,
+} from "../../lib/report/filters";
+import type { ScanOption } from "../../lib/adapters";
 import { applyBundles, toRawFinding } from "../../lib/report/adapt";
 import { DUE_SOURCE_LABEL, URGENCY_LABEL, createRemediationApi, fmtIst } from "../../lib/remediation";
 
@@ -83,14 +92,10 @@ function SevBadge({ sev }: { sev: Severity }) {
   );
 }
 
+// Lifecycle status in report language: Open / Closed · fixed / Risk accepted …
 function StatusPill({ status }: { status: string }) {
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", padding: "2px 8px",
-      borderRadius: 4, background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
-      color: "var(--text-muted)", fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
-    }}>{status.toUpperCase().replace(/_/g, " ")}</span>
-  );
+  const st = reportStatus(status);
+  return <span className="report-status-pill" style={{ "--st": st.tone } as React.CSSProperties}>{st.label}</span>;
 }
 
 function Metric({ label, value, note, tone = "var(--accent)" }: {
@@ -264,6 +269,7 @@ function ReportFindingCard({ f }: { f: ReportFinding }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 800, color: "var(--text-faint)" }}>{f.ref}</span>
         <SevBadge sev={sev} />
+        {f.status && <StatusPill status={f.status} />}
         <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 4, color: conf.color, background: `${conf.color}16`, border: `1px solid ${conf.color}33` }}>{conf.label.toUpperCase()}</span>
         <strong style={{ fontSize: 13.5, color: "var(--text-primary)", lineHeight: 1.35 }}>{f.title}</strong>
       </div>
@@ -509,12 +515,13 @@ function AiReportPanel({ eng, findings, surface }: { eng: Engagement; findings: 
                   <div className="report-table-wrap" style={{ marginTop: 12 }}>
                     <table className="report-table">
                       <caption style={{ textAlign: "left", fontSize: 11, color: "var(--text-muted)", paddingBottom: 8 }}>Remaining open findings.</caption>
-                      <thead><tr><th>Ref</th><th>Sev</th><th>Finding</th><th>Confidence</th><th className="num">Assets</th></tr></thead>
+                      <thead><tr><th>Ref</th><th>Sev</th><th>Status</th><th>Finding</th><th>Confidence</th><th className="num">Assets</th></tr></thead>
                       <tbody>
                         {rest.map(f => (
                           <tr key={f.ref}>
                             <td><span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>{f.ref}</span></td>
                             <td><SevBadge sev={toSeverity(f.severity)} /></td>
+                            <td>{f.status ? <StatusPill status={f.status} /> : "—"}</td>
                             <td><strong>{f.title}</strong></td>
                             <td>{(CONF_STYLE[f.confidence] ?? CONF_STYLE.potential).label}</td>
                             <td className="num">{f.affected_assets.length}</td>
@@ -602,7 +609,13 @@ function AiReportPanel({ eng, findings, surface }: { eng: Engagement; findings: 
 
 // ─── Tab: Executive ───────────────────────────────────────────────────────────
 
-function ExecTab({ eng, findings, summary, surface }: { eng: Engagement; findings: Finding[]; summary: FindingSummary; surface: ReportsWorkspaceSurface }) {
+interface StatusCount { key: string; label: string; tone: string; n: number | null }
+
+function ExecTab({ eng, findings, summary, surface, shownTotal, filtered, statusCounts }: {
+  eng: Engagement; findings: Finding[]; summary: FindingSummary; surface: ReportsWorkspaceSurface;
+  /** Findings matching the report filters (= summary.total when unfiltered). */
+  shownTotal: number; filtered: boolean; statusCounts: StatusCount[];
+}) {
   const crit = eng.findingsBySeverity.CRITICAL ?? 0;
   const high = eng.findingsBySeverity.HIGH ?? 0;
   const posture = crit > 0 ? "Critical risk — immediate action required"
@@ -641,7 +654,7 @@ function ExecTab({ eng, findings, summary, surface }: { eng: Engagement; finding
 
       {/* Metrics */}
       <div className="rpt-metrics">
-        <Metric label="Total findings" value={summary.total} note="All severities" tone={SEV_PALETTE.RED} />
+        <Metric label="Total findings" value={summary.total} note={filtered ? "Whole engagement" : "All severities"} tone={SEV_PALETTE.RED} />
         <Metric label="Critical open" value={summary.criticalOpen} note="Open / confirmed" tone={SEV_PALETTE.RED} />
         <Metric label="Exploit validated" value={summary.validated} note="Evidence-backed" tone={SEV_PALETTE.ORANGE} />
         <Metric label="Avg risk score" value={summary.averageRisk} note="0–1000 composite" tone={SEV_PALETTE.VIOLET} />
@@ -651,6 +664,21 @@ function ExecTab({ eng, findings, summary, surface }: { eng: Engagement; finding
       <div className="rpt-section">
         <div className="rpt-section-head"><small>RISK DISTRIBUTION</small><h3>Severity profile</h3></div>
         <SevStrip eng={eng} />
+      </div>
+
+      {/* Lifecycle status — what is still open, what was closed, what was accepted */}
+      <div className="rpt-section">
+        <div className="rpt-section-head">
+          <small>FINDING STATUS</small><h3>Open, closed and accepted</h3>
+          {filtered && <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-muted)" }}>Within the report filters</span>}
+        </div>
+        <div className="report-status-strip">
+          {statusCounts.map(c => (
+            <span key={c.key} style={{ "--st": c.tone } as React.CSSProperties}>
+              <b>{c.n ?? "…"}</b>{c.label}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* Priority actions */}
@@ -667,9 +695,9 @@ function ExecTab({ eng, findings, summary, surface }: { eng: Engagement; finding
       <div className="rpt-section">
         <div className="rpt-section-head" style={{ marginBottom: 0 }}>
           <small>HIGHEST RISK</small><h3>Top findings</h3>
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-muted)" }}>Top {Math.min(10, findings.length)} of {summary.total}</span>
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-muted)" }}>Top {Math.min(10, findings.length)} of {shownTotal}{filtered ? " matching" : ""}</span>
         </div>
-        {findings.length === 0 && <p className="report-missing">No findings recorded.</p>}
+        {findings.length === 0 && <p className="report-missing">{filtered ? "No findings match the report filters." : "No findings recorded."}</p>}
         <div className="report-table-wrap">
           <table className="report-table">
             <thead><tr><th>Sev</th><th>Finding</th><th>Asset</th><th>CVSS</th><th>Status</th></tr></thead>
@@ -728,7 +756,10 @@ function CveTab({ findings, total }: { findings: Finding[]; total: number }) {
               <div key={f.id} style={{ padding: "14px", borderRadius: 8, border: "1px solid var(--border-subtle)", background: "var(--bg-panel)" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <SevBadge sev={toSeverity(f.severity)} />
+                    <div style={{ display: "grid", gap: 5, justifyItems: "start" }}>
+                      <SevBadge sev={toSeverity(f.severity)} />
+                      <StatusPill status={f.status} />
+                    </div>
                     <div>
                       <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>{f.title}</div>
                       <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, fontFamily: "var(--font-mono)" }}>{f.id} · {f.affectedHost}</div>
@@ -814,6 +845,85 @@ function CoverageTab({ findings, total }: { findings: Finding[]; total: number }
   );
 }
 
+// ─── Filters ─────────────────────────────────────────────────────────────────
+
+function scanOptionLabel(s: ScanOption): string {
+  const when = s.scannedAt ? new Date(s.scannedAt).toLocaleDateString() : "";
+  const bits = [s.reference ?? s.jobId.slice(0, 8), s.intensity, when].filter(Boolean);
+  return `${bits.join(" · ")} — ${s.findings} finding${s.findings === 1 ? "" : "s"}`;
+}
+const scanOptionValue = (s: ScanOption) => s.reference ?? s.jobId;
+
+function ReportFilterBar({ value, onChange, scans, shown, total }: {
+  value: ReportFilters; onChange: (next: ReportFilters) => void;
+  scans: ScanOption[]; shown: number | null; total: number;
+}) {
+  const set = <K extends keyof ReportFilters>(k: K, v: ReportFilters[K]) => onChange({ ...value, [k]: v });
+  const filtered = isReportFiltered(value);
+  return (
+    <section className="report-filters no-print" aria-label="Report filters">
+      <div className="report-filters-row">
+        <label className="report-filters-search">
+          <span>Search</span>
+          <input type="search" value={value.search} placeholder="Title, finding ID or CVE"
+                 onChange={e => set("search", e.target.value)} />
+        </label>
+        <label>
+          <span>Status</span>
+          <select value={value.status} onChange={e => set("status", e.target.value as ReportFilters["status"])}>
+            <option value="ALL">All statuses</option>
+            {REPORT_STATUSES.map(st => <option key={st} value={st}>{REPORT_STATUS[st].label}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>Host IP</span>
+          <input value={value.ip} placeholder="10.0.0.5 or 10.0.0." inputMode="decimal"
+                 onChange={e => set("ip", e.target.value)} />
+        </label>
+        <label>
+          <span>Scan</span>
+          <select value={value.scan} onChange={e => set("scan", e.target.value)}>
+            <option value="">All scans</option>
+            {scans.map(sc => <option key={sc.jobId} value={scanOptionValue(sc)}>{scanOptionLabel(sc)}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="report-filters-row">
+        <fieldset>
+          <legend>Severity</legend>
+          <div className="report-filters-chips">
+            {(["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"] as const).map(sv => (
+              <button key={sv} type="button" aria-pressed={value.severity === sv}
+                      style={sv === "ALL" ? undefined : { "--chip-tone": SEV_COLOR[sv] } as React.CSSProperties}
+                      onClick={() => set("severity", sv)}>
+                {sv === "ALL" ? "All" : sv.charAt(0) + sv.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Signals</legend>
+          <div className="report-filters-chips">
+            <button type="button" className="report-filters-toggle" aria-pressed={value.exploited}
+                    style={{ "--chip-tone": SEV_PALETTE.RED } as React.CSSProperties}
+                    onClick={() => set("exploited", !value.exploited)}>Exploit confirmed</button>
+            <button type="button" className="report-filters-toggle" aria-pressed={value.slaBreached}
+                    style={{ "--chip-tone": SEV_PALETTE.ORANGE } as React.CSSProperties}
+                    onClick={() => set("slaBreached", !value.slaBreached)}>Past target date</button>
+          </div>
+        </fieldset>
+      </div>
+      <div className="report-filters-foot" aria-live="polite">
+        {filtered
+          ? <span>Showing <strong>{shown ?? "…"}</strong> of <strong>{total}</strong> findings. The report and its PDF, Word, Excel and CSV exports follow these filters.</span>
+          : <span>All <strong>{total}</strong> findings. Filter to build a report for one status, host, scan or severity.</span>}
+        <button type="button" className="report-filters-reset" disabled={!filtered}
+                onClick={() => onChange(DEFAULT_REPORT_FILTERS)}>Clear filters</button>
+      </div>
+    </section>
+  );
+}
+
 // ─── Page root ────────────────────────────────────────────────────────────────
 
 export function ReportsWorkspace({ surface = "manager" }: { surface?: ReportsWorkspaceSurface }) {
@@ -825,7 +935,30 @@ export function ReportsWorkspace({ surface = "manager" }: { surface?: ReportsWor
   const engId = selId || engs[0]?.id || "";
   const eng = engs.find(e => e.id === engId);
 
-  const findQ = useQuery({ queryKey: ["reports", surface, "findings", engId], queryFn: () => api.findings<FindingPage>(engId), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2 });
+  // Report filters: typing debounced via deferred values, applied server-side
+  // (same rules as the Findings page) so beyond-100 findings filter correctly.
+  const [filters, setFilters] = useState<ReportFilters>(DEFAULT_REPORT_FILTERS);
+  const deferredSearch = useDeferredValue(filters.search);
+  const deferredIp = useDeferredValue(filters.ip);
+  const applied = useMemo(() => ({ ...filters, search: deferredSearch, ip: deferredIp }), [filters, deferredSearch, deferredIp]);
+  const filterQuery = reportFilterQuery(applied);
+  const filtered = isReportFiltered(applied);
+
+  const findQ = useQuery({ queryKey: ["reports", surface, "findings", engId, filterQuery], queryFn: () => api.findings<FindingPage>(engId, filterQuery), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2, placeholderData: prev => prev });
+  const scansQ = useQuery({ queryKey: ["reports", surface, "scans", engId], queryFn: () => api.scans(engId), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2 });
+  // Exact per-status totals under the other filters — one count query each.
+  const statusQs = useQueries({
+    queries: REPORT_STATUSES.map(st => {
+      const q = reportFilterQuery({ ...applied, status: st });
+      return {
+        queryKey: ["reports", surface, "status-count", engId, q],
+        queryFn: () => api.count(engId, q),
+        enabled: Boolean(engId),
+        retry: (c: number, e: unknown) => !isUnauthorized(e) && c < 2,
+      };
+    }),
+  });
+  const statusCounts = REPORT_STATUSES.map((st, i) => ({ key: st, ...REPORT_STATUS[st], n: statusQs[i].data ?? null }));
   const sumQ  = useQuery({ queryKey: ["reports", surface, "summary",  engId], queryFn: () => api.summary<FindingSummary>(engId), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2 });
   const findings = useMemo(() => findQ.data?.items ?? [], [findQ.data?.items]);
   const remediation = useMemo(() => createRemediationApi(surface), [surface]);
@@ -842,20 +975,45 @@ export function ReportsWorkspace({ surface = "manager" }: { surface?: ReportsWor
     [findings, bundleQ.data?.bundles],
   );
   const summary: FindingSummary = sumQ.data ?? { total: eng?.findingCount ?? 0, criticalOpen: 0, validated: 0, blind: 0, averageRisk: 0, slaBreached: 0 };
+  const shownTotal = filtered ? (findQ.data?.total ?? 0) : summary.total;
+  const scans = useMemo(() => scansQ.data ?? [], [scansQ.data]);
+  const filterNotes = describeReportFilters(applied, v => {
+    const hit = scans.find(sc => scanOptionValue(sc) === v);
+    return hit ? (hit.reference ?? hit.jobId.slice(0, 8)) : v;
+  });
   const loading  = engQ.isLoading || (Boolean(engId) && (findQ.isLoading || sumQ.isLoading));
   const loadErr  = engQ.error || findQ.error || sumQ.error;
 
   const Shell = surface === "portal" ? PortalShell : PageShell;
 
+  // Subscribing wires the app-wide beforeprint/afterprint handlers, so Ctrl/Cmd+P
+  // produces the same full document as the Export menu.
+  usePrintMode();
+  const docRef = useRef<HTMLElement>(null);
+  const onExport = useCallback(async (format: ExportFormat) => {
+    if (!eng) return;
+    switch (format) {
+      case "pdf":
+        window.print();
+        return;
+      case "word":
+        if (!docRef.current) throw new Error("The report has not finished loading.");
+        exportReportToWord(docRef.current, eng.name);
+        return;
+      case "xlsx":
+        await downloadFile(remediation.exportUrl(eng.id, "xlsx", undefined, filterQuery), surface, reportFilename(eng.name, "xlsx"));
+        return;
+      case "csv":
+        await downloadFile(remediation.exportUrl(eng.id, "csv", "findings", filterQuery), surface, reportFilename(eng.name, "csv"));
+        return;
+    }
+  }, [eng, remediation, surface, filterQuery]);
+
   return (
     <Shell
       title="Reports"
       subtitle="Professional VAPT deliverables — grounded in verified scanner evidence"
-      headerActions={
-        <button className="btn btn-secondary no-print" onClick={() => window.print()} disabled={!eng}>
-          <Printer size={14} /> Export PDF
-        </button>
-      }
+      headerActions={<ExportMenu disabled={!eng || loading} onExport={onExport} />}
     >
       {/* Warning banner */}
       <div className="reports-beta-banner">
@@ -876,6 +1034,11 @@ export function ReportsWorkspace({ surface = "manager" }: { surface?: ReportsWor
         </label>
       </div>
 
+      {eng && (
+        <ReportFilterBar value={filters} onChange={setFilters} scans={scans}
+                         shown={findQ.data ? findQ.data.total : null} total={summary.total} />
+      )}
+
       <DataState
         loading={loading} error={loadErr} isEmpty={!eng}
         onRetry={() => { void engQ.refetch(); void findQ.refetch(); void sumQ.refetch(); }}
@@ -883,7 +1046,7 @@ export function ReportsWorkspace({ surface = "manager" }: { surface?: ReportsWor
         empty={<EmptyState icon={FileText} title="No engagement available" hint="Create an engagement and run an assessment before generating a report." />}
       >
         {eng && (
-          <main className="report-document">
+          <main className="report-document" ref={docRef}>
             {/* Cover */}
             <header className="report-cover">
               <div>
@@ -901,26 +1064,38 @@ export function ReportsWorkspace({ surface = "manager" }: { surface?: ReportsWor
               </dl>
             </header>
 
+            {/* A filtered report says so — in the document, so the PDF/Word carry it */}
+            {filtered && (
+              <div className="report-boundary report-boundary-warning" style={{ marginBottom: 0 }}>
+                <AlertTriangle size={15} />
+                <div>
+                  <strong>Filtered report — {shownTotal} of {summary.total} findings</strong>
+                  <span>{filterNotes.join(" · ")}. Headline metrics and the AI-generated summary cover the whole engagement.</span>
+                </div>
+              </div>
+            )}
+
             {/* Evidence boundary notice */}
             <div className="report-boundary" style={{ marginBottom: 0 }}>
               <Lock size={15} />
               <div>
                 <strong>Evidence boundary</strong>
-                <span>Detailed sections load up to 100 of {summary.total} findings (ranked by risk). Aggregate metrics cover the full engagement. Missing data is stated explicitly — never inferred.</span>
+                <span>Detailed sections load up to 100 of {shownTotal} {filtered ? "matching " : ""}findings (ranked by risk). Aggregate metrics cover the full engagement. Missing data is stated explicitly — never inferred.</span>
               </div>
             </div>
 
             {/* Report body — one continuous deliverable, ordered like a real report */}
             <div style={{ padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: 32 }}>
-              <ExecTab eng={eng} findings={findings} summary={summary} surface={surface} />
+              <ExecTab eng={eng} findings={findings} summary={summary} surface={surface}
+                       shownTotal={shownTotal} filtered={filtered} statusCounts={statusCounts} />
 
               <section>
                 <div className="rpt-section-head"><small>TECHNICAL FINDINGS</small><h3>Detailed findings register</h3></div>
-                <FindingsSection findings={reportFindings} total={summary.total} overdueTotal={summary.slaBreached} />
+                <FindingsSection findings={reportFindings} total={shownTotal} overdueTotal={filtered ? undefined : summary.slaBreached} />
               </section>
 
-              <CveTab findings={findings} total={summary.total} />
-              <CoverageTab findings={findings} total={summary.total} />
+              <CveTab findings={findings} total={shownTotal} />
+              <CoverageTab findings={findings} total={shownTotal} />
             </div>
 
             <footer className="report-footer">

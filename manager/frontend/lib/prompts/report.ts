@@ -88,6 +88,8 @@ export interface ReportFinding {
   remediation_detail: string;
   verification: string;
   compliance_refs: string[];
+  /** Lifecycle state from the backend register ("open" | "confirmed"). */
+  status?: string;
   // ── Decomposed-prompt additions (report-sections.ts §5), all optional so the
   //    single-call schema stays valid ────────────────────────────────────────
   /** 1–2 sentences on what produced this severity (vector + exploit signals). */

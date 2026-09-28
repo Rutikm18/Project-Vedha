@@ -15,18 +15,19 @@
  */
 
 import {
-  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
-  type ElementType, type ReactNode,
+  createContext, useCallback, useContext, useMemo, useState,
+  type CSSProperties, type ElementType, type ReactNode,
 } from "react";
-import { flushSync } from "react-dom";
 import {
   AlertTriangle, ChevronDown, CheckCircle2, ClipboardCheck, Clock, Copy, Crosshair,
   Eye, EyeOff, FileWarning, Flame, Globe, Link2, ListChecks, Radar, Server,
   ShieldCheck, Terminal, Wrench,
 } from "lucide-react";
 
-import { SEVERITY, SEVERITY_ORDER, type Severity } from "../../lib/severity";
+import { SEVERITY, type Severity } from "../../lib/severity";
 import { copyText } from "../../lib/clipboard";
+import { usePrintMode } from "../../lib/print-mode";
+import { reportStatus } from "../../lib/report/filters";
 import {
   assess, provenanceOf, redact, triageSort, TIER_META,
   type AssessedFinding, type RawEvidence, type RawFinding, type RemediationTier,
@@ -135,13 +136,16 @@ function Prose({ text }: { text: string }) {
 export function EvidenceArtifact({ item, refId }: { item: RawEvidence; refId: string }) {
   const [expanded, setExpanded] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  // A document carries the whole artifact — the 900-char cut is a screen affordance.
+  const printing = usePrintMode();
 
   const masked = useMemo(() => redact(item.content ?? ""), [item.content]);
   const prov = useMemo(() => provenanceOf(item), [item]);
 
-  const full = revealed ? item.content : masked.text;
+  // Secrets stay masked in any exported document, whatever the screen shows.
+  const full = revealed && !printing ? item.content : masked.text;
   const long = full.length > 900;
-  const shown = expanded || !long ? full : `${full.slice(0, 900)}\n…`;
+  const shown = expanded || printing || !long ? full : `${full.slice(0, 900)}\n…`;
   const lines = full.split("\n").length;
 
   return (
@@ -180,7 +184,7 @@ export function EvidenceArtifact({ item, refId }: { item: RawEvidence; refId: st
         </div>
       )}
 
-      <pre className="vf-artifact-out" data-expanded={expanded || !long}>{shown}</pre>
+      <pre className="vf-artifact-out" data-expanded={expanded || printing || !long}>{shown}</pre>
 
       {masked.total > 0 && !revealed && (
         <p className="vf-artifact-note vf-artifact-note--mask">
@@ -224,6 +228,16 @@ export interface FindingReportProps {
   mode?: ReportMode;
 }
 
+/** Lifecycle state — "is this still a problem?" — as a first-class tag. */
+export function StatusTag({ status }: { status: string }) {
+  const st = reportStatus(status);
+  return (
+    <span className="vf-status-tag" data-status={st.key.toLowerCase()} style={{ "--vf-status": st.tone } as CSSProperties}>
+      {st.label}
+    </span>
+  );
+}
+
 export function FindingReport({ finding, ordinal, open, onToggle, mode = "assessor" }: FindingReportProps) {
   const a: AssessedFinding = useMemo(() => assess(finding), [finding]);
   const f = a.raw;
@@ -254,6 +268,7 @@ export function FindingReport({ finding, ordinal, open, onToggle, mode = "assess
         <span className="vf-head-main">
           <span className="vf-head-tags">
             <SevTag sev={a.severity} />
+            <StatusTag status={f.status} />
             <span className="vf-prio" data-prio={a.priority.code}>{a.priority.code} {a.priority.label}</span>
             {a.cvssScore !== null && <span className="vf-cvss">CVSS {a.cvssScore.toFixed(1)}</span>}
             {!isClient && <span className="vf-conf" data-level={a.confidence.level.toLowerCase()}>{a.confidence.label}</span>}
@@ -273,7 +288,6 @@ export function FindingReport({ finding, ordinal, open, onToggle, mode = "assess
             <span className="vf-ref">{f.id}</span>
             {(!isClient || a.assets.length > 0) && <span>{a.assets.length} asset{a.assets.length === 1 ? "" : "s"}</span>}
             {discovered && <span>Found {discovered}</span>}
-            <span className="vf-status">{f.status.replace(/_/g, " ").toLowerCase()}</span>
             <span className="vf-sla" data-state={a.sla.state}>
               <Clock size={10} aria-hidden="true" />
               {a.sla.state === "breached" ? "Overdue" : a.sla.state === "closed" ? "Closed" : due ? `Due ${due}` : "No target"}
@@ -575,49 +589,21 @@ export function FindingReport({ finding, ordinal, open, onToggle, mode = "assess
 
 /* ─── the tab that holds them ─────────────────────────────────────────────── */
 
-type SevFilter = Severity | "ALL";
-
 export function FindingsSection({ findings, total, mode = "assessor", overdueTotal }: { findings: RawFinding[]; total: number; mode?: ReportMode; overdueTotal?: number }) {
   const assessed = useMemo(() => findings.map(f => assess(f)).sort(triageSort), [findings]);
 
-  const [sev, setSev] = useState<SevFilter>("ALL");
-  const [onlyExploited, setOnlyExploited] = useState(false);
+  // Severity / status / host / scan filtering happens at report level (server-
+  // side, shared with the exports). This keeps only the assessor's QA filter.
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
 
-  // A collapsed report prints as a list of headings. Open everything for the
-  // print pass, then put it back the way the assessor had it.
-  //
-  // beforeprint is not a React event, so a normal setState would still be
-  // queued when the browser paginates. flushSync commits before we return.
-  const openRef = useRef(open);
-  useEffect(() => { openRef.current = open; }, [open]);
+  // An exported document (PDF or Word) is the WHOLE register, every card open.
+  // The filter bar is hidden on paper, so a filter left on would silently drop
+  // findings from the deliverable with nothing saying so.
+  const printing = usePrintMode();
 
-  useEffect(() => {
-    const snapshot = { value: null as Set<string> | null };
-    const expand = () => {
-      snapshot.value = openRef.current;
-      flushSync(() => setOpen(new Set(assessed.map(a => a.raw.id))));
-    };
-    const restore = () => {
-      if (!snapshot.value) return;
-      const restored = snapshot.value;
-      snapshot.value = null;
-      setOpen(restored);
-    };
-    window.addEventListener("beforeprint", expand);
-    window.addEventListener("afterprint", restore);
-    return () => {
-      window.removeEventListener("beforeprint", expand);
-      window.removeEventListener("afterprint", restore);
-    };
-  }, [assessed]);
-
-  const shown = assessed.filter(a =>
-    (sev === "ALL" || a.severity === sev) &&
-    (!onlyExploited || a.raw.activelyExploited || a.raw.exploitValidated) &&
-    (!onlyIncomplete || !a.readiness.ready)
-  );
+  const filtered = assessed.filter(a => !onlyIncomplete || !a.readiness.ready);
+  const shown = printing ? assessed : filtered;
 
   const blocked = assessed.filter(a => !a.readiness.ready).length;
   const p0 = assessed.filter(a => a.priority.code === "P0").length;
@@ -642,23 +628,6 @@ export function FindingsSection({ findings, total, mode = "assessor", overdueTot
       </div>
 
       <div className="vf-filters no-print">
-        <div className="vf-filter-group" role="group" aria-label="Filter by severity">
-          {(["ALL", ...SEVERITY_ORDER] as SevFilter[]).map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setSev(s)}
-              aria-pressed={sev === s}
-              data-sev={s === "ALL" ? undefined : s.toLowerCase()}
-            >
-              {s === "ALL" ? "All" : SEVERITY[s].label}
-            </button>
-          ))}
-        </div>
-        <label className="vf-check">
-          <input type="checkbox" checked={onlyExploited} onChange={e => setOnlyExploited(e.target.checked)} />
-          Exploited or proven
-        </label>
         <label className="vf-check">
           <input type="checkbox" checked={onlyIncomplete} onChange={e => setOnlyIncomplete(e.target.checked)} />
           Missing fields
@@ -680,7 +649,7 @@ export function FindingsSection({ findings, total, mode = "assessor", overdueTot
             key={a.raw.id}
             finding={a.raw}
             ordinal={i + 1}
-            open={open.has(a.raw.id)}
+            open={printing || open.has(a.raw.id)}
             onToggle={toggle}
             mode={mode}
           />
