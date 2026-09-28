@@ -19,12 +19,19 @@ from app.config import Settings
 
 @pytest.fixture(autouse=True, scope="session")
 def _isolate_settings_from_dotenv():
+    from app.config import get_settings
+
     original = Settings.model_config.get("env_file")
     Settings.model_config["env_file"] = None
+    # get_settings() is lru_cached and is usually first called at IMPORT time —
+    # before this fixture runs — so the cached instance would still carry the
+    # developer's real .env keys. Drop it so every test sees key-free settings.
+    get_settings.cache_clear()
     try:
         yield
     finally:
         Settings.model_config["env_file"] = original
+        get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)
