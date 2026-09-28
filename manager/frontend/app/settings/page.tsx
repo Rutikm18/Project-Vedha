@@ -8,9 +8,11 @@ import {
   Copy, Database, ExternalLink, FileKey2, Globe2, KeyRound, LockKeyhole,
   Mail, MessageCircle, Monitor, Plus, RefreshCw, Server, Settings2,
   Shield, ShieldCheck, SlidersHorizontal, Terminal, Trash2, TriangleAlert, Users, Wifi, X,
+  FileBadge2,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { PortalShell } from "../../components/portal/PortalShell";
+import { PlanLicenceSection } from "../../components/portal/PlanLicenceSection";
 import { fetchJson } from "../../lib/fetcher";
 import { copyText } from "../../lib/clipboard";
 import {
@@ -160,8 +162,10 @@ const NAV_SECTIONS = [
   { key: "audit-log",     label: "Audit Log",           icon: Activity },
 ];
 
-const PORTAL_NAV_SECTIONS = NAV_SECTIONS.filter(({ key }) =>
-  ["workspace", "probe-fleet", "ai", "audit-log"].includes(key));
+const PORTAL_NAV_SECTIONS = [
+  { key: "plan", label: "Plan & Licence", icon: FileBadge2 },
+  ...NAV_SECTIONS.filter(({ key }) => ["workspace", "probe-fleet", "ai", "audit-log"].includes(key)),
+];
 
 // ─── Shared UI atoms ──────────────────────────────────────────────────────────
 
@@ -865,7 +869,7 @@ function AuditLogSection({ surface }: { surface: SettingsWorkspaceSurface }) {
 // ─── Page root ────────────────────────────────────────────────────────────────
 
 export function SettingsWorkspace({ surface = "manager" }: { surface?: SettingsWorkspaceSurface }) {
-  const [section, setSection] = useState(surface === "portal" ? "workspace" : "team");
+  const [section, setSection] = useState(surface === "portal" ? "plan" : "team");
   const api = React.useMemo(() => createSettingsWorkspaceApi(surface), [surface]);
   const statusQuery = useQuery({
     queryKey: ["settings-status", surface],
@@ -878,7 +882,7 @@ export function SettingsWorkspace({ surface = "manager" }: { surface?: SettingsW
   const Shell = surface === "portal" ? PortalShell : PageShell;
 
   return (
-    <Shell title="Settings" subtitle={surface === "portal" ? "Engagement workspace, assigned probe, AI runtime, and activity" : "Team management, probe fleet, credentials, integrations, and policy configuration"}>
+    <Shell title="Settings" subtitle={surface === "portal" ? "Plan and licence, engagement workspace, assigned probe, AI runtime, and activity" : "Team management, probe fleet, credentials, integrations, and policy configuration"}>
       <div className="settings-layout">
         <aside className="settings-nav">
           <div className="settings-nav-heading"><Settings2 size={14} /> Configuration</div>
@@ -912,6 +916,7 @@ export function SettingsWorkspace({ surface = "manager" }: { surface?: SettingsW
               </div>
             </div>
           )}
+          {section === "plan" && surface === "portal" && <PlanLicenceSection />}
           {section === "team"          && <TeamSection />}
           {section === "api-keys"      && <ApiKeysSection />}
           {section === "probe-fleet"   && <ProbeFleetSection surface={surface} />}

@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import { CalendarClock, Clipboard, FlaskConical, Infinity as InfinityIcon, Loader2, Plus, RotateCcw, ShieldCheck } from "lucide-react";
 import {
-  type EntitlementAdmin, type EntitlementConfig, type PlanType,
+  type Entitlement, type EntitlementAdmin, type EntitlementConfig, type PlanType,
   PLAN_LABEL, STATE_LABEL, dateInputValue, daysText, fmtDate, friendlyError,
   isoFromDateInput, scansText, stateColor, usageRatio,
 } from "../../lib/entitlements";
@@ -140,7 +140,7 @@ export function PlanFields({ draft, onChange, compact = false }: {
 }
 
 /** Usage summary: state badge, scans bar, days left. */
-export function PlanSummary({ e }: { e: EntitlementAdmin }) {
+export function PlanSummary({ e }: { e: Entitlement }) {
   const ratio = usageRatio(e);
   const color = stateColor(e.state);
   return (
@@ -154,7 +154,8 @@ export function PlanSummary({ e }: { e: EntitlementAdmin }) {
         <span>{scansText(e)}</span>
         {ratio != null && (
           <span className="pln-bar" aria-hidden="true">
-            <span className="pln-bar-fill" style={{ width: `${Math.round(ratio * 100)}%`, background: color }} />
+            {/* Remaining, like the portal strip — the label reads "N of M scans left". */}
+            <span className="pln-bar-fill" style={{ width: `${Math.round((1 - ratio) * 100)}%`, background: color }} />
           </span>
         )}
       </div>
