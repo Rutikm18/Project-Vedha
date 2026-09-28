@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import httpx
 import structlog
 
+from app.ai.failures import AUTH_SIGNALS, BILLING_SIGNALS, SPEND_CAP_SIGNALS
 from app.config import Settings, get_settings
 from app.schemas.ai import AiGenerateRequest, AiProviderStatus, AiStatusResponse
 from app.services.llm_http_client import AsyncLlmHttpClient
@@ -55,14 +56,10 @@ def _provider_error_reason(response: httpx.Response) -> str:
 # from a malformed request. These curated categories describe the deployment's OWN
 # provider-account state (no secrets, no tenant data, no prompt content), so the
 # resulting message is safe to surface on both the operator console and the portal.
-_BILLING_SIGNALS = (
-    "credit balance", "purchase credit", "billing", "insufficient_quota",
-    "insufficient quota", "insufficient funds", "payment required", "out of credit",
-)
-_AUTH_SIGNALS = (
-    "invalid x-api-key", "authentication_error", "invalid api key", "invalid_api_key",
-    "could not authenticate", "unauthorized",
-)
+# The signal lists live in app/ai/failures.py so routing and messaging never drift.
+_SPEND_CAP_SIGNALS = SPEND_CAP_SIGNALS
+_BILLING_SIGNALS = BILLING_SIGNALS
+_AUTH_SIGNALS = AUTH_SIGNALS
 
 
 def _provider_error_message(provider: str, status_code: int, reason: str) -> tuple[str, int]:
@@ -73,6 +70,14 @@ def _provider_error_message(provider: str, status_code: int, reason: str) -> tup
     (model quirks, request-shape details) never reach a response. The full provider
     reason is always logged separately for operator diagnosis."""
     low = reason.lower()
+    # Anthropic reports its monthly spend cap as a 429. Checked first: treated as a
+    # rate limit it would be retried every minute until the month turns.
+    if any(sig in low for sig in _SPEND_CAP_SIGNALS):
+        return (
+            f"{provider} has reached its monthly API spend limit — raise it in the "
+            f"{provider} console; Vedha is using the next configured provider meanwhile.",
+            402,
+        )
     # Billing must be checked BEFORE the rate-limit status: OpenAI encodes quota
     # exhaustion as `429 insufficient_quota`, so a status-first check would mislabel
     # "out of credits" as a transient "rate limited" and send the operator chasing
