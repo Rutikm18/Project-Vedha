@@ -84,3 +84,19 @@ def test_openai_empty_prepaid_balance_is_billing_without_relying_on_the_url():
     # cannot come from the word "billing" in the settings link.
     failure = classify_http(429, "You have no credits remaining. Add credits to continue using the API.")
     assert (failure.kind, failure.blocked) == ("billing", True)
+
+
+def test_provider_reason_never_carries_key_fragments():
+    # Observed on AWS: OpenAI echoes a masked copy of the rejected key, and the
+    # manager logged it verbatim (first 8 + last 4 characters).
+    import httpx
+    from app.services.llm import _provider_error_reason
+    body = {"error": {"message": "Incorrect API key provided: proj-I0K****************cPUA. "
+                                 "You can find your API key at https://platform.openai.com/account/api-keys."}}
+    reason = _provider_error_reason(httpx.Response(401, json=body))
+    assert "I0K" not in reason and "cPUA" not in reason
+    assert "Incorrect API key provided" in reason          # still diagnosable
+    for leaked in ("sk-proj-AbCdEf123456789", "sk-ant-api03-AbCdEf123456", "AIzaSyAbCdEf1234567890",
+                   "gsk_AbCdEf1234567890abcd"):
+        reason = _provider_error_reason(httpx.Response(400, json={"error": {"message": f"bad key {leaked} here"}}))
+        assert leaked not in reason and "[redacted]" in reason

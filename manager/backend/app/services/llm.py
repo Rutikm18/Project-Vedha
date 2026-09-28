@@ -55,7 +55,23 @@ _TRANSIENT_STATUS = frozenset({502, 503, 529})
 _MAX_TRANSIENT_RETRIES = 2  # 3 attempts total
 
 
+# Credential-shaped tokens a provider may echo back in an error (OpenAI repeats a
+# masked copy of a rejected key). Reasons are logged, so they are scrubbed first.
+_KEY_FRAGMENT = re.compile(
+    r"(?:sk-[A-Za-z0-9_*.-]{6,}|(?<![A-Za-z0-9])proj-[A-Za-z0-9_*.-]{4,}|AIza[0-9A-Za-z_*-]{10,}"
+    r"|gsk_[A-Za-z0-9_*]{8,}|sk-ant-[A-Za-z0-9_*-]{6,})")
+_ECHOED_KEY = re.compile(r"(Incorrect API key provided:)\s*\S+", re.IGNORECASE)
+
+
+def _scrub_key_fragments(text: str) -> str:
+    return _KEY_FRAGMENT.sub("[redacted]", _ECHOED_KEY.sub(r"\1 [redacted]", text))
+
+
 def _provider_error_reason(response: httpx.Response) -> str:
+    return _scrub_key_fragments(_raw_provider_error_reason(response))
+
+
+def _raw_provider_error_reason(response: httpx.Response) -> str:
     """Best-effort, truncated reason from a provider's error body — for OPERATOR
     logs, never the customer. A 4xx from Anthropic/OpenAI/Gemini carries the exact
     cause (e.g. "output_config.effort: unsupported value 'xhigh' for this model")
