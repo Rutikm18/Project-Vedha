@@ -339,3 +339,36 @@ async def test_tiers_meeting_the_floor_are_tried_before_lower_ones():
     _, runtime, _ = await svc.generate_with_fallback(ask("compliance_brief"))
     assert runtime.provider == "anthropic"
     assert router.calls == ["anthropic"]
+
+
+@pytest.mark.asyncio
+async def test_total_failure_names_every_providers_reason():
+    # The AWS error said only "Ollama is not reachable" while Anthropic was out of
+    # credit and the OpenAI key was rejected — the operator could not see why.
+    router = Router(anthropic=_err(400, "Your credit balance is too low to access the Anthropic API."),
+                    openai=_err(401, "Incorrect API key provided."))
+    transport = _NoOllama(router)
+    cfg = settings(llm_provider="ollama", ollama_base_url="http://ollama.test",
+                   anthropic_api_key="a", openai_api_key="o")
+    svc = ManagerLlmService(cfg, transport=httpx.MockTransport(transport))
+    with pytest.raises(AiRuntimeError) as exc:
+        await svc.generate_with_fallback(ask("engagement_report"))
+    message = str(exc.value)
+    assert "ollama: unreachable" in message
+    assert "anthropic: out of credit" in message
+    assert "openai: API key rejected" in message
+    assert exc.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_skipped_providers_are_named_too():
+    kv = MemoryKv()
+    from app.ai.failures import classify_http
+    await ProviderHealth(kv).record_failure("anthropic", classify_http(400, "credit balance is too low"))
+    router = Router(openai=_err(429, "You have no credits remaining."))
+    svc = ManagerLlmService(settings(anthropic_api_key="a", openai_api_key="o"),
+                            transport=router.transport(), kv=kv)
+    with pytest.raises(AiRuntimeError) as exc:
+        await svc.generate_with_fallback(ask())
+    assert "anthropic: out of credit" in str(exc.value)
+    assert "openai: out of credit" in str(exc.value)

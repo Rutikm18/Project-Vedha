@@ -90,6 +90,21 @@ _BILLING_SIGNALS = BILLING_SIGNALS
 _AUTH_SIGNALS = AUTH_SIGNALS
 
 
+_WHY = {
+    "spend_cap": "monthly spend cap reached", "billing": "out of credit",
+    "auth": "API key rejected", "rate_limit": "rate limited", "headroom": "at its rate limit",
+    "overloaded": "overloaded", "timeout": "timed out", "network": "unreachable",
+    "invalid_output": "unusable output", "request": "rejected the request",
+    "not_installed": "model not installed", "daily_cap": "daily spend cap reached",
+    "probe_in_flight": "recovering",
+}
+
+
+def _why(kind: str | None) -> str:
+    """Operator-facing wording for a failure/cooldown kind (never provider text)."""
+    return _WHY.get(kind or "", kind or "unavailable")
+
+
 def _is_account_state(reason: str) -> bool:
     """The error describes the provider ACCOUNT (money / spend cap), not the request."""
     low = reason.lower()
@@ -1032,14 +1047,19 @@ class ManagerLlmService:
         loop = asyncio.get_running_loop()
         deadline = loop.time() + policy.deadline_s
         last: AiRuntimeError | None = None
+        # Why each candidate did not answer — surfaced when none does, so the
+        # operator sees every cause, not just the first provider's.
+        reasons: list[str] = []
         for index, runtime in enumerate(candidates):
             if await self.spend.over_cap(runtime.provider):
+                reasons.append(f"{runtime.provider}: {_why('daily_cap')}")
                 self._log_attempt(task, runtime, index, "skipped", 0.0, "daily_cap")
                 last = last or AiRuntimeError(
                     f"{runtime.provider} reached its daily spend cap", 503)
                 continue
             state = await self.health.acquire(runtime.provider)
             if not ProviderHealth.allows(state):
+                reasons.append(f"{runtime.provider}: {_why(state.reason)}")
                 self._log_attempt(task, runtime, index, "skipped", 0.0, state.reason)
                 last = last or AiRuntimeError(
                     f"{runtime.provider} is temporarily unavailable ({state.reason})", 503)
@@ -1074,11 +1094,15 @@ class ManagerLlmService:
             finally:
                 _REPLY_META.reset(token)
             failure = last.failure
+            reasons.append(f"{runtime.provider}: {_why(failure.kind) if failure else last}")
             if failure is not None:
                 await self.health.record_failure(runtime.provider, failure)
             self._log_attempt(task, runtime, index, "failed", loop.time() - started,
                               failure.kind if failure else str(last))
-        raise last or AiRuntimeError("AI deadline exceeded before any provider answered", 504)
+        if not reasons:
+            raise AiRuntimeError("AI deadline exceeded before any provider answered", 504)
+        status = 504 if last is not None and last.status_code == 504 and len(reasons) == 1 else 503
+        raise AiRuntimeError("No AI provider could answer — " + "; ".join(reasons), status)
 
     async def _stored_answer_is_best(self, hit: StoredAnswer, candidates: list[Runtime]) -> bool:
         """Upgrade on read: an answer a lower tier wrote while premium was down is
