@@ -132,6 +132,15 @@ async def portal_engagement(user: ClientUser, db: DB):
     )
 
 
+@router.get("/me", summary="The signed-in customer (for the portal header)")
+async def portal_me(user: ClientUser, db: DB):
+    from app.models.user import User
+    email = (await db.execute(
+        select(User.email).where(User.id == user.user_id, User.tenant_id == user.tenant_id)
+    )).scalar_one_or_none()
+    return {"email": email, "engagement_id": str(assert_client(user))}
+
+
 @router.get("/entitlement", response_model=EntitlementOut,
             summary="Your plan: POC or licence, scans left, days left")
 async def portal_entitlement(user: ClientUser, db: DB):

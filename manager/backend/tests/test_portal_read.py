@@ -418,3 +418,9 @@ class TestCreateScanRequest:
             asyncio.run(portal.create_scan_request(
                 ScanRequestCreate(), _operator(), MagicMock()))
         assert e.value.status_code == 403
+
+
+def test_portal_me_returns_the_session_email():
+    user = _client()
+    out = asyncio.run(portal.portal_me(user, _db_scalar("ciso@acme.example.com")))
+    assert out == {"email": "ciso@acme.example.com", "engagement_id": str(user.client_engagement_id)}

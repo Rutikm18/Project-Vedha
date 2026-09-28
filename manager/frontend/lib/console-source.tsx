@@ -298,5 +298,11 @@ export function useConsoleQuery<T>(
     refetchInterval: opts.refetchInterval,
   });
 
-  return Object.assign(query, { unavailable: endpoint === null });
+  // React Query v5 PAUSES a fetch/retry while the window is unfocused (or
+  // offline). That query is pending with fetchStatus "paused", so its own
+  // isLoading (pending AND fetching) is false — and every panel gated on
+  // isLoading rendered its missing data as zeros: an API outage in a background
+  // tab read as "0 open findings · nothing open". No data yet is loading.
+  const waiting = query.isPending && query.fetchStatus !== "idle";
+  return Object.assign(query, { unavailable: endpoint === null, isLoading: waiting });
 }

@@ -22,6 +22,33 @@ function takeAccessLinkCredentials(): { e: string; p: string } | null {
   return creds;
 }
 
+/** POST the credentials; resolves to null on success or a sentence to show. */
+async function requestLogin(email: string, password: string): Promise<string | null> {
+  try {
+    const res = await fetch("/api/portal/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.ok) return null;
+    const data = await res.json().catch(() => ({}));
+    return data.code === "invalid_credentials" ? "Invalid email or password."
+      : data.code === "not_a_client" ? "This login is not a customer portal account."
+      : data.code === "rate_limited" ? "Too many attempts — please wait a moment and try again."
+      : data.code === "backend_unavailable" || res.status >= 500
+        ? "The portal service is unavailable right now — please try again in a moment."
+      : data.error || "Login failed.";
+  } catch {
+    return "Network error — please try again.";
+  }
+}
+
+// The access-link attempt outlives the component that started it: erasing the
+// fragment makes Next remount this page (and dev mode double-runs effects), so
+// its result — success or the error to show — is delivered to whichever
+// instance is mounted when it settles, not to the one that sent it.
+let accessLinkAttempt: Promise<string | null> | null = null;
+
 export default function PortalLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -31,49 +58,37 @@ export default function PortalLoginPage() {
   const [loading, setLoading] = useState(false);
   const [autoSigning, setAutoSigning] = useState(false);
 
-  const doLogin = useCallback(async (em: string, pw: string, fromAccessLink = false) => {
-    if (fromAccessLink) setAutoSigning(true);
+  const doLogin = useCallback(async (em: string, pw: string) => {
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/portal/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: em, password: pw }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setAutoSigning(false);
-        setError(
-          data.code === "invalid_credentials"
-            ? "Invalid email or password."
-            : data.code === "not_a_client"
-            ? "This login is not a customer portal account."
-            : data.code === "rate_limited"
-            ? "Too many attempts — please wait a moment and try again."
-            : data.error || "Login failed.",
-        );
-        return;
-      }
-      router.push("/portal");
-    } catch {
-      setAutoSigning(false);
-      setError("Network error — please try again.");
-    } finally {
-      setLoading(false);
-    }
+    const problem = await requestLogin(em, pw);
+    setLoading(false);
+    if (problem) setError(problem);
+    else router.push("/portal");
   }, [router]);
 
-  // Auto-login from an operator-issued access link. The fragment is captured at
-  // MODULE scope and erased at once: Next patches history.replaceState, so erasing
-  // it can remount this page (fresh state, fresh refs) and React's dev mode runs
-  // effects twice — either way a component-local capture lost the credentials and
-  // the link silently did nothing. Module scope survives both; it is read once.
   useEffect(() => {
-    const creds = takeAccessLinkCredentials();
-    if (!creds) return;
-    void doLogin(creds.e, creds.p, true);
-  }, [doLogin]);
+    let live = true;
+    const follow = (attempt: Promise<string | null>) => {
+      setAutoSigning(true);
+      void attempt.then((problem) => {
+        if (!live) return;
+        if (accessLinkAttempt === attempt) accessLinkAttempt = null;
+        if (problem) { setAutoSigning(false); setError(problem); }
+        else router.push("/portal");
+      });
+    };
+    // Also on hashchange: opening a link while this page is already showing is
+    // a same-document navigation — no reload, no remount, no effect re-run.
+    const consume = () => {
+      const creds = takeAccessLinkCredentials();
+      if (creds) accessLinkAttempt = requestLogin(creds.e, creds.p);
+      if (accessLinkAttempt) follow(accessLinkAttempt);
+    };
+    consume();
+    window.addEventListener("hashchange", consume);
+    return () => { live = false; window.removeEventListener("hashchange", consume); };
+  }, [router]);
 
   async function submit(ev: React.FormEvent) {
     ev.preventDefault();

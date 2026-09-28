@@ -44,7 +44,9 @@ function isActiveEngagement(s?: string) {
 
 /** Plain-language verdict. Written for the person on shift, not the schema. */
 function verdict(counts: Record<Severity, number>, total: number): { text: string; tone: string } {
-  if (total === 0) return { text: "Nothing open. The last scan came back clean.", tone: "var(--nominal-color)" };
+  // No claim about a scan here: zero open findings is also what a brand-new
+  // engagement that has never been scanned looks like.
+  if (total === 0) return { text: "Nothing open right now.", tone: "var(--nominal-color)" };
   if (counts.CRITICAL > 0) {
     return {
       text: `${counts.CRITICAL} critical ${counts.CRITICAL === 1 ? "finding needs" : "findings need"} action now.`,
