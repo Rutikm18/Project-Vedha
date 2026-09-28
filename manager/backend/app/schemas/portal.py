@@ -165,3 +165,6 @@ class ClientAssistantReply(BaseModel):
     jurisdictions: list[str] = []
     # Regulatory citations in the answer that are NOT in Vedha's compliance packs.
     unverified_citations: list[str] = []
+    # True when a lower tier than the first configured provider answered.
+    fallback: bool = False
+    tier: str | None = None

@@ -53,6 +53,18 @@ class AiProviderStatus(BaseModel):
     reason: str | None = None
 
 
+class AiChainEntry(BaseModel):
+    """One provider in the automatic chain, in the order it is tried."""
+    provider: ProviderId
+    model: str
+    tier: Literal["premium", "budget", "free", "local"]
+    state: Literal["healthy", "cooling", "blocked", "probing"]
+    reason: str | None = None
+    retry_in_s: int | None = None
+    spend_today_usd: float | None = None
+    daily_cap_usd: float | None = None
+
+
 class AiStatusResponse(BaseModel):
     # None = no default provider is usable (no cloud key configured). The UI then
     # prompts for a key instead of preselecting a provider.
@@ -62,6 +74,9 @@ class AiStatusResponse(BaseModel):
     privacy: Literal["local", "cloud"]
     reason: str | None = None
     providers: list[AiProviderStatus]
+    # The automatic chain (the operator never picks a provider): order, health,
+    # today's spend. Empty when nothing is configured.
+    chain: list[AiChainEntry] = Field(default_factory=list)
 
 
 class AiGenerateResponse(BaseModel):
@@ -72,6 +87,8 @@ class AiGenerateResponse(BaseModel):
     # True when the requested/default provider failed (e.g. out of credit) and a
     # free fallback model served the response instead.
     fallback: bool = False
+    # premium | budget | free | local — the tier that actually answered.
+    tier: str | None = None
     skill: str | None = None
     skill_label: str | None = None
     jurisdictions: list[str] = Field(default_factory=list)

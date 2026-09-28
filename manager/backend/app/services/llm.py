@@ -39,7 +39,7 @@ from app.ai.routing import (
     task_policy,
 )
 from app.config import Settings, get_settings
-from app.schemas.ai import AiGenerateRequest, AiProviderStatus, AiStatusResponse
+from app.schemas.ai import AiChainEntry, AiGenerateRequest, AiProviderStatus, AiStatusResponse
 from app.services.finding_ai import _extract_json
 from app.services.llm_http_client import AsyncLlmHttpClient
 
@@ -713,6 +713,7 @@ class ManagerLlmService:
             selected = next((p for p in providers if p.id == default.provider), None)
         except AiRuntimeError:
             default, selected = None, None
+        chain = await self._chain_status()
         if default is not None and selected is not None:
             return AiStatusResponse(
                 provider=selected.id,
@@ -721,6 +722,7 @@ class ManagerLlmService:
                 privacy=selected.privacy,
                 reason=selected.reason,
                 providers=providers,
+                chain=chain,
             )
         # No usable default (no cloud key configured). Report unconfigured rather
         # than 500 so the UI can prompt the operator to add a cloud key.
@@ -729,9 +731,26 @@ class ManagerLlmService:
             model="",
             configured=False,
             privacy="cloud",
-            reason="No cloud AI provider is configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY.",
+            reason="No cloud AI provider is configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, or OPENROUTER_API_KEY.",
             providers=providers,
+            chain=chain,
         )
+
+    async def _chain_status(self) -> list[AiChainEntry]:
+        """Read-only view of the chain: never takes the probe lock."""
+        entries: list[AiChainEntry] = []
+        for runtime in self._configured_chain():
+            state = await self.health.state(runtime.provider)
+            cap = self.spend.cap(runtime.provider)
+            spent = await self.spend.today(runtime.provider)
+            entries.append(AiChainEntry(
+                provider=runtime.provider, model=runtime.model, tier=runtime.tier,
+                state=state.state, reason=state.reason,
+                retry_in_s=round(state.retry_in_s) if state.retry_in_s else None,
+                spend_today_usd=round(spent, 4) if spent or cap is not None else None,
+                daily_cap_usd=cap,
+            ))
+        return entries
 
     def _fence_untrusted(self, context: dict) -> str:
         """Frame tenant scan data as spotlighted, unspoofable untrusted DATA.

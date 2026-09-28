@@ -657,7 +657,7 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
     brief = await domain_brief_for(db, eng, [focus_row] if focus_row is not None else open_rows)
     llm = ManagerLlmService()
     try:
-        content, runtime, _fallback = await llm.generate_with_fallback(
+        content, runtime, fallback = await llm.generate_with_fallback(
             request, domain_brief=brief.text if brief else None)
     except AiRuntimeError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
@@ -684,6 +684,8 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
         jurisdictions=brief.jurisdictions if brief else [],
         unverified_citations=unverified,
         generated_at=datetime.now(timezone.utc),
+        fallback=bool(fallback),
+        tier=getattr(runtime, "tier", None),
     )
 
 

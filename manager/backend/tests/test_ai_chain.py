@@ -257,3 +257,25 @@ def test_default_runtime_is_anthropic_first():
     svc = ManagerLlmService(settings(**PREMIUM_AND_FREE))
     assert svc._default_runtime().provider == "anthropic"
     assert ManagerLlmService(settings(openai_api_key="o", gemini_api_key="g"))._default_runtime().provider == "openai"
+
+
+# ── Status exposes the chain ────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_status_reports_chain_order_health_and_spend():
+    from app.ai.failures import classify_http
+
+    kv = MemoryKv()
+    svc = ManagerLlmService(settings(**PREMIUM_AND_FREE, ai_daily_cap_usd="anthropic=20"), kv=kv)
+    await svc.health.record_failure("anthropic", classify_http(429, "rate_limit", retry_after=40))
+    await svc.spend.record("anthropic", "claude-sonnet-4-6",
+                           {"usage": {"input_tokens": 1_000_000, "output_tokens": 0}})
+
+    status = await svc.status()
+    assert [e.provider for e in status.chain] == ["anthropic", "openai", "gemini"]
+    first = status.chain[0]
+    assert (first.tier, first.state, first.reason) == ("premium", "cooling", "rate_limit")
+    assert 0 < first.retry_in_s <= 40
+    assert (first.spend_today_usd, first.daily_cap_usd) == (3.0, 20.0)
+    assert (status.chain[1].state, status.chain[2].tier) == ("healthy", "free")
+    assert status.provider == "anthropic" and status.configured is True
