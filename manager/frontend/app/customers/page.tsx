@@ -3,10 +3,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   UserPlus, KeyRound, Power, Loader2, RefreshCw, Users, Clipboard, Globe, Eye, EyeOff, Link2,
+  SlidersHorizontal, ChevronDown,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
 import { copyText } from "../../lib/clipboard";
+import {
+  type Entitlement, type EntitlementAdmin, PLAN_LABEL, STATE_LABEL, daysText, friendlyError,
+  scansText, stateColor,
+} from "../../lib/entitlements";
+import {
+  PLAN_STYLES, PlanFields, PlanPanel, configFromDraft, defaultDraft, draftError, type PlanDraft,
+} from "../../components/customers/PlanPanel";
 
 interface Customer {
   id: string;
@@ -16,6 +24,7 @@ interface Customer {
   engagement_name: string | null;
   portal_slug: string | null;
   created_at: string | null;
+  entitlement: Entitlement | null;
 }
 interface Engagement { id: string; name: string; status?: string }
 interface ClientUserResp {
@@ -48,6 +57,9 @@ export default function CustomersPage() {
   // rest and audits every reveal; null means the login predates encrypted storage.
   const [revealed, setRevealed] = useState<Record<string, string | null>>({});
   const [revealing, setRevealing] = useState<string | null>(null);
+  // New customers are created WITH a plan: configure it, then issue the login.
+  const [plan, setPlan] = useState<PlanDraft>(defaultDraft);
+  const [openPlan, setOpenPlan] = useState<string | null>(null);
 
   const reveal = useCallback(async (c: Customer) => {
     if (c.id in revealed) {                        // second click hides it again
@@ -102,8 +114,16 @@ export default function CustomersPage() {
   async function provision(event: React.FormEvent) {
     event.preventDefault();
     if (!engId || !email.trim()) return;
+    const invalid = draftError(plan);
+    if (invalid) { toast.error(invalid); return; }
     setBusy(true);
     try {
+      // 1. The plan first — a login without one can't scan anyway.
+      await fetchJson<EntitlementAdmin>(
+        `/api/engagements/${engId}/customer-access/entitlement`,
+        { method: "PUT", body: JSON.stringify(configFromDraft(plan)) },
+      );
+      // 2. Then the credentials.
       const r = await fetchJson<ClientUserResp>(
         `/api/engagements/${engId}/customer-access/client-user`,
         { method: "POST", body: JSON.stringify({ email: email.trim() }) },
@@ -111,10 +131,11 @@ export default function CustomersPage() {
       setIssued({ email: r.email, slug: r.portal_slug, password: r.temp_password ?? "" });
       setEmail("");
       setEngId("");
-      toast.success("Customer login created");
+      setPlan(defaultDraft());
+      toast.success("Plan activated and customer login created");
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Provisioning failed");
+      toast.error(friendlyError(e, "Provisioning failed"));
     } finally {
       setBusy(false);
     }
@@ -163,8 +184,8 @@ export default function CustomersPage() {
   }
 
   return (
-    <PageShell title="Customers" subtitle="Provision customer portal logins and assign them an engagement">
-      <style>{STYLES}</style>
+    <PageShell title="Customers" subtitle="Plans, scan quotas and portal logins for each customer">
+      <style>{STYLES + PLAN_STYLES}</style>
       <div className="cus-page">
 
         {/* Add a customer */}
@@ -173,7 +194,7 @@ export default function CustomersPage() {
             <span className="cus-head-icon"><UserPlus size={17} /></span>
             <div>
               <strong className="cus-head-title">Add a customer</strong>
-              <div className="cus-head-sub">Assign an engagement and issue a login. The password is shown once.</div>
+              <div className="cus-head-sub">Choose the engagement and plan, then issue the login. The password is shown once.</div>
             </div>
           </div>
 
@@ -214,8 +235,9 @@ export default function CustomersPage() {
             </div>
           )}
 
-          <form onSubmit={provision} className="cus-form">
-            <label className="cus-field">
+          <form onSubmit={provision} className="cus-form-wrap">
+            <div className="cus-step"><span className="cus-step-n">1</span> Engagement</div>
+            <label className="cus-field cus-field-narrow">
               <span className="cus-label">Engagement <span className="cus-star" aria-hidden="true">*</span></span>
               <select className="cus-input" required value={engId} onChange={(e) => setEngId(e.target.value)}>
                 <option value="" disabled>Select an engagement…</option>
@@ -227,13 +249,18 @@ export default function CustomersPage() {
                 <span className="cus-hint">Every engagement already has a customer login. Create a new engagement first.</span>
               )}
             </label>
-            <label className="cus-field">
-              <span className="cus-label">Customer email <span className="cus-star" aria-hidden="true">*</span></span>
-              <input className="cus-input" type="email" required placeholder="customer@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </label>
-            <button disabled={busy || !engId || !email.trim()} className="cus-submit" type="submit">
-              {busy ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />} Provision login
-            </button>
+            <div className="cus-step"><span className="cus-step-n">2</span> Plan</div>
+            <PlanFields draft={plan} onChange={setPlan} compact />
+            <div className="cus-step"><span className="cus-step-n">3</span> Login</div>
+            <div className="cus-form">
+              <label className="cus-field">
+                <span className="cus-label">Customer email <span className="cus-star" aria-hidden="true">*</span></span>
+                <input className="cus-input" type="email" required placeholder="customer@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </label>
+              <button disabled={busy || !engId || !email.trim()} className="cus-submit" type="submit">
+                {busy ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />} Activate plan &amp; issue login
+              </button>
+            </div>
           </form>
         </section>
 
@@ -259,19 +286,44 @@ export default function CustomersPage() {
           ) : (
             <div className="cus-table">
               <div className="cus-tr cus-th">
-                <span>Customer</span><span>Engagement</span><span>Handle</span><span>Status</span><span>Actions</span>
+                <span>Customer</span><span>Engagement</span><span>Plan</span><span>Status</span><span>Actions</span>
               </div>
               {customers.map((c) => (
-                <div key={c.id} className="cus-tr">
-                  <span className="cus-mono cus-email">{c.email}</span>
+                <div key={c.id} className="cus-row" data-open={openPlan === c.id}>
+                <div className="cus-tr">
+                  <span className="cus-who">
+                    <span className="cus-mono cus-email">{c.email}</span>
+                    {c.portal_slug && <span className="cus-mono cus-slug">{c.portal_slug}</span>}
+                  </span>
                   <span className="cus-eng">{c.engagement_name ?? <em className="cus-faint">(engagement removed)</em>}</span>
-                  <span className="cus-mono cus-slug">{c.portal_slug ?? "—"}</span>
+                  <span className="cus-plan">
+                    {c.entitlement ? (
+                      <>
+                        <span className="cus-plan-top">
+                          <span className="cus-plan-dot" style={{ background: stateColor(c.entitlement.state) }} />
+                          {c.entitlement.plan_type ? PLAN_LABEL[c.entitlement.plan_type] : "—"}
+                          {c.entitlement.state !== "active" && (
+                            <em style={{ color: stateColor(c.entitlement.state) }}>{STATE_LABEL[c.entitlement.state]}</em>
+                          )}
+                        </span>
+                        <span className="cus-plan-sub">{scansText(c.entitlement)} · {daysText(c.entitlement)}</span>
+                      </>
+                    ) : (
+                      <span className="cus-plan-none">No plan — can’t scan</span>
+                    )}
+                  </span>
                   <span>
                     <span className="cus-badge" data-on={c.is_active}>
                       <span className="cus-dot" /> {c.is_active ? "active" : "disabled"}
                     </span>
                   </span>
                   <span className="cus-actions">
+                    <button className="cus-mini" data-accent={!c.entitlement} disabled={!c.engagement_id}
+                      aria-expanded={openPlan === c.id}
+                      onClick={() => setOpenPlan((o) => (o === c.id ? null : c.id))} title="Configure plan, quota and licence">
+                      <SlidersHorizontal size={13} /> Plan
+                      <ChevronDown size={12} className="cus-chev" />
+                    </button>
                     <button className="cus-mini" onClick={() => void reveal(c)} disabled={revealing === c.id}
                       title={c.id in revealed ? "Hide password" : "Show password"}>
                       {revealing === c.id ? <Loader2 size={13} className="animate-spin" />
@@ -302,6 +354,11 @@ export default function CustomersPage() {
                     </button>
                   </span>
                 </div>
+                {openPlan === c.id && c.engagement_id && (
+                  <PlanPanel engagementId={c.engagement_id} api={fetchJson} onCopy={copy}
+                    onSaved={() => { toast.success("Plan saved"); void load(); }} />
+                )}
+                </div>
               ))}
             </div>
           )}
@@ -320,7 +377,11 @@ const STYLES = `
 .cus-head-title { color: var(--text-primary); font-size: 13px; font-weight: 600; }
 .cus-head-sub { color: var(--text-muted); font-size: 11px; margin-top: 2px; line-height: 1.4; }
 
-.cus-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+.cus-form-wrap { display: grid; gap: 12px; }
+.cus-step { display: flex; align-items: center; gap: 8px; color: var(--text-primary); font-size: 12px; font-weight: 700; margin-top: 2px; }
+.cus-step-n { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font: 700 10.5px var(--font-mono); color: var(--accent); background: var(--accent-ghost); border: 0.5px solid var(--border-accent); }
+.cus-form { display: grid; grid-template-columns: minmax(0, 420px) auto; gap: 12px; align-items: end; }
+.cus-field-narrow { max-width: 420px; }
 .cus-field { display: flex; flex-direction: column; gap: 6px; }
 .cus-label { color: var(--text-secondary); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 .cus-star { color: var(--sev-high-color, #e5484d); font-weight: 700; }
@@ -354,11 +415,24 @@ const STYLES = `
 .cus-empty-hint { color: var(--text-muted); font-size: 11px; line-height: 1.5; max-width: 320px; }
 
 .cus-table { display: grid; }
-.cus-tr { display: grid; grid-template-columns: 1.6fr 1.2fr 1fr 0.8fr 1.4fr; gap: 10px; align-items: center; padding: 11px 14px; border-bottom: 0.5px solid var(--border-subtle); font-size: 12px; color: var(--text-primary); }
+.cus-row { border-bottom: 0.5px solid var(--border-subtle); }
+.cus-row[data-open="true"] { background: color-mix(in srgb, var(--accent) 3%, transparent); }
+.cus-tr { display: grid; grid-template-columns: 1.4fr 1.1fr 1.5fr 0.7fr 2fr; gap: 10px; align-items: center; padding: 11px 14px; font-size: 12px; color: var(--text-primary); }
+.cus-th { border-bottom: 0.5px solid var(--border-subtle); }
+.cus-plan { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cus-plan-top { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.cus-plan-top em { font-style: normal; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.cus-plan-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.cus-plan-sub { color: var(--text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cus-plan-none { color: var(--sev-medium-color); font-size: 11.5px; }
+.cus-mini[data-accent="true"] { color: var(--accent); border-color: var(--border-accent); background: var(--accent-ghost); }
+.cus-mini[aria-expanded="true"] .cus-chev { transform: rotate(180deg); }
+.cus-chev { transition: transform var(--dur-fast) ease; }
 .cus-th { color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 .cus-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cus-eng { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cus-slug { color: var(--accent); }
+.cus-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cus-slug { color: var(--accent); font-size: 10.5px; }
 .cus-faint { color: var(--text-faint); }
 .cus-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-faint); }
 .cus-badge[data-on="true"] { color: var(--nominal-color); }

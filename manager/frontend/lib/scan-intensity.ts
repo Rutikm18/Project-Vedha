@@ -22,3 +22,7 @@ export const INTENSITY: IntensityOption[] = [
   { id: "aggressive", label: "Aggressive", rate: 150, color: "var(--sev-high-color)", angle: 60,  sweep: "4.2s",
     why: "Exhaustive where time allows: high-signal ports first on every host, then as much of all 65,535 ports as the job's time budget allows — the rest is reported as not scanned." },
 ];
+
+/** The customer portal offers stealth and normal only; aggressive is operator-
+    only and refused server-side (app/services/portal_scan_policy.py). */
+export const PORTAL_INTENSITIES: readonly Intensity[] = ["stealth", "normal"];

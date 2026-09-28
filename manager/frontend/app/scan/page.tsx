@@ -14,7 +14,9 @@ import { PortalShell } from "../../components/portal/PortalShell";
 import { useToast } from "../../hooks/useToast";
 import { createScannerWorkspaceApi, type ScannerWorkspaceSurface } from "../../lib/scanner-workspace-api";
 import type { ScanLaunchBody } from "../../lib/scan-launch";
-import { INTENSITY, type Intensity } from "../../lib/scan-intensity";
+import { INTENSITY, PORTAL_INTENSITIES, type Intensity } from "../../lib/scan-intensity";
+import { useQueryClient } from "@tanstack/react-query";
+import { usePortalEntitlement } from "../../lib/portal-client";
 import CampaignProgress from "../campaign/[id]/CampaignProgress";
 
 /* ══════════════════════════════════════════════════════
@@ -384,8 +386,11 @@ function UseCaseCard({ uc, selected, index, onClick }: { uc: UseCase; selected: 
    selector. Color and sweep speed both encode aggression.
 ══════════════════════════════════════════════════════ */
 
-function IntensityDial({ value, onChange }: { value: Intensity; onChange: (v: Intensity) => void }) {
+function IntensityDial({ value, onChange, allowed = INTENSITY.map((i) => i.id) }: {
+  value: Intensity; onChange: (v: Intensity) => void; allowed?: readonly Intensity[];
+}) {
   const active = INTENSITY.find((i) => i.id === value)!;
+  const options = INTENSITY.filter((i) => allowed.includes(i.id));
 
   // semicircle gauge, three 60° zones, radius 78, center (100,96)
   const arcs = [
@@ -400,7 +405,8 @@ function IntensityDial({ value, onChange }: { value: Intensity; onChange: (v: In
         <div className="scn-dial-sweep" style={{ animationDuration: active.sweep, background: `conic-gradient(from 180deg at 50% 100%, transparent 0deg, color-mix(in srgb, ${active.color} 33%, transparent) 18deg, transparent 40deg)` }} />
         <svg viewBox="0 0 200 110" className="scn-dial-svg">
           {arcs.map((a, i) => (
-            <path key={i} d={a.d} fill="none" stroke={a.color} strokeWidth="9" strokeLinecap="round" opacity={0.32} />
+            <path key={i} d={a.d} fill="none" stroke={a.color} strokeWidth="9" strokeLinecap="round"
+              opacity={allowed.includes(INTENSITY[i].id) ? 0.32 : 0.08} />
           ))}
           <g style={{ transform: `rotate(${active.angle}deg)`, transformOrigin: "100px 96px", transition: "transform 480ms var(--ease-out)" }}>
             <line x1="100" y1="96" x2="100" y2="26" stroke={active.color} strokeWidth="2.5" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 5px ${active.color})` }} />
@@ -414,7 +420,7 @@ function IntensityDial({ value, onChange }: { value: Intensity; onChange: (v: In
       </div>
 
       <div className="scn-dial-seg" role="group" aria-label="Scan intensity">
-        {INTENSITY.map((opt) => (
+        {options.map((opt) => (
           <button key={opt.id} aria-pressed={value === opt.id} data-on={value === opt.id} onClick={() => onChange(opt.id)} style={{ ["--seg-c" as string]: opt.color }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: opt.color, flexShrink: 0 }} />
             {opt.label}
@@ -422,6 +428,11 @@ function IntensityDial({ value, onChange }: { value: Intensity; onChange: (v: In
         ))}
       </div>
       <p style={{ margin: "9px 0 0", fontSize: 10.5, color: "var(--text-muted)", lineHeight: 1.55 }}>{active.why}</p>
+      {options.length < INTENSITY.length && (
+        <p style={{ margin: "6px 0 0", fontSize: 10.5, color: "var(--text-faint)", lineHeight: 1.5 }}>
+          Aggressive scans are run by your security team on request.
+        </p>
+      )}
     </div>
   );
 }
@@ -661,6 +672,11 @@ function DispatchReceipt({ payload }: { payload: Record<string, unknown> }) {
 export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWorkspaceSurface }) {
   const { success: toastOk, error: toastErr } = useToast();
   const api = useMemo(() => createScannerWorkspaceApi(surface), [surface]);
+  const isPortal = surface === "portal";
+  const queryClient = useQueryClient();
+  // The customer's plan gates launching (the API enforces it; this explains it).
+  const { data: plan } = usePortalEntitlement(isPortal);
+  const planBlock = isPortal && plan && !plan.can_scan ? plan.reason : null;
 
   const [useCases,    setUseCases]    = useState<UseCase[]>([NETWORK_VA_FALLBACK]);
   const [probes,      setProbes]      = useState<Probe[]>([]);
@@ -841,6 +857,7 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
       // Reflect it in the DB-backed history immediately (the poll keeps it fresh).
       setRecentJobs((prev) => [launched, ...prev.filter((rj) => rj.job_id !== launched.job_id)]);
       startPolling(res.job_id);
+      if (isPortal) void queryClient.invalidateQueries({ queryKey: ["portal", "entitlement"] });
       const protectedHosts = res.fragile_excluded ?? [];
       toastOk("Job queued", protectedHosts.length
         ? `Probe picks up on next poll (~10s). ${protectedHosts.length} fragile host${protectedHosts.length === 1 ? "" : "s"} (HSM / ATM / SWIFT / ICS) kept out of this scan: ${protectedHosts.map((h) => h.ip).join(", ")}`
@@ -876,7 +893,7 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
     (a, b) => Number(a.status === "coming_soon") - Number(b.status === "coming_soon"),
   );
 
-  const canLaunch = !!selectedUc && !!selectedEng && compatibleProbes.length > 0 && !launching;
+  const canLaunch = !!selectedUc && !!selectedEng && compatibleProbes.length > 0 && !launching && !planBlock;
   const intensityObj = INTENSITY.find((i) => i.id === intensity)!;
 
   const ucNameFor = (id: string | null) =>
@@ -1087,7 +1104,8 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
                     {!isOt && (
                       <div>
                         <FieldLabel icon={<Radar size={11} />}>Scan Intensity</FieldLabel>
-                        <IntensityDial value={intensity} onChange={setIntensity} />
+                        <IntensityDial value={intensity} onChange={setIntensity}
+                          allowed={isPortal ? PORTAL_INTENSITIES : undefined} />
                       </div>
                     )}
 
@@ -1144,6 +1162,14 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
 
                   {/* Launch + reset */}
                     <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                      {planBlock && (
+                        <div role="alert" style={{ fontSize: 11, lineHeight: 1.45, color: "var(--sev-high-color)" }}>{planBlock}</div>
+                      )}
+                      {isPortal && plan?.can_scan && plan.scans_left != null && (
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                          Uses 1 of your {plan.scans_left} remaining scan{plan.scans_left === 1 ? "" : "s"}.
+                        </div>
+                      )}
                       <button className="scn-launch" onClick={launch} disabled={!canLaunch}>
                         {launching ? <><Loader size={15} className="scn-spin" /> Dispatching…</> : <><Play size={15} fill="currentColor" /> Launch Scan</>}
                       </button>
