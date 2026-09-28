@@ -465,11 +465,14 @@ def test_default_auto_detects_the_configured_cloud_provider():
     assert rt.privacy == "cloud"
 
 
-def test_default_auto_detect_prefers_openai_then_anthropic_then_openrouter():
+def test_default_auto_detect_is_premium_first_anthropic_then_openai():
+    # Claude first, OpenAI second, free tiers after (app/ai/routing.DEFAULT_CHAIN).
     svc = ManagerLlmService(_cloud(openai_api_key="o", anthropic_api_key="a", openrouter_api_key="r"))
-    assert svc._default_runtime().provider == "openai"
-    svc2 = ManagerLlmService(_cloud(anthropic_api_key="a", openrouter_api_key="r"))
-    assert svc2._default_runtime().provider == "anthropic"
+    assert svc._default_runtime().provider == "anthropic"
+    svc2 = ManagerLlmService(_cloud(openai_api_key="o", openrouter_api_key="r"))
+    assert svc2._default_runtime().provider == "openai"
+    svc3 = ManagerLlmService(_cloud(openrouter_api_key="r"))
+    assert svc3._default_runtime().provider == "openrouter"
 
 
 def test_default_runtime_fails_closed_without_any_cloud_key():

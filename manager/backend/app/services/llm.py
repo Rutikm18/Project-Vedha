@@ -23,9 +23,22 @@ from app.ai.failures import (
     classify_http,
     parse_retry_after,
 )
-from app.ai.routing import FREE, provider_tier
+from app.ai.headroom import headroom_cooldown
+from app.ai.health import ProviderHealth
+from app.ai.kv import KvStore, default_kv
+from app.ai.routing import (
+    FREE,
+    PREMIUM,
+    TIER_RANK,
+    allowed_by_floor,
+    attempt_budget,
+    chain_order,
+    provider_tier,
+    task_policy,
+)
 from app.config import Settings, get_settings
 from app.schemas.ai import AiGenerateRequest, AiProviderStatus, AiStatusResponse
+from app.services.finding_ai import _extract_json
 from app.services.llm_http_client import AsyncLlmHttpClient
 
 logger = structlog.get_logger()
@@ -456,6 +469,7 @@ class ManagerLlmService:
         *,
         transport: httpx.AsyncBaseTransport | None = None,
         http_client: AsyncLlmHttpClient | None = None,
+        kv: KvStore | None = None,
     ):
         self.settings = settings or get_settings()
         self._http = http_client or AsyncLlmHttpClient(
@@ -465,26 +479,30 @@ class ManagerLlmService:
         # One hash-only record per egress decision (app/ai/audit_chain.py). The
         # caller persists them in its own transaction via persist_ai_calls.
         self.audit_records: list[dict] = []
-
-    def _auto_cloud_provider(self) -> str | None:
-        """First configured cloud provider, or None. Cloud-only: never Ollama."""
-        if _usable_key(self.settings.openai_api_key):
-            return "openai"
-        if _usable_key(self.settings.anthropic_api_key):
-            return "anthropic"
-        if _usable_key(self.settings.gemini_api_key):
-            return "gemini"
-        if _usable_key(self.settings.openrouter_api_key):
-            return "openrouter"
-        return None
+        # Shared routing state (cooldowns, spend, stored answers): Redis in
+        # production, a fresh MemoryKv per test.
+        self._kv = kv or default_kv()
+        self.health = ProviderHealth(self._kv)
 
     def _sovereign(self) -> bool:
         return (self.settings.deployment_profile or "").strip().lower() == "sovereign"
 
-    def _default_runtime(self) -> Runtime:
-        return self._tiered(self._resolve_default_runtime())
+    def _configured_chain(self) -> list[Runtime]:
+        """Every configured provider in routing order: LLM_CHAIN when set, else the
+        premium-first default with a pinned LLM_PROVIDER moved to the front
+        (app/ai/routing.py). Unconfigured entries are skipped, so a missing key
+        simply shortens the chain. Sovereign keeps only local runtimes."""
+        chain: list[Runtime] = []
+        for provider in chain_order(self.settings.llm_chain, self.settings.llm_provider):
+            try:
+                chain.append(self._runtime(provider, None))
+            except AiRuntimeError:
+                continue
+        if self._sovereign():
+            chain = [runtime for runtime in chain if runtime.privacy == "local"]
+        return chain
 
-    def _resolve_default_runtime(self) -> Runtime:
+    def _default_runtime(self) -> Runtime:
         provider = self.settings.llm_provider.strip().lower()
         if self._sovereign() and provider not in _LOCAL_PROVIDERS:
             raise AiRuntimeError(
@@ -493,26 +511,17 @@ class ManagerLlmService:
                 503,
             )
         if provider == "local_openai":
+            # Resolved directly so a misconfigured in-bank endpoint surfaces its
+            # real reason instead of a generic "not configured".
             return self._runtime("local_openai", None)
-        # Empty/"auto"/unknown → resolve a configured cloud provider. Ollama is
-        # only ever used when an operator sets it explicitly (local dev).
-        if provider not in {"ollama", "openrouter", "anthropic", "openai", "gemini", "groq"}:
-            provider = self._auto_cloud_provider()
-            if provider is None:
-                raise AiRuntimeError(
-                    "No cloud AI provider is configured. Set OPENAI_API_KEY, "
-                    "ANTHROPIC_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY on the Manager.",
-                    503,
-                )
-        if provider == "openrouter":
-            return Runtime("openrouter", self.settings.openrouter_model, "cloud")
-        if provider == "anthropic":
-            return Runtime("anthropic", self.settings.llm_model, "cloud")
-        if provider == "openai":
-            return Runtime("openai", self.settings.openai_model, "cloud")
-        if provider == "gemini":
-            return Runtime("gemini", self.settings.gemini_model, "cloud")
-        return Runtime("ollama", self.settings.ollama_model, "local")
+        chain = self._configured_chain()
+        if not chain:
+            raise AiRuntimeError(
+                "No cloud AI provider is configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, "
+                "GEMINI_API_KEY, GROQ_API_KEY, or OPENROUTER_API_KEY on the Manager.",
+                503,
+            )
+        return chain[0]
 
     def _tier(self, provider: str) -> str:
         return provider_tier(provider, gemini_paid=self.settings.gemini_paid)
@@ -911,87 +920,131 @@ class ManagerLlmService:
             if record.get("task") is None:
                 record["task"] = task
 
-    def _fallback_candidates(self, request: AiGenerateRequest) -> list[Runtime]:
-        """Ordered runtimes to try: requested/default first, then the OpenRouter
-        free tier (still cloud). Never a second paid provider — a credit-exhausted
-        paid key must not silently bill another. Cloud-only: no local Ollama
-        fallback; if nothing is configured the caller gets a clean 503."""
-        candidates: list[Runtime] = []
-        try:
-            primary_provider = request.provider or self._default_runtime().provider
-            candidates.append(self._runtime(primary_provider, request.model))
-        except AiRuntimeError:
-            # Requested/default provider is not configured — skip straight to free.
-            pass
+    def _candidates(self, task: str, provider: str | None = None,
+                    model: str | None = None) -> list[Runtime]:
+        """Ordered runtimes allowed to answer ``task``: an explicitly requested
+        provider first, then the configured chain, minus tiers below the task's
+        floor. Health is NOT consulted here — that happens per attempt."""
         if self._sovereign():
-            # Sovereign: never a cloud candidate, even one the caller asked for by
-            # name — substitute the in-bank default instead.
-            local = [c for c in candidates if c.privacy == "local"]
-            # No usable local runtime: surface the real configuration error (e.g. a
-            # public LOCAL_LLM_BASE_URL) instead of a generic "not configured".
+            # Sovereign: never a cloud candidate, even one asked for by name. With
+            # no usable local runtime, surface the real configuration error.
+            local = [c for c in self._configured_chain() if c.privacy == "local"]
             return local or [self._default_runtime()]
-        have = {(c.provider, c.model) for c in candidates}
-        # Free cloud fallback: OpenRouter free tier (needs a free key). Uses the
-        # configured OPENROUTER_MODEL — set it to a live ':free' model id, because
-        # the literal 'openrouter/free' is not a real model and would 400.
-        if _usable_key(self.settings.openrouter_api_key) and not any(c.provider == "openrouter" for c in candidates):
-            rt = Runtime("openrouter", self.settings.openrouter_model, "cloud")
-            if (rt.provider, rt.model) not in have:
-                candidates.append(rt)
-        return candidates
+        candidates: list[Runtime] = []
+        if provider:
+            try:
+                candidates.append(self._runtime(provider, model))
+            except AiRuntimeError:
+                pass  # requested provider not usable: the chain takes over
+        for runtime in self._configured_chain():
+            if all(runtime.provider != c.provider for c in candidates):
+                candidates.append(runtime)
+        policy = task_policy(task)
+        cloud_ranks = [TIER_RANK[c.tier] for c in candidates if c.tier in TIER_RANK]
+        best = min(cloud_ranks) if cloud_ranks else TIER_RANK[FREE]
+        return [c for c in candidates if allowed_by_floor(c.tier, policy.lowest_tier, best)]
+
+    def _fallback_candidates(self, request: AiGenerateRequest) -> list[Runtime]:
+        return self._candidates(request.task, request.provider, request.model)
 
     async def generate_with_fallback(
         self, request: AiGenerateRequest, *, domain_brief: str | None = None,
     ) -> tuple[str, Runtime, bool]:
-        """Try each candidate until one succeeds. On ANY provider failure (credit
-        exhausted, rate limited, unreachable) cascade to the next free model.
-        Returns (text, served_runtime, fallback_used). Raises the last error only
-        when every candidate failed — callers then degrade to the grounded card."""
+        """Walk the chain until a provider gives a usable answer. Returns
+        (text, served_runtime, fallback_used). Raises the last error only when
+        every candidate failed or was skipped — callers then degrade to their
+        grounded (no-model) answer."""
         try:
-            return await self._generate_with_fallback(request, domain_brief)
+            candidates = self._fallback_candidates(request)
+            if not candidates:
+                raise AiRuntimeError("no AI provider is configured", 503)
+            messages = [{"role": item.role, "content": item.content} for item in request.messages]
+            return await self._walk(
+                request.task, self._build_system(request, domain_brief), messages,
+                request.max_tokens, request.task == "advisor_flow", candidates)
         finally:
             self._stamp_task(request.task)
 
-    async def _generate_with_fallback(
-        self, request: AiGenerateRequest, domain_brief: str | None,
+    async def complete_raw(
+        self, *, task: str, system: str, messages: list[dict[str, str]], max_tokens: int,
+        exclude: frozenset[str] | set[str] = frozenset(),
     ) -> tuple[str, Runtime, bool]:
-        candidates = self._fallback_candidates(request)
-        if not candidates:
-            raise AiRuntimeError("no AI provider is configured", 503)
-        system = self._build_system(request, domain_brief)
-        messages = [{"role": item.role, "content": item.content} for item in request.messages]
+        """Chain completion for callers that build their own system prompt (the
+        report generator's fallback). Same gateway, audit, health and deadline."""
+        try:
+            candidates = [c for c in self._candidates(task) if c.provider not in exclude]
+            if not candidates:
+                raise AiRuntimeError("no AI provider is available for this task", 503)
+            return await self._walk(task, system, messages, max_tokens, False, candidates)
+        finally:
+            self._stamp_task(task)
+
+    async def _walk(
+        self, task: str, system: str, messages: list[dict[str, str]], max_tokens: int,
+        json_mode: bool, candidates: list[Runtime],
+    ) -> tuple[str, Runtime, bool]:
+        policy = task_policy(task)
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + policy.deadline_s
         last: AiRuntimeError | None = None
         for index, runtime in enumerate(candidates):
+            state = await self.health.acquire(runtime.provider)
+            if not ProviderHealth.allows(state):
+                self._log_attempt(task, runtime, index, "skipped", 0.0, state.reason)
+                last = last or AiRuntimeError(
+                    f"{runtime.provider} is temporarily unavailable ({state.reason})", 503)
+                continue
+            remaining = deadline - loop.time()
+            if remaining <= 0.05:
+                break
+            budget = attempt_budget(remaining, is_last=index == len(candidates) - 1,
+                                    cap_s=self.settings.llm_request_timeout_seconds)
+            started = loop.time()
+            meta: dict = {}
+            token = _REPLY_META.set(meta)
             try:
-                if runtime.provider == "ollama":
-                    await self._ensure_installed_ollama_model(runtime.model)
-                text = await self._dispatch(
-                    runtime, system, messages, request.max_tokens,
-                    json_mode=request.task == "advisor_flow",
-                )
-                fallback_used = index > 0
-                if fallback_used:
-                    logger.warning(
-                        "ai.generate.fallback",
-                        served_by=runtime.provider, model=runtime.model,
-                        task=request.task, attempts=index + 1,
-                    )
-                else:
-                    logger.info(
-                        "ai.generate.complete",
-                        provider=runtime.provider, model=runtime.model, task=request.task,
-                    )
-                return text, runtime, fallback_used
+                text = await asyncio.wait_for(
+                    self._attempt(runtime, system, messages, max_tokens, json_mode), timeout=budget)
+                if policy.json_output and _extract_json(text) is None:
+                    raise AiRuntimeError(
+                        f"{runtime.provider} returned output that is not the required JSON",
+                        502, INVALID_OUTPUT)
+            except (asyncio.TimeoutError, TimeoutError):
+                last = AiRuntimeError(f"{runtime.provider} timed out", 504, TIMEOUT)
             except AiRuntimeError as exc:
                 last = exc
-                logger.warning(
-                    "ai.generate.candidate_failed",
-                    provider=runtime.provider, model=runtime.model,
-                    status=exc.status_code, error=str(exc),
-                )
-                continue
-        assert last is not None
-        raise last
+            else:
+                elapsed = loop.time() - started
+                await self._after_success(runtime, meta)
+                self._log_attempt(task, runtime, index, "served", elapsed, None)
+                return text, runtime, index > 0
+            finally:
+                _REPLY_META.reset(token)
+            failure = last.failure
+            if failure is not None:
+                await self.health.record_failure(runtime.provider, failure)
+            self._log_attempt(task, runtime, index, "failed", loop.time() - started,
+                              failure.kind if failure else str(last))
+        raise last or AiRuntimeError("AI deadline exceeded before any provider answered", 504)
+
+    async def _attempt(self, runtime: Runtime, system: str, messages: list[dict[str, str]],
+                       max_tokens: int, json_mode: bool) -> str:
+        if runtime.provider == "ollama":
+            await self._ensure_installed_ollama_model(runtime.model)
+        return await self._dispatch(runtime, system, messages, max_tokens, json_mode=json_mode)
+
+    async def _after_success(self, runtime: Runtime, meta: dict) -> None:
+        await self.health.record_success(runtime.provider)
+        wait = headroom_cooldown(meta.get("headers") or {})
+        if wait is not None:
+            await self.health.cool_for_headroom(runtime.provider, wait)
+
+    def _log_attempt(self, task: str, runtime: Runtime, index: int, outcome: str,
+                     seconds: float, detail: str | None) -> None:
+        log = logger.info if outcome == "served" and index == 0 else logger.warning
+        log("ai.attempt", task=task, provider=runtime.provider, model=runtime.model,
+            tier=runtime.tier, index=index, outcome=outcome, ms=round(seconds * 1000),
+            detail=detail)
 
     def _client(self, *, timeout: float | None = None) -> httpx.AsyncClient:
         return self._http.open(timeout_seconds=timeout)
