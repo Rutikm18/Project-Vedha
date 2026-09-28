@@ -77,3 +77,10 @@ def test_spend_cap_message_is_actionable():
     message, status = _provider_error_message("anthropic", 429, _SPEND_CAP_MSG)
     assert status == 402
     assert "spend limit" in message
+
+
+def test_openai_empty_prepaid_balance_is_billing_without_relying_on_the_url():
+    # Observed live 2026-09-28 (HTTP 429). The URL is stripped here so the match
+    # cannot come from the word "billing" in the settings link.
+    failure = classify_http(429, "You have no credits remaining. Add credits to continue using the API.")
+    assert (failure.kind, failure.blocked) == ("billing", True)

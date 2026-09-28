@@ -18,6 +18,8 @@ SPEND_CAP_SIGNALS = ("spend limit", "spending limit", "usage limit", "regain acc
 BILLING_SIGNALS = (
     "credit balance", "purchase credit", "billing", "insufficient_quota",
     "insufficient quota", "insufficient funds", "payment required", "out of credit",
+    # OpenAI's wording when a prepaid balance is empty (observed live, HTTP 429).
+    "no credits", "credits remaining",
 )
 AUTH_SIGNALS = (
     "invalid x-api-key", "authentication_error", "invalid api key", "invalid_api_key",
