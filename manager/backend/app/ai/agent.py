@@ -30,12 +30,15 @@ import uuid
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+import httpx
 import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.services.llm import cached_system_prompt
+from app.ai.health import ProviderHealth
+from app.ai.openai_tools import OpenAiToolClient
+from app.services.llm import _provider_error_reason, _usable_key, cached_system_prompt
 from app.models.agent_recommendation import (
     AgentRecommendation, CAT_ATTACK_PATH, CAT_NEXT_ACTION, CAT_TRIAGE, STATUS_PENDING,
 )
@@ -57,7 +60,7 @@ except ImportError:  # pragma: no cover
 
 
 class AgentUnavailableError(RuntimeError):
-    """Raised when the Anthropic SDK or API key is not configured."""
+    """Raised when no configured provider (Claude, then OpenAI) can serve the advisor."""
 
 
 _CATEGORIES = {CAT_TRIAGE, CAT_NEXT_ACTION, CAT_ATTACK_PATH}
@@ -160,7 +163,8 @@ _TOOLS = _READ_TOOLS + [_SUBMIT_TOOL]
 
 
 class AgentDecisionEngine:
-    def __init__(self, db: AsyncSession, *, client: Any = None):
+    def __init__(self, db: AsyncSession, *, client: Any = None,
+                 clients: list[tuple[str, Any, str]] | None = None):
         settings = get_settings()
         self._settings = settings
         self._db = db
@@ -169,12 +173,23 @@ class AgentDecisionEngine:
         self._max_tokens = settings.llm_max_tokens
         self._max_iters = 8
 
-        if client is not None:
-            self._client = client
-        elif _HAS_ANTHROPIC and settings.anthropic_api_key:
-            self._client = AsyncAnthropic(api_key=settings.anthropic_api_key, max_retries=2)
+        # Ordered (provider, client, model) list: Claude first, then OpenAI tool
+        # calling behind the same SDK shape (app/ai/openai_tools.py). The loop's
+        # history stays in Anthropic format, so failover can happen mid-run.
+        if clients is not None:
+            self._clients = list(clients)
+        elif client is not None:
+            self._clients = [("anthropic", client, settings.llm_model)]
         else:
-            self._client = None
+            self._clients = []
+            if _HAS_ANTHROPIC and settings.anthropic_api_key:
+                # One SDK retry: a second provider is waiting, so long local
+                # backoff on a 429 only delays the advisor.
+                self._clients.append(("anthropic", AsyncAnthropic(
+                    api_key=settings.anthropic_api_key, max_retries=1), settings.llm_model))
+            if _usable_key(settings.openai_api_key):
+                self._clients.append(("openai", OpenAiToolClient(settings), settings.openai_model))
+        self._client = self._clients[0][1] if self._clients else None
 
     @property
     def available(self) -> bool:
@@ -253,20 +268,42 @@ class AgentDecisionEngine:
         return {"run_id": str(run_id), "recommendations_stored": stored}
 
     async def _create(self, messages: list[dict]):
-        kwargs: dict[str, Any] = {
-            "model": self._model,
-            "max_tokens": self._max_tokens,
-            # Prompt caching: SYSTEM_PROMPT + the (large, stable) _TOOLS definitions
-            # are identical across all 8 loop iterations. A cache breakpoint on the
-            # system block caches BOTH (Anthropic order: tools → system → messages),
-            # so each iteration only pays for the growing message tail.
-            "system": cached_system_prompt(SYSTEM_PROMPT),
-            "tools": _TOOLS,
-            "messages": messages,
-        }
-        if self._effort:
-            kwargs["output_config"] = {"effort": self._effort}  # cap thinking-token spend
-        return await self._client.messages.create(**kwargs)
+        """One model turn from the first provider that can serve it. Failures are
+        recorded in the shared circuit breaker, so a provider that just
+        rate-limited the advisor is skipped by every other AI caller too."""
+        health = ProviderHealth()
+        last_exc: Exception | None = None
+        for name, client, model in self._clients:
+            if not ProviderHealth.allows(await health.acquire(name)):
+                continue
+            kwargs: dict[str, Any] = {
+                "model": model,
+                "max_tokens": self._max_tokens,
+                # Prompt caching: SYSTEM_PROMPT + the (large, stable) _TOOLS
+                # definitions are identical across all 8 loop iterations. A cache
+                # breakpoint on the system block caches BOTH (Anthropic order:
+                # tools → system → messages), so each iteration only pays for the
+                # growing message tail.
+                "system": cached_system_prompt(SYSTEM_PROMPT),
+                "tools": _TOOLS,
+                "messages": messages,
+            }
+            if self._effort and name == "anthropic":
+                kwargs["output_config"] = {"effort": self._effort}  # cap thinking-token spend
+            try:
+                response = await client.messages.create(**kwargs)
+            except (APIStatusError, APIConnectionError, httpx.HTTPError, KeyError, ValueError) as exc:
+                last_exc = exc
+                await health.record_failure(name, _classify_sdk_error(exc))
+                logger.warning("agent.provider_failed", provider=name, error=type(exc).__name__)
+                continue
+            await health.record_success(name)
+            if model != self._model:
+                logger.warning("agent.provider_fallback", served_by=name, model=model)
+            self._model = model
+            return response
+        raise AgentUnavailableError(
+            f"no AI provider could serve the advisor: {last_exc or 'all providers are cooling down'}")
 
     # ── read tools (the model's only window into the data) ──────────────────────────
 
@@ -408,6 +445,22 @@ class AgentDecisionEngine:
 
 
 # ── helpers ─────────────────────────────────────────────────────────────────────
+
+def _classify_sdk_error(exc: Exception):
+    """Routing meaning of an Anthropic-SDK or httpx failure (app/ai/failures.py)."""
+    from app.ai.failures import NETWORK, TIMEOUT, classify_http, parse_retry_after
+    response = getattr(exc, "response", None)
+    status = getattr(exc, "status_code", None) or getattr(response, "status_code", None)
+    if isinstance(status, int):
+        retry_after = parse_retry_after(response.headers.get("retry-after")) if response is not None else None
+        reason = str(getattr(exc, "message", "") or exc)
+        if isinstance(exc, httpx.HTTPStatusError):
+            reason = _provider_error_reason(exc.response)
+        return classify_http(status, reason, retry_after)
+    if isinstance(exc, httpx.TimeoutException) or "timeout" in type(exc).__name__.lower():
+        return TIMEOUT
+    return NETWORK
+
 
 def _tool_result(tool_use_id: str, obj: Any) -> dict:
     return {"type": "tool_result", "tool_use_id": tool_use_id,
