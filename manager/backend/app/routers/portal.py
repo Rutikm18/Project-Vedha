@@ -52,6 +52,7 @@ from app.schemas.portal import (
     ClientScanRequestOut,
     ClientSummaryOut,
     ClientTrendsOut,
+    EntitlementOut,
     ScanRequestCreate,
 )
 from app.services import finding_events, finding_workflow, portal_metrics
@@ -65,7 +66,7 @@ from app.remediation.bundles import bundle_link
 from app.remediation.loader import load_finding_context, resolve_due
 from app.remediation.plan import build_plan
 from app.services.scope_targets import validate_targets_in_scope
-from app.services import portal_scan_policy
+from app.services import entitlements, portal_scan_policy
 from app.routers.agents import EnqueueJobRequest
 from app.routers.findings import FindingFilters, finding_filters
 
@@ -129,6 +130,13 @@ async def portal_engagement(user: ClientUser, db: DB):
         scope_cidrs=list(eng.scope_cidrs or []),
         has_assigned_agent=eng.assigned_agent_id is not None,
     )
+
+
+@router.get("/entitlement", response_model=EntitlementOut,
+            summary="Your plan: POC or licence, scans left, days left")
+async def portal_entitlement(user: ClientUser, db: DB):
+    view = await entitlements.view_for(db, assert_client(user))
+    return EntitlementOut(**view.__dict__)
 
 
 @router.get("/findings", response_model=list[ClientFindingOut],
@@ -552,10 +560,14 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
             f"You already have {pending_count} scan requests awaiting review "
             f"(max {_MAX_PENDING_REQUESTS}). Please wait for your security team.")
 
+    # Spend one scan from the customer's plan (403 with the reason when the POC /
+    # licence has expired or the quota is used up). Given back if rejected.
+    await entitlements.consume_scan(db, eng_id)
+
     sr = ScanRequest(
         tenant_id=user.tenant_id, engagement_id=eng_id, requested_by=user.user_id,
         scan_type=scan_type, use_case_id=use_case_id, status=SR_PENDING, note=body.note,
-        targets=normalized_targets, intensity=intensity,
+        targets=normalized_targets, intensity=intensity, quota_consumed=True,
     )
     db.add(sr)
     await db.flush()
@@ -1044,6 +1056,10 @@ async def portal_workspace_scan_launch(
     # A crafted client cannot route work to another tenant probe. The session's
     # engagement binding is authoritative for both fields.
     params["preferred_agent_id"] = str(eng.assigned_agent_id)
+    # Spend one scan from the plan; the flag lets a cancel-before-start give it
+    # back. Any failure below rolls the whole transaction back, spend included.
+    await entitlements.consume_scan(db, eng_id)
+    params[entitlements.JOB_QUOTA_FLAG] = True
     pinned = body.model_copy(update={"engagement_id": eng_id, "params": params,
                                      "intensity": intensity, "allow_fragile": False})
 

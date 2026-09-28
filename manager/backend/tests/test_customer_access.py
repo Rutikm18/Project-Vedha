@@ -72,6 +72,14 @@ class TestBuildScanJob:
         sr = SimpleNamespace(id=uuid.uuid4(), scan_type="bogus", requested_by=None)
         assert ca.build_scan_job(sr, eng).job_type == ScanJobType.vuln_scan
 
+    def test_quota_spend_moves_from_request_to_job(self):
+        eng = SimpleNamespace(id=uuid.uuid4(), assigned_agent_id=uuid.uuid4(), scope_cidrs=[])
+        sr = SimpleNamespace(id=uuid.uuid4(), scan_type="vuln_scan", requested_by=None,
+                             quota_consumed=True)
+        assert ca.build_scan_job(sr, eng).result["_quota_consumed"] is True
+        sr.quota_consumed = False
+        assert "_quota_consumed" not in ca.build_scan_job(sr, eng).result
+
     def test_no_assigned_agent_raises(self):
         eng = SimpleNamespace(id=uuid.uuid4(), assigned_agent_id=None, scope_cidrs=[])
         sr = SimpleNamespace(id=uuid.uuid4(), scan_type="vuln_scan", requested_by=None)
@@ -201,6 +209,17 @@ class TestRejectScanRequest:
         assert sr.status == "rejected"
         assert sr.review_reason == "out of window"
         assert out["rejected"] is True
+
+    def test_reject_gives_the_scan_back(self, monkeypatch):
+        from app.services import entitlements
+        refund = AsyncMock()
+        monkeypatch.setattr(entitlements, "refund_for_request", refund)
+        op = _operator()
+        eng_id = uuid.uuid4()
+        sr = _pending_request(eng_id, op.tenant_id)
+        db = _mock_db([SimpleNamespace(id=eng_id, tenant_id=op.tenant_id), sr])
+        asyncio.run(ca.reject_scan_request(eng_id, sr.id, ca.RejectBody(), db, op))
+        refund.assert_awaited_once_with(db, sr)
 
 
 class TestAssignAgent:

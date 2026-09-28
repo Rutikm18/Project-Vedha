@@ -216,6 +216,8 @@ async def test_portal_scan_launch_pins_session_engagement_and_assigned_probe(mon
     from app.routers import agents as agent_routes
     enqueue = AsyncMock(return_value={"job_id": str(uuid.uuid4()), "status": "pending"})
     monkeypatch.setattr(agent_routes, "enqueue_agent_job", enqueue)
+    from app.services import entitlements
+    monkeypatch.setattr(entitlements, "consume_scan", AsyncMock())
 
     body = EnqueueJobRequest(
         engagement_id=uuid.uuid4(),
@@ -316,6 +318,8 @@ def _launch_fixture(monkeypatch):
     from app.routers import agents as agent_routes
     enqueue = AsyncMock(return_value={"job_id": str(uuid.uuid4()), "status": "pending"})
     monkeypatch.setattr(agent_routes, "enqueue_agent_job", enqueue)
+    from app.services import entitlements
+    monkeypatch.setattr(entitlements, "consume_scan", AsyncMock())
     return user, db, enqueue
 
 
@@ -352,3 +356,29 @@ async def test_portal_scan_launch_strips_tuning_and_pins_a_safe_preset(monkeypat
     assert "rate" not in pinned.params and "concurrency" not in pinned.params
     assert "allow_degraded_kernel" not in pinned.params
     assert pinned.allow_fragile is False
+
+
+@pytest.mark.asyncio
+async def test_portal_scan_launch_spends_quota_and_flags_the_job(monkeypatch):
+    user, db, enqueue = _launch_fixture(monkeypatch)
+    from app.services import entitlements
+    consume = AsyncMock()
+    monkeypatch.setattr(entitlements, "consume_scan", consume)
+    body = EnqueueJobRequest(engagement_id=uuid.uuid4(), use_case_id="uc_network_va")
+    await portal_workspace_scan_launch(body=body, user=user, db=db, redis=MagicMock())
+    consume.assert_awaited_once()
+    assert enqueue.await_args.kwargs["body"].params["_quota_consumed"] is True
+
+
+@pytest.mark.asyncio
+async def test_portal_scan_launch_refused_by_plan_enqueues_nothing(monkeypatch):
+    from fastapi import HTTPException
+    user, db, enqueue = _launch_fixture(monkeypatch)
+    from app.services import entitlements
+    monkeypatch.setattr(entitlements, "consume_scan",
+                        AsyncMock(side_effect=HTTPException(403, "You've used all 5 scans")))
+    body = EnqueueJobRequest(engagement_id=uuid.uuid4(), use_case_id="uc_network_va")
+    with pytest.raises(HTTPException) as e:
+        await portal_workspace_scan_launch(body=body, user=user, db=db, redis=MagicMock())
+    assert e.value.status_code == 403
+    enqueue.assert_not_awaited()

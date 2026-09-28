@@ -1319,6 +1319,11 @@ async def cancel_agent_job(
             attempt.ended_at = now
             attempt.error = f"cancelled by user {current_user.user_id}"
 
+    if not was_running:
+        # Nothing ran, so a customer's portal scan goes back on their quota.
+        from app.services.entitlements import refund_for_job
+        await refund_for_job(db, job)
+
     # Superseding the fence is the abort signal (see docstring).
     job.current_fence = (job.current_fence or 0) + 1
     job.current_attempt_id = None

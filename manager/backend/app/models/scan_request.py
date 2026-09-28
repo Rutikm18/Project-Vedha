@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -64,3 +64,6 @@ class ScanRequest(Base, TimestampMixin):
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     review_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    # True once this request took a scan from the customer's quota; cleared when
+    # the scan is given back (rejected), so a refund can never happen twice.
+    quota_consumed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")

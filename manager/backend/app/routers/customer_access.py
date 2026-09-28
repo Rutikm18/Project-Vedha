@@ -16,12 +16,12 @@ from __future__ import annotations
 import re
 import secrets
 import uuid
-from datetime import datetime, timezone
-from typing import Annotated
+from datetime import datetime, timedelta, timezone
+from typing import Annotated, Literal
 
 import structlog
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -29,11 +29,14 @@ from app.auth.password import hash_password
 from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
 from app.models.agent import Agent
+from app.models.customer_entitlement import PLAN_LICENSED, PLAN_POC, CustomerEntitlement
 from app.models.engagement import Engagement
 from app.models.enums import ScanJobStatus, ScanJobType, UserRole
 from app.models.scan_job import ScanJob
 from app.models.scan_request import ScanRequest, SR_APPROVED, SR_PENDING, SR_REJECTED
 from app.models.user import User
+from app.schemas.portal import EntitlementOut
+from app.services import entitlements
 from app.services.audit import record_audit
 from app.services.credential_crypto import decrypt_credential, encrypt_credential
 from app.utils.db import get_or_404
@@ -90,6 +93,41 @@ class RejectBody(BaseModel):
     reason: str | None = None
 
 
+class EntitlementConfig(BaseModel):
+    """Operator's plan configuration for one customer.
+
+    POC: give ``duration_days`` (from ``starts_at``, default now) or an explicit
+    ``expires_at`` — a POC must end. Licensed: ``expires_at`` is the licence term
+    end, or omit it for no end date. ``scan_quota`` omitted/None = unlimited."""
+    plan_type: Literal["poc", "licensed"]
+    starts_at: datetime | None = None
+    duration_days: int | None = Field(default=None, ge=1, le=3650)
+    expires_at: datetime | None = None
+    scan_quota: int | None = Field(default=None, ge=0, le=100_000)
+    notes: str | None = Field(default=None, max_length=2000)
+
+    @model_validator(mode="after")
+    def _window(self):
+        if self.duration_days is not None and self.expires_at is not None:
+            raise ValueError("give duration_days or expires_at, not both")
+        if self.plan_type == PLAN_POC and self.duration_days is None and self.expires_at is None:
+            raise ValueError("a POC needs a duration (duration_days) or an end date (expires_at)")
+        return self
+
+
+class EntitlementAdjust(BaseModel):
+    """Top-up without re-configuring: add scans and/or extend the end date."""
+    add_scans: int = Field(default=0, ge=0, le=100_000)
+    extend_days: int = Field(default=0, ge=0, le=3650)
+    reset_usage: bool = False
+
+
+class EntitlementAdminOut(EntitlementOut):
+    configured: bool
+    notes: str | None = None
+    updated_at: datetime | None = None
+
+
 # ── helpers (unit-testable) ────────────────────────────────────────────────────
 
 def generate_password(n: int = 16) -> str:
@@ -142,6 +180,10 @@ def build_scan_job(scan_request: ScanRequest, engagement: Engagement) -> ScanJob
         result["targets"] = list(scan_request.targets)
     if getattr(scan_request, "intensity", None):
         result["intensity"] = scan_request.intensity
+    if getattr(scan_request, "quota_consumed", False):
+        # The request's quota spend moves to the job: cancelling it before a
+        # probe starts it gives the scan back (entitlements.refund_for_job).
+        result[entitlements.JOB_QUOTA_FLAG] = True
     if getattr(scan_request, "use_case_id", None):
         # The exact capability use-case the customer chose — the probe runs this.
         result["use_case_id"] = scan_request.use_case_id
@@ -183,6 +225,36 @@ async def _apply_fragile_guard(db, engagement: Engagement, job: ScanJob) -> None
                       params.get("_excluded_cidrs") or list(engagement.excluded_cidrs or []),
                       plan.cidrs),
                   "_fragile_excluded": plan.hosts}
+
+
+def apply_entitlement_config(row: CustomerEntitlement, body: EntitlementConfig,
+                             *, now: datetime) -> None:
+    """Pure: write a configuration onto a (new or existing) entitlement row.
+    Usage (scans_used) is kept — re-configuring a plan never hands back scans
+    silently; that's what ``reset_usage`` on /adjust is for."""
+    starts = body.starts_at or row.starts_at or now
+    if starts.tzinfo is None:
+        starts = starts.replace(tzinfo=timezone.utc)
+    row.plan_type = body.plan_type
+    row.starts_at = starts
+    if body.duration_days is not None:
+        row.expires_at = starts + timedelta(days=body.duration_days)
+    else:
+        row.expires_at = body.expires_at
+    if row.expires_at is not None and row.expires_at <= starts:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "The end date must be after the start date")
+    row.scan_quota = body.scan_quota
+    row.notes = body.notes
+    if body.plan_type == PLAN_LICENSED and not row.license_key:
+        row.license_key = entitlements.generate_license_key()
+
+
+def _admin_view(row: CustomerEntitlement | None) -> EntitlementAdminOut:
+    view = entitlements.evaluate(row)
+    return EntitlementAdminOut(**view.__dict__, configured=row is not None,
+                               notes=getattr(row, "notes", None),
+                               updated_at=getattr(row, "updated_at", None))
 
 
 async def _existing_client_user(db, engagement_id: uuid.UUID) -> User | None:
@@ -296,6 +368,82 @@ async def patch_client_user(
                          temp_password=temp)
 
 
+# ── plan / licence configuration ─────────────────────────────────────────────
+
+@router.get("/{engagement_id}/entitlement", response_model=EntitlementAdminOut,
+            summary="The customer's plan (POC / licensed), quota and usage")
+async def get_entitlement(
+    engagement_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, _OPERATOR],
+):
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    return _admin_view(await entitlements.get_entitlement(db, engagement_id))
+
+
+@router.put("/{engagement_id}/entitlement", response_model=EntitlementAdminOut,
+            summary="Configure the customer's plan: POC with a duration, or a licence term")
+async def put_entitlement(
+    engagement_id: uuid.UUID,
+    body: EntitlementConfig,
+    db: DB,
+    current_user: Annotated[AuthUser, _OPERATOR],
+):
+    eng = await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    row = await entitlements.get_entitlement(db, engagement_id, for_update=True)
+    created = row is None
+    if created:
+        row = CustomerEntitlement(tenant_id=eng.tenant_id, engagement_id=engagement_id,
+                                  scans_used=0)
+        db.add(row)
+    before = None if created else {
+        "plan_type": row.plan_type, "expires_at": row.expires_at and row.expires_at.isoformat(),
+        "scan_quota": row.scan_quota}
+    apply_entitlement_config(row, body, now=datetime.now(timezone.utc))
+    row.updated_by = current_user.user_id
+    await db.flush()
+    await db.refresh(row)
+    record_audit(db, actor_id=current_user.user_id, action="entitlement.configured",
+                 engagement_id=engagement_id, resource_type="entitlement", resource_id=row.id,
+                 detail={"before": before, "after": {
+                     "plan_type": row.plan_type,
+                     "expires_at": row.expires_at and row.expires_at.isoformat(),
+                     "scan_quota": row.scan_quota}})
+    await db.flush()
+    return _admin_view(row)
+
+
+@router.post("/{engagement_id}/entitlement/adjust", response_model=EntitlementAdminOut,
+             summary="Add scans, extend the end date, or reset usage")
+async def adjust_entitlement(
+    engagement_id: uuid.UUID,
+    body: EntitlementAdjust,
+    db: DB,
+    current_user: Annotated[AuthUser, _OPERATOR],
+):
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    row = await entitlements.get_entitlement(db, engagement_id, for_update=True)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            "Configure a plan for this customer first")
+    if body.add_scans and row.scan_quota is not None:
+        row.scan_quota += body.add_scans
+    if body.extend_days and row.expires_at is not None:
+        # Extending an already-expired POC counts from today, not from the past.
+        base = max(row.expires_at, datetime.now(timezone.utc))
+        row.expires_at = base + timedelta(days=body.extend_days)
+    if body.reset_usage:
+        row.scans_used = 0
+    row.updated_by = current_user.user_id
+    await db.flush()
+    await db.refresh(row)
+    record_audit(db, actor_id=current_user.user_id, action="entitlement.adjusted",
+                 engagement_id=engagement_id, resource_type="entitlement", resource_id=row.id,
+                 detail=body.model_dump())
+    await db.flush()
+    return _admin_view(row)
+
+
 @router.patch("/{engagement_id}/assign-agent",
               summary="Assign the agent this engagement's scans run on")
 async def assign_agent(
@@ -398,6 +546,7 @@ async def reject_scan_request(
     sr = await _get_scan_request(db, engagement_id, request_id, current_user.tenant_id)
     if sr.status != SR_PENDING:
         raise HTTPException(status.HTTP_409_CONFLICT, f"Scan request is already {sr.status}")
+    await entitlements.refund_for_request(db, sr)
     sr.status = SR_REJECTED
     sr.reviewed_by = current_user.user_id
     sr.reviewed_at = datetime.now(timezone.utc)
@@ -419,6 +568,7 @@ class CustomerListItem(BaseModel):
     engagement_name: str | None
     portal_slug: str | None
     created_at: datetime | None
+    entitlement: EntitlementOut | None = None   # None → no plan configured
 
 
 @customers_router.get("", response_model=list[CustomerListItem],
@@ -430,8 +580,10 @@ async def list_customers(
     """Every provisioned customer login (role=client) in the tenant, with its
     bound engagement and portal handle — powers the operator Customers section."""
     rows = (await db.execute(
-        select(User, Engagement.name)
+        select(User, Engagement.name, CustomerEntitlement)
         .join(Engagement, User.client_engagement_id == Engagement.id, isouter=True)
+        .join(CustomerEntitlement,
+              CustomerEntitlement.engagement_id == User.client_engagement_id, isouter=True)
         .where(User.tenant_id == current_user.tenant_id,
                User.role == UserRole.client)
         .order_by(User.created_at.desc())
@@ -441,8 +593,10 @@ async def list_customers(
             id=u.id, email=u.email, is_active=u.is_active,
             engagement_id=u.client_engagement_id, engagement_name=eng_name,
             portal_slug=u.portal_slug, created_at=u.created_at,
+            entitlement=(EntitlementOut(**entitlements.evaluate(ent).__dict__)
+                         if ent is not None else None),
         )
-        for u, eng_name in rows
+        for u, eng_name, ent in rows
     ]
 
 

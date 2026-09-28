@@ -227,3 +227,24 @@ def test_current_user_has_no_email_field():
     If CurrentUser ever gains an email claim, delete this test deliberately —
     do not let the endpoint start depending on one silently."""
     assert "email" not in CurrentUser.model_fields
+
+
+# ── portal quota: a scan that never ran goes back on the customer's plan ─────
+@pytest.mark.asyncio
+async def test_cancelling_a_queued_portal_job_refunds_its_scan(monkeypatch):
+    from app.services import entitlements
+    refund = AsyncMock()
+    monkeypatch.setattr(entitlements, "refund_for_job", refund)
+    job = _job(ScanJobStatus.pending)
+    await ag.cancel_agent_job(job.id, _db(_one(job), _count(0)), _user())
+    refund.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_cancelling_a_running_job_does_not_refund(monkeypatch):
+    from app.services import entitlements
+    refund = AsyncMock()
+    monkeypatch.setattr(entitlements, "refund_for_job", refund)
+    job = _job(ScanJobStatus.running, agent_id=uuid.uuid4())
+    await ag.cancel_agent_job(job.id, _db(_one(job), _count(0)), _user())
+    refund.assert_not_awaited()

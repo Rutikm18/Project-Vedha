@@ -50,6 +50,22 @@ class ClientEngagementOut(BaseModel):
     assigned_agent_id: uuid.UUID | None = None
 
 
+class EntitlementOut(BaseModel):
+    """The customer's plan as both the portal and the operator console show it.
+    ``None`` quota / expiry mean unlimited / no end date."""
+    state: Literal["unconfigured", "not_started", "expired", "exhausted", "active"]
+    can_scan: bool
+    reason: str | None = None
+    plan_type: Literal["poc", "licensed"] | None = None
+    starts_at: datetime | None = None
+    expires_at: datetime | None = None
+    days_left: int | None = None
+    scan_quota: int | None = None
+    scans_used: int = 0
+    scans_left: int | None = None
+    license_key: str | None = None
+
+
 class ClientPostureOut(BaseModel):
     risk_index: float
     exploitable_score: float

@@ -304,6 +304,29 @@ def _engagement(eng_id: uuid.UUID, scope=("10.0.0.0/24",), excluded=()):
 
 
 class TestCreateScanRequest:
+    @pytest.fixture(autouse=True)
+    def _plan(self, monkeypatch):
+        """An active plan by default; tests that need a refusal override it."""
+        from app.services import entitlements
+        self.consume = AsyncMock()
+        monkeypatch.setattr(entitlements, "consume_scan", self.consume)
+
+    def test_request_spends_one_scan_and_is_marked(self):
+        user = _client()
+        db = _db_for_create(_engagement(user.client_engagement_id))
+        asyncio.run(portal.create_scan_request(ScanRequestCreate(scan_type="discovery"), user, db))
+        self.consume.assert_awaited_once_with(db, user.client_engagement_id)
+        assert _added(db, ScanRequest).quota_consumed is True
+
+    def test_expired_or_exhausted_plan_queues_nothing(self):
+        user = _client()
+        db = _db_for_create(_engagement(user.client_engagement_id))
+        self.consume.side_effect = HTTPException(403, "Your POC expired on 01 Sep 2026.")
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(portal.create_scan_request(ScanRequestCreate(scan_type="discovery"), user, db))
+        assert e.value.status_code == 403 and "expired" in e.value.detail
+        assert _added(db, ScanRequest) is None
+
     def test_creates_pending_request_with_targets_and_intensity(self):
         user = _client()
         eng = _engagement(user.client_engagement_id, scope=["10.0.0.0/24"])
