@@ -129,6 +129,10 @@ class Settings(BaseSettings):
     # Reuse window for answers to byte-identical one-shot requests (briefs,
     # refinement, compliance, report sections). 0 disables reuse.
     ai_answer_cache_ttl_seconds: int = 604800
+    # true = a task's quality floor is a hard wall (e.g. a customer report is never
+    # written by a free model; it fails instead). Default false: lower tiers answer
+    # only after every tier meeting the floor failed, flagged as a fallback.
+    ai_strict_quality_floor: bool = False
     llm_max_tokens: int = 4096
     # Reasoning depth = token spend. Report writing is straightforward generation, so
     # "low" minimizes thinking-token cost on thinking-capable models (Sonnet 4.6,

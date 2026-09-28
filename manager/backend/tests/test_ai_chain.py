@@ -195,15 +195,6 @@ async def test_spend_cap_blocks_anthropic():
 
 
 @pytest.mark.asyncio
-async def test_compliance_brief_never_falls_to_a_free_model_when_premium_is_configured():
-    router = Router(anthropic=_err(529, "overloaded"), openai=_err(500, "boom"))
-    svc = ManagerLlmService(settings(**PREMIUM_AND_FREE), transport=router.transport())
-    with pytest.raises(AiRuntimeError):
-        await svc.generate_with_fallback(ask("compliance_brief"))
-    assert "gemini" not in router.calls
-
-
-@pytest.mark.asyncio
 async def test_floor_relaxes_when_only_free_models_are_configured():
     router = Router()
     svc = ManagerLlmService(settings(gemini_api_key="g"), transport=router.transport())
@@ -279,3 +270,72 @@ async def test_status_reports_chain_order_health_and_spend():
     assert (first.spend_today_usd, first.daily_cap_usd) == (3.0, 20.0)
     assert (status.chain[1].state, status.chain[2].tier) == ("healthy", "free")
     assert status.provider == "anthropic" and status.configured is True
+
+
+# ── Production incident 2026-09-28: pinned Ollama unreachable, premium empty ──
+
+class _NoOllama:
+    """Transport where ollama.test refuses connections and cloud hosts answer."""
+
+    def __init__(self, router: Router):
+        self.router = router
+        self.ollama_calls = 0
+
+    async def __call__(self, request: httpx.Request) -> httpx.Response:
+        if request.url.host == "ollama.test":
+            self.ollama_calls += 1
+            raise httpx.ConnectError("connection refused", request=request)
+        return await self.router(request)
+
+
+@pytest.mark.asyncio
+async def test_unreachable_pinned_ollama_is_cooled_and_skipped():
+    kv = MemoryKv()
+    transport = _NoOllama(Router())
+    cfg = settings(llm_provider="ollama", ollama_base_url="http://ollama.test", **PREMIUM_AND_FREE)
+    svc = ManagerLlmService(cfg, transport=httpx.MockTransport(transport), kv=kv)
+    _, runtime, fallback = await svc.generate_with_fallback(ask())
+    assert (runtime.provider, fallback) == ("anthropic", True)
+    state = await ProviderHealth(kv).state("ollama")
+    assert (state.state, state.reason) == ("cooling", "network")
+
+    again = ManagerLlmService(cfg, transport=httpx.MockTransport(transport), kv=kv)
+    await again.generate_with_fallback(ask())
+    assert transport.ollama_calls == 1               # not retried while cooling
+
+
+_EMPTY_PREMIUM = dict(
+    anthropic=_err(400, "Your credit balance is too low to access the Anthropic API."),
+    openai=_err(429, "You have no credits remaining."),
+)
+
+
+@pytest.mark.asyncio
+async def test_premium_task_falls_to_free_tier_only_after_premium_fails():
+    # The user's requirement: when premium limits are exhausted the call must
+    # still be served — by the free tier, last, and flagged as a fallback.
+    router = Router(**_EMPTY_PREMIUM)
+    svc = ManagerLlmService(settings(**PREMIUM_AND_FREE), transport=router.transport())
+    _, runtime, fallback = await svc.generate_with_fallback(ask("compliance_brief"))
+    assert (runtime.provider, runtime.tier, fallback) == ("gemini", "free", True)
+    assert router.calls == ["anthropic", "openai", "gemini"]
+
+
+@pytest.mark.asyncio
+async def test_strict_quality_floor_keeps_free_models_off_premium_tasks():
+    router = Router(**_EMPTY_PREMIUM)
+    svc = ManagerLlmService(settings(**PREMIUM_AND_FREE, ai_strict_quality_floor=True),
+                            transport=router.transport())
+    with pytest.raises(AiRuntimeError):
+        await svc.generate_with_fallback(ask("compliance_brief"))
+    assert "gemini" not in router.calls
+
+
+@pytest.mark.asyncio
+async def test_tiers_meeting_the_floor_are_tried_before_lower_ones():
+    router = Router()
+    svc = ManagerLlmService(settings(**PREMIUM_AND_FREE, llm_chain="gemini,anthropic,openai"),
+                            transport=router.transport())
+    _, runtime, _ = await svc.generate_with_fallback(ask("compliance_brief"))
+    assert runtime.provider == "anthropic"
+    assert router.calls == ["anthropic"]
