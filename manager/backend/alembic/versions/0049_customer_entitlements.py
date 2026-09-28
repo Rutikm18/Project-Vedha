@@ -57,7 +57,11 @@ def upgrade() -> None:
         SELECT DISTINCT e.tenant_id, e.id, 'licensed',
                'Created by migration 0049: unlimited, no expiry (pre-existing customer)'
         FROM engagements e
-        JOIN users u ON u.client_engagement_id = e.id AND u.role = 'client'
+        JOIN users u ON u.client_engagement_id = e.id
+        -- ::text, not the enum literal: on a fresh install every migration runs
+        -- in one transaction, and 'client' was added to userrole earlier in it —
+        -- Postgres refuses an uncommitted enum value as a literal.
+        WHERE u.role::text = 'client'
     """)
 
 
