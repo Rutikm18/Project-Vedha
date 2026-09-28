@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     # and fails closed if none is set. "ollama" is an explicit local-dev opt-in and
     # is never selected automatically or used as an implicit fallback.
     llm_provider: str = ""
+    # Ordered, automatic fallback chain (app/ai/routing.py), e.g.
+    # "anthropic,openai,gemini,groq,openrouter". Empty = that premium-first default
+    # with LLM_PROVIDER (if set) moved to the front. Unconfigured entries are skipped.
+    llm_chain: str = ""
     # AI egress policy (app/ai/gateway.py). cloud = raw to cloud providers;
     # hybrid = cloud only with network identifiers pseudonymized (BFSI default);
     # sovereign = local models only, cloud refused. AI_PSEUDONYMIZE=true opts a
@@ -106,6 +110,10 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-flash-latest"  # 'gemini-2.0-flash' was retired (404); the -latest alias self-heals
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+    # True when the Gemini key's project has billing enabled. Google's free tier may
+    # use prompts to improve its products, so a free Gemini key is always sent
+    # pseudonymized data; a paid one is treated as the "budget" tier.
+    gemini_paid: bool = False
     llm_max_tokens: int = 4096
     # Reasoning depth = token spend. Report writing is straightforward generation, so
     # "low" minimizes thinking-token cost on thinking-capable models (Sonnet 4.6,
