@@ -10,7 +10,9 @@ DESIGN (proper asymmetric, not a shared secret):
   - The license is bound to a host fingerprint, so a copied probe (or a
     copied license) won't validate on a different machine.
 
-Toggle with LICENSE_ENFORCED=false for dev. Issue licenses with
+Toggle with LICENSE_ENFORCED=false for dev. In a SEALED build (agent/_sealed.py
+generated at build time) the licence is always enforced and the public key is a
+compiled-in constant — the environment can't switch either. Issue licenses with
 tools/issue_license.py (vendor-side; needs the private key).
 """
 from __future__ import annotations
@@ -20,10 +22,27 @@ import json
 import os
 from datetime import date
 
-# Replace with your real vendor public key (hex) — printed by
-# `python3 tools/issue_license.py keygen`. The matching private key is the
-# vendor's secret and must NEVER ship to a client.
+from agent import _sealed
+
+# The vendor public key (hex) — printed by `python3 tools/issue_license.py
+# keygen`. The matching private key is the vendor's secret and must NEVER ship
+# to a client. Kept for callers that read it; the gate uses vendor_public_key().
 VENDOR_PUBLIC_KEY_HEX = os.environ.get("PROBE_LICENSE_PUBKEY", "")
+
+
+def vendor_public_key() -> str:
+    """Sealed: the compiled-in key, never the environment (a customer-supplied
+    key would let them sign their own licence)."""
+    if _sealed.SEALED:
+        return _sealed.LICENSE_PUBKEY_HEX
+    return os.environ.get("PROBE_LICENSE_PUBKEY", "") or VENDOR_PUBLIC_KEY_HEX
+
+
+def license_enforced() -> bool:
+    """Sealed builds always enforce; LICENSE_ENFORCED only matters unsealed."""
+    if _sealed.SEALED:
+        return True
+    return os.environ.get("LICENSE_ENFORCED", "true").lower() not in ("false", "0", "no")
 
 
 class LicenseError(Exception):
@@ -53,7 +72,7 @@ def verify_license(token: str, *, pubkey_hex: str | None = None,
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
     from cryptography.exceptions import InvalidSignature
 
-    pub = (pubkey_hex or VENDOR_PUBLIC_KEY_HEX).strip()
+    pub = (pubkey_hex or vendor_public_key()).strip()
     if not pub:
         raise LicenseError("No vendor public key configured in this probe build.")
     try:
@@ -84,7 +103,7 @@ def verify_license(token: str, *, pubkey_hex: str | None = None,
 def check_license() -> dict | None:
     """The gate the agent calls at startup. Honors LICENSE_ENFORCED and
     reads the token from PROBE_LICENSE or PROBE_LICENSE_FILE."""
-    if os.environ.get("LICENSE_ENFORCED", "true").lower() in ("false", "0", "no"):
+    if not license_enforced():
         return None
     token = os.environ.get("PROBE_LICENSE", "")
     if not token and os.environ.get("PROBE_LICENSE_FILE"):

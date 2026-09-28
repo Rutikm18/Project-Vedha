@@ -36,6 +36,13 @@ docker run --rm -e LICENSE_ENFORCED=false "$IMAGE" version
 docker run --rm -e LICENSE_ENFORCED=false "$IMAGE" hostid >/dev/null
 # Capture ONLY stdout; any stray stdout noise is itself a parity failure below.
 docker run --rm -e LICENSE_ENFORCED=false "$IMAGE" manifest > "$WORK/sealed.json"
+# The environment must NOT be able to switch the licence off in a sealed binary
+# (it once could: LICENSE_ENFORCED / the vendor key / the fingerprint were ENV).
+if docker run --rm -e LICENSE_ENFORCED=false -e HW_BIND_FINGERPRINT= "$IMAGE" self-test >/dev/null 2>&1; then
+  echo "✗ sealed binary passed its licence gate with LICENSE_ENFORCED=false and no licence"
+  exit 1
+fi
+echo "  ✓ licence gate ignores LICENSE_ENFORCED=false"
 
 echo "→ 4/4  parity check (sealed MUST equal plaintext, semantically)"
 # Semantic JSON compare — robust to formatting, and it explicitly distinguishes
