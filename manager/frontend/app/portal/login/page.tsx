@@ -4,6 +4,24 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Loader2, Eye, EyeOff, Zap } from "lucide-react";
 
+/* /portal/login#e=<email>&p=<password> — the fragment never reaches a server,
+   and it is erased from the address bar and history on first read. */
+let pendingAccessLink: { e: string; p: string } | null = null;
+
+function takeAccessLinkCredentials(): { e: string; p: string } | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const e = params.get("e");
+  const p = params.get("p");
+  if (e && p) {
+    pendingAccessLink = { e, p };
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
+  const creds = pendingAccessLink;
+  pendingAccessLink = null;       // single use: a remount can't sign in twice
+  return creds;
+}
+
 export default function PortalLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -46,21 +64,15 @@ export default function PortalLoginPage() {
     }
   }, [router]);
 
-  // Auto-login from URL fragment: /portal/login#e=email@co.com&p=password
-  // The fragment is read client-side only — it is never sent to any server —
-  // and is cleared immediately so credentials don't survive in browser history.
+  // Auto-login from an operator-issued access link. The fragment is captured at
+  // MODULE scope and erased at once: Next patches history.replaceState, so erasing
+  // it can remount this page (fresh state, fresh refs) and React's dev mode runs
+  // effects twice — either way a component-local capture lost the credentials and
+  // the link silently did nothing. Module scope survives both; it is read once.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const hash = window.location.hash.slice(1);
-    if (!hash) return;
-    const params = new URLSearchParams(hash);
-    const e = params.get("e");
-    const p = params.get("p");
-    if (!e || !p) return;
-    // Erase fragment before anything async happens
-    window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    const loginTask = window.setTimeout(() => void doLogin(e, p, true), 0);
-    return () => window.clearTimeout(loginTask);
+    const creds = takeAccessLinkCredentials();
+    if (!creds) return;
+    void doLogin(creds.e, creds.p, true);
   }, [doLogin]);
 
   async function submit(ev: React.FormEvent) {
