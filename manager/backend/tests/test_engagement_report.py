@@ -168,6 +168,9 @@ class TestGenerate:
         report, svc, persisted = _run(_good, monkeypatch)
         assert report["verdict"].startswith("Two file servers")
         assert report["findings"][0]["business_impact"].startswith("An attacker")
+        # Each register entry says its lifecycle state — the report shows it per finding.
+        assert {f["status"] for f in report["findings"]} <= {"open", "confirmed"}
+        assert all("domain" not in f and "remediation_hint" not in f for f in report["findings"])
         assert report["remediation_plan"][0]["description"].startswith("Disable SMBv1 by GPO")
         assert report["remediation_plan"][0]["window"] == "immediate"
         assert report["decisions"][0]["fix_ids"] == [report["remediation_plan"][0]["fix_id"]]

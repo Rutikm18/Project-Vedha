@@ -16,7 +16,7 @@
 
 import {
   createContext, useCallback, useContext, useMemo, useState,
-  type ElementType, type ReactNode,
+  type CSSProperties, type ElementType, type ReactNode,
 } from "react";
 import {
   AlertTriangle, ChevronDown, CheckCircle2, ClipboardCheck, Clock, Copy, Crosshair,
@@ -24,9 +24,10 @@ import {
   ShieldCheck, Terminal, Wrench,
 } from "lucide-react";
 
-import { SEVERITY, SEVERITY_ORDER, type Severity } from "../../lib/severity";
+import { SEVERITY, type Severity } from "../../lib/severity";
 import { copyText } from "../../lib/clipboard";
 import { usePrintMode } from "../../lib/print-mode";
+import { reportStatus } from "../../lib/report/filters";
 import {
   assess, provenanceOf, redact, triageSort, TIER_META,
   type AssessedFinding, type RawEvidence, type RawFinding, type RemediationTier,
@@ -227,6 +228,16 @@ export interface FindingReportProps {
   mode?: ReportMode;
 }
 
+/** Lifecycle state — "is this still a problem?" — as a first-class tag. */
+export function StatusTag({ status }: { status: string }) {
+  const st = reportStatus(status);
+  return (
+    <span className="vf-status-tag" data-status={st.key.toLowerCase()} style={{ "--vf-status": st.tone } as CSSProperties}>
+      {st.label}
+    </span>
+  );
+}
+
 export function FindingReport({ finding, ordinal, open, onToggle, mode = "assessor" }: FindingReportProps) {
   const a: AssessedFinding = useMemo(() => assess(finding), [finding]);
   const f = a.raw;
@@ -257,6 +268,7 @@ export function FindingReport({ finding, ordinal, open, onToggle, mode = "assess
         <span className="vf-head-main">
           <span className="vf-head-tags">
             <SevTag sev={a.severity} />
+            <StatusTag status={f.status} />
             <span className="vf-prio" data-prio={a.priority.code}>{a.priority.code} {a.priority.label}</span>
             {a.cvssScore !== null && <span className="vf-cvss">CVSS {a.cvssScore.toFixed(1)}</span>}
             {!isClient && <span className="vf-conf" data-level={a.confidence.level.toLowerCase()}>{a.confidence.label}</span>}
@@ -276,7 +288,6 @@ export function FindingReport({ finding, ordinal, open, onToggle, mode = "assess
             <span className="vf-ref">{f.id}</span>
             {(!isClient || a.assets.length > 0) && <span>{a.assets.length} asset{a.assets.length === 1 ? "" : "s"}</span>}
             {discovered && <span>Found {discovered}</span>}
-            <span className="vf-status">{f.status.replace(/_/g, " ").toLowerCase()}</span>
             <span className="vf-sla" data-state={a.sla.state}>
               <Clock size={10} aria-hidden="true" />
               {a.sla.state === "breached" ? "Overdue" : a.sla.state === "closed" ? "Closed" : due ? `Due ${due}` : "No target"}
@@ -578,13 +589,11 @@ export function FindingReport({ finding, ordinal, open, onToggle, mode = "assess
 
 /* ─── the tab that holds them ─────────────────────────────────────────────── */
 
-type SevFilter = Severity | "ALL";
-
 export function FindingsSection({ findings, total, mode = "assessor", overdueTotal }: { findings: RawFinding[]; total: number; mode?: ReportMode; overdueTotal?: number }) {
   const assessed = useMemo(() => findings.map(f => assess(f)).sort(triageSort), [findings]);
 
-  const [sev, setSev] = useState<SevFilter>("ALL");
-  const [onlyExploited, setOnlyExploited] = useState(false);
+  // Severity / status / host / scan filtering happens at report level (server-
+  // side, shared with the exports). This keeps only the assessor's QA filter.
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
 
@@ -593,11 +602,7 @@ export function FindingsSection({ findings, total, mode = "assessor", overdueTot
   // findings from the deliverable with nothing saying so.
   const printing = usePrintMode();
 
-  const filtered = assessed.filter(a =>
-    (sev === "ALL" || a.severity === sev) &&
-    (!onlyExploited || a.raw.activelyExploited || a.raw.exploitValidated) &&
-    (!onlyIncomplete || !a.readiness.ready)
-  );
+  const filtered = assessed.filter(a => !onlyIncomplete || !a.readiness.ready);
   const shown = printing ? assessed : filtered;
 
   const blocked = assessed.filter(a => !a.readiness.ready).length;
@@ -623,23 +628,6 @@ export function FindingsSection({ findings, total, mode = "assessor", overdueTot
       </div>
 
       <div className="vf-filters no-print">
-        <div className="vf-filter-group" role="group" aria-label="Filter by severity">
-          {(["ALL", ...SEVERITY_ORDER] as SevFilter[]).map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setSev(s)}
-              aria-pressed={sev === s}
-              data-sev={s === "ALL" ? undefined : s.toLowerCase()}
-            >
-              {s === "ALL" ? "All" : SEVERITY[s].label}
-            </button>
-          ))}
-        </div>
-        <label className="vf-check">
-          <input type="checkbox" checked={onlyExploited} onChange={e => setOnlyExploited(e.target.checked)} />
-          Exploited or proven
-        </label>
         <label className="vf-check">
           <input type="checkbox" checked={onlyIncomplete} onChange={e => setOnlyIncomplete(e.target.checked)} />
           Missing fields

@@ -1,8 +1,16 @@
-import { toUiEngagement, toUiFinding } from "./adapters";
+import { mapScanOption, toUiEngagement, toUiFinding, type ApiScanOption, type ScanOption } from "./adapters";
 import { fetchJson } from "./fetcher";
 import { portalApi } from "./portal-client";
+import { backendQueryString } from "./findings-query";
 
 export type ReportsWorkspaceSurface = "manager" | "portal";
+
+/** `filters` is a Findings-page style query (lib/report/filters.ts); "" = none. */
+function withFilters(base: Record<string, string>, filters: string): string {
+  const q = new URLSearchParams(filters);
+  for (const [k, v] of Object.entries(base)) q.set(k, v);
+  return q.toString();
+}
 
 async function portalReportGeneration<T>(body: unknown): Promise<T> {
   const send = () => fetch("/api/reports/generate", {
@@ -56,10 +64,11 @@ export function createReportsWorkspaceApi(surface: ReportsWorkspaceSurface) {
   if (surface === "manager") {
     return {
       engagements: <T>() => fetchJson<T>("/api/engagements"),
-      findings: async <T>(engagementId: string) => {
+      findings: async <T>(engagementId: string, filters = "") => {
         const encoded = encodeURIComponent(engagementId);
+        const list = withFilters({ paginated: "true", engagement_id: engagementId, page: "1", page_size: "100", sort: "risk" }, filters);
         const [page, sla] = await Promise.all([
-          fetchJson<PortalPage<Record<string, unknown>>>(`/api/findings?paginated=true&engagement_id=${encoded}&page=1&page_size=100&sort=risk`),
+          fetchJson<PortalPage<Record<string, unknown>>>(`/api/findings?${list}`),
           fetchJson<SlaEnvelope>(`/api/findings/sla-summary?engagement_id=${encoded}`),
         ]);
         return { ...page, items: attachSla(page.items ?? [], sla) } as T;
@@ -72,6 +81,14 @@ export function createReportsWorkspaceApi(surface: ReportsWorkspaceSurface) {
         ]);
         return { ...summary, slaBreached: Number(sla.summary?.breached ?? sla.breached ?? 0) } as T;
       },
+      /** Exact number of findings matching `filters` (a page of one, total only). */
+      count: async (engagementId: string, filters = "") => {
+        const q = withFilters({ paginated: "true", engagement_id: engagementId, page: "1", page_size: "1" }, filters);
+        return Number((await fetchJson<PortalPage<unknown>>(`/api/findings?${q}`)).total ?? 0);
+      },
+      scans: async (engagementId: string): Promise<ScanOption[]> => (
+        await fetchJson<ApiScanOption[]>(`/api/findings/scans?engagement_id=${encodeURIComponent(engagementId)}`)
+      ).map(mapScanOption),
       activity: <T>(engagementId: string) => fetchJson<T>(
         `/api/activity?engagement_id=${encodeURIComponent(engagementId)}&limit=50`,
       ),
@@ -88,10 +105,11 @@ export function createReportsWorkspaceApi(surface: ReportsWorkspaceSurface) {
       const engagement = await portalApi<Record<string, unknown>>("/workspace/engagement");
       return { engagements: [toUiEngagement(engagement)] } as T;
     },
-    findings: async <T>(_engagementId: string) => {
+    findings: async <T>(_engagementId: string, filters = "") => {
       void _engagementId;
+      const list = backendQueryString(withFilters({ page: "1", page_size: "100", sort: "risk" }, filters));
       const [page, sla] = await Promise.all([
-        portalApi<PortalPage<Record<string, unknown>>>("/workspace/findings?paginated=true&page=1&page_size=100&sort=risk"),
+        portalApi<PortalPage<Record<string, unknown>>>(`/workspace/findings?paginated=true&${list}`),
         portalApi<SlaEnvelope>("/sla-summary"),
       ]);
       const findings = attachSla((page.items ?? []).map(toUiFinding), sla);
@@ -118,6 +136,15 @@ export function createReportsWorkspaceApi(surface: ReportsWorkspaceSurface) {
         averageRisk: Number(value.average_risk ?? 0),
         slaBreached: Number(sla.breached ?? sla.summary?.breached ?? 0),
       } as T;
+    },
+    count: async (_engagementId: string, filters = "") => {
+      void _engagementId;
+      const q = backendQueryString(withFilters({ page: "1", page_size: "1" }, filters));
+      return Number((await portalApi<PortalPage<unknown>>(`/workspace/findings?paginated=true&${q}`)).total ?? 0);
+    },
+    scans: async (_engagementId: string): Promise<ScanOption[]> => {
+      void _engagementId;
+      return (await portalApi<ApiScanOption[]>("/workspace/findings/scans")).map(mapScanOption);
     },
     activity: <T>(_engagementId: string) => {
       void _engagementId;

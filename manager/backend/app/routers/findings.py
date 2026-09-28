@@ -1,6 +1,7 @@
 import ipaddress
 import re
 import uuid
+from dataclasses import dataclass
 from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
@@ -475,6 +476,71 @@ async def _filtered_findings(
             ),
         )
     return q, scan_run_ids
+
+
+@dataclass
+class FindingFilters:
+    """The findings-queue filter set as one value, for endpoints that need to
+    honour "whatever the user filtered to" without listing (e.g. the report's
+    Excel/CSV export). Field names match ``_filtered_findings`` keywords."""
+    severity: FindingSeverity | None = None
+    status_filter: FindingStatus | None = None
+    active_only: bool = False
+    asset_ip: str | None = None
+    scan: str | None = None
+    search: str | None = None
+    detection_status: DetectionStatus | None = None
+    exploit_validated: bool | None = None
+    verification_state: str | None = None
+    needs_review: bool | None = None
+    sla_breached: bool = False
+
+    def active(self) -> bool:
+        return any((
+            self.severity, self.status_filter, self.active_only, self.asset_ip, self.scan,
+            (self.search or "").strip(), self.detection_status, self.exploit_validated is not None,
+            self.verification_state, self.needs_review is not None, self.sla_breached,
+        ))
+
+
+def finding_filters(
+    severity: FindingSeverity | None = Query(default=None),
+    status_filter: FindingStatus | None = Query(default=None, alias="status"),
+    active_only: bool = Query(default=False),
+    asset_ip: str | None = Query(default=None, min_length=1, max_length=45),
+    scan: str | None = Query(default=None, min_length=1, max_length=64),
+    search: str | None = Query(default=None, min_length=1, max_length=200),
+    detection_status: DetectionStatus | None = Query(default=None),
+    exploit_validated: bool | None = Query(default=None),
+    verification_state: str | None = Query(default=None),
+    needs_review: bool | None = Query(default=None),
+    sla_breached: bool = Query(default=False),
+) -> FindingFilters:
+    """FastAPI dependency: the same query parameters the findings list takes."""
+    return FindingFilters(
+        severity=severity, status_filter=status_filter, active_only=active_only, asset_ip=asset_ip,
+        scan=scan, search=search, detection_status=detection_status, exploit_validated=exploit_validated,
+        verification_state=verification_state, needs_review=needs_review, sla_breached=sla_breached,
+    )
+
+
+async def filtered_finding_ids(
+    db: AsyncSession, current_user: AuthUser, engagement_id: uuid.UUID, filters: FindingFilters,
+) -> set[uuid.UUID] | None:
+    """Ids of the engagement's findings matching ``filters``; None = no filter."""
+    if not filters.active():
+        return None
+    q, _ = await _filtered_findings(
+        select(Finding.id), db, current_user, engagement_id=engagement_id,
+        severity=filters.severity, status_filter=filters.status_filter, active_only=filters.active_only,
+        asset_ip=filters.asset_ip, scan=filters.scan, search=filters.search,
+        detection_status=filters.detection_status, exploit_validated=filters.exploit_validated,
+        verification_state=filters.verification_state, needs_review=filters.needs_review,
+        sla_breached=filters.sla_breached,
+    )
+    if q is None:
+        return set()
+    return set((await db.execute(q)).scalars().all())
 
 
 @router.get("", response_model=PaginatedResponse[FindingOut], summary="List findings with filters")

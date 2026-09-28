@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
@@ -66,6 +66,7 @@ from app.remediation.loader import load_finding_context, resolve_due
 from app.remediation.plan import build_plan
 from app.services.scope_targets import validate_targets_in_scope
 from app.routers.agents import EnqueueJobRequest
+from app.routers.findings import FindingFilters, finding_filters
 
 router = APIRouter(prefix="/portal", tags=["portal"])
 
@@ -286,10 +287,14 @@ async def portal_remediation_bundles(user: ClientUser, db: DB,
 @router.get("/remediation/export", summary="Download your remediation tracker (XLSX or CSV zip)")
 async def portal_remediation_export(user: ClientUser, db: DB,
                                     format: str = Query(default="xlsx", pattern="^(xlsx|csv)$"),
-                                    sheet: str | None = Query(default=None, pattern="^(findings|by_fix|by_host)$")):
+                                    sheet: str | None = Query(default=None, pattern="^(findings|by_fix|by_host)$"),
+                                    filters: Annotated[FindingFilters, Depends(finding_filters)] = None):
     from fastapi import Response
+    from app.routers.findings import filtered_finding_ids
     eng = await _client_engagement(user, db)
-    content, media, filename = await remediation_service.export_tracker(db, eng, user.tenant_id, format, sheet)
+    ids = await filtered_finding_ids(db, user, eng.id, filters or FindingFilters())
+    content, media, filename = await remediation_service.export_tracker(
+        db, eng, user.tenant_id, format, sheet, ids)
     return Response(content=content, media_type=media,
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 

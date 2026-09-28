@@ -8,6 +8,7 @@
  */
 import { fetchJson } from "./fetcher";
 import { portalApi } from "./portal-client";
+import { backendQueryString } from "./findings-query";
 
 export type RemediationSurface = "manager" | "portal";
 export type PlanOs = "generic" | "linux" | "windows" | "macos";
@@ -148,6 +149,14 @@ const q = (params: Record<string, string | boolean | undefined>) => {
   return out ? `?${out}` : "";
 };
 
+// The export routes are raw proxies, so filters go out in the backend's casing.
+const exportQuery = (format: "xlsx" | "csv", sheet: ExportSheet | undefined, filters: string) => {
+  const out = new URLSearchParams(filters ? backendQueryString(filters) : "");
+  out.set("format", format);
+  if (sheet) out.set("sheet", sheet);
+  return `?${out.toString()}`;
+};
+
 export function createRemediationApi(surface: RemediationSurface) {
   if (surface === "manager") {
     return {
@@ -178,8 +187,9 @@ export function createRemediationApi(surface: RemediationSurface) {
         void id;
         throw new Error("Only the requester can withdraw an extension request.");
       },
-      exportUrl: (engagementId: string, format: "xlsx" | "csv", sheet?: ExportSheet) =>
-        `/api/engagements/${encodeURIComponent(engagementId)}/remediation/export${q({ format, sheet })}`,
+      /** `filters`: a Findings-page style query — the export holds exactly those findings. */
+      exportUrl: (engagementId: string, format: "xlsx" | "csv", sheet?: ExportSheet, filters = "") =>
+        `/api/engagements/${encodeURIComponent(engagementId)}/remediation/export${exportQuery(format, sheet, filters)}`,
     };
   }
   return {
@@ -204,9 +214,9 @@ export function createRemediationApi(surface: RemediationSurface) {
       portalApi<ExtensionRequest>("/extensions", { method: "POST", body, idempotencyKey: crypto.randomUUID() }),
     withdraw: (id: string) =>
       portalApi<ExtensionRequest>(`/extensions/${id}/withdraw`, { method: "POST", idempotencyKey: crypto.randomUUID() }),
-    exportUrl: (engagementId: string, format: "xlsx" | "csv", sheet?: ExportSheet) => {
+    exportUrl: (engagementId: string, format: "xlsx" | "csv", sheet?: ExportSheet, filters = "") => {
       void engagementId;
-      return `/api/portal/remediation/export${q({ format, sheet })}`;
+      return `/api/portal/remediation/export${exportQuery(format, sheet, filters)}`;
     },
   };
 }

@@ -84,7 +84,7 @@ def test_route_returns_attachment(monkeypatch):
     from app.routers import remediation
     from app.schemas.auth import CurrentUser
 
-    async def fake_bundles(db, engagement, tenant_id):
+    async def fake_bundles(db, engagement, tenant_id, finding_ids=None):
         items = _items()
         return {"bundles": build_bundles(items, now=NOW), "items": items, "sla_source": "engagement"}
 
@@ -149,7 +149,7 @@ def test_route_single_csv_sheet(monkeypatch):
     from app.routers import remediation
     from app.schemas.auth import CurrentUser
 
-    async def fake_bundles(db, engagement, tenant_id):
+    async def fake_bundles(db, engagement, tenant_id, finding_ids=None):
         items = _items()
         return {"bundles": build_bundles(items, now=NOW), "items": items, "sla_source": "engagement"}
 
@@ -169,3 +169,78 @@ def test_route_single_csv_sheet(monkeypatch):
     disp = resp.headers["content-disposition"]
     assert "vedha-findings-Bank-VA-" in disp and disp.endswith('.csv"')
     assert resp.body.decode("utf-8-sig").startswith("Finding ID,")
+
+
+# ── Report filters reach the tracker ────────────────────────────────────────
+# The Reports page's Excel/CSV must contain exactly the findings its filters
+# show on screen — the same rule set as the findings list, not a re-implementation.
+
+def test_filters_active_only_when_something_is_set():
+    from app.routers.findings import FindingFilters
+    assert not FindingFilters().active()
+    assert FindingFilters(search="smb").active()
+    assert FindingFilters(sla_breached=True).active()
+    assert not FindingFilters(search="   ").active()
+
+
+def _patch_bundles(monkeypatch):
+    from app.remediation import service as RS
+    items = _items()
+
+    async def fake_items(db, engagement_id):
+        return [(f, ctx) for f, ctx, _ in items]
+
+    async def fake_windows(db, tenant_id, engagement):
+        return {}, "engagement"
+
+    dues = {f.id: due for f, _, due in items}
+    monkeypatch.setattr(RS, "load_engagement_items", fake_items)
+    monkeypatch.setattr(RS, "windows_for", fake_windows)
+    monkeypatch.setattr(RS, "due_for", lambda f, windows, source: dues[f.id])
+    monkeypatch.setattr(RS, "project_now", lambda: NOW)
+    return items
+
+
+def test_engagement_bundles_restricted_to_finding_ids(monkeypatch):
+    from app.remediation import service as RS
+    items = _patch_bundles(monkeypatch)
+    keep = items[0][0].id
+    data = asyncio.run(RS.engagement_bundles(None, SimpleNamespace(id=uuid.uuid4()), uuid.uuid4(),
+                                             finding_ids={keep}))
+    assert [f.id for f, _, _ in data["items"]] == [keep]
+    assert sum(b["open_count"] + b["closed_count"] for b in data["bundles"]) == 1
+    everything = asyncio.run(RS.engagement_bundles(None, SimpleNamespace(id=uuid.uuid4()), uuid.uuid4()))
+    assert len(everything["items"]) == 2
+
+
+def test_route_passes_report_filters_to_the_tracker(monkeypatch):
+    from app.remediation import service as RS
+    from app.routers import findings as FR
+    from app.routers import remediation
+    from app.schemas.auth import CurrentUser
+
+    items = _patch_bundles(monkeypatch)
+    open_id = next(f.id for f, _, _ in items if f.status == FindingStatus.open)
+    seen = {}
+
+    async def fake_ids(db, user, engagement_id, filters):
+        seen["filters"] = filters
+        return {open_id}
+
+    monkeypatch.setattr(FR, "filtered_finding_ids", fake_ids)
+    eng = SimpleNamespace(id=uuid.uuid4(), name="Bank VA")
+
+    class _DB:
+        async def execute(self, *a, **k):
+            r = MagicMock()
+            r.scalar_one_or_none = MagicMock(return_value=eng)
+            r.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+            return r
+
+    user = CurrentUser(user_id=uuid.uuid4(), tenant_id=uuid.uuid4(), role="analyst")
+    filters = FR.FindingFilters(status_filter=FindingStatus.open)
+    resp = asyncio.run(remediation.export_remediation(eng.id, _DB(), user, format="csv", sheet="findings",
+                                                      filters=filters))
+    assert seen["filters"] is filters
+    rows = list(csv.reader(io.StringIO(resp.body.decode("utf-8-sig"))))
+    assert len(rows) == 2 and rows[1][0] == str(open_id)       # header + the one open finding
