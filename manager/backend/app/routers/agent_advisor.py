@@ -58,7 +58,7 @@ async def run_advisor(
     if not engine.available:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "AI advisor unavailable — ANTHROPIC_API_KEY is not configured",
+            "AI advisor unavailable — configure ANTHROPIC_API_KEY or OPENAI_API_KEY (tool-capable providers)",
         )
     try:
         summary = await engine.run(engagement_id)

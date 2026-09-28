@@ -25,3 +25,17 @@ def _isolate_settings_from_dotenv():
         yield
     finally:
         Settings.model_config["env_file"] = original
+
+
+@pytest.fixture(autouse=True)
+def _fresh_ai_kv():
+    """The AI router keeps cooldowns, spend and stored answers in a shared KV
+    (Redis in production). Give every test its own in-memory store so state never
+    leaks between tests and no test touches a real Redis."""
+    from app.ai.kv import MemoryKv, set_default_kv
+
+    set_default_kv(MemoryKv())
+    try:
+        yield
+    finally:
+        set_default_kv(None)

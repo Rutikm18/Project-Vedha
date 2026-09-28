@@ -22,6 +22,8 @@ interface Message {
   content: string;
   provider?: string;
   model?: string;
+  /** True when a lower tier than the first configured provider answered. */
+  fallback?: boolean;
   factCard?: FactCardVM;
   /** Sector domain expert the answer was written as (null = general advisor). */
   skillLabel?: string | null;
@@ -30,14 +32,29 @@ interface Message {
   unverifiedCitations?: string[];
 }
 
+type ProviderId = "ollama" | "local_openai" | "openrouter" | "anthropic" | "openai" | "gemini" | "groq";
+
+/** One provider in the Manager's automatic chain, in the order it is tried. */
+interface ChainEntry {
+  provider: ProviderId;
+  model: string;
+  tier: "premium" | "budget" | "free" | "local";
+  state: "healthy" | "cooling" | "blocked" | "probing";
+  reason?: string | null;
+  retry_in_s?: number | null;
+  spend_today_usd?: number | null;
+  daily_cap_usd?: number | null;
+}
+
 interface AiStatus {
-  provider: "ollama" | "local_openai" | "openrouter" | "anthropic" | "openai" | "gemini" | null;
+  provider: ProviderId | null;
   model: string;
   configured: boolean;
   privacy: "local" | "cloud";
   reason?: string;
+  chain?: ChainEntry[];
   providers: Array<{
-    id: "ollama" | "local_openai" | "openrouter" | "anthropic" | "openai" | "gemini";
+    id: ProviderId;
     label: string;
     configured: boolean;
     privacy: "local" | "cloud";
@@ -85,15 +102,31 @@ function providerLabel(provider?: string | null) {
   if (provider === "anthropic") return "Anthropic";
   if (provider === "gemini") return "Google Gemini";
   if (provider === "local_openai") return "In-house model";
+  if (provider === "groq") return "Groq";
   return "Ollama";
+}
+
+const TIER_LABEL: Record<ChainEntry["tier"], string> = {
+  premium: "Premium", budget: "Budget", free: "Free · masked", local: "Local",
+};
+
+const REASON_LABEL: Record<string, string> = {
+  rate_limit: "rate limited", headroom: "limit reached", overloaded: "overloaded",
+  timeout: "timed out", network: "unreachable", spend_cap: "monthly spend cap",
+  billing: "out of credit", auth: "key rejected", probe_in_flight: "recovering",
+};
+
+function chainStateText(entry: ChainEntry): string {
+  if (entry.state === "healthy") return "ready";
+  if (entry.state === "probing") return "recovering";
+  const reason = REASON_LABEL[entry.reason ?? ""] ?? entry.reason ?? entry.state;
+  return entry.retry_in_s ? `${reason} · ${Math.ceil(entry.retry_in_s / 60)} min` : reason;
 }
 
 export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWorkspaceSurface }) {
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [engagementId, setEngagementId] = useState("");
-  const [provider, setProvider] = useState<AiStatus["provider"] | null>(null);
-  const [model, setModel] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -112,8 +145,10 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
   const status = statusQuery.data;
   const engagements = engagementsQuery.data?.engagements ?? [];
   const effectiveEngagementId = engagementId || (surface === "portal" ? engagements[0]?.id ?? "" : "");
-  const selectedProvider = status?.providers.find((item) => item.id === (provider ?? status.provider));
-  const selectedModel = model || selectedProvider?.default_model || status?.model || "";
+  const chain = status?.chain ?? [];
+  // The Manager routes every request automatically; the first entry that is not
+  // cooling down is what will most likely answer next.
+  const nextUp = chain.find((entry) => entry.state === "healthy" || entry.state === "probing") ?? chain[0];
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -137,13 +172,12 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
     try {
       const response = await api.send<{
         content?: string; error?: string; provider?: string; model?: string; factCard?: FactCardVM;
+        fallback?: boolean;
         skillLabel?: string | null; skill_label?: string | null; jurisdictions?: string[];
         unverifiedCitations?: string[]; unverified_citations?: string[];
       }>({
           messages: conversation.map(({ role, content: messageContent }) => ({ role, content: messageContent })),
           engagementId: effectiveEngagementId || undefined,
-          provider: selectedProvider?.id,
-          model: selectedModel || undefined,
         });
       setMessages((current) => [...current, {
         id: crypto.randomUUID(),
@@ -151,6 +185,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
         content: response.content || "The configured model returned no content.",
         provider: response.provider,
         model: response.model,
+        fallback: response.fallback ?? false,
         factCard: response.factCard,
         // Manager BFF returns camelCase; the portal backend returns snake_case.
         skillLabel: response.skillLabel ?? response.skill_label ?? null,
@@ -166,8 +201,8 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
   }
 
   const selectedEngagement = engagements.find((engagement) => engagement.id === effectiveEngagementId);
-  const ready = selectedProvider?.configured ?? false;
-  const selectedPrivacy = selectedProvider?.privacy ?? status?.privacy;
+  const ready = chain.length > 0 || (status?.configured ?? false);
+  const selectedPrivacy = nextUp ? (nextUp.tier === "local" ? "local" : "cloud") : status?.privacy;
 
   const Shell = surface === "portal" ? PortalShell : PageShell;
 
@@ -178,7 +213,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
       statusItems={[
         {
           label: "RUNTIME",
-          value: status ? providerLabel(selectedProvider?.id ?? status.provider).toUpperCase() : "CHECKING",
+          value: status ? (nextUp ? `AUTO · ${providerLabel(nextUp.provider).toUpperCase()}` : "NOT CONFIGURED") : "CHECKING",
           color: ready ? "var(--nominal-color)" : "var(--sev-high-color)",
         },
         {
@@ -243,6 +278,11 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
                       </span>
                     )}
                     {message.model && <span>{providerLabel(message.provider)} · {message.model}</span>}
+                    {message.fallback && (
+                      <span className="brain-fallback-badge" title="The first provider in the chain was unavailable, so the next one answered">
+                        fallback
+                      </span>
+                    )}
                   </header>
                   {message.factCard && <FactCard vm={message.factCard} />}
                   {message.role === "assistant"
@@ -303,48 +343,35 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
           <section className="brain-runtime-card" data-ready={ready}>
             <header>
               <span>{selectedPrivacy === "local" ? <Server size={17} /> : <Cloud size={17} />}</span>
-              <div><strong>Manager AI runtime</strong><small>{ready ? (selectedProvider?.id === "ollama" ? "Free · open model · local" : "Manager-configured cloud") : "Needs configuration"}</small></div>
+              <div><strong>Automatic AI runtime</strong><small>{ready ? "Tries each provider in order · no choice needed" : "Needs configuration"}</small></div>
               <span className="brain-runtime-dot" />
             </header>
-            <div className="brain-runtime-selectors">
-              <label htmlFor="brain-provider">
-                <span>Provider</span>
-                <select
-                  id="brain-provider"
-                  value={provider ?? status?.provider ?? ""}
-                  onChange={(event) => {
-                    const next = event.target.value as AiStatus["provider"];
-                    const option = status?.providers.find((item) => item.id === next);
-                    setProvider(next);
-                    setModel(option?.default_model ?? "");
-                  }}
-                  disabled={!status}
-                >
-                  {(status?.providers ?? []).map((item) => (
-                    <option value={item.id} key={item.id} disabled={!item.configured}>
-                      {item.label}{item.configured ? "" : " · not configured"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label htmlFor="brain-model">
-                <span>Model</span>
-                <select
-                  id="brain-model"
-                  value={selectedModel}
-                  onChange={(event) => setModel(event.target.value)}
-                  disabled={!selectedProvider?.configured}
-                >
-                  {(selectedProvider?.models ?? []).map((item) => <option value={item} key={item}>{item}</option>)}
-                </select>
-              </label>
-            </div>
+            {chain.length > 0 && (
+              <ol className="brain-chain" aria-label="Provider order">
+                {chain.map((entry) => (
+                  <li key={entry.provider} data-state={entry.state}>
+                    <span className="brain-chain-dot" aria-hidden="true" />
+                    <div>
+                      <strong>{providerLabel(entry.provider)}</strong>
+                      <small>{entry.model}</small>
+                    </div>
+                    <div className="brain-chain-meta">
+                      <span>{TIER_LABEL[entry.tier]}</span>
+                      <small>
+                        {chainStateText(entry)}
+                        {entry.daily_cap_usd != null && ` · $${(entry.spend_today_usd ?? 0).toFixed(2)}/$${entry.daily_cap_usd}`}
+                      </small>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
             <dl>
               <div><dt>Execution</dt><dd>Manager only</dd></div>
               <div><dt>Data path</dt><dd>{selectedPrivacy === "local" ? "Local · no API fee" : "Cloud provider"}</dd></div>
               <div><dt>Grounding</dt><dd>{selectedEngagement ? selectedEngagement.name : "General only"}</dd></div>
             </dl>
-            {!ready && <p>{selectedProvider?.reason || status?.reason || "AI runtime status is unavailable."}</p>}
+            {!ready && <p>{status?.reason || "AI runtime status is unavailable."}</p>}
           </section>
 
           <section className="brain-guardrails">

@@ -46,6 +46,7 @@ async def ai_generate(request: AiGenerateRequest, current_user: AuthUser, db: DB
         model=runtime.model,
         privacy=runtime.privacy,
         fallback=fallback,
+        tier=getattr(runtime, "tier", None),
         skill=brief.skill_id if brief else None,
         skill_label=brief.skill_label if brief else None,
         jurisdictions=brief.jurisdictions if brief else [],

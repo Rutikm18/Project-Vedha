@@ -62,11 +62,16 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     # Manager-owned AI runtime. The dashboard never receives provider credentials
-    # and never calls a model directly. Cloud-only by default: an empty provider
-    # auto-detects a configured cloud key (openai → anthropic → gemini → openrouter)
-    # and fails closed if none is set. "ollama" is an explicit local-dev opt-in and
-    # is never selected automatically or used as an implicit fallback.
+    # and never calls a model directly. Cloud-only by default: every configured cloud
+    # key joins an automatic premium-first chain (anthropic → openai → gemini →
+    # groq → openrouter) and the manager fails closed if none is set. A pinned
+    # LLM_PROVIDER is tried first. "ollama" is an explicit local-dev opt-in and is
+    # never selected automatically or used as an implicit fallback.
     llm_provider: str = ""
+    # Ordered, automatic fallback chain (app/ai/routing.py), e.g.
+    # "anthropic,openai,gemini,groq,openrouter". Empty = that premium-first default
+    # with LLM_PROVIDER (if set) moved to the front. Unconfigured entries are skipped.
+    llm_chain: str = ""
     # AI egress policy (app/ai/gateway.py). cloud = raw to cloud providers;
     # hybrid = cloud only with network identifiers pseudonymized (BFSI default);
     # sovereign = local models only, cloud refused. AI_PSEUDONYMIZE=true opts a
@@ -106,6 +111,24 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-flash-latest"  # 'gemini-2.0-flash' was retired (404); the -latest alias self-heals
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+    # True when the Gemini key's project has billing enabled. Google's free tier may
+    # use prompts to improve its products, so a free Gemini key is always sent
+    # pseudonymized data; a paid one is treated as the "budget" tier.
+    gemini_paid: bool = False
+    # Groq — OpenAI-compatible free tier (console.groq.com). Free tier: always
+    # pseudonymized by the AI gateway.
+    groq_api_key: str = ""
+    groq_model: str = "openai/gpt-oss-120b"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    # Daily spend caps per provider in USD, e.g. "anthropic=20,openai=10". A
+    # provider past its cap is skipped until midnight (IST) and the chain moves on.
+    ai_daily_cap_usd: str = ""
+    # Extra model prices (USD per 1M tokens, input:output), e.g. "gpt-4.1=2:8".
+    # claude-sonnet-4-6 is built in; unpriced models are not metered.
+    ai_model_prices: str = ""
+    # Reuse window for answers to byte-identical one-shot requests (briefs,
+    # refinement, compliance, report sections). 0 disables reuse.
+    ai_answer_cache_ttl_seconds: int = 604800
     llm_max_tokens: int = 4096
     # Reasoning depth = token spend. Report writing is straightforward generation, so
     # "low" minimizes thinking-token cost on thinking-capable models (Sonnet 4.6,

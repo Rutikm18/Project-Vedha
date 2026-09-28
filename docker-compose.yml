@@ -48,7 +48,10 @@ x-backend-env: &backend-env
   NEO4J_USER: ${NEO4J_USER:-neo4j}
   NEO4J_PASSWORD: ${NEO4J_PASSWORD:-vedha-neo4j}
   # AI execution is Manager-only. Provider keys are never injected into the UI.
-  LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+  # Empty = automatic premium-first chain over every configured key
+  # (anthropic → openai → gemini → groq → openrouter). LLM_CHAIN sets the order.
+  LLM_PROVIDER: ${LLM_PROVIDER:-}
+  LLM_CHAIN: ${LLM_CHAIN:-}
   DEPLOYMENT_PROFILE: ${DEPLOYMENT_PROFILE:-cloud}
   AI_PSEUDONYMIZE: ${AI_PSEUDONYMIZE:-false}
   LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
@@ -69,6 +72,16 @@ x-backend-env: &backend-env
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
   OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GEMINI_MODEL: ${GEMINI_MODEL:-gemini-flash-latest}
+  GEMINI_BASE_URL: ${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+  GEMINI_PAID: ${GEMINI_PAID:-false}
+  GROQ_API_KEY: ${GROQ_API_KEY:-}
+  GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+  GROQ_BASE_URL: ${GROQ_BASE_URL:-https://api.groq.com/openai/v1}
+  AI_DAILY_CAP_USD: ${AI_DAILY_CAP_USD:-}
+  AI_MODEL_PRICES: ${AI_MODEL_PRICES:-}
+  AI_ANSWER_CACHE_TTL_SECONDS: ${AI_ANSWER_CACHE_TTL_SECONDS:-604800}
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
   # detection_engine (sibling project) is mounted into the api container and
   # imported from here — it runs on raw probe facts to produce CVE findings.
