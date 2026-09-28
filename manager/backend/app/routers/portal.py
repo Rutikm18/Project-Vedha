@@ -506,6 +506,9 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
     # approved job runs exactly that use case. Legacy: a bare scan_type validated
     # against the ScanJobType enum. Either way the vocabulary can't drift.
     if body.use_case_id:
+        # An aggressive-only use case gets the policy's reason, not "unknown".
+        if not portal_scan_policy.portal_use_case_allowed(body.use_case_id):
+            portal_scan_policy.resolve_portal_intensity(None, use_case_id=body.use_case_id)
         uc = _portal_use_cases().get(body.use_case_id)
         if uc is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,

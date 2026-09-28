@@ -398,6 +398,14 @@ class TestCreateScanRequest:
         assert e.value.status_code == 403
         assert _added(db, ScanRequest) is None            # nothing queued
 
+    def test_deep_only_use_case_gets_the_aggressive_reason(self):
+        user = _client()
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(portal.create_scan_request(
+                ScanRequestCreate(use_case_id="uc_full_port_audit"), user,
+                _db_for_create(_engagement(user.client_engagement_id))))
+        assert e.value.status_code == 403 and "aggressive" in e.value.detail.lower()
+
     def test_unset_intensity_is_materialized_as_normal(self):
         user = _client()
         db = _db_for_create(_engagement(user.client_engagement_id))

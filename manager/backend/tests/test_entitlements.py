@@ -67,6 +67,10 @@ class TestEvaluate:
         v = ent.evaluate(_row(scan_quota=5, scans_used=5), now=NOW)
         assert v.state == "exhausted" and not v.can_scan and v.scans_left == 0
 
+    def test_licence_key_hidden_while_on_a_poc(self):
+        assert ent.evaluate(_row(plan_type="poc", license_key="VDH-X"), now=NOW).license_key is None
+        assert ent.evaluate(_row(plan_type="licensed", license_key="VDH-X"), now=NOW).license_key == "VDH-X"
+
     def test_quota_lowered_below_usage_never_goes_negative(self):
         v = ent.evaluate(_row(scan_quota=2, scans_used=5), now=NOW)
         assert v.scans_left == 0 and v.state == "exhausted"

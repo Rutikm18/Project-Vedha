@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy import select
 
-from app.models.customer_entitlement import PLAN_POC, CustomerEntitlement
+from app.models.customer_entitlement import PLAN_LICENSED, PLAN_POC, CustomerEntitlement
 
 JOB_QUOTA_FLAG = "_quota_consumed"
 
@@ -84,7 +84,9 @@ def evaluate(row, *, now: datetime | None = None) -> EntitlementView:
         state=state, can_scan=state == "active", reason=reason,
         plan_type=row.plan_type, starts_at=row.starts_at, expires_at=row.expires_at,
         days_left=days_left, scan_quota=quota, scans_used=used, scans_left=scans_left,
-        license_key=row.license_key)
+        # A key issued under an earlier licensed term stays on the row (re-licensing
+        # restores it) but is only shown while the plan is actually licensed.
+        license_key=row.license_key if row.plan_type == PLAN_LICENSED else None)
 
 
 def generate_license_key() -> str:
@@ -101,14 +103,6 @@ async def get_entitlement(db, engagement_id: uuid.UUID, *, for_update: bool = Fa
 
 async def view_for(db, engagement_id: uuid.UUID) -> EntitlementView:
     return evaluate(await get_entitlement(db, engagement_id))
-
-
-async def assert_can_scan(db, engagement_id: uuid.UUID) -> EntitlementView:
-    """Read-only check (no quota spent) — for paths that must refuse early."""
-    view = await view_for(db, engagement_id)
-    if not view.can_scan:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, view.reason)
-    return view
 
 
 async def consume_scan(db, engagement_id: uuid.UUID, *, now: datetime | None = None):
