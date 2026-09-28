@@ -26,6 +26,7 @@ from app.ai.failures import (
 from app.ai.headroom import headroom_cooldown
 from app.ai.health import ProviderHealth
 from app.ai.kv import KvStore, default_kv
+from app.ai.spend import SpendMeter
 from app.ai.routing import (
     FREE,
     PREMIUM,
@@ -483,6 +484,7 @@ class ManagerLlmService:
         # production, a fresh MemoryKv per test.
         self._kv = kv or default_kv()
         self.health = ProviderHealth(self._kv)
+        self.spend = SpendMeter(self._kv, self.settings)
 
     def _sovereign(self) -> bool:
         return (self.settings.deployment_profile or "").strip().lower() == "sovereign"
@@ -988,6 +990,11 @@ class ManagerLlmService:
         deadline = loop.time() + policy.deadline_s
         last: AiRuntimeError | None = None
         for index, runtime in enumerate(candidates):
+            if await self.spend.over_cap(runtime.provider):
+                self._log_attempt(task, runtime, index, "skipped", 0.0, "daily_cap")
+                last = last or AiRuntimeError(
+                    f"{runtime.provider} reached its daily spend cap", 503)
+                continue
             state = await self.health.acquire(runtime.provider)
             if not ProviderHealth.allows(state):
                 self._log_attempt(task, runtime, index, "skipped", 0.0, state.reason)
@@ -1035,6 +1042,7 @@ class ManagerLlmService:
 
     async def _after_success(self, runtime: Runtime, meta: dict) -> None:
         await self.health.record_success(runtime.provider)
+        await self.spend.record(runtime.provider, runtime.model, meta.get("body"))
         wait = headroom_cooldown(meta.get("headers") or {})
         if wait is not None:
             await self.health.cool_for_headroom(runtime.provider, wait)

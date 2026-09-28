@@ -119,6 +119,12 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
     groq_base_url: str = "https://api.groq.com/openai/v1"
+    # Daily spend caps per provider in USD, e.g. "anthropic=20,openai=10". A
+    # provider past its cap is skipped until midnight (IST) and the chain moves on.
+    ai_daily_cap_usd: str = ""
+    # Extra model prices (USD per 1M tokens, input:output), e.g. "gpt-4.1=2:8".
+    # claude-sonnet-4-6 is built in; unpriced models are not metered.
+    ai_model_prices: str = ""
     llm_max_tokens: int = 4096
     # Reasoning depth = token spend. Report writing is straightforward generation, so
     # "low" minimizes thinking-token cost on thinking-capable models (Sonnet 4.6,
