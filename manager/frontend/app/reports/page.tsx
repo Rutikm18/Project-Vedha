@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2,
-  FileText, Flame, Globe, Lock, Minus, Printer, RefreshCw, ShieldAlert,
+  FileText, Flame, Globe, Lock, Minus, RefreshCw, ShieldAlert,
   ShieldCheck, Sparkles, Target, Zap,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
@@ -25,6 +25,10 @@ import {
 } from "../../lib/prompts/report";
 import { type ReportResult } from "../../lib/ai-engine";
 import { FindingsSection } from "../../components/report/FindingReport";
+import { ExportMenu, type ExportFormat } from "../../components/report/ExportMenu";
+import { downloadFile } from "../../lib/report/download";
+import { exportReportToWord, reportFilename } from "../../lib/report/export-word";
+import { usePrintMode } from "../../lib/print-mode";
 import { applyBundles, toRawFinding } from "../../lib/report/adapt";
 import { DUE_SOURCE_LABEL, URGENCY_LABEL, createRemediationApi, fmtIst } from "../../lib/remediation";
 
@@ -847,15 +851,34 @@ export function ReportsWorkspace({ surface = "manager" }: { surface?: ReportsWor
 
   const Shell = surface === "portal" ? PortalShell : PageShell;
 
+  // Subscribing wires the app-wide beforeprint/afterprint handlers, so Ctrl/Cmd+P
+  // produces the same full document as the Export menu.
+  usePrintMode();
+  const docRef = useRef<HTMLElement>(null);
+  const onExport = useCallback(async (format: ExportFormat) => {
+    if (!eng) return;
+    switch (format) {
+      case "pdf":
+        window.print();
+        return;
+      case "word":
+        if (!docRef.current) throw new Error("The report has not finished loading.");
+        exportReportToWord(docRef.current, eng.name);
+        return;
+      case "xlsx":
+        await downloadFile(remediation.exportUrl(eng.id, "xlsx"), surface, reportFilename(eng.name, "xlsx"));
+        return;
+      case "csv":
+        await downloadFile(remediation.exportUrl(eng.id, "csv", "findings"), surface, reportFilename(eng.name, "csv"));
+        return;
+    }
+  }, [eng, remediation, surface]);
+
   return (
     <Shell
       title="Reports"
       subtitle="Professional VAPT deliverables — grounded in verified scanner evidence"
-      headerActions={
-        <button className="btn btn-secondary no-print" onClick={() => window.print()} disabled={!eng}>
-          <Printer size={14} /> Export PDF
-        </button>
-      }
+      headerActions={<ExportMenu disabled={!eng || loading} onExport={onExport} />}
     >
       {/* Warning banner */}
       <div className="reports-beta-banner">
@@ -883,7 +906,7 @@ export function ReportsWorkspace({ surface = "manager" }: { surface?: ReportsWor
         empty={<EmptyState icon={FileText} title="No engagement available" hint="Create an engagement and run an assessment before generating a report." />}
       >
         {eng && (
-          <main className="report-document">
+          <main className="report-document" ref={docRef}>
             {/* Cover */}
             <header className="report-cover">
               <div>

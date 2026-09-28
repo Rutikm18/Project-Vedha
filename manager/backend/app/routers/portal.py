@@ -285,10 +285,11 @@ async def portal_remediation_bundles(user: ClientUser, db: DB,
 
 @router.get("/remediation/export", summary="Download your remediation tracker (XLSX or CSV zip)")
 async def portal_remediation_export(user: ClientUser, db: DB,
-                                    format: str = Query(default="xlsx", pattern="^(xlsx|csv)$")):
+                                    format: str = Query(default="xlsx", pattern="^(xlsx|csv)$"),
+                                    sheet: str | None = Query(default=None, pattern="^(findings|by_fix|by_host)$")):
     from fastapi import Response
     eng = await _client_engagement(user, db)
-    content, media, filename = await remediation_service.export_tracker(db, eng, user.tenant_id, format)
+    content, media, filename = await remediation_service.export_tracker(db, eng, user.tenant_id, format, sheet)
     return Response(content=content, media_type=media,
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 

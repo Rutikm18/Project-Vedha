@@ -556,8 +556,11 @@ a.vf-chip:hover { border-color: var(--border-strong); color: var(--text-primary)
   .vf-chevron, .vf-filters, .vf-blockers, .vf-notready,
   .vf-artifact-tools, .vf-icon-btn, .vf-text-btn { display: none !important; }
 
+  /* A fully-open card with evidence is often taller than a page; "avoid"
+     would strand a blank half-page before each one. Keep the header attached. */
   .vf-card {
-    break-inside: avoid;
+    break-inside: auto;
+    overflow: visible;
     border: 1px solid #cbd5e1;
     border-left: 3px solid var(--vf-sev);
     box-shadow: none;
@@ -566,6 +569,8 @@ a.vf-chip:hover { border-color: var(--border-strong); color: var(--text-primary)
   }
   .vf-block { break-inside: avoid; }
   .vf-head:hover { background: none; }
+  .vf-head { break-after: avoid; }
+  .vf-body[hidden] { display: block !important; }
 
   /* Terminal-dark output wastes toner and prints muddy. */
   .vf-artifact-out, .vf-repro {

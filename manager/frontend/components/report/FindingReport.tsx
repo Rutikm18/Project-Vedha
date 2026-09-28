@@ -15,10 +15,9 @@
  */
 
 import {
-  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
+  createContext, useCallback, useContext, useMemo, useState,
   type ElementType, type ReactNode,
 } from "react";
-import { flushSync } from "react-dom";
 import {
   AlertTriangle, ChevronDown, CheckCircle2, ClipboardCheck, Clock, Copy, Crosshair,
   Eye, EyeOff, FileWarning, Flame, Globe, Link2, ListChecks, Radar, Server,
@@ -27,6 +26,7 @@ import {
 
 import { SEVERITY, SEVERITY_ORDER, type Severity } from "../../lib/severity";
 import { copyText } from "../../lib/clipboard";
+import { usePrintMode } from "../../lib/print-mode";
 import {
   assess, provenanceOf, redact, triageSort, TIER_META,
   type AssessedFinding, type RawEvidence, type RawFinding, type RemediationTier,
@@ -135,13 +135,16 @@ function Prose({ text }: { text: string }) {
 export function EvidenceArtifact({ item, refId }: { item: RawEvidence; refId: string }) {
   const [expanded, setExpanded] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  // A document carries the whole artifact — the 900-char cut is a screen affordance.
+  const printing = usePrintMode();
 
   const masked = useMemo(() => redact(item.content ?? ""), [item.content]);
   const prov = useMemo(() => provenanceOf(item), [item]);
 
-  const full = revealed ? item.content : masked.text;
+  // Secrets stay masked in any exported document, whatever the screen shows.
+  const full = revealed && !printing ? item.content : masked.text;
   const long = full.length > 900;
-  const shown = expanded || !long ? full : `${full.slice(0, 900)}\n…`;
+  const shown = expanded || printing || !long ? full : `${full.slice(0, 900)}\n…`;
   const lines = full.split("\n").length;
 
   return (
@@ -180,7 +183,7 @@ export function EvidenceArtifact({ item, refId }: { item: RawEvidence; refId: st
         </div>
       )}
 
-      <pre className="vf-artifact-out" data-expanded={expanded || !long}>{shown}</pre>
+      <pre className="vf-artifact-out" data-expanded={expanded || printing || !long}>{shown}</pre>
 
       {masked.total > 0 && !revealed && (
         <p className="vf-artifact-note vf-artifact-note--mask">
@@ -585,39 +588,17 @@ export function FindingsSection({ findings, total, mode = "assessor", overdueTot
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
 
-  // A collapsed report prints as a list of headings. Open everything for the
-  // print pass, then put it back the way the assessor had it.
-  //
-  // beforeprint is not a React event, so a normal setState would still be
-  // queued when the browser paginates. flushSync commits before we return.
-  const openRef = useRef(open);
-  useEffect(() => { openRef.current = open; }, [open]);
+  // An exported document (PDF or Word) is the WHOLE register, every card open.
+  // The filter bar is hidden on paper, so a filter left on would silently drop
+  // findings from the deliverable with nothing saying so.
+  const printing = usePrintMode();
 
-  useEffect(() => {
-    const snapshot = { value: null as Set<string> | null };
-    const expand = () => {
-      snapshot.value = openRef.current;
-      flushSync(() => setOpen(new Set(assessed.map(a => a.raw.id))));
-    };
-    const restore = () => {
-      if (!snapshot.value) return;
-      const restored = snapshot.value;
-      snapshot.value = null;
-      setOpen(restored);
-    };
-    window.addEventListener("beforeprint", expand);
-    window.addEventListener("afterprint", restore);
-    return () => {
-      window.removeEventListener("beforeprint", expand);
-      window.removeEventListener("afterprint", restore);
-    };
-  }, [assessed]);
-
-  const shown = assessed.filter(a =>
+  const filtered = assessed.filter(a =>
     (sev === "ALL" || a.severity === sev) &&
     (!onlyExploited || a.raw.activelyExploited || a.raw.exploitValidated) &&
     (!onlyIncomplete || !a.readiness.ready)
   );
+  const shown = printing ? assessed : filtered;
 
   const blocked = assessed.filter(a => !a.readiness.ready).length;
   const p0 = assessed.filter(a => a.priority.code === "P0").length;
@@ -680,7 +661,7 @@ export function FindingsSection({ findings, total, mode = "assessor", overdueTot
             key={a.raw.id}
             finding={a.raw}
             ordinal={i + 1}
-            open={open.has(a.raw.id)}
+            open={printing || open.has(a.raw.id)}
             onToggle={toggle}
             mode={mode}
           />

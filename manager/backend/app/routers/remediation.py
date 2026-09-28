@@ -420,8 +420,11 @@ async def export_remediation(
     engagement_id: uuid.UUID, db: DB,
     current_user: Annotated[AuthUser, _REMEDIATION_READER],
     format: str = Query(default="xlsx", pattern="^(xlsx|csv)$"),
+    sheet: str | None = Query(default=None, pattern="^(findings|by_fix|by_host)$",
+                              description="With format=csv: return this one sheet as a .csv, not the zip"),
 ):
     eng = await _tenant_engagement(db, engagement_id, current_user.tenant_id)
-    content, media, filename = await remediation_service.export_tracker(db, eng, current_user.tenant_id, format)
+    content, media, filename = await remediation_service.export_tracker(
+        db, eng, current_user.tenant_id, format, sheet)
     return Response(content=content, media_type=media,
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})

@@ -2180,6 +2180,31 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 .report-severity-key strong { color: var(--text-primary); }
 .report-priorities { display: grid; gap: 9px; margin: 0; padding-left: 25px; color: var(--text-primary); font-size: 12px; line-height: 1.55; }
 .report-priorities li::marker { color: var(--accent); font-family: var(--font-mono); font-weight: 700; }
+/* Report export menu (PDF / Word / Excel / CSV) */
+.report-export { position: relative; }
+.report-export > .btn { display: inline-flex; align-items: center; gap: 6px; }
+.report-export-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; min-width: 260px;
+  display: grid; padding: 4px; border-radius: 10px;
+  background: var(--bg-panel); border: 1px solid var(--border-default);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+}
+.report-export-menu button {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px 10px;
+  border: 0; border-radius: 7px; background: none; color: var(--text-primary);
+  text-align: left; cursor: pointer;
+}
+.report-export-menu button:hover, .report-export-menu button:focus-visible { background: var(--bg-hover); outline: none; }
+.report-export-menu button svg { flex-shrink: 0; margin-top: 1px; color: var(--text-muted); }
+.report-export-menu strong { display: block; font-size: 12.5px; font-weight: 650; }
+.report-export-menu small { display: block; font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.report-export-error {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; width: max-content; max-width: 340px;
+  display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 8px;
+  font-size: 11.5px; color: var(--text-primary);
+  background: var(--sev-critical-bg); border: 1px solid var(--sev-critical-color);
+}
+.report-export-error button { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 14px; line-height: 1; }
 .report-table-wrap { overflow-x: auto; }
 .report-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .report-table th { padding: 7px 9px; border-bottom: 1px solid var(--border-default); color: var(--text-muted); text-align: left; font: 600 9px var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
@@ -2239,7 +2264,10 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   .report-finding-stack dl { grid-template-columns: 1fr 1fr; }
 }
 @media print {
-  .report-document { max-width: none; border: 0; box-shadow: none; }
+  .report-document { max-width: none; border: 0; box-shadow: none; overflow: visible; border-radius: 0; }
+  .report-table-wrap { overflow: visible; }
+  .report-table thead { display: table-header-group; }   /* repeat header on each page */
+  .report-table tr { break-inside: avoid; }
   .report-section, .report-metric, .report-finding-stack > article { break-inside: avoid; }
   .report-cover { color-adjust: exact; print-color-adjust: exact; }
 }
@@ -2548,7 +2576,21 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 @media print {
   .no-print, aside, .vedha-page-header, .vedha-page-footer { display: none !important; }
   body { background: white !important; color: #0F172A !important; }
+
+  /* The app shell is a 100vh viewport with an inner scrolling <main>. Printed
+     as-is, the browser paginates only what fits in that viewport — the
+     "PDF has one page" bug. On paper every level must grow with its content. */
+  html, body,
+  .vedha-shell, .vedha-shell-body, .vedha-page-main {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .vedha-page-main, .vedha-page-container { padding: 0 !important; max-width: none !important; }
 }
+@page { margin: 14mm 12mm; }
 
 /* ════════════════════════════════════════════════════════════════════════════
    REPORTS v2 — professional VAPT report components
@@ -3268,7 +3310,12 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 /* ── Print: clean up interactive elements ───────────────── */
 @media print {
   .rpt-metrics { grid-template-columns: repeat(4, 1fr); }
-  .rpt-section { break-inside: avoid; }
+  /* Sections can run longer than a page (top-findings table, AI register).
+     "avoid" on those pushes each one to a fresh page and leaves half-empty
+     pages behind — keep the heading with its content instead. */
+  .rpt-section { break-inside: auto; }
+  .rpt-section-head { break-after: avoid; }
+  .rpt-metric { break-inside: avoid; }
   .fc-section--rem { break-inside: avoid; }
 }
 

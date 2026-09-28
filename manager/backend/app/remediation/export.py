@@ -10,7 +10,12 @@ Three views of the SAME live data the UI and the report show:
 
 XLSX: frozen header row, autofilter, real date cells (project timezone, IST by
 default — Excel has no timezone, so the header says which). CSV: a zip holding
-the three sheets as UTF-8 CSV files.
+the three sheets as UTF-8 CSV files, or one sheet as a single CSV.
+
+Titles, hosts and banners are scanner-derived — a hostile service can make a
+finding title start with "=". Neither format may hand that to a spreadsheet as
+a formula (CSV/formula injection): XLSX cells are forced to the string type,
+CSV cells get the OWASP leading-apostrophe guard.
 """
 from __future__ import annotations
 
@@ -24,6 +29,9 @@ from app.services.project_time import to_project_tz
 
 TZ_LABEL = "IST"
 SHEETS = ("By fix", "By host checklist", "Findings")
+# URL/query key → sheet name, for single-sheet CSV downloads.
+SHEET_KEYS = {"by_fix": "By fix", "by_host": "By host checklist", "findings": "Findings"}
+_FORMULA_LEAD = ("=", "+", "-", "@", "\t", "\r")
 
 
 def _local(value: Any) -> datetime | None:
@@ -114,6 +122,9 @@ def to_xlsx(sheets: dict[str, tuple[list[str], list[list[Any]]]], *, title: str)
             cell.alignment = Alignment(vertical="center", wrap_text=True)
         for row in rows:
             ws.append(row)
+            for cell in ws[ws.max_row]:
+                if isinstance(cell.value, str) and cell.value.startswith(_FORMULA_LEAD):
+                    cell.data_type = "s"     # openpyxl would otherwise write it as a formula
         for col_idx, head in enumerate(header, start=1):
             letter = get_column_letter(col_idx)
             if "(" + TZ_LABEL + ")" in head:
@@ -130,16 +141,35 @@ def to_xlsx(sheets: dict[str, tuple[list[str], list[list[Any]]]], *, title: str)
     return buf.getvalue()
 
 
+def _csv_cell(v: Any) -> Any:
+    if v is None:
+        return ""
+    if isinstance(v, datetime):
+        return v.strftime("%Y-%m-%d %H:%M")
+    if isinstance(v, str) and v.startswith(_FORMULA_LEAD):
+        return "'" + v
+    return v
+
+
+def _csv_text(header: list[str], rows: list[list[Any]]) -> str:
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(header)
+    for r in rows:
+        w.writerow([_csv_cell(v) for v in r])
+    return "\ufeff" + out.getvalue()      # BOM so Excel reads UTF-8
+
+
+def to_csv(sheets: dict[str, tuple[list[str], list[list[Any]]]], sheet: str) -> bytes:
+    """One sheet as a single UTF-8 CSV file."""
+    header, rows = sheets[sheet]
+    return _csv_text(header, rows).encode("utf-8")
+
+
 def to_csv_zip(sheets: dict[str, tuple[list[str], list[list[Any]]]]) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for name in SHEETS:
             header, rows = sheets[name]
-            out = io.StringIO()
-            w = csv.writer(out)
-            w.writerow(header)
-            for r in rows:
-                w.writerow(["" if v is None else v.strftime("%Y-%m-%d %H:%M") if isinstance(v, datetime) else v
-                            for v in r])
-            zf.writestr(name.lower().replace(" ", "_") + ".csv", "﻿" + out.getvalue())
+            zf.writestr(name.lower().replace(" ", "_") + ".csv", _csv_text(header, rows))
     return buf.getvalue()

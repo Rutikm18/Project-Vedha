@@ -71,7 +71,7 @@ export function PageShell({
   }, []);
 
   return (
-    <div style={{
+    <div className="vedha-shell" style={{
       display: "flex",
       height: "100vh",
       fontFamily: "var(--font-body)",
@@ -96,7 +96,7 @@ export function PageShell({
 
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} surface={surface} />
 
-      <div style={{
+      <div className="vedha-shell-body" style={{
         flex: 1,
         display: "flex",
         flexDirection: "column",

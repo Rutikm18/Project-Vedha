@@ -14,6 +14,8 @@ export type PlanOs = "generic" | "linux" | "windows" | "macos";
 export type Tier = "containment" | "fix" | "hardening";
 export type Urgency = "act" | "attend" | "track_star" | "track";
 export type DueSource = "extension" | "engagement" | "tenant" | "default" | null;
+/** Single-sheet CSV download (the tracker's default CSV is a three-sheet zip). */
+export type ExportSheet = "findings" | "by_fix" | "by_host";
 
 export interface FactValue { value: string | number | null; source: "scan" | "asset_record" | "not_recorded"; }
 
@@ -176,8 +178,8 @@ export function createRemediationApi(surface: RemediationSurface) {
         void id;
         throw new Error("Only the requester can withdraw an extension request.");
       },
-      exportUrl: (engagementId: string, format: "xlsx" | "csv") =>
-        `/api/engagements/${engagementId}/remediation/export?format=${format}`,
+      exportUrl: (engagementId: string, format: "xlsx" | "csv", sheet?: ExportSheet) =>
+        `/api/engagements/${encodeURIComponent(engagementId)}/remediation/export${q({ format, sheet })}`,
     };
   }
   return {
@@ -202,9 +204,9 @@ export function createRemediationApi(surface: RemediationSurface) {
       portalApi<ExtensionRequest>("/extensions", { method: "POST", body, idempotencyKey: crypto.randomUUID() }),
     withdraw: (id: string) =>
       portalApi<ExtensionRequest>(`/extensions/${id}/withdraw`, { method: "POST", idempotencyKey: crypto.randomUUID() }),
-    exportUrl: (engagementId: string, format: "xlsx" | "csv") => {
+    exportUrl: (engagementId: string, format: "xlsx" | "csv", sheet?: ExportSheet) => {
       void engagementId;
-      return `/api/portal/remediation/export?format=${format}`;
+      return `/api/portal/remediation/export${q({ format, sheet })}`;
     },
   };
 }
