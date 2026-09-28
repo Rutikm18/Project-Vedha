@@ -5,12 +5,24 @@ import hashlib
 import hmac
 import re
 import json
+from contextvars import ContextVar
 from dataclasses import dataclass, replace
 
 import httpx
 import structlog
 
-from app.ai.failures import AUTH_SIGNALS, BILLING_SIGNALS, SPEND_CAP_SIGNALS
+from app.ai.failures import (
+    AUTH_RECHECK_S,
+    AUTH_SIGNALS,
+    BILLING_SIGNALS,
+    INVALID_OUTPUT,
+    NETWORK,
+    SPEND_CAP_SIGNALS,
+    TIMEOUT,
+    Failure,
+    classify_http,
+    parse_retry_after,
+)
 from app.ai.routing import FREE, provider_tier
 from app.config import Settings, get_settings
 from app.schemas.ai import AiGenerateRequest, AiProviderStatus, AiStatusResponse
@@ -174,9 +186,30 @@ def cached_system_prompt(text: str) -> list[dict]:
 
 
 class AiRuntimeError(RuntimeError):
-    def __init__(self, message: str, status_code: int = 502):
+    def __init__(self, message: str, status_code: int = 502, failure: Failure | None = None):
         super().__init__(message)
         self.status_code = status_code
+        # What the failure means for routing (app/ai/failures.py): None when it
+        # says nothing about the provider's health (config/gateway refusals).
+        self.failure = failure
+
+
+# Per-attempt reply metadata (rate-limit headers + parsed body for token usage).
+# A ContextVar, not an attribute: engagement reports run several generations of
+# one service instance concurrently under asyncio.gather, and each task gets its
+# own context copy.
+_REPLY_META: ContextVar[dict | None] = ContextVar("vedha_ai_reply_meta", default=None)
+
+
+def _capture_reply(response: httpx.Response) -> None:
+    meta = _REPLY_META.get()
+    if meta is None:
+        return
+    meta["headers"] = {key.lower(): value for key, value in response.headers.items()}
+    try:
+        meta["body"] = response.json()
+    except ValueError:
+        meta["body"] = None
 
 
 _INTERNAL_SUFFIXES = (".local", ".internal", ".lan", ".corp", ".intranet", ".home.arpa",
@@ -816,7 +849,7 @@ class ManagerLlmService:
         except AiRuntimeError:
             raise
         except httpx.TimeoutException as exc:
-            raise AiRuntimeError(f"{runtime.provider} timed out", 504) from exc
+            raise AiRuntimeError(f"{runtime.provider} timed out", 504, TIMEOUT) from exc
         except httpx.HTTPStatusError as exc:
             # Log the provider's own error message so a 400/422 is diagnosable
             # instead of an opaque status code. The raised message is curated to a
@@ -831,21 +864,24 @@ class ManagerLlmService:
                 reason=reason,
             )
             message, status = _provider_error_message(runtime.provider, exc.response.status_code, reason)
-            raise AiRuntimeError(message, status) from exc
+            failure = classify_http(exc.response.status_code, reason,
+                                    parse_retry_after(exc.response.headers.get("retry-after")))
+            raise AiRuntimeError(message, status, failure) from exc
         except UnicodeEncodeError as exc:
             # A non-ASCII API key (or header value) can't be encoded into the HTTP
             # request. The _usable_key guard normally stops this at selection time;
             # this is defense-in-depth so the message stays honest if one slips
             # through — a configuration fault (503), not a provider outage (502).
             raise AiRuntimeError(
-                f"{runtime.provider} is misconfigured (API key contains invalid characters)", 503
+                f"{runtime.provider} is misconfigured (API key contains invalid characters)", 503,
+                Failure("auth", AUTH_RECHECK_S, blocked=True),
             ) from exc
         except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
-            raise AiRuntimeError(f"{runtime.provider} response was unavailable", 502) from exc
+            raise AiRuntimeError(f"{runtime.provider} response was unavailable", 502, NETWORK) from exc
 
         text = strip_prompt_scaffolding(content)
         if not text:
-            raise AiRuntimeError(f"{runtime.provider} returned no content", 502)
+            raise AiRuntimeError(f"{runtime.provider} returned no content", 502, INVALID_OUTPUT)
         # Hash exactly what crossed the boundary: the (pseudonymized) request and
         # the provider's raw answer, before rehydration.
         self.audit_records.append(ai_call_record(
@@ -995,6 +1031,7 @@ class ManagerLlmService:
                 f"{self.settings.ollama_base_url.rstrip('/')}/api/chat", json=body,
             )
             response.raise_for_status()
+            _capture_reply(response)
             return str(response.json()["message"]["content"])
 
     async def _openrouter(
@@ -1020,6 +1057,7 @@ class ManagerLlmService:
                 json=body,
             )
             response.raise_for_status()
+            _capture_reply(response)
             return str(response.json()["choices"][0]["message"]["content"])
 
     async def _openai(
@@ -1063,6 +1101,7 @@ class ManagerLlmService:
                 json=body,
             )
             response.raise_for_status()
+            _capture_reply(response)
             return str(response.json()["choices"][0]["message"]["content"])
 
     async def _local_openai(
@@ -1087,6 +1126,7 @@ class ManagerLlmService:
                 headers=headers, json=body,
             )
             response.raise_for_status()
+            _capture_reply(response)
             return str(response.json()["choices"][0]["message"]["content"])
 
     async def _anthropic(
@@ -1139,6 +1179,7 @@ class ManagerLlmService:
                 )
                 response = await client.post(_ANTHROPIC_URL, headers=headers, json=base_body)
             response.raise_for_status()
+            _capture_reply(response)
             blocks = response.json().get("content", [])
             return "\n".join(
                 str(block.get("text", ""))
@@ -1188,6 +1229,7 @@ class ManagerLlmService:
                 json=body,
             )
             response.raise_for_status()
+            _capture_reply(response)
             candidates = response.json().get("candidates", [])
             if not candidates:
                 return ""
