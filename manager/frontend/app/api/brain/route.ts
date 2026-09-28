@@ -13,6 +13,8 @@ interface ManagerAiResponse {
   provider: string;
   model: string;
   privacy: "local" | "cloud";
+  fallback?: boolean;
+  tier?: string | null;
   skill?: string | null;
   skill_label?: string | null;
   jurisdictions?: string[];
@@ -134,6 +136,8 @@ export async function POST(req: Request) {
       factCard,
       provider: result.provider,
       model: result.model,
+      fallback: result.fallback ?? false,
+      tier: result.tier ?? null,
       skill: result.skill ?? null,
       skillLabel: result.skill_label ?? null,
       jurisdictions: result.jurisdictions ?? [],
