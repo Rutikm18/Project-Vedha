@@ -107,15 +107,64 @@ class LLMReportGenerator:
 
     @property
     def available(self) -> bool:
-        return self._client is not None
+        """Claude via the SDK, or any provider the report task may use in the
+        manager's chain (premium floor)."""
+        if self._client is not None:
+            return True
+        from app.services.llm import ManagerLlmService
+        return any(c.provider != "anthropic"
+                   for c in ManagerLlmService(self._settings)._candidates("report"))
 
     # ── low-level completion with retry/backoff ──────────────────────────────────
 
     async def _complete(self, user_prompt: str, *, max_tokens: int | None = None) -> str:
-        if self._client is None:
-            raise LLMUnavailableError(
-                "Anthropic SDK or ANTHROPIC_API_KEY not configured — cannot generate report"
-            )
+        """Claude via the SDK when it is healthy; otherwise — or when it fails —
+        the next providers of the manager's chain (app/services/llm.py), under the
+        report task's premium floor. Health is shared with every other AI caller."""
+        from app.ai.health import ProviderHealth
+
+        primary: Exception
+        if self._client is not None:
+            state = await ProviderHealth().acquire("anthropic")
+            if ProviderHealth.allows(state):
+                try:
+                    return await self._complete_sdk(user_prompt, max_tokens=max_tokens)
+                except LLMUnavailableError as exc:
+                    primary = exc
+            else:
+                primary = LLMUnavailableError(f"anthropic is {state.state} ({state.reason})")
+        else:
+            primary = LLMUnavailableError("Anthropic SDK or ANTHROPIC_API_KEY not configured")
+        return await self._complete_via_chain(user_prompt, max_tokens=max_tokens, primary=primary)
+
+    async def _complete_via_chain(self, user_prompt: str, *, max_tokens: int | None,
+                                  primary: Exception) -> str:
+        from app.ai.audit_chain import persist_ai_calls
+        from app.services.llm import AiRuntimeError, ManagerLlmService
+
+        svc = ManagerLlmService(self._settings)
+        try:
+            text, runtime, _ = await svc.complete_raw(
+                task="report", system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_prompt}],
+                max_tokens=max_tokens or self._max_tokens, exclude={"anthropic"})
+        except AiRuntimeError as exc:
+            raise LLMUnavailableError(f"{primary}; fallback chain: {exc}") from exc
+        finally:
+            records = list(getattr(svc, "audit_records", None) or [])
+            if records:
+                try:
+                    await persist_ai_calls(self._db, records, actor_id="system", engagement_id=None)
+                except Exception as audit_exc:  # noqa: BLE001 — never lose a report to audit I/O
+                    logger.error("ai.audit_chain.write_failed", task="report", error=str(audit_exc))
+        logger.warning("ai.report.fallback", served_by=runtime.provider, model=runtime.model,
+                       reason=str(primary))
+        return text
+
+    async def _complete_sdk(self, user_prompt: str, *, max_tokens: int | None = None) -> str:
+        from app.ai.failures import NETWORK, classify_http, parse_retry_after
+        from app.ai.health import ProviderHealth
+        health = ProviderHealth()
 
         # AI gateway: this SDK path is always cloud egress, so the deployment
         # profile decides raw / pseudonymized / refused (see app/ai/gateway.py).
@@ -151,8 +200,8 @@ class LLMReportGenerator:
                 # Pentest content can trip safety classifiers on newer models: a
                 # refusal is a 200 with stop_reason="refusal" and empty content,
                 # which would otherwise be persisted as a BLANK report. Surface it
-                # (LLMUnavailableError isn't caught below, so it won't be retried —
-                # a refusal won't change on retry).
+                # so the chain can ask the next provider (a refusal won't change on
+                # retry with the same model).
                 if getattr(resp, "stop_reason", None) == "refusal":
                     detail = getattr(getattr(resp, "stop_details", None), "explanation", "") or ""
                     raise LLMUnavailableError(
@@ -168,23 +217,32 @@ class LLMReportGenerator:
                 await _audit_sdk_call(self._db, self._settings, task="report", model=self._model,
                                       pseudo=pseudo, system=SYSTEM_PROMPT,
                                       messages=kwargs["messages"], response=text, engagement_id=None)
+                await health.record_success("anthropic")
                 return pseudo.rehydrate(text) if pseudo is not None else text
             except LLMUnavailableError:
-                # Refusal (above) — surface immediately, never retry. Listed first
-                # because when the anthropic SDK isn't installed the exception aliases
-                # below fall back to bare Exception and would otherwise swallow this.
+                # Refusal (above) — never retried here. Listed first because when
+                # the anthropic SDK isn't installed the exception aliases below fall
+                # back to bare Exception and would otherwise swallow this.
                 raise
-            except (RateLimitError, APIConnectionError) as exc:
+            except APIConnectionError as exc:
                 last_exc = exc
             except APIStatusError as exc:
-                if getattr(exc, "status_code", 500) >= 500:
-                    last_exc = exc
-                else:
-                    raise  # 4xx (other than 429) won't succeed on retry
+                status = getattr(exc, "status_code", 500) or 500
+                if status < 500:
+                    # 429 (rate limit / spend cap) and every other 4xx: the chain
+                    # has other providers, so waiting here only delays the report.
+                    response = getattr(exc, "response", None)
+                    retry_after = parse_retry_after(
+                        response.headers.get("retry-after") if response is not None else None)
+                    await health.record_failure(
+                        "anthropic", classify_http(status, str(getattr(exc, "message", exc)), retry_after))
+                    raise LLMUnavailableError(f"anthropic returned HTTP {status}: {exc}") from exc
+                last_exc = exc
             delay = min(60.0, 1.0 * (2 ** attempt)) + random.uniform(0, 1)
             logger.warning("ai.llm.retry", attempt=attempt + 1, delay=round(delay, 1))
             await asyncio.sleep(delay)
 
+        await health.record_failure("anthropic", NETWORK)
         raise LLMUnavailableError(f"LLM request failed after {self._max_retries} retries: {last_exc}")
 
     # ── public generation methods ─────────────────────────────────────────────────
