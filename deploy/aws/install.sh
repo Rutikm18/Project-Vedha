@@ -31,8 +31,10 @@
 #   APP_DIR            install location (default /opt/vedha)
 #   ADMIN_EMAIL        seeded admin email (default admin@vedha.io)
 #   ACME_EMAIL         Let's Encrypt contact (default = ADMIN_EMAIL)
-#   LLM_PROVIDER       openai|anthropic|openrouter|ollama  (auto-detected from keys)
-#   OPENAI_API_KEY / ANTHROPIC_API_KEY / OPENROUTER_API_KEY
+#   ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY / GROQ_API_KEY /
+#   OPENROUTER_API_KEY   AI keys (env > SSM ${SSM_PREFIX}/<NAME> > existing .env).
+#                      Every key present joins the automatic premium-first chain.
+#   LLM_PROVIDER       optional: tried first; leave unset for the automatic chain
 #   ENABLE_GRAPH=1     also start Neo4j attack-path graph
 #   API_WORKERS        override auto-sizing
 #   SKIP_VERIFY=1      skip post-deploy smoke tests (not recommended)
@@ -301,6 +303,9 @@ if ssm_available; then
   _ssm_admin_pw="$(ssm_get SEED_ADMIN_PASSWORD)"
   _ssm_openai="$(ssm_get OPENAI_API_KEY)"
   _ssm_anthropic="$(ssm_get ANTHROPIC_API_KEY)"
+  _ssm_gemini="$(ssm_get GEMINI_API_KEY)"
+  _ssm_groq="$(ssm_get GROQ_API_KEY)"
+  _ssm_openrouter="$(ssm_get OPENROUTER_API_KEY)"
   _ssm_domain="$(ssm_get DOMAIN)"
   [ -n "$_ssm_jwt" ]      && JWT_SECRET="$_ssm_jwt"
   [ -n "$_ssm_probe_policy" ] && PROBE_POLICY_SIGNING_KEY="$_ssm_probe_policy"
@@ -308,6 +313,9 @@ if ssm_available; then
   [ -n "$_ssm_admin_pw" ] && SEED_ADMIN_PASSWORD_SSM="$_ssm_admin_pw"
   [ -n "$_ssm_openai" ]   && OPENAI_API_KEY="${OPENAI_API_KEY:-$_ssm_openai}"
   [ -n "$_ssm_anthropic" ]&& ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$_ssm_anthropic}"
+  [ -n "$_ssm_gemini" ]   && GEMINI_API_KEY="${GEMINI_API_KEY:-$_ssm_gemini}"
+  [ -n "$_ssm_groq" ]     && GROQ_API_KEY="${GROQ_API_KEY:-$_ssm_groq}"
+  [ -n "$_ssm_openrouter" ] && OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-$_ssm_openrouter}"
   [ -n "$_ssm_domain" ]   && DOMAIN="${DOMAIN:-$_ssm_domain}"
   log "SSM pull complete ✓"
 else
@@ -360,17 +368,31 @@ fi
 [ ${#JWT_SECRET} -ge 32 ]         || die "JWT_SECRET too short (< 32 chars)"
 [ ${#POSTGRES_PASSWORD} -ge 16 ]  || die "POSTGRES_PASSWORD too short (< 16 chars)"
 
-# ── 8. LLM provider resolution ────────────────────────────────────────────────
-step "LLM provider"
-if [ -z "${LLM_PROVIDER:-}" ]; then
-  if   [ -n "${OPENAI_API_KEY:-}" ];     then LLM_PROVIDER=openai
-  elif [ -n "${ANTHROPIC_API_KEY:-}" ];  then LLM_PROVIDER=anthropic
-  elif [ -n "${OPENROUTER_API_KEY:-}" ]; then LLM_PROVIDER=openrouter
-  # Cloud-only: never fall back to local Ollama on AWS. Leave the provider empty
-  # so the Manager auto-detects / fails closed; AI stays inert until a key is set.
-  else LLM_PROVIDER=""; warn "no cloud LLM API key — AI features inert until you set OPENAI_API_KEY / ANTHROPIC_API_KEY / OPENROUTER_API_KEY in SSM or .env"; fi
+# ── 8. AI provider keys + routing ─────────────────────────────────────────────
+# Each key: exported env > SSM > the value already effective in .env (LAST
+# occurrence wins, as it does for Compose). Before this, keys were taken only from
+# env/SSM, so a key added to .env by hand was blanked by the managed block below
+# on every re-run.
+step "AI providers"
+env_get_last() { [ -f .env ] && grep "^$1=" .env | tail -n1 | cut -d= -f2- || true; }
+for _k in ANTHROPIC_API_KEY OPENAI_API_KEY GEMINI_API_KEY GROQ_API_KEY OPENROUTER_API_KEY; do
+  [ -n "${!_k:-}" ] || printf -v "$_k" '%s' "$(env_get_last "$_k")"
+done
+# No provider is pinned any more: the Manager walks an automatic premium-first
+# chain (anthropic -> openai -> gemini -> groq -> openrouter, keys without a value
+# skipped; docs/adr/0004-ai-fallback-chain.md). Order is set with LLM_CHAIN in
+# .env OUTSIDE the managed block (preserved). Only an explicitly exported
+# LLM_PROVIDER is carried, and it is tried first.
+LLM_PROVIDER="${LLM_PROVIDER:-}"
+_ai_keys=""
+for _k in ANTHROPIC_API_KEY OPENAI_API_KEY GEMINI_API_KEY GROQ_API_KEY OPENROUTER_API_KEY; do
+  [ -n "${!_k:-}" ] && _ai_keys="$_ai_keys ${_k%_API_KEY}"
+done
+if [ -n "$_ai_keys" ]; then
+  log "AI keys present:${_ai_keys} — automatic chain${LLM_PROVIDER:+ (pinned first: $LLM_PROVIDER)} ✓"
+else
+  warn "no cloud AI key — AI features inert until you set ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY / GROQ_API_KEY / OPENROUTER_API_KEY in SSM or .env"
 fi
-log "LLM provider: ${LLM_PROVIDER:-<none — cloud key required>} ✓"
 
 # ── 9. TLS / Caddy configuration ─────────────────────────────────────────────
 step "TLS & domain"
@@ -544,6 +566,8 @@ LLM_PROVIDER=$LLM_PROVIDER
 OPENAI_API_KEY=${OPENAI_API_KEY:-}
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
 OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+GEMINI_API_KEY=${GEMINI_API_KEY:-}
+GROQ_API_KEY=${GROQ_API_KEY:-}
 CORS_ORIGINS=$UI_URL
 MANAGER_PUBLIC_URL=$API_URL
 NEO4J_ENABLED=$([ "$ENABLE_GRAPH" = "1" ] && echo true || echo false)
@@ -565,7 +589,7 @@ COMPOSE_PROFILES_ARGS=(--profile ui)
 # ── 13. Build and launch ──────────────────────────────────────────────────────
 step "Building and launching stack"
 log "profiles: ${COMPOSE_PROFILES_ARGS[*]}"
-log "workers: $API_WORKERS  provider: $LLM_PROVIDER"
+log "workers: $API_WORKERS  AI: automatic chain${LLM_PROVIDER:+ (pinned first: $LLM_PROVIDER)}"
 
 RELEASE_STATE="$APP_DIR/.release-current"
 PREVIOUS_BACKEND_IMAGE=""

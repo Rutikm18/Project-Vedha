@@ -42,9 +42,12 @@ x-backend-env: &backend-env
   NEO4J_URI: bolt://neo4j:7687
   NEO4J_USER: ${NEO4J_USER:-neo4j}
   NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
-  # Empty = cloud-only auto-detect (openai -> anthropic -> openrouter). Set to
-  # "ollama" and run `--profile local-ai` only for local development.
+  # Empty = automatic premium-first chain over every configured key
+  # (anthropic -> openai -> gemini -> groq -> openrouter); LLM_CHAIN sets the
+  # order (docs/adr/0004-ai-fallback-chain.md). A value in LLM_PROVIDER is tried
+  # first. "ollama" + `--profile local-ai` is for local development only.
   LLM_PROVIDER: ${LLM_PROVIDER:-}
+  LLM_CHAIN: ${LLM_CHAIN:-}
   DEPLOYMENT_PROFILE: ${DEPLOYMENT_PROFILE:-cloud}
   AI_PSEUDONYMIZE: ${AI_PSEUDONYMIZE:-false}
   LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
@@ -65,6 +68,16 @@ x-backend-env: &backend-env
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
   OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GEMINI_MODEL: ${GEMINI_MODEL:-gemini-flash-latest}
+  GEMINI_BASE_URL: ${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+  GEMINI_PAID: ${GEMINI_PAID:-false}
+  GROQ_API_KEY: ${GROQ_API_KEY:-}
+  GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+  GROQ_BASE_URL: ${GROQ_BASE_URL:-https://api.groq.com/openai/v1}
+  AI_DAILY_CAP_USD: ${AI_DAILY_CAP_USD:-}
+  AI_MODEL_PRICES: ${AI_MODEL_PRICES:-}
+  AI_ANSWER_CACHE_TTL_SECONDS: ${AI_ANSWER_CACHE_TTL_SECONDS:-604800}
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
   DETECTION_ENGINE_PATH: /opt/detection_engine
 

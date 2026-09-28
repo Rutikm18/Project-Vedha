@@ -92,17 +92,16 @@ if ! valid_b64_32 "$(get PROBE_POLICY_SIGNING_KEY)"; then
   echo "[gen-env] PROBE_POLICY_SIGNING_KEY (re)generated as valid base64-32"
 fi
 
-# ── AI pipeline: default to Claude Sonnet ─────────────────────────────────────
-# The manager's LLM pipeline (security briefs / advisor / AI reports) runs on
-# Anthropic Claude Sonnet by default. LLM_PROVIDER/LLM_MODEL are set ONLY WHEN
-# ABSENT, so an operator who chose Ollama (local dev) or OpenAI keeps their pick.
-# Pinning the provider matters: auto-detect prefers OpenAI over Anthropic, so
-# without this a deployment with both keys would not use Sonnet.
-# The API key is a real secret YOU provide — gen-env never generates or guesses it.
-[ -z "$(get LLM_PROVIDER)" ] && { set_kv LLM_PROVIDER anthropic; echo "[gen-env] LLM_PROVIDER=anthropic (Claude Sonnet pipeline)"; }
+# ── AI pipeline: automatic premium-first chain ────────────────────────────────
+# The manager walks anthropic -> openai -> gemini -> groq -> openrouter over every
+# key present, skipping providers that are rate limited, out of credit or over
+# their daily cap (docs/adr/0004-ai-fallback-chain.md). Nothing needs pinning:
+# LLM_PROVIDER is left as the operator set it (empty = automatic; a value is
+# tried first) and LLM_CHAIN overrides the order.
+# The API keys are real secrets YOU provide — gen-env never generates or guesses them.
 [ -z "$(get LLM_MODEL)" ]    && set_kv LLM_MODEL claude-sonnet-4-6
-if [ -z "$(get ANTHROPIC_API_KEY)" ]; then
-  echo "[gen-env] NOTE: add ANTHROPIC_API_KEY=<your key> to .env to enable the Claude Sonnet AI pipeline (the AI panel reports 'not configured' until you do)."
+if [ -z "$(get ANTHROPIC_API_KEY)$(get OPENAI_API_KEY)$(get GEMINI_API_KEY)$(get GROQ_API_KEY)$(get OPENROUTER_API_KEY)" ]; then
+  echo "[gen-env] NOTE: no AI API key in .env — add ANTHROPIC_API_KEY (tried first) and/or OPENAI/GEMINI/GROQ/OPENROUTER keys; the AI panel reports 'not configured' until you do."
 fi
 # Insurance: the graph-profile neo4j service uses ${NEO4J_PASSWORD:?...}, which
 # Compose interpolates even when the profile is inactive. Guarantee a value so a
