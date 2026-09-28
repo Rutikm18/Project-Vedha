@@ -5,12 +5,13 @@ import hashlib
 import hmac
 import re
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import httpx
 import structlog
 
 from app.ai.failures import AUTH_SIGNALS, BILLING_SIGNALS, SPEND_CAP_SIGNALS
+from app.ai.routing import FREE, provider_tier
 from app.config import Settings, get_settings
 from app.schemas.ai import AiGenerateRequest, AiProviderStatus, AiStatusResponse
 from app.services.llm_http_client import AsyncLlmHttpClient
@@ -222,6 +223,9 @@ class Runtime:
     provider: str
     model: str
     privacy: str
+    # premium | budget | free | local (app/ai/routing.py). Set whenever the service
+    # resolves a runtime; None only for runtimes built by hand (tests, fakes).
+    tier: str | None = None
 
 
 _BASE_RULES = """You are Vedha's senior defensive security advisor.
@@ -445,6 +449,9 @@ class ManagerLlmService:
         return (self.settings.deployment_profile or "").strip().lower() == "sovereign"
 
     def _default_runtime(self) -> Runtime:
+        return self._tiered(self._resolve_default_runtime())
+
+    def _resolve_default_runtime(self) -> Runtime:
         provider = self.settings.llm_provider.strip().lower()
         if self._sovereign() and provider not in _LOCAL_PROVIDERS:
             raise AiRuntimeError(
@@ -474,7 +481,16 @@ class ManagerLlmService:
             return Runtime("gemini", self.settings.gemini_model, "cloud")
         return Runtime("ollama", self.settings.ollama_model, "local")
 
+    def _tier(self, provider: str) -> str:
+        return provider_tier(provider, gemini_paid=self.settings.gemini_paid)
+
+    def _tiered(self, runtime: Runtime) -> Runtime:
+        return runtime if runtime.tier else replace(runtime, tier=self._tier(runtime.provider))
+
     def _runtime(self, provider: str, model: str | None) -> Runtime:
+        return self._tiered(self._resolve_runtime(provider, model))
+
+    def _resolve_runtime(self, provider: str, model: str | None) -> Runtime:
         if provider == "local_openai":
             base = self.settings.local_llm_base_url.strip()
             if not base or not self.settings.local_llm_model.strip():
@@ -736,8 +752,11 @@ class ManagerLlmService:
         from app.ai.audit_chain import ai_call_record
         from app.ai.gateway import GatewayDenied, Pseudonymizer, egress_decision
         try:
+            # Free tiers may train on prompts (Google's free-tier terms say so), so
+            # they are always pseudonymized — even under the plain cloud profile.
+            tier = runtime.tier or self._tier(runtime.provider)
             decision = egress_decision(self.settings.deployment_profile, runtime.privacy,
-                                       force_pseudonymize=self.settings.ai_pseudonymize)
+                                       force_pseudonymize=self.settings.ai_pseudonymize or tier == FREE)
         except GatewayDenied as exc:
             self.audit_records.append(ai_call_record(
                 task=None, provider=runtime.provider, model=runtime.model,

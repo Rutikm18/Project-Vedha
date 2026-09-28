@@ -63,3 +63,48 @@ async def test_status_lists_groq():
     status = await ManagerLlmService(settings(groq_api_key="g")).status()
     groq = next(p for p in status.providers if p.id == "groq")
     assert groq.configured is True
+
+
+# ── Free tiers are always pseudonymized ─────────────────────────────────────
+
+def _gemini_capture(seen: dict):
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = request.content.decode()
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": "Isolate [IP-1] now"}]}}]})
+    return handler
+
+
+@pytest.mark.asyncio
+async def test_free_gemini_is_pseudonymized_even_under_cloud_profile():
+    seen: dict = {}
+    svc = ManagerLlmService(settings(gemini_api_key="g", deployment_profile="cloud"),
+                            transport=httpx.MockTransport(_gemini_capture(seen)))
+    content, runtime = await svc.generate(ask(provider="gemini", content="Is 10.9.8.7 exposed?"))
+    assert "10.9.8.7" not in seen["body"]
+    assert "[IP-1]" in seen["body"]
+    assert content == "Isolate 10.9.8.7 now"          # rehydrated for the reader
+    assert runtime.tier == "free"
+
+
+@pytest.mark.asyncio
+async def test_paid_gemini_is_sent_raw_under_cloud_profile():
+    seen: dict = {}
+    svc = ManagerLlmService(settings(gemini_api_key="g", gemini_paid=True),
+                            transport=httpx.MockTransport(_gemini_capture(seen)))
+    _, runtime = await svc.generate(ask(provider="gemini", content="Is 10.9.8.7 exposed?"))
+    assert "10.9.8.7" in seen["body"]
+    assert runtime.tier == "budget"
+
+
+@pytest.mark.asyncio
+async def test_premium_is_sent_raw_under_cloud_profile():
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = request.content.decode()
+        return httpx.Response(200, json={"content": [{"type": "text", "text": "ok"}]})
+
+    svc = ManagerLlmService(settings(anthropic_api_key="a"), transport=httpx.MockTransport(handler))
+    _, runtime = await svc.generate(ask(provider="anthropic", content="Is 10.9.8.7 exposed?"))
+    assert "10.9.8.7" in seen["body"]
+    assert runtime.tier == "premium"
