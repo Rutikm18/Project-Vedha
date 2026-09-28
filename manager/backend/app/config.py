@@ -114,6 +114,11 @@ class Settings(BaseSettings):
     # use prompts to improve its products, so a free Gemini key is always sent
     # pseudonymized data; a paid one is treated as the "budget" tier.
     gemini_paid: bool = False
+    # Groq — OpenAI-compatible free tier (console.groq.com). Free tier: always
+    # pseudonymized by the AI gateway.
+    groq_api_key: str = ""
+    groq_model: str = "openai/gpt-oss-120b"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
     llm_max_tokens: int = 4096
     # Reasoning depth = token spend. Report writing is straightforward generation, so
     # "low" minimizes thinking-token cost on thinking-capable models (Sonnet 4.6,

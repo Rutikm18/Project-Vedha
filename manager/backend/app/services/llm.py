@@ -456,7 +456,7 @@ class ManagerLlmService:
             return self._runtime("local_openai", None)
         # Empty/"auto"/unknown → resolve a configured cloud provider. Ollama is
         # only ever used when an operator sets it explicitly (local dev).
-        if provider not in {"ollama", "openrouter", "anthropic", "openai", "gemini"}:
+        if provider not in {"ollama", "openrouter", "anthropic", "openai", "gemini", "groq"}:
             provider = self._auto_cloud_provider()
             if provider is None:
                 raise AiRuntimeError(
@@ -530,6 +530,13 @@ class ManagerLlmService:
                     403,
                 )
             return Runtime("gemini", selected, "cloud")
+        if provider == "groq":
+            if not _usable_key(self.settings.groq_api_key):
+                raise AiRuntimeError("Groq is not configured in Manager (missing or invalid API key)", 503)
+            selected = model or self.settings.groq_model
+            if selected != self.settings.groq_model:
+                raise AiRuntimeError("Groq model is not enabled by the Manager deployment", 403)
+            return Runtime("groq", selected, "cloud")
         selected = model or self.settings.ollama_model
         if not _is_local_ollama_model(selected):
             raise AiRuntimeError(
@@ -606,6 +613,15 @@ class ManagerLlmService:
                 default_model=self.settings.gemini_model,
                 models=[self.settings.gemini_model],
                 reason=None if _usable_key(self.settings.gemini_api_key) else "GEMINI_API_KEY is missing or invalid in Manager",
+            ),
+            AiProviderStatus(
+                id="groq",
+                label="Groq",
+                configured=_usable_key(self.settings.groq_api_key),
+                privacy="cloud",
+                default_model=self.settings.groq_model,
+                models=[self.settings.groq_model],
+                reason=None if _usable_key(self.settings.groq_api_key) else "GROQ_API_KEY is missing or invalid in Manager",
             ),
         ]
 
@@ -746,6 +762,8 @@ class ManagerLlmService:
                 return await self._openai(runtime, system, messages, max_tokens, json_mode)
             if runtime.provider == "gemini":
                 return await self._gemini(runtime, system, messages, max_tokens, json_mode)
+            if runtime.provider == "groq":
+                return await self._groq(runtime, system, messages, max_tokens, json_mode)
             return await self._anthropic(runtime, system, messages, max_tokens, json_mode)
 
         try:
@@ -994,6 +1012,23 @@ class ManagerLlmService:
         # The stable rules live at the front of the system message, which is message
         # index 0 — so the cache-worthy prefix is already in the right place. No
         # cache_control needed (unlike Anthropic, which is opt-in per block).
+        return await self._openai_compatible(
+            runtime, system, messages, max_tokens, json_mode,
+            base_url=self.settings.openai_base_url, api_key=self.settings.openai_api_key)
+
+    async def _groq(
+        self, runtime: Runtime, system: str, messages: list[dict[str, str]], max_tokens: int,
+        json_mode: bool = False,
+    ) -> str:
+        return await self._openai_compatible(
+            runtime, system, messages, max_tokens, json_mode,
+            base_url=self.settings.groq_base_url, api_key=self.settings.groq_api_key)
+
+    async def _openai_compatible(
+        self, runtime: Runtime, system: str, messages: list[dict[str, str]], max_tokens: int,
+        json_mode: bool, *, base_url: str, api_key: str,
+    ) -> str:
+        """POST /chat/completions on any OpenAI-shaped API (OpenAI, Groq)."""
         body: dict = {
             "model": runtime.model,
             "messages": [{"role": "system", "content": system}, *messages],
@@ -1004,8 +1039,8 @@ class ManagerLlmService:
             body["response_format"] = {"type": "json_object"}
         async with self._client() as client:
             response = await client.post(
-                f"{self.settings.openai_base_url.rstrip('/')}/chat/completions",
-                headers={"Authorization": f"Bearer {self.settings.openai_api_key}"},
+                f"{base_url.rstrip('/')}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
                 json=body,
             )
             response.raise_for_status()
