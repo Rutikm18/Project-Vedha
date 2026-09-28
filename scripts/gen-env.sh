@@ -99,6 +99,18 @@ fi
 # LLM_PROVIDER is left as the operator set it (empty = automatic; a value is
 # tried first) and LLM_CHAIN overrides the order.
 # The API keys are real secrets YOU provide — gen-env never generates or guesses them.
+# Self-heal (AWS incident 2026-09-28): older copies of .env.docker.example set
+# LLM_PROVIDER=ollama, but make full / aws-up never start Ollama (its compose
+# profile is local-ai), so every AI call hit an absent server first. Clear it
+# unless OLLAMA_BASE_URL points at a deliberately configured Ollama.
+if [ "$(get LLM_PROVIDER)" = "ollama" ]; then
+  case "$(get OLLAMA_BASE_URL)" in
+    ""|*host.docker.internal*)
+      set_kv LLM_PROVIDER ""
+      echo "[gen-env] LLM_PROVIDER=ollama cleared — this stack does not run Ollama; using the automatic cloud AI chain."
+      ;;
+  esac
+fi
 [ -z "$(get LLM_MODEL)" ]    && set_kv LLM_MODEL claude-sonnet-4-6
 if [ -z "$(get ANTHROPIC_API_KEY)$(get OPENAI_API_KEY)$(get GEMINI_API_KEY)$(get GROQ_API_KEY)$(get OPENROUTER_API_KEY)" ]; then
   echo "[gen-env] NOTE: no AI API key in .env — add ANTHROPIC_API_KEY (tried first) and/or OPENAI/GEMINI/GROQ/OPENROUTER keys; the AI panel reports 'not configured' until you do."
