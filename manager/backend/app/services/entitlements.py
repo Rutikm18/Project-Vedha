@@ -76,6 +76,12 @@ def _plan_label(plan_type: str | None) -> str:
     return "POC" if plan_type == PLAN_POC else "licence"
 
 
+def _used_all(n: int, kind: str = "") -> str:
+    """'You've used your 1 deep scan' · 'You've used all 3 scans'."""
+    noun = f"{kind} scan" if kind else "scan"
+    return f"You've used your 1 {noun}" if n == 1 else f"You've used all {n} {noun}s"
+
+
 def _int(v) -> int:
     return max(int(v or 0), 0)
 
@@ -89,7 +95,7 @@ def _mode_view(row, mode: str, *, plan_blocked: str | None, total_left: int | No
     if reason is None and not enabled:
         reason = f"{MODE_LABEL[mode]} scans aren't included in your plan."
     elif reason is None and left == 0:
-        reason = (f"You've used all {quota} {MODE_LABEL[mode].lower()} scans in your plan. "
+        reason = (f"{_used_all(quota, MODE_LABEL[mode].lower())} in your plan. "
                   "Contact your security team for more.")
     elif reason is None and total_left == 0:
         reason = "You've used every scan in your plan. Contact your security team for more."
@@ -129,7 +135,7 @@ def evaluate(row, *, now: datetime | None = None) -> EntitlementView:
              for m in SCAN_MODES}
     if state == "active" and not any(v.can_scan for v in modes.values()):
         state = "exhausted"
-        reason = (f"You've used all {quota} scans in your {label}. "
+        reason = (f"{_used_all(quota)} in your {label}. "
                   "Contact your security team for more." if scans_left == 0 else
                   f"There are no scans left in your {label}. "
                   "Contact your security team for more.")

@@ -350,3 +350,12 @@ def test_approved_deep_request_carries_its_mode_and_asset_to_the_job():
     result = ca.build_scan_job(sr, eng).result
     assert result["_quota_mode"] == "deep" and result["_deep_target"] == "10.0.0.5/32"
     assert result["targets"] == ["10.0.0.5/32"] and result["intensity"] == "deep"
+
+
+def test_used_up_wording_is_grammatical():
+    one = ent.evaluate(_row(aggressive_quota=1, aggressive_used=1), now=NOW)
+    assert one.modes["aggressive"].reason.startswith("You've used your 1 aggressive scan in")
+    many = ent.evaluate(_row(normal_quota=3, normal_used=3), now=NOW)
+    assert many.modes["normal"].reason.startswith("You've used all 3 normal scans in")
+    total = ent.evaluate(_row(scan_quota=1, scans_used=1), now=NOW)
+    assert total.reason.startswith("You've used your 1 scan in your POC")
