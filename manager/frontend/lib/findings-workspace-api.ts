@@ -6,6 +6,7 @@ export type { FindingAssetOption, ScanOption } from "./adapters";
 import { fetchJson } from "./fetcher";
 import { portalApi } from "./portal-client";
 import { backendQueryString } from "./findings-query";
+import { newId } from "./uuid";
 
 export type FindingsWorkspaceSurface = "manager" | "portal";
 
@@ -113,16 +114,16 @@ export function createFindingsWorkspaceApi(surface: FindingsWorkspaceSurface) {
     },
     detail: async <T>(id: string) => toUiFinding(await portalApi<unknown>(`/workspace/findings/${id}`)) as T,
     update: async <T>(id: string, patch: unknown) => toUiFinding(await portalApi<unknown>(`/findings/${id}`, {
-      method: "PATCH", body: toApiFindingPatch(patch), idempotencyKey: crypto.randomUUID(),
+      method: "PATCH", body: toApiFindingPatch(patch), idempotencyKey: newId(),
     })) as T,
     reopen: async <T>(id: string, reason: string) => toUiFinding(await portalApi<unknown>(`/findings/${id}/reopen`, {
-      method: "POST", body: { reason }, idempotencyKey: crypto.randomUUID(),
+      method: "POST", body: { reason }, idempotencyKey: newId(),
     })) as T,
     remediation: <T>(id: string, os: string) => portalApi<T>(`/findings/${id}/remediation?os=${os}`),
     events: <T>(id: string) => portalApi<T>(`/findings/${id}/events`),
     obligations: <T>(id: string) => portalApi<T>(`/workspace/findings/${id}/obligations`),
     complianceBrief: <T>(id: string) => portalApi<T>(`/workspace/findings/${id}/compliance-brief`, {
-      method: "POST", idempotencyKey: crypto.randomUUID(),
+      method: "POST", idempotencyKey: newId(),
     }),
   };
 }

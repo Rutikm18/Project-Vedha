@@ -15,6 +15,7 @@ import {
 import { FactCard } from "../../components/assistant/FactCard";
 import { AssistantText } from "../../components/assistant/AssistantText";
 import type { FactCardVM } from "../../lib/assistant";
+import { newId } from "../../lib/uuid";
 
 interface Message {
   id: string;
@@ -163,7 +164,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
   async function send(prompt?: string) {
     const content = (prompt ?? input).trim();
     if (!content || sending) return;
-    const user: Message = { id: crypto.randomUUID(), role: "user", content };
+    const user: Message = { id: newId(), role: "user", content };
     const conversation = [...messages.filter((message) => message.id !== "welcome"), user];
     setMessages((current) => [...current, user]);
     setInput("");
@@ -180,7 +181,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
           engagementId: effectiveEngagementId || undefined,
         });
       setMessages((current) => [...current, {
-        id: crypto.randomUUID(),
+        id: newId(),
         role: "assistant",
         content: response.content || "The configured model returned no content.",
         provider: response.provider,

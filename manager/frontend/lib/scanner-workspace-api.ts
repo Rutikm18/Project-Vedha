@@ -2,6 +2,7 @@ import { toUiEngagement } from "./adapters";
 import { fetchJson } from "./fetcher";
 import { portalApi } from "./portal-client";
 import { buildScanLaunchRequest, type ScanLaunchBody } from "./scan-launch";
+import { newId } from "./uuid";
 
 export type ScannerWorkspaceSurface = "manager" | "portal";
 
@@ -34,14 +35,14 @@ export function createScannerWorkspaceApi(surface: ScannerWorkspaceSurface) {
     launch: async <T>(body: ScanLaunchBody) => {
       const request = buildScanLaunchRequest(body);
       const result = await portalApi<Record<string, unknown>>("/workspace/scan/jobs", {
-        method: "POST", body: request, idempotencyKey: crypto.randomUUID(),
+        method: "POST", body: request, idempotencyKey: newId(),
       });
       return { ...result, dispatched: request } as T;
     },
     campaignProgress: <T>() => portalApi<T>("/workspace/scan/campaign-progress"),
     rawFacts: <T>(_engagementId: string, query: string) => portalApi<T>(`/workspace/scan/raw-facts${query}`),
     cancelJob: <T>(jobId: string) => portalApi<T>(`/workspace/scan/jobs/${encodeURIComponent(jobId)}/cancel`, {
-      method: "POST", idempotencyKey: crypto.randomUUID(),
+      method: "POST", idempotencyKey: newId(),
     }),
   };
 }

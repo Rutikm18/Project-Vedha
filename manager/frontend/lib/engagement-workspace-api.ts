@@ -1,6 +1,7 @@
 import { toApiEngagementPatch, toUiEngagement, toUiFinding } from "./adapters";
 import { fetchJson } from "./fetcher";
 import { portalApi } from "./portal-client";
+import { newId } from "./uuid";
 
 export type EngagementWorkspaceSurface = "manager" | "portal";
 
@@ -99,7 +100,7 @@ export function createEngagementWorkspaceApi(surface: EngagementWorkspaceSurface
     progress: <T>() => portalApi<T>("/workspace/scan/campaign-progress"),
     update: async <T>(_engagementId: string, body: unknown) => {
       const updated = await portalApi<Record<string, unknown>>("/workspace/engagement", {
-        method: "PATCH", body: toApiEngagementPatch(body), idempotencyKey: crypto.randomUUID(),
+        method: "PATCH", body: toApiEngagementPatch(body), idempotencyKey: newId(),
       });
       return { engagement: toUiEngagement(updated) } as T;
     },

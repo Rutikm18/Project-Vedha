@@ -9,6 +9,7 @@
 import { fetchJson } from "./fetcher";
 import { portalApi } from "./portal-client";
 import { backendQueryString } from "./findings-query";
+import { newId } from "./uuid";
 
 export type RemediationSurface = "manager" | "portal";
 export type PlanOs = "generic" | "linux" | "windows" | "macos";
@@ -211,9 +212,9 @@ export function createRemediationApi(surface: RemediationSurface) {
     },
     decide: async (): Promise<ExtensionRequest> => { throw new Error("Not available in the portal."); },
     requestExtension: (body: ExtensionCreate) =>
-      portalApi<ExtensionRequest>("/extensions", { method: "POST", body, idempotencyKey: crypto.randomUUID() }),
+      portalApi<ExtensionRequest>("/extensions", { method: "POST", body, idempotencyKey: newId() }),
     withdraw: (id: string) =>
-      portalApi<ExtensionRequest>(`/extensions/${id}/withdraw`, { method: "POST", idempotencyKey: crypto.randomUUID() }),
+      portalApi<ExtensionRequest>(`/extensions/${id}/withdraw`, { method: "POST", idempotencyKey: newId() }),
     exportUrl: (engagementId: string, format: "xlsx" | "csv", sheet?: ExportSheet, filters = "") => {
       void engagementId;
       return `/api/portal/remediation/export${exportQuery(format, sheet, filters)}`;
