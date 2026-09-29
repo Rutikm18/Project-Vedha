@@ -74,7 +74,13 @@ while :; do
   printf '%s' "$DOMAIN" | grep -qE '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$' && break
   warn "'$DOMAIN' isn't a valid domain name — enter just the host, like vedha.example.com"
 done
-ask API_HOST "Host name for the API/probes" "$(env_get TLS_API_HOST | grep . || echo "api.$DOMAIN")"
+# Default API name: a sibling of the dashboard (app.example.com → api.example.com);
+# for a bare domain, a subdomain (example.com → api.example.com).
+if [ "$(printf '%s' "$DOMAIN" | tr -cd '.' | wc -c)" -ge 2 ]; then DEF_API="api.${DOMAIN#*.}"
+else DEF_API="api.$DOMAIN"; fi
+ask API_HOST "Host name for the API/probes" "$(env_get TLS_API_HOST | grep . || echo "$DEF_API")"
+API_HOST="$(printf '%s' "$API_HOST" | tr 'A-Z' 'a-z' | sed -E 's#^https?://##; s#/.*##; s/[[:space:]]//g')"
+[ "$API_HOST" != "$DOMAIN" ] || die "The API name must differ from the dashboard name (e.g. $DEF_API)."
 while :; do
   ask EMAIL "Email for certificate expiry notices" "$(env_get TLS_EMAIL)"
   printf '%s' "$EMAIL" | grep -qE '^[^@ ]+@[^@ ]+\.[^@ ]+$' && break

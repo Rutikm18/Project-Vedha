@@ -312,6 +312,7 @@ check_dns() {  # 0 = both names point here
   for h in "$DOMAIN" "$API_HOST"; do
     ips="$(resolve_a "$h" | xargs)"
     if printf ' %s ' "$ips" | grep -q " $PUBIP "; then
+      [ "${1:-}" = quiet ] && continue
       [ "$(printf '%s' "$ips" | wc -w)" -gt 1 ] && warn "$h also resolves to other IPs ($ips) — remove the extra A records." || true
       ok "$h → $PUBIP"
     elif [ -z "$ips" ]; then
@@ -334,12 +335,19 @@ check_dns() {  # 0 = both names point here
 }
 if ! check_dns; then
   if [ "$MODE" = apply ] && [ "$WAIT_DNS" -gt 0 ] && [ "$DRY_RUN" != 1 ]; then
-    info "Waiting up to $WAIT_DNS min for DNS to propagate (checks every 20s)…"
-    deadline=$(( $(date +%s) + WAIT_DNS * 60 ))
+    info "Waiting up to $WAIT_DNS min for DNS to point here (checks every 20s, Ctrl-C to stop)…"
+    start=$(date +%s); deadline=$(( start + WAIT_DNS * 60 ))
     until check_dns quiet; do
-      [ "$(date +%s)" -lt "$deadline" ] || die "DNS still doesn't point here after $WAIT_DNS min. Fix the records above, then rerun."
+      now=$(date +%s)
+      [ "$now" -lt "$deadline" ] || { printf '\n'; die "DNS still doesn't point here after $WAIT_DNS min. Fix the records above, then rerun."; }
+      pending=""
+      for h in "$DOMAIN" "$API_HOST"; do
+        resolve_a "$h" | grep -qx "$PUBIP" || pending="$pending $h"
+      done
+      printf '\r  … %dm%02ds — still waiting for:%s   ' $(( (now - start) / 60 )) $(( (now - start) % 60 )) "$pending"
       sleep 20
     done
+    printf '\n'
     PROBLEMS=0; check_dns
   fi
 fi
