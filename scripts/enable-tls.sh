@@ -184,11 +184,24 @@ explain_acme_log() {
 }
 
 # ── modes ─────────────────────────────────────────────────────────────────────
+# status HOST [TARGET] — read HOST's certificate from TARGET (default: HOST via
+# public DNS, i.e. what a visitor sees). Always time-boxed: a blocked 443 in the
+# security group makes a TCP connect hang, not fail.
 status() {
-  local host="${1}" out issuer until
-  out="$(echo | openssl s_client -connect "$host:443" -servername "$host" 2>/dev/null \
+  local host="$1" target="${2:-$1}" out issuer until
+  out="$(echo | timeout 10 openssl s_client -connect "$target:443" -servername "$host" 2>/dev/null \
          | openssl x509 -noout -issuer -enddate 2>/dev/null || true)"
-  if [ -z "$out" ]; then bad "$host: no certificate served on :443"; return; fi
+  if [ -z "$out" ]; then
+    if [ "$target" != 127.0.0.1 ] && [ -n "$(echo | timeout 10 openssl s_client -connect 127.0.0.1:443 \
+         -servername "$host" 2>/dev/null | openssl x509 -noout -subject 2>/dev/null || true)" ]; then
+      bad "$host: the certificate is installed, but port 443 isn't reachable from the internet."
+      fix "EC2 → Security Groups → Inbound rules: add TCP 443 from 0.0.0.0/0 (and ::/0 for IPv6)."
+    else
+      bad "$host: no certificate served on :443"
+      fix "Check the proxy: docker logs \$(docker ps -qf name=tls) --tail 50"
+    fi
+    return 0
+  fi
   issuer="$(printf '%s' "$out" | sed -nE 's/^issuer=.*O ?= ?([^,]*).*/\1/p')"
   until="$(printf '%s' "$out" | sed -n 's/^notAfter=//p')"
   ok "$host — issuer: ${issuer:-unknown}, valid until: $until (Caddy renews automatically)"
@@ -511,12 +524,18 @@ if [ "$got" = 0 ]; then
 fi
 if [ "$got" = 2 ]; then warn "Staging certificates issued (not browser-trusted). Rerun without --staging for real ones."
 else ok "Trusted certificates issued and served"; fi
-command -v openssl >/dev/null && { status "$DOMAIN"; status "$API_HOST"; }
+command -v openssl >/dev/null && { status "$DOMAIN" 127.0.0.1; status "$API_HOST" 127.0.0.1; }
 
-# Outside-in reachability of 443 (security group), without failing the run.
-code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 "https://$API_HOST/health" 2>/dev/null || true)"
-[ "$code" = 200 ] && ok "https://$API_HOST reachable via the public IP" \
-  || warn "https://$API_HOST didn't answer via the public IP from here — make sure TCP 443 is open to 0.0.0.0/0."
+# Outside-in reachability of 443 through the public IP (exercises the security
+# group). Certificates are already issued; this only decides if visitors get in.
+code="$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 6 --max-time 10 \
+        --resolve "$API_HOST:443:$PUBIP" "https://$API_HOST/health" 2>/dev/null || true)"
+if [ "$code" = 200 ]; then
+  ok "https://$API_HOST is reachable from the internet"
+else
+  bad "Port 443 isn't reachable from the internet — visitors can't open the site yet."
+  fix "EC2 → Security Groups → Inbound rules: add TCP 443 from 0.0.0.0/0 (and ::/0). No rerun needed after — it works immediately."
+fi
 
 step "Done"
 cat <<EOF
