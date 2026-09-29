@@ -29,7 +29,9 @@ from app.auth.password import hash_password
 from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
 from app.models.agent import Agent
-from app.models.customer_entitlement import PLAN_LICENSED, PLAN_POC, CustomerEntitlement
+from app.models.customer_entitlement import (
+    PLAN_LICENSED, PLAN_POC, SCAN_MODES, CustomerEntitlement,
+)
 from app.models.engagement import Engagement
 from app.models.enums import ScanJobStatus, ScanJobType, UserRole
 from app.models.scan_job import ScanJob
@@ -98,12 +100,23 @@ class EntitlementConfig(BaseModel):
 
     POC: give ``duration_days`` (from ``starts_at``, default now) or an explicit
     ``expires_at`` — a POC must end. Licensed: ``expires_at`` is the licence term
-    end, or omit it for no end date. ``scan_quota`` omitted/None = unlimited."""
+    end, or omit it for no end date.
+
+    Scan allowances: ``scan_quota`` is an optional overall cap across every type
+    (None = no cap). Each type has its own: None = unlimited, 0 = not included.
+    Aggressive and deep are opt-in (default 0). A deep scan covers exactly one
+    asset; ``deep_repeat_policy`` says whether that asset may be deep-scanned
+    again ("repeat") or each deep scan must be a different asset ("distinct")."""
     plan_type: Literal["poc", "licensed"]
     starts_at: datetime | None = None
     duration_days: int | None = Field(default=None, ge=1, le=3650)
     expires_at: datetime | None = None
     scan_quota: int | None = Field(default=None, ge=0, le=100_000)
+    stealth_quota: int | None = Field(default=None, ge=0, le=100_000)
+    normal_quota: int | None = Field(default=None, ge=0, le=100_000)
+    aggressive_quota: int | None = Field(default=0, ge=0, le=100_000)
+    deep_quota: int | None = Field(default=0, ge=0, le=100_000)
+    deep_repeat_policy: Literal["distinct", "repeat"] = "distinct"
     notes: str | None = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
@@ -116,8 +129,10 @@ class EntitlementConfig(BaseModel):
 
 
 class EntitlementAdjust(BaseModel):
-    """Top-up without re-configuring: add scans and/or extend the end date."""
+    """Top-up without re-configuring: add scans (to one scan type, or to the
+    overall cap when ``mode`` is omitted) and/or extend the end date."""
     add_scans: int = Field(default=0, ge=0, le=100_000)
+    mode: Literal["stealth", "normal", "aggressive", "deep"] | None = None
     extend_days: int = Field(default=0, ge=0, le=3650)
     reset_usage: bool = False
 
@@ -184,6 +199,12 @@ def build_scan_job(scan_request: ScanRequest, engagement: Engagement) -> ScanJob
         # The request's quota spend moves to the job: cancelling it before a
         # probe starts it gives the scan back (entitlements.refund_for_job).
         result[entitlements.JOB_QUOTA_FLAG] = True
+        mode = getattr(scan_request, "quota_mode", None)
+        if mode:
+            result[entitlements.JOB_QUOTA_MODE] = mode
+            targets = list(getattr(scan_request, "targets", None) or [])
+            if mode == "deep" and len(targets) == 1:
+                result[entitlements.JOB_DEEP_TARGET] = targets[0]
     if getattr(scan_request, "use_case_id", None):
         # The exact capability use-case the customer chose — the probe runs this.
         result["use_case_id"] = scan_request.use_case_id
@@ -245,6 +266,9 @@ def apply_entitlement_config(row: CustomerEntitlement, body: EntitlementConfig,
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             "The end date must be after the start date")
     row.scan_quota = body.scan_quota
+    for mode in SCAN_MODES:
+        setattr(row, f"{mode}_quota", getattr(body, f"{mode}_quota"))
+    row.deep_repeat_policy = body.deep_repeat_policy
     row.notes = body.notes
     if body.plan_type == PLAN_LICENSED and not row.license_key:
         row.license_key = entitlements.generate_license_key()
@@ -252,7 +276,7 @@ def apply_entitlement_config(row: CustomerEntitlement, body: EntitlementConfig,
 
 def _admin_view(row: CustomerEntitlement | None) -> EntitlementAdminOut:
     view = entitlements.evaluate(row)
-    return EntitlementAdminOut(**view.__dict__, configured=row is not None,
+    return EntitlementAdminOut(**entitlements.view_dict(view), configured=row is not None,
                                notes=getattr(row, "notes", None),
                                updated_at=getattr(row, "updated_at", None))
 
@@ -394,21 +418,23 @@ async def put_entitlement(
     created = row is None
     if created:
         row = CustomerEntitlement(tenant_id=eng.tenant_id, engagement_id=engagement_id,
-                                  scans_used=0)
+                                  scans_used=0, stealth_used=0, normal_used=0,
+                                  aggressive_used=0, deep_used=0, deep_scanned_targets=[])
         db.add(row)
-    before = None if created else {
-        "plan_type": row.plan_type, "expires_at": row.expires_at and row.expires_at.isoformat(),
-        "scan_quota": row.scan_quota}
+    def _snapshot(r) -> dict:
+        return {"plan_type": r.plan_type,
+                "expires_at": r.expires_at and r.expires_at.isoformat(),
+                "scan_quota": r.scan_quota,
+                **{f"{m}_quota": getattr(r, f"{m}_quota") for m in SCAN_MODES},
+                "deep_repeat_policy": r.deep_repeat_policy}
+    before = None if created else _snapshot(row)
     apply_entitlement_config(row, body, now=datetime.now(timezone.utc))
     row.updated_by = current_user.user_id
     await db.flush()
     await db.refresh(row)
     record_audit(db, actor_id=current_user.user_id, action="entitlement.configured",
                  engagement_id=engagement_id, resource_type="entitlement", resource_id=row.id,
-                 detail={"before": before, "after": {
-                     "plan_type": row.plan_type,
-                     "expires_at": row.expires_at and row.expires_at.isoformat(),
-                     "scan_quota": row.scan_quota}})
+                 detail={"before": before, "after": _snapshot(row)})
     await db.flush()
     return _admin_view(row)
 
@@ -426,7 +452,13 @@ async def adjust_entitlement(
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND,
                             "Configure a plan for this customer first")
-    if body.add_scans and row.scan_quota is not None:
+    if body.add_scans and body.mode:
+        # Adding to an excluded type (quota 0) turns it on with that many scans;
+        # an unlimited type stays unlimited.
+        current = getattr(row, f"{body.mode}_quota")
+        if current is not None:
+            setattr(row, f"{body.mode}_quota", current + body.add_scans)
+    elif body.add_scans and row.scan_quota is not None:
         row.scan_quota += body.add_scans
     if body.extend_days and row.expires_at is not None:
         # Extending an already-expired POC counts from today, not from the past.
@@ -434,6 +466,10 @@ async def adjust_entitlement(
         row.expires_at = base + timedelta(days=body.extend_days)
     if body.reset_usage:
         row.scans_used = 0
+        for mode in SCAN_MODES:
+            setattr(row, f"{mode}_used", 0)
+        # The repeat history is usage too: a reset starts deep coverage over.
+        row.deep_scanned_targets = []
     row.updated_by = current_user.user_id
     await db.flush()
     await db.refresh(row)
@@ -593,7 +629,7 @@ async def list_customers(
             id=u.id, email=u.email, is_active=u.is_active,
             engagement_id=u.client_engagement_id, engagement_name=eng_name,
             portal_slug=u.portal_slug, created_at=u.created_at,
-            entitlement=(EntitlementOut(**entitlements.evaluate(ent).__dict__)
+            entitlement=(EntitlementOut(**entitlements.view_dict(entitlements.evaluate(ent)))
                          if ent is not None else None),
         )
         for u, eng_name, ent in rows

@@ -67,3 +67,5 @@ class ScanRequest(Base, TimestampMixin):
     # True once this request took a scan from the customer's quota; cleared when
     # the scan is given back (rejected), so a refund can never happen twice.
     quota_consumed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # Which allowance the spend came from (stealth / normal / aggressive / deep).
+    quota_mode: Mapped[str | None] = mapped_column(String(12), nullable=True)

@@ -145,7 +145,7 @@ async def portal_me(user: ClientUser, db: DB):
             summary="Your plan: POC or licence, scans left, days left")
 async def portal_entitlement(user: ClientUser, db: DB):
     view = await entitlements.view_for(db, assert_client(user))
-    return EntitlementOut(**view.__dict__)
+    return EntitlementOut(**entitlements.view_dict(view))
 
 
 @router.get("/findings", response_model=list[ClientFindingOut],
@@ -509,15 +509,21 @@ async def portal_use_cases(user: ClientUser):
              summary="Request a scan — an operator approves before it runs")
 async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB):
     eng_id = assert_client(user)
+    deep = body.scan_mode == "deep"
 
-    # Resolve against the capability catalog. Preferred: the customer picks a
+    # Resolve against the capability catalog. A Deep scan always runs the
+    # every-port capability on one asset. Otherwise the customer picks a
     # use_case_id (GET /use-cases) → derive its scan_type and store the id so the
-    # approved job runs exactly that use case. Legacy: a bare scan_type validated
+    # approved job runs exactly that use case; legacy: a bare scan_type validated
     # against the ScanJobType enum. Either way the vocabulary can't drift.
-    if body.use_case_id:
-        # An aggressive-only use case gets the policy's reason, not "unknown".
-        if not portal_scan_policy.portal_use_case_allowed(body.use_case_id):
-            portal_scan_policy.resolve_portal_intensity(None, use_case_id=body.use_case_id)
+    if deep:
+        from app.routers.agents import _USE_CASES
+        use_case_id = portal_scan_policy.DEEP_SCAN_USE_CASE
+        scan_type = _USE_CASES[use_case_id]["scan_type"]
+    elif body.use_case_id:
+        # A full-port use case gets the policy's reason ("run it as a Deep scan").
+        if body.use_case_id in portal_scan_policy.FULL_PORT_USE_CASES:
+            portal_scan_policy.resolve_portal_mode(None, use_case_id=body.use_case_id)
         uc = _portal_use_cases().get(body.use_case_id)
         if uc is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -536,9 +542,11 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
         scan_type = body.scan_type
         use_case_id = None
 
-    # Stealth / normal only — aggressive is refused here, before anything queues.
-    intensity = portal_scan_policy.resolve_portal_intensity(
-        body.intensity, use_case_id=use_case_id)
+    if deep:
+        mode, intensity = "deep", portal_scan_policy.INTENSITY_FOR_MODE["deep"]
+    else:
+        mode, intensity = portal_scan_policy.resolve_portal_mode(
+            body.scan_mode or body.intensity, use_case_id=use_case_id)
 
     eng = (await db.execute(
         select(Engagement).where(Engagement.id == eng_id)
@@ -550,7 +558,12 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
     # This is the request-time gate; the dispatch-time gate (agents.py) re-checks
     # the same way via the same shared helper, so the two can never disagree.
     normalized_targets: list[str] | None = None
-    if body.targets:
+    deep_target: str | None = None
+    if deep:
+        deep_target = portal_scan_policy.validate_deep_target(
+            body.targets, eng.scope_cidrs, eng.excluded_cidrs)
+        normalized_targets = [deep_target]
+    elif body.targets:
         normalized_targets = validate_targets_in_scope(
             body.targets, eng.scope_cidrs, eng.excluded_cidrs)
         if normalized_targets is None:
@@ -572,14 +585,17 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
             f"You already have {pending_count} scan requests awaiting review "
             f"(max {_MAX_PENDING_REQUESTS}). Please wait for your security team.")
 
-    # Spend one scan from the customer's plan (403 with the reason when the POC /
-    # licence has expired or the quota is used up). Given back if rejected.
-    await entitlements.consume_scan(db, eng_id)
+    # Spend one scan of this type from the customer's plan (403 with the reason
+    # when the type isn't included, is used up, or the plan has expired; for a
+    # deep scan, also when the asset was already deep-scanned under a
+    # "different asset each time" plan). Given back if rejected.
+    await entitlements.consume_scan(db, eng_id, mode, deep_target=deep_target)
 
     sr = ScanRequest(
         tenant_id=user.tenant_id, engagement_id=eng_id, requested_by=user.user_id,
         scan_type=scan_type, use_case_id=use_case_id, status=SR_PENDING, note=body.note,
         targets=normalized_targets, intensity=intensity, quota_consumed=True,
+        quota_mode=mode,
     )
     db.add(sr)
     await db.flush()
@@ -590,11 +606,12 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
     record_audit(db, actor_id=user.user_id, action="scan_request.created",
                  engagement_id=eng_id, resource_type="scan_request", resource_id=sr.id,
                  detail={"scan_type": scan_type, "use_case_id": use_case_id,
-                         "targets": normalized_targets, "intensity": intensity})
+                         "targets": normalized_targets, "intensity": intensity,
+                         "scan_mode": mode})
     await db.flush()
     return ClientScanRequestOut(id=sr.id, scan_type=sr.scan_type, use_case_id=sr.use_case_id,
                                 status=sr.status, targets=sr.targets, intensity=sr.intensity,
-                                note=sr.note, requested_at=sr.requested_at)
+                                scan_mode=mode, note=sr.note, requested_at=sr.requested_at)
 
 
 # ── AI assistant ──────────────────────────────────────────────────────────────
@@ -1049,17 +1066,32 @@ async def portal_workspace_scan_launch(
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "No vedha-agent is assigned to this engagement")
 
-    # Customers get a named preset (stealth / normal) and nothing else: no deep,
-    # and no raw rate/concurrency overrides that would rebuild one.
+    # Customers get a named preset and nothing else: raw rate/concurrency
+    # overrides are stripped, and the scan type decides which plan allowance pays.
     from app.routers.agents import _USE_CASE_CODES
     params = portal_scan_policy.strip_tuning_overrides(body.params)
-    # Resolve the use case the same way enqueue does (id, else numeric code), so a
-    # deep-only capability can't slip in as `uc` without a use_case_id.
-    use_case_id = body.use_case_id or (
-        _USE_CASE_CODES.get(body.uc) if body.uc is not None else None)
-    intensity = portal_scan_policy.resolve_portal_intensity(
-        body.intensity if body.intensity is not None else params.get("intensity"),
-        use_case_id=use_case_id)
+    requested_mode = params.pop("scan_mode", None)
+    deep_target: str | None = None
+    if requested_mode == "deep":
+        # Deep scan: every port + the full assessment on EXACTLY ONE asset. The
+        # use case, intensity and target are pinned here, whatever the body says.
+        deep_target = portal_scan_policy.validate_deep_target(
+            params.get("targets") or ([params["target"]] if params.get("target") else None),
+            eng.scope_cidrs, eng.excluded_cidrs)
+        params.pop("target", None)
+        params["targets"] = [deep_target]
+        use_case_id = portal_scan_policy.DEEP_SCAN_USE_CASE
+        mode, intensity = "deep", portal_scan_policy.INTENSITY_FOR_MODE["deep"]
+        body = body.model_copy(update={"use_case_id": use_case_id, "uc": None})
+    else:
+        # Resolve the use case the same way enqueue does (id, else numeric code),
+        # so a full-port capability can't slip in as `uc` without a deep scan.
+        use_case_id = body.use_case_id or (
+            _USE_CASE_CODES.get(body.uc) if body.uc is not None else None)
+        mode, intensity = portal_scan_policy.resolve_portal_mode(
+            requested_mode or (body.intensity if body.intensity is not None
+                               else params.get("intensity")),
+            use_case_id=use_case_id)
     params.pop("intensity", None)
     requested_agent = params.get("preferred_agent_id")
     if requested_agent and str(requested_agent) != str(eng.assigned_agent_id):
@@ -1068,10 +1100,14 @@ async def portal_workspace_scan_launch(
     # A crafted client cannot route work to another tenant probe. The session's
     # engagement binding is authoritative for both fields.
     params["preferred_agent_id"] = str(eng.assigned_agent_id)
-    # Spend one scan from the plan; the flag lets a cancel-before-start give it
-    # back. Any failure below rolls the whole transaction back, spend included.
-    await entitlements.consume_scan(db, eng_id)
+    # Spend one scan of this type; the flags let a cancel-before-start give it
+    # (and a deep scan's asset) back. Any failure below rolls the whole
+    # transaction back, spend included.
+    await entitlements.consume_scan(db, eng_id, mode, deep_target=deep_target)
     params[entitlements.JOB_QUOTA_FLAG] = True
+    params[entitlements.JOB_QUOTA_MODE] = mode
+    if deep_target:
+        params[entitlements.JOB_DEEP_TARGET] = deep_target
     pinned = body.model_copy(update={"engagement_id": eng_id, "params": params,
                                      "intensity": intensity, "allow_fragile": False})
 
@@ -1083,8 +1119,8 @@ async def portal_workspace_scan_launch(
         db, actor_id=user.user_id, action="scan_job.created",
         engagement_id=eng_id, resource_type="scan_job",
         resource_id=uuid.UUID(result["job_id"]),
-        detail={"origin": "portal", "use_case_id": body.use_case_id,
-                "intensity": intensity},
+        detail={"origin": "portal", "use_case_id": use_case_id,
+                "intensity": intensity, "scan_mode": mode, "deep_target": deep_target},
     )
     await db.flush()
     return result

@@ -315,8 +315,10 @@ class TestCreateScanRequest:
         user = _client()
         db = _db_for_create(_engagement(user.client_engagement_id))
         asyncio.run(portal.create_scan_request(ScanRequestCreate(scan_type="discovery"), user, db))
-        self.consume.assert_awaited_once_with(db, user.client_engagement_id)
-        assert _added(db, ScanRequest).quota_consumed is True
+        self.consume.assert_awaited_once_with(db, user.client_engagement_id, "normal",
+                                              deep_target=None)
+        sr = _added(db, ScanRequest)
+        assert sr.quota_consumed is True and sr.quota_mode == "normal"
 
     def test_expired_or_exhausted_plan_queues_nothing(self):
         user = _client()
@@ -387,24 +389,44 @@ class TestCreateScanRequest:
                 ScanRequestCreate(scan_type="vuln_scan"), user, db))
         assert e.value.status_code == 409
 
-    @pytest.mark.parametrize("intensity", ["deep", "aggressive"])
-    def test_aggressive_request_is_forbidden(self, intensity):
+    @pytest.mark.parametrize("given", [{"intensity": "deep"}, {"intensity": "aggressive"},
+                                       {"scan_mode": "aggressive"}])
+    def test_aggressive_spends_the_aggressive_allowance(self, given):
         user = _client()
-        eng = _engagement(user.client_engagement_id)
-        db = _db_for_create(eng)
-        with pytest.raises(HTTPException) as e:
-            asyncio.run(portal.create_scan_request(
-                ScanRequestCreate(scan_type="vuln_scan", intensity=intensity), user, db))
-        assert e.value.status_code == 403
-        assert _added(db, ScanRequest) is None            # nothing queued
+        db = _db_for_create(_engagement(user.client_engagement_id))
+        asyncio.run(portal.create_scan_request(
+            ScanRequestCreate(scan_type="vuln_scan", **given), user, db))
+        assert self.consume.await_args.args[2] == "aggressive"
+        assert _added(db, ScanRequest).intensity == "deep"
 
-    def test_deep_only_use_case_gets_the_aggressive_reason(self):
+    def test_full_port_use_case_must_be_a_deep_scan(self):
         user = _client()
         with pytest.raises(HTTPException) as e:
             asyncio.run(portal.create_scan_request(
                 ScanRequestCreate(use_case_id="uc_full_port_audit"), user,
                 _db_for_create(_engagement(user.client_engagement_id))))
-        assert e.value.status_code == 403 and "aggressive" in e.value.detail.lower()
+        assert e.value.status_code == 403 and "Deep scan" in e.value.detail
+
+    def test_deep_request_is_one_asset_on_the_full_port_use_case(self):
+        user = _client()
+        db = _db_for_create(_engagement(user.client_engagement_id, scope=["10.0.0.0/24"]))
+        out = asyncio.run(portal.create_scan_request(
+            ScanRequestCreate(scan_mode="deep", targets=["10.0.0.9"]), user, db))
+        sr = _added(db, ScanRequest)
+        assert sr.use_case_id == "uc_deep_port_sweep" and sr.intensity == "deep"
+        assert sr.targets == ["10.0.0.9/32"] and sr.quota_mode == "deep"
+        assert self.consume.await_args.kwargs["deep_target"] == "10.0.0.9/32"
+        assert out.scan_mode == "deep"
+
+    @pytest.mark.parametrize("targets", [None, ["10.0.0.9", "10.0.0.10"], ["10.0.0.0/29"]])
+    def test_deep_request_refuses_anything_but_one_asset(self, targets):
+        user = _client()
+        db = _db_for_create(_engagement(user.client_engagement_id))
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(portal.create_scan_request(
+                ScanRequestCreate(scan_mode="deep", targets=targets), user, db))
+        assert e.value.status_code == 422
+        self.consume.assert_not_awaited()
 
     def test_unset_intensity_is_materialized_as_normal(self):
         user = _client()
