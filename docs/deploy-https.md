@@ -1,6 +1,16 @@
 # HTTPS for a deployed manager — one command
 
-On the server (in the repo directory, stack already running via `make full`):
+**Easiest:** on the server, in the repo directory (stack already running via `make full`):
+
+```bash
+./setup-https.sh
+```
+
+It asks for your domain and an email, shows the exact DNS records, can create them
+(Route 53) and open ports 80/443 itself, checks everything, waits for DNS, then
+enables HTTPS. `./setup-https.sh --status` · `./setup-https.sh --rollback`.
+
+Non-interactive (automation / CI):
 
 ```bash
 make tls DOMAIN=vedha.example.com EMAIL=you@example.com

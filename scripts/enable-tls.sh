@@ -351,7 +351,9 @@ fi
 
 if [ "$MODE" = check ]; then
   step "Result"
-  if [ "$PROBLEMS" -eq 0 ]; then ok "Ready for HTTPS. Run: make tls DOMAIN=$DOMAIN EMAIL=<you@example.com>"
+  if [ "$PROBLEMS" -eq 0 ]; then
+    if [ -n "${TLS_FROM_WIZARD:-}" ]; then ok "Ready for HTTPS."
+    else ok "Ready for HTTPS. Run: make tls DOMAIN=$DOMAIN EMAIL=<you@example.com>"; fi
   else printf '  %s%d problem(s) to fix first (see above).%s\n' "$R" "$PROBLEMS" "$N"; fi
   exit $(( PROBLEMS > 0 ))
 fi
