@@ -6,10 +6,10 @@
    the same sentence the API returns when it refuses a scan, so the customer
    learns why before they try. */
 
-import { AlertTriangle, CalendarClock, FlaskConical, Radar, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CalendarClock, FlaskConical, ShieldCheck } from "lucide-react";
 import { usePortalEntitlement } from "../../lib/portal-client";
 import {
-  PLAN_LABEL, STATE_LABEL, daysText, isRunningLow, scansText, stateColor, usageRatio,
+  MODE_META, PLAN_LABEL, SCAN_MODES, STATE_LABEL, daysText, isRunningLow, modeShort, stateColor,
 } from "../../lib/entitlements";
 
 export function PlanStrip() {
@@ -19,7 +19,6 @@ export function PlanStrip() {
   const blocked = !e.can_scan;
   const low = isRunningLow(e);
   const tone = blocked ? stateColor(e.state) : low ? "var(--sev-medium-color)" : "var(--accent)";
-  const ratio = usageRatio(e);
 
   return (
     <div className="pst" data-tone={blocked ? "alert" : low ? "warn" : "ok"} role={blocked ? "alert" : "status"}
@@ -32,14 +31,17 @@ export function PlanStrip() {
       </span>
       {e.state !== "unconfigured" && (
         <>
-          <span className="pst-item">
-            <Radar size={13} /> {scansText(e)}
-            {ratio != null && (
-              <span className="pst-bar" aria-hidden="true">
-                <span style={{ width: `${Math.round((1 - ratio) * 100)}%` }} />
-              </span>
-            )}
-          </span>
+          {/* One chip per scan type in the plan; types not included are omitted. */}
+          {SCAN_MODES.filter((m) => e.modes?.[m]?.enabled).map((m) => (
+            <span key={m} className="pst-mode" data-empty={!e.modes[m].can_scan}
+              title={e.modes[m].reason ?? `${MODE_META[m].label}: ${modeShort(e.modes[m])}`}>
+              <i style={{ background: MODE_META[m].color }} aria-hidden />
+              {MODE_META[m].label} <b>{modeShort(e.modes[m])}</b>
+            </span>
+          ))}
+          {e.scan_quota != null && (
+            <span className="pst-mode">Overall <b>{e.scans_left ?? 0} of {e.scan_quota} left</b></span>
+          )}
           <span className="pst-item"><CalendarClock size={13} /> {daysText(e)}</span>
         </>
       )}
@@ -63,8 +65,10 @@ const STYLES = `
   border-radius: 5px; background: color-mix(in srgb, var(--pst-tone) 14%, transparent); }
 .pst-item { display: inline-flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600; }
 .pst-item svg { color: var(--text-muted); }
-.pst-bar { width: 64px; height: 5px; border-radius: 99px; background: var(--border-subtle); overflow: hidden; }
-.pst-bar span { display: block; height: 100%; background: var(--pst-tone); border-radius: inherit; }
+.pst-mode { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 99px; background: var(--bg-panel); border: 0.5px solid var(--border-subtle); color: var(--text-secondary); font-size: 11.5px; }
+.pst-mode i { width: 7px; height: 7px; border-radius: 50%; }
+.pst-mode b { color: var(--text-primary); }
+.pst-mode[data-empty="true"] b { color: var(--sev-high-color); }
 .pst-msg { display: inline-flex; align-items: center; gap: 6px; color: var(--pst-tone); font-weight: 600; flex-basis: 100%; }
 .pst[data-tone="ok"] .pst-msg { display: none; }
 @media (min-width: 1100px) { .pst-msg { flex-basis: auto; margin-left: auto; } }

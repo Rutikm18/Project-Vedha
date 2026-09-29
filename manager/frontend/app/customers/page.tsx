@@ -9,8 +9,8 @@ import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
 import { copyText } from "../../lib/clipboard";
 import {
-  type Entitlement, type EntitlementAdmin, PLAN_LABEL, STATE_LABEL, daysText, friendlyError,
-  scansText, stateColor,
+  type Entitlement, type EntitlementAdmin, MODE_META, PLAN_LABEL, SCAN_MODES, STATE_LABEL,
+  daysText, friendlyError, modeShort, stateColor,
 } from "../../lib/entitlements";
 import {
   PLAN_STYLES, PlanFields, PlanPanel, configFromDraft, defaultDraft, draftError, type PlanDraft,
@@ -306,7 +306,11 @@ export default function CustomersPage() {
                             <em style={{ color: stateColor(c.entitlement.state) }}>{STATE_LABEL[c.entitlement.state]}</em>
                           )}
                         </span>
-                        <span className="cus-plan-sub">{scansText(c.entitlement)} · {daysText(c.entitlement)}</span>
+                        <span className="cus-plan-sub" title={SCAN_MODES.map((m) => `${MODE_META[m].label}: ${modeShort(c.entitlement!.modes?.[m])}`).join(" · ")}>
+                          {SCAN_MODES.filter((m) => c.entitlement!.modes?.[m]?.enabled)
+                            .map((m) => `${MODE_META[m].label} ${modeShort(c.entitlement!.modes?.[m])}`).join(" · ") || "No scan types"}
+                          {" · "}{daysText(c.entitlement)}
+                        </span>
                       </>
                     ) : (
                       <span className="cus-plan-none">No plan — can’t scan</span>
@@ -423,7 +427,7 @@ const STYLES = `
 .cus-plan-top { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 .cus-plan-top em { font-style: normal; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
 .cus-plan-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.cus-plan-sub { color: var(--text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cus-plan-sub { color: var(--text-muted); font-size: 11px; line-height: 1.4; }
 .cus-plan-none { color: var(--sev-medium-color); font-size: 11.5px; }
 .cus-mini[data-accent="true"] { color: var(--accent); border-color: var(--border-accent); background: var(--accent-ghost); }
 .cus-mini[aria-expanded="true"] .cus-chev { transform: rotate(180deg); }

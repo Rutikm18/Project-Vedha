@@ -6,7 +6,7 @@
 import { Clipboard, FileBadge2, Loader2 } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { copyText } from "../../lib/clipboard";
-import { PLAN_LABEL, fmtDate } from "../../lib/entitlements";
+import { MODE_META, PLAN_LABEL, SCAN_MODES, fmtDate } from "../../lib/entitlements";
 import { usePortalEntitlement } from "../../lib/portal-client";
 import { PLAN_STYLES, PlanSummary } from "../customers/PlanPanel";
 
@@ -18,9 +18,17 @@ export function PlanLicenceSection() {
     ["Plan", e.plan_type ? (e.plan_type === "poc" ? "Proof of concept (POC)" : "Licensed — full use") : "Not activated"],
     ["Starts", e.starts_at ? fmtDate(e.starts_at) : "—"],
     ["Ends", e.expires_at ? fmtDate(e.expires_at) : e.plan_type ? "No end date" : "—"],
-    ["Scan allowance", e.scan_quota == null ? (e.plan_type ? "Unlimited" : "—") : `${e.scan_quota} scans`],
-    ["Scans used", String(e.scans_used)],
-    ["Scan intensity", "Stealth or Normal — aggressive scans are run by your security team"],
+    ...SCAN_MODES.map((m): [string, string] => {
+      const a = e.modes?.[m];
+      const value = !a?.enabled ? "Not included"
+        : a.quota == null ? `Unlimited · ${a.used} used`
+        : `${a.left} of ${a.quota} left · ${a.used} used`;
+      return [`${MODE_META[m].label} scans`, value];
+    }),
+    ...(e.scan_quota != null ? [["Overall cap", `${e.scans_left ?? 0} of ${e.scan_quota} left`] as [string, string]] : []),
+    ...(e.modes?.deep?.enabled ? [["Deep scan rule",
+      `One asset per scan · ${e.deep_repeat_policy === "distinct" ? "a different asset each time" : "repeats allowed"}`,
+    ] as [string, string]] : []),
   ] : [];
 
   return (
