@@ -10,12 +10,23 @@
 COMPOSE := docker compose
 MANAGER_COMPOSE := docker compose --env-file .env -f manager/docker-compose.yml
 
+# Once `make tls` has run, the HTTPS proxy (deploy/tls/) replaces the plain-HTTP
+# port-80 edge: every deploy target picks the overlay up automatically.
+TLS_OVERLAY := $(wildcard deploy/tls/docker-compose.tls.yml)
+ifneq ($(TLS_OVERLAY),)
+DEPLOY_COMPOSE := $(MANAGER_COMPOSE) -f $(TLS_OVERLAY)
+INGRESS_PROFILE :=
+else
+DEPLOY_COMPOSE := $(MANAGER_COMPOSE)
+INGRESS_PROFILE := --profile edge
+endif
+
 # Deployed version, sourced from the repo-root VERSION file (auto-bumped by the
 # .githooks/pre-commit hook). Exported so every `docker compose build` below bakes
 # it into the backend image via the VEDHA_VERSION build arg.
 export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
 
-.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat seal seal-parity clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env
+.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat seal seal-parity clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback
 
 version: ## Print the current deployed version
 	@echo $(VEDHA_VERSION)
@@ -49,8 +60,13 @@ run: ## Build + start platform + local probe (API + probe, no frontend) — fast
 full: gen-env ## Deploy the COMPLETE manager stack (db, redis, api, worker, dashboard, edge). Probe-free + AWS-aware. ← use this on the server
 	$(MANAGER_COMPOSE) build api
 	$(MANAGER_COMPOSE) --profile ui build frontend
-	$(MANAGER_COMPOSE) --profile edge --profile ui up -d --remove-orphans
-	@eport=$$(grep -m1 '^EDGE_HTTP_PORT=' .env 2>/dev/null | cut -d= -f2); eport=$${eport:-80}; \
+	$(DEPLOY_COMPOSE) $(INGRESS_PROFILE) --profile ui up -d --remove-orphans
+	@if [ -n "$(TLS_OVERLAY)" ]; then \
+	   d=$$(grep -m1 '^TLS_DOMAIN=' .env | cut -d= -f2); a=$$(grep -m1 '^TLS_API_HOST=' .env | cut -d= -f2); \
+	   echo ""; echo "  Manager stack up over HTTPS."; \
+	   echo "  Dashboard  → https://$$d"; echo "  API / probe→ https://$$a/health"; exit 0; \
+	 fi; \
+	 eport=$$(grep -m1 '^EDGE_HTTP_PORT=' .env 2>/dev/null | cut -d= -f2); eport=$${eport:-80}; \
 	 fport=$$(grep -m1 '^FRONTEND_PORT=' .env 2>/dev/null | cut -d= -f2); fport=$${fport:-3000}; \
 	 host=$$(grep -m1 '^MANAGER_PUBLIC_URL=' .env 2>/dev/null | cut -d= -f2); host=$${host:-http://localhost}; \
 	 echo ""; \
@@ -158,7 +174,7 @@ gen-env: ## Auto-generate .env with real random secrets (safe to re-run — skip
 
 aws-up: gen-env ## AWS: build + start the API/probe plane behind the port-80 edge ingress (no dashboard)
 	$(AWS_COMPOSE) build api
-	$(AWS_COMPOSE) --profile edge up -d --remove-orphans
+	$(DEPLOY_COMPOSE) $(INGRESS_PROFILE) up -d --remove-orphans
 	@eport=$$(grep -m1 '^EDGE_HTTP_PORT=' .env 2>/dev/null | cut -d= -f2); eport=$${eport:-80}; \
 	 aport=$$(grep -m1 '^API_PORT=' .env 2>/dev/null | cut -d= -f2); aport=$${aport:-18080}; \
 	 echo ""; \
@@ -177,4 +193,19 @@ aws-ps: ## Show AWS stack container status
 	$(AWS_COMPOSE) ps
 
 aws-down: ## Stop the AWS stack incl. edge + any stray probe (keeps volumes / data)
-	$(AWS_COMPOSE) --profile edge --profile ui down --remove-orphans
+	$(DEPLOY_COMPOSE) --profile edge --profile ui down --remove-orphans
+
+# ── HTTPS (Let's Encrypt via Caddy) ───────────────────────────────────────────
+# One command on the server:  make tls DOMAIN=vedha.example.com EMAIL=you@example.com
+# Extra flags via TLS_ARGS, e.g. TLS_ARGS="--route53 --open-ports" or "--staging".
+tls: ## HTTPS in one command: make tls DOMAIN=vedha.example.com EMAIL=you@x.com [TLS_ARGS="--route53 --open-ports"]
+	@bash scripts/enable-tls.sh --domain "$(DOMAIN)" --email "$(EMAIL)" $(TLS_ARGS)
+
+tls-check: ## Diagnose DNS / ports / CAA for HTTPS without changing anything: make tls-check DOMAIN=...
+	@bash scripts/enable-tls.sh --check --domain "$(DOMAIN)" $(TLS_ARGS)
+
+tls-status: ## Show certificate issuer + expiry for the HTTPS hosts
+	@bash scripts/enable-tls.sh --status
+
+tls-rollback: ## Undo `make tls`: restore the previous .env and the plain-HTTP port-80 edge
+	@bash scripts/enable-tls.sh --rollback

@@ -134,7 +134,11 @@ fi
 
 # ── Consistent config pair (prevents the FATAL production+insecure-cookie combo)
 # Respect a deliberate, valid production setup; otherwise force the testing pair.
-if [ "$(get APP_ENV)" = "production" ] && [ "$(get AUTH_COOKIE_SECURE)" = "true" ]; then
+# HTTPS enabled by scripts/enable-tls.sh (TLS_DOMAIN set) → cookies stay Secure.
+if [ -n "$(get TLS_DOMAIN)" ]; then
+  set_kv AUTH_COOKIE_SECURE true
+  echo "[gen-env] HTTPS is enabled for $(get TLS_DOMAIN) — keeping AUTH_COOKIE_SECURE=true"
+elif [ "$(get APP_ENV)" = "production" ] && [ "$(get AUTH_COOKIE_SECURE)" = "true" ]; then
   set_kv DEV_LOGIN_HINT 0
   echo "[gen-env] keeping production config (AUTH_COOKIE_SECURE=true); login autofill OFF"
 else
@@ -168,7 +172,10 @@ detect_public_ip() {
 }
 
 PUBIP="$(detect_public_ip)"
-if [ -n "$PUBIP" ]; then
+if [ -n "$(get TLS_DOMAIN)" ]; then
+  # enable-tls.sh owns the public URLs once HTTPS is on — don't revert to http://<ip>.
+  echo "[gen-env] HTTPS enabled — MANAGER_PUBLIC_URL stays $(get MANAGER_PUBLIC_URL)"
+elif [ -n "$PUBIP" ]; then
   APORT="$(get API_PORT)";      APORT="${APORT:-18080}"
   FPORT="$(get FRONTEND_PORT)"; FPORT="${FPORT:-3000}"
   EPORT="$(get EDGE_HTTP_PORT)"; EPORT="${EPORT:-80}"
