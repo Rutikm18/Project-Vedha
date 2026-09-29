@@ -178,3 +178,28 @@ Then (5). Offer (8) only when a customer's contract needs it.
 - Before this branch, `docker run -e LICENSE_ENFORCED=false -e HW_BIND_FINGERPRINT=` disabled both
   gates on the sealed binary, and a customer-supplied `PROBE_LICENSE_PUBKEY` accepted a
   self-signed licence. Both are now refused by the compiled binary (tested).
+
+## Round 2 (2026-09-29) — per-scan-type allowances + single-asset Deep scan
+
+**Change of policy:** aggressive is no longer blocked outright; each customer's plan
+decides. Existing customers are unchanged (aggressive/deep default to *off*).
+
+| Scan type | Runs | Plan setting (NULL = unlimited, 0 = not included) |
+|---|---|---|
+| Stealth | probe preset `light` | `stealth_quota` (default unlimited) |
+| Normal | probe preset `standard` | `normal_quota` (default unlimited) |
+| Aggressive | probe preset `deep` (~2,500 enterprise ports) over the chosen scope | `aggressive_quota` (default 0) |
+| Deep | `uc_deep_port_sweep`: all 65,535 ports + full assessment on **one asset** | `deep_quota` (default 0) + `deep_repeat_policy` |
+
+- `scan_quota` remains an optional overall cap across all types.
+- Deep: exactly one IP, inside scope, outside exclusions; the server pins the use case,
+  preset and target on both portal paths (`targets` and `target` both overwritten).
+  `distinct` refuses an asset that already had a deep scan; `repeat` allows it.
+  The history (`deep_scanned_targets`) is released by a refund and cleared by "Reset usage".
+- Full-port use cases are reachable **only** as a Deep scan (403 otherwise, including by `uc` code).
+- Refunds return the same type: `scan_requests.quota_mode`, job `_quota_mode` / `_deep_target`.
+
+**Verified live** (real Postgres, stand-in agent): aggressive limit, deep refusals (range, two
+assets, excluded host, out of scope, repeat under `distinct`), job pinned to
+`uc_deep_port_sweep` / `deep` / one `/32`, cancel and reject refunds releasing the asset,
+portal dial and Deep card states.
