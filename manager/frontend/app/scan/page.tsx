@@ -15,6 +15,10 @@ import { useToast } from "../../hooks/useToast";
 import { createScannerWorkspaceApi, type ScannerWorkspaceSurface } from "../../lib/scanner-workspace-api";
 import type { ScanLaunchBody } from "../../lib/scan-launch";
 import { INTENSITY, type Intensity } from "../../lib/scan-intensity";
+import { launchableModes, modeShort } from "../../lib/entitlements";
+import { DeepScanCard } from "../../components/portal/DeepScanCard";
+import { useQueryClient } from "@tanstack/react-query";
+import { usePortalEntitlement } from "../../lib/portal-client";
 import CampaignProgress from "../campaign/[id]/CampaignProgress";
 
 /* ══════════════════════════════════════════════════════
@@ -97,6 +101,8 @@ interface EngineManifest {
 ══════════════════════════════════════════════════════ */
 
 const NETWORK_VA_ID = "uc_network_va";
+/** Portal Deep scan runs this capability on exactly one asset (manager-pinned). */
+const DEEP_SCAN_UC = "uc_deep_port_sweep";
 // Product decision: the Scanner surface currently exposes only the complete
 // Network VA workflow. The catalog and Manager capabilities remain intact so
 // specialized use cases can be enabled later without a backend migration.
@@ -384,8 +390,13 @@ function UseCaseCard({ uc, selected, index, onClick }: { uc: UseCase; selected: 
    selector. Color and sweep speed both encode aggression.
 ══════════════════════════════════════════════════════ */
 
-function IntensityDial({ value, onChange }: { value: Intensity; onChange: (v: Intensity) => void }) {
+function IntensityDial({ value, onChange, allowed = INTENSITY.map((i) => i.id), badges }: {
+  value: Intensity; onChange: (v: Intensity) => void; allowed?: readonly Intensity[];
+  /** Per-option note, e.g. the customer's remaining scans of that type. */
+  badges?: Partial<Record<Intensity, string>>;
+}) {
   const active = INTENSITY.find((i) => i.id === value)!;
+  const options = INTENSITY.filter((i) => allowed.includes(i.id));
 
   // semicircle gauge, three 60° zones, radius 78, center (100,96)
   const arcs = [
@@ -400,7 +411,8 @@ function IntensityDial({ value, onChange }: { value: Intensity; onChange: (v: In
         <div className="scn-dial-sweep" style={{ animationDuration: active.sweep, background: `conic-gradient(from 180deg at 50% 100%, transparent 0deg, color-mix(in srgb, ${active.color} 33%, transparent) 18deg, transparent 40deg)` }} />
         <svg viewBox="0 0 200 110" className="scn-dial-svg">
           {arcs.map((a, i) => (
-            <path key={i} d={a.d} fill="none" stroke={a.color} strokeWidth="9" strokeLinecap="round" opacity={0.32} />
+            <path key={i} d={a.d} fill="none" stroke={a.color} strokeWidth="9" strokeLinecap="round"
+              opacity={allowed.includes(INTENSITY[i].id) ? 0.32 : 0.08} />
           ))}
           <g style={{ transform: `rotate(${active.angle}deg)`, transformOrigin: "100px 96px", transition: "transform 480ms var(--ease-out)" }}>
             <line x1="100" y1="96" x2="100" y2="26" stroke={active.color} strokeWidth="2.5" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 5px ${active.color})` }} />
@@ -414,14 +426,22 @@ function IntensityDial({ value, onChange }: { value: Intensity; onChange: (v: In
       </div>
 
       <div className="scn-dial-seg" role="group" aria-label="Scan intensity">
-        {INTENSITY.map((opt) => (
+        {options.map((opt) => (
           <button key={opt.id} aria-pressed={value === opt.id} data-on={value === opt.id} onClick={() => onChange(opt.id)} style={{ ["--seg-c" as string]: opt.color }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: opt.color, flexShrink: 0 }} />
             {opt.label}
+            {badges?.[opt.id] && <small style={{ opacity: 0.7, fontFamily: "var(--font-mono)", fontSize: 10 }}>{badges[opt.id]}</small>}
           </button>
         ))}
       </div>
       <p style={{ margin: "9px 0 0", fontSize: 10.5, color: "var(--text-muted)", lineHeight: 1.55 }}>{active.why}</p>
+      {options.length < INTENSITY.length && (
+        <p style={{ margin: "6px 0 0", fontSize: 10.5, color: "var(--text-faint)", lineHeight: 1.5 }}>
+          {options.length === 0
+            ? "No regular scan types are left in your plan."
+            : "Only the scan types your plan includes (with scans left) are shown."}
+        </p>
+      )}
     </div>
   );
 }
@@ -661,6 +681,13 @@ function DispatchReceipt({ payload }: { payload: Record<string, unknown> }) {
 export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWorkspaceSurface }) {
   const { success: toastOk, error: toastErr } = useToast();
   const api = useMemo(() => createScannerWorkspaceApi(surface), [surface]);
+  const isPortal = surface === "portal";
+  const queryClient = useQueryClient();
+  // The customer's plan gates launching (the API enforces it; this explains it).
+  const { data: plan } = usePortalEntitlement(isPortal);
+  // Regular (dial) scan types the plan lets the customer run right now. Deep is
+  // separate: it has its own single-asset card below.
+  const portalDial = launchableModes(plan).filter((m): m is Intensity => m !== "deep");
 
   const [useCases,    setUseCases]    = useState<UseCase[]>([NETWORK_VA_FALLBACK]);
   const [probes,      setProbes]      = useState<Probe[]>([]);
@@ -677,6 +704,10 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
 
   // ── Scan tuning ──
   const [intensity,    setIntensity]    = useState<Intensity>("normal");
+  // If the remembered choice isn't in the plan (or ran out), show and send the
+  // first type that is — derived, so it can never lag the plan.
+  const shownIntensity: Intensity = isPortal && portalDial.length && !portalDial.includes(intensity)
+    ? portalDial[0] : intensity;
   const [passiveSecs,  setPassiveSecs]  = useState(60);
   const [launching, setLaunching] = useState(false);
   const [job,       setJob]       = useState<JobStatus | null>(null);
@@ -814,7 +845,7 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
       excluded_cidrs: (excludeList.length && !excludeIsInherited) ? excludeList : undefined,
       preferred_agent_id: effectiveProbe || undefined,
     };
-    if (isOt) b.passive_listen_seconds = passiveSecs; else b.intensity = intensity;
+    if (isOt) b.passive_listen_seconds = passiveSecs; else b.intensity = shownIntensity;
     return b;
   }
 
@@ -825,28 +856,47 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
       toastErr("No compatible probe", `An online probe must advertise ${ucObj?.scan_type ?? "this capability"}.`);
       return;
     }
+    await dispatch(buildLaunchBody(), selectedUc);
+  }
+
+  /** Portal Deep scan: every port on exactly one asset. The manager pins the
+   *  use case, preset and the single target; this only names the intent. */
+  async function launchDeep(ip: string) {
+    if (!selectedEng) { toastErr("Select an engagement"); return; }
+    const probe = deepProbes.find((p) => !p.current_job_id) ?? deepProbes[0];
+    await dispatch({
+      engagement_id: selectedEng, use_case_id: DEEP_SCAN_UC, targets: [ip],
+      intensity: "aggressive", preferred_agent_id: probe?.id,
+      params: { scan_mode: "deep" },
+    }, DEEP_SCAN_UC);
+  }
+
+  async function dispatch(body: ScanLaunchBody, launchedUc: string) {
     setLaunching(true); setJob(null); setDispatched(null);
     try {
       const res = await api.launch<{
         job_id: string; status: string; dispatched?: Record<string, unknown>;
         fragile_excluded?: Array<{ ip: string; reasons: string[] }>;
-      }>(buildLaunchBody());
+      }>(body);
       if (res.dispatched) setDispatched(res.dispatched);
       const launched: JobStatus = {
         job_id: res.job_id, engagement_id: selectedEng, status: "pending",
         created_at: new Date().toISOString(), started_at: null, completed_at: null,
-        agent_id: null, agent_name: null, use_case_id: selectedUc, result: null,
+        agent_id: null, agent_name: null, use_case_id: launchedUc, result: null,
       };
       setJob(launched);
       // Reflect it in the DB-backed history immediately (the poll keeps it fresh).
       setRecentJobs((prev) => [launched, ...prev.filter((rj) => rj.job_id !== launched.job_id)]);
       startPolling(res.job_id);
+      if (isPortal) void queryClient.invalidateQueries({ queryKey: ["portal", "entitlement"] });
       const protectedHosts = res.fragile_excluded ?? [];
       toastOk("Job queued", protectedHosts.length
         ? `Probe picks up on next poll (~10s). ${protectedHosts.length} fragile host${protectedHosts.length === 1 ? "" : "s"} (HSM / ATM / SWIFT / ICS) kept out of this scan: ${protectedHosts.map((h) => h.ip).join(", ")}`
         : "Probe picks up on next poll (~10s)");
     } catch (e) {
       toastErr("Launch failed", (e as Error).message);
+      // A refusal (plan, asset already deep-scanned…) may mean the plan moved on.
+      if (isPortal) void queryClient.invalidateQueries({ queryKey: ["portal", "entitlement"] });
     } finally {
       setLaunching(false);
     }
@@ -876,8 +926,16 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
     (a, b) => Number(a.status === "coming_soon") - Number(b.status === "coming_soon"),
   );
 
-  const canLaunch = !!selectedUc && !!selectedEng && compatibleProbes.length > 0 && !launching;
-  const intensityObj = INTENSITY.find((i) => i.id === intensity)!;
+  // Portal: explain exactly why Launch is off — the plan, the chosen type, or none left.
+  const planBlock = !isPortal || !plan ? null
+    : !plan.can_scan ? plan.reason
+    : isOt ? null
+    : !portalDial.length ? "No regular scan types are left in your plan."
+    : !plan.modes[shownIntensity]?.can_scan ? plan.modes[shownIntensity]?.reason ?? "This scan type isn't available."
+    : null;
+  const canLaunch = !!selectedUc && !!selectedEng && compatibleProbes.length > 0 && !launching && !planBlock;
+  const deepProbes = probes.filter((p) => p.online && p.capabilities.includes("deep_port_sweep"));
+  const intensityObj = INTENSITY.find((i) => i.id === shownIntensity)!;
 
   const ucNameFor = (id: string | null) =>
     useCases.find((u) => u.use_case_id === id)?.display_name ?? id ?? "Scan";
@@ -1087,7 +1145,13 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
                     {!isOt && (
                       <div>
                         <FieldLabel icon={<Radar size={11} />}>Scan Intensity</FieldLabel>
-                        <IntensityDial value={intensity} onChange={setIntensity} />
+                        <IntensityDial value={shownIntensity} onChange={setIntensity}
+                          allowed={isPortal ? portalDial : undefined}
+                          badges={isPortal && plan ? {
+                            stealth: modeShort(plan.modes.stealth),
+                            normal: modeShort(plan.modes.normal),
+                            aggressive: modeShort(plan.modes.aggressive),
+                          } : undefined} />
                       </div>
                     )}
 
@@ -1144,6 +1208,14 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
 
                   {/* Launch + reset */}
                     <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                      {planBlock && (
+                        <div role="alert" style={{ fontSize: 11, lineHeight: 1.45, color: "var(--sev-high-color)" }}>{planBlock}</div>
+                      )}
+                      {isPortal && !planBlock && plan?.modes[shownIntensity]?.left != null && (
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                          Uses 1 of your {plan.modes[shownIntensity].left} remaining {intensityObj.label.toLowerCase()} scan{plan.modes[shownIntensity].left === 1 ? "" : "s"}.
+                        </div>
+                      )}
                       <button className="scn-launch" onClick={launch} disabled={!canLaunch}>
                         {launching ? <><Loader size={15} className="scn-spin" /> Dispatching…</> : <><Play size={15} fill="currentColor" /> Launch Scan</>}
                       </button>
@@ -1156,6 +1228,12 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
             </HudFrame>
           </div>
         </div>
+
+        {/* ── Portal Deep scan: one asset, every port (only when the plan includes it) ── */}
+        {isPortal && plan?.modes?.deep?.enabled && (
+          <DeepScanCard plan={plan} scope={selectedEngagement?.scopeCidrs ?? []}
+            probeReady={deepProbes.length > 0} launching={launching} onLaunch={(ip) => void launchDeep(ip)} />
+        )}
 
         {/* ── Active job + dispatch receipt ── */}
         {job && (

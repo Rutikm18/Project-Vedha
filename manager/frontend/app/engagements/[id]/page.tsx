@@ -101,7 +101,9 @@ function displayDate(value: string) {
 
 function OverviewTab({ engagement, surface }: { engagement: Engagement; surface: EngagementWorkspaceSurface }) {
   const [renderedAt] = useState(() => Date.now());
-  const daysLeft = Math.max(0, Math.ceil((new Date(engagement.endDate).getTime() - renderedAt) / 86_400_000));
+  // No (or an unparseable) end date is "—", not NaN.
+  const endMs = engagement.endDate ? new Date(engagement.endDate).getTime() : Number.NaN;
+  const daysLeft = Number.isNaN(endMs) ? null : Math.max(0, Math.ceil((endMs - renderedAt) / 86_400_000));
   const progress = Math.max(0, Math.min(100, engagement.progress));
   const severityTotal = (Object.keys(SEVERITY_COLOR) as Severity[]).reduce(
     (total, severity) => total + (engagement.findingsBySeverity[severity] ?? 0),
@@ -111,7 +113,8 @@ function OverviewTab({ engagement, surface }: { engagement: Engagement; surface:
     { label: "Findings", value: engagement.findingCount, detail: "recorded issues", color: "var(--sev-critical-color)", icon: AlertTriangle },
     { label: "Assets", value: engagement.assetCount, detail: "in attack surface", color: "var(--accent)", icon: Network },
     { label: "Progress", value: `${progress}%`, detail: "assessment complete", color: "var(--nominal-color)", icon: CircleDot, progress },
-    { label: "Time remaining", value: `${daysLeft}d`, detail: `ends ${displayDate(engagement.endDate)}`, color: "var(--sev-medium-color)", icon: Clock3 },
+    { label: "Time remaining", value: daysLeft == null ? "—" : `${daysLeft}d`,
+      detail: daysLeft == null ? "no end date set" : `ends ${displayDate(engagement.endDate)}`, color: "var(--sev-medium-color)", icon: Clock3 },
   ];
 
   const details = [

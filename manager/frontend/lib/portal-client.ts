@@ -165,3 +165,18 @@ export function usePortalEngagement() {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+/**
+ * The customer's plan (POC / licence) and portal scan quota. Shared cache key so
+ * the plan strip, the dashboard and the scan launcher agree, and a launch can
+ * invalidate one key to refresh all three.
+ */
+export function usePortalEntitlement(enabled = true) {
+  return useQuery({
+    queryKey: ["portal", "entitlement"],
+    enabled,
+    queryFn: () => portalApi<import("./entitlements").Entitlement>("/entitlement"),
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+}

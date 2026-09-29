@@ -4,6 +4,51 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Loader2, Eye, EyeOff, Zap } from "lucide-react";
 
+/* /portal/login#e=<email>&p=<password> — the fragment never reaches a server,
+   and it is erased from the address bar and history on first read. */
+let pendingAccessLink: { e: string; p: string } | null = null;
+
+function takeAccessLinkCredentials(): { e: string; p: string } | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const e = params.get("e");
+  const p = params.get("p");
+  if (e && p) {
+    pendingAccessLink = { e, p };
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
+  const creds = pendingAccessLink;
+  pendingAccessLink = null;       // single use: a remount can't sign in twice
+  return creds;
+}
+
+/** POST the credentials; resolves to null on success or a sentence to show. */
+async function requestLogin(email: string, password: string): Promise<string | null> {
+  try {
+    const res = await fetch("/api/portal/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.ok) return null;
+    const data = await res.json().catch(() => ({}));
+    return data.code === "invalid_credentials" ? "Invalid email or password."
+      : data.code === "not_a_client" ? "This login is not a customer portal account."
+      : data.code === "rate_limited" ? "Too many attempts — please wait a moment and try again."
+      : data.code === "backend_unavailable" || res.status >= 500
+        ? "The portal service is unavailable right now — please try again in a moment."
+      : data.error || "Login failed.";
+  } catch {
+    return "Network error — please try again.";
+  }
+}
+
+// The access-link attempt outlives the component that started it: erasing the
+// fragment makes Next remount this page (and dev mode double-runs effects), so
+// its result — success or the error to show — is delivered to whichever
+// instance is mounted when it settles, not to the one that sent it.
+let accessLinkAttempt: Promise<string | null> | null = null;
+
 export default function PortalLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -13,55 +58,37 @@ export default function PortalLoginPage() {
   const [loading, setLoading] = useState(false);
   const [autoSigning, setAutoSigning] = useState(false);
 
-  const doLogin = useCallback(async (em: string, pw: string, fromAccessLink = false) => {
-    if (fromAccessLink) setAutoSigning(true);
+  const doLogin = useCallback(async (em: string, pw: string) => {
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/portal/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: em, password: pw }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setAutoSigning(false);
-        setError(
-          data.code === "invalid_credentials"
-            ? "Invalid email or password."
-            : data.code === "not_a_client"
-            ? "This login is not a customer portal account."
-            : data.code === "rate_limited"
-            ? "Too many attempts — please wait a moment and try again."
-            : data.error || "Login failed.",
-        );
-        return;
-      }
-      router.push("/portal");
-    } catch {
-      setAutoSigning(false);
-      setError("Network error — please try again.");
-    } finally {
-      setLoading(false);
-    }
+    const problem = await requestLogin(em, pw);
+    setLoading(false);
+    if (problem) setError(problem);
+    else router.push("/portal");
   }, [router]);
 
-  // Auto-login from URL fragment: /portal/login#e=email@co.com&p=password
-  // The fragment is read client-side only — it is never sent to any server —
-  // and is cleared immediately so credentials don't survive in browser history.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const hash = window.location.hash.slice(1);
-    if (!hash) return;
-    const params = new URLSearchParams(hash);
-    const e = params.get("e");
-    const p = params.get("p");
-    if (!e || !p) return;
-    // Erase fragment before anything async happens
-    window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    const loginTask = window.setTimeout(() => void doLogin(e, p, true), 0);
-    return () => window.clearTimeout(loginTask);
-  }, [doLogin]);
+    let live = true;
+    const follow = (attempt: Promise<string | null>) => {
+      setAutoSigning(true);
+      void attempt.then((problem) => {
+        if (!live) return;
+        if (accessLinkAttempt === attempt) accessLinkAttempt = null;
+        if (problem) { setAutoSigning(false); setError(problem); }
+        else router.push("/portal");
+      });
+    };
+    // Also on hashchange: opening a link while this page is already showing is
+    // a same-document navigation — no reload, no remount, no effect re-run.
+    const consume = () => {
+      const creds = takeAccessLinkCredentials();
+      if (creds) accessLinkAttempt = requestLogin(creds.e, creds.p);
+      if (accessLinkAttempt) follow(accessLinkAttempt);
+    };
+    consume();
+    window.addEventListener("hashchange", consume);
+    return () => { live = false; window.removeEventListener("hashchange", consume); };
+  }, [router]);
 
   async function submit(ev: React.FormEvent) {
     ev.preventDefault();

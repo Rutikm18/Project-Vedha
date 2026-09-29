@@ -16,6 +16,9 @@ import os
 import platform
 import uuid
 
+from agent import _sealed
+
+
 class HWBindError(RuntimeError):
     """Raised when the binary is running on an unauthorized machine."""
 
@@ -42,7 +45,14 @@ def check_hw_bind() -> None:
     set, the check is skipped — this allows development without a compiled
     binary.
     """
-    expected = os.environ.get("HW_BIND_FINGERPRINT", "")
+    if _sealed.SEALED:
+        # Sealed: the fingerprint is compiled in and the environment is ignored.
+        # Empty = a floating build; the licence's own hostid binding still applies.
+        expected = _sealed.HW_BIND_FINGERPRINT
+        if not expected:
+            return
+    else:
+        expected = os.environ.get("HW_BIND_FINGERPRINT", "")
     if not expected:
         # Dev mode: no binding required when enforcement is off
         if os.environ.get("LICENSE_ENFORCED", "true").lower() in ("false", "0", "no"):

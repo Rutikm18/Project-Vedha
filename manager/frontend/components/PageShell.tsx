@@ -33,7 +33,14 @@ export function PageShell({
 
   // Read current user
   useEffect(() => {
-    if (surface === "portal") return;
+    if (surface === "portal") {
+      // Show who is signed in, not a generic "Customer".
+      fetch("/api/portal/me", { credentials: "same-origin", cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { email?: string } | null) => { if (d?.email) setUserEmail(d.email); })
+        .catch(() => {});
+      return;
+    }
     // One-time migration from builds that stored JWTs in browser storage.
     // End that legacy session so the next login receives HttpOnly cookies.
     if (localStorage.getItem("vedha_token") || localStorage.getItem("vedha_refresh_token")) {
@@ -117,7 +124,7 @@ export function PageShell({
           gap: 12,
         }}>
           {/* Left */}
-          <div className="vedha-page-header-left" style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <div className="vedha-page-header-left" style={{ display: "flex", alignItems: "center", gap: 8, flex: "1 1 0", minWidth: "min-content" }}>
             <button
               className="md:hidden"
               onClick={() => setSidebarOpen(true)}
@@ -144,7 +151,7 @@ export function PageShell({
               <Menu size={17} />
             </button>
 
-            <div className="vedha-page-title-meta" style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+            <div className="vedha-page-title-meta" style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, flex: "1 1 auto" }}>
               <h1 style={{
                 fontFamily: "var(--font-display)",
                 fontSize: 14,
@@ -160,6 +167,11 @@ export function PageShell({
                 <>
                   <span className="vedha-page-title-divider" style={{ color: "var(--border-strong)", flexShrink: 0, fontSize: 13, fontWeight: 400 }}>/</span>
                   <span className="vedha-page-subtitle" style={{
+                    // contain: its text must not size the title block — it fills
+                    // whatever space is left and ellipsizes, never pushing the tools.
+                    contain: "inline-size",
+                    flex: "1 1 auto",
+                    minWidth: 0,
                     fontSize: 13,
                     color: "var(--text-secondary)",
                     whiteSpace: "nowrap",
@@ -189,7 +201,17 @@ export function PageShell({
           </div>
 
           {/* Right */}
-          <div className="vedha-page-header-tools" style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {/* Never paint over the title: the subtitle truncates first, then the
+              page's own chips scroll sideways. Refresh / theme / account / sign
+              out stay pinned and always reachable. */}
+          <div className="vedha-page-header-tools" style={{
+            display: "flex", alignItems: "center", gap: 10,
+            flex: "0 1 auto", minWidth: 0, justifyContent: "flex-end",
+          }}>
+            <div className="vedha-page-header-scroll" style={{
+              display: "flex", alignItems: "center", gap: 10, minWidth: 0,
+              overflowX: "auto", scrollbarWidth: "none",
+            }}>
             {headerActions && (
               <div className="vedha-page-header-actions" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 {headerActions}
@@ -245,6 +267,8 @@ export function PageShell({
               </React.Fragment>
               );
             })}
+
+            </div>
 
             <div className="vedha-page-header-divider" style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
 
@@ -405,7 +429,11 @@ export function PageShell({
 
 const SHELL_RESPONSIVE_STYLES = `
 /* Tablet: 768px–1023px — sidebar always visible, but content is tighter */
+.vedha-page-header-scroll::-webkit-scrollbar { display: none; }
+.vedha-page-header-scroll > *, .vedha-page-header-tools > :not(.vedha-page-header-scroll) { flex-shrink: 0; }
+
 @media (min-width: 768px) and (max-width: 1023px) {
+  .vedha-page-title-divider, .vedha-page-subtitle { display: none; }
   .vedha-page-header { padding: 0 14px !important; }
   .vedha-page-main { padding: 16px 18px !important; }
   .vedha-page-footer { padding: 0 14px !important; }

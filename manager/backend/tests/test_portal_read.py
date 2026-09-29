@@ -304,19 +304,44 @@ def _engagement(eng_id: uuid.UUID, scope=("10.0.0.0/24",), excluded=()):
 
 
 class TestCreateScanRequest:
+    @pytest.fixture(autouse=True)
+    def _plan(self, monkeypatch):
+        """An active plan by default; tests that need a refusal override it."""
+        from app.services import entitlements
+        self.consume = AsyncMock()
+        monkeypatch.setattr(entitlements, "consume_scan", self.consume)
+
+    def test_request_spends_one_scan_and_is_marked(self):
+        user = _client()
+        db = _db_for_create(_engagement(user.client_engagement_id))
+        asyncio.run(portal.create_scan_request(ScanRequestCreate(scan_type="discovery"), user, db))
+        self.consume.assert_awaited_once_with(db, user.client_engagement_id, "normal",
+                                              deep_target=None)
+        sr = _added(db, ScanRequest)
+        assert sr.quota_consumed is True and sr.quota_mode == "normal"
+
+    def test_expired_or_exhausted_plan_queues_nothing(self):
+        user = _client()
+        db = _db_for_create(_engagement(user.client_engagement_id))
+        self.consume.side_effect = HTTPException(403, "Your POC expired on 01 Sep 2026.")
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(portal.create_scan_request(ScanRequestCreate(scan_type="discovery"), user, db))
+        assert e.value.status_code == 403 and "expired" in e.value.detail
+        assert _added(db, ScanRequest) is None
+
     def test_creates_pending_request_with_targets_and_intensity(self):
         user = _client()
         eng = _engagement(user.client_engagement_id, scope=["10.0.0.0/24"])
         db = _db_for_create(eng, pending_count=0)
         out = asyncio.run(portal.create_scan_request(
             ScanRequestCreate(scan_type="vuln_scan", targets=["10.0.0.5"],
-                              intensity="deep", note="please rescan"), user, db))
+                              intensity="normal", note="please rescan"), user, db))
         assert out.status == "pending"
         sr = _added(db, ScanRequest)
         assert sr is not None and sr.scan_type == "vuln_scan"
         # target normalized to a /32 and persisted; intensity carried through
         assert sr.targets == ["10.0.0.5/32"]
-        assert sr.intensity == "deep"
+        assert sr.intensity == "standard"      # UI alias stored as the probe preset
         assert _added(db, AuditLog) is not None          # client action audited
 
     def test_whole_scope_when_no_targets(self):
@@ -364,8 +389,60 @@ class TestCreateScanRequest:
                 ScanRequestCreate(scan_type="vuln_scan"), user, db))
         assert e.value.status_code == 409
 
+    @pytest.mark.parametrize("given", [{"intensity": "deep"}, {"intensity": "aggressive"},
+                                       {"scan_mode": "aggressive"}])
+    def test_aggressive_spends_the_aggressive_allowance(self, given):
+        user = _client()
+        db = _db_for_create(_engagement(user.client_engagement_id))
+        asyncio.run(portal.create_scan_request(
+            ScanRequestCreate(scan_type="vuln_scan", **given), user, db))
+        assert self.consume.await_args.args[2] == "aggressive"
+        assert _added(db, ScanRequest).intensity == "deep"
+
+    def test_full_port_use_case_must_be_a_deep_scan(self):
+        user = _client()
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(portal.create_scan_request(
+                ScanRequestCreate(use_case_id="uc_full_port_audit"), user,
+                _db_for_create(_engagement(user.client_engagement_id))))
+        assert e.value.status_code == 403 and "Deep scan" in e.value.detail
+
+    def test_deep_request_is_one_asset_on_the_full_port_use_case(self):
+        user = _client()
+        db = _db_for_create(_engagement(user.client_engagement_id, scope=["10.0.0.0/24"]))
+        out = asyncio.run(portal.create_scan_request(
+            ScanRequestCreate(scan_mode="deep", targets=["10.0.0.9"]), user, db))
+        sr = _added(db, ScanRequest)
+        assert sr.use_case_id == "uc_deep_port_sweep" and sr.intensity == "deep"
+        assert sr.targets == ["10.0.0.9/32"] and sr.quota_mode == "deep"
+        assert self.consume.await_args.kwargs["deep_target"] == "10.0.0.9/32"
+        assert out.scan_mode == "deep"
+
+    @pytest.mark.parametrize("targets", [None, ["10.0.0.9", "10.0.0.10"], ["10.0.0.0/29"]])
+    def test_deep_request_refuses_anything_but_one_asset(self, targets):
+        user = _client()
+        db = _db_for_create(_engagement(user.client_engagement_id))
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(portal.create_scan_request(
+                ScanRequestCreate(scan_mode="deep", targets=targets), user, db))
+        assert e.value.status_code == 422
+        self.consume.assert_not_awaited()
+
+    def test_unset_intensity_is_materialized_as_normal(self):
+        user = _client()
+        db = _db_for_create(_engagement(user.client_engagement_id))
+        asyncio.run(portal.create_scan_request(
+            ScanRequestCreate(scan_type="discovery"), user, db))
+        assert _added(db, ScanRequest).intensity == "standard"
+
     def test_operator_cannot_create(self):
         with pytest.raises(HTTPException) as e:
             asyncio.run(portal.create_scan_request(
                 ScanRequestCreate(), _operator(), MagicMock()))
         assert e.value.status_code == 403
+
+
+def test_portal_me_returns_the_session_email():
+    user = _client()
+    out = asyncio.run(portal.portal_me(user, _db_scalar("ciso@acme.example.com")))
+    assert out == {"email": "ciso@acme.example.com", "engagement_id": str(user.client_engagement_id)}

@@ -50,6 +50,39 @@ class ClientEngagementOut(BaseModel):
     assigned_agent_id: uuid.UUID | None = None
 
 
+class ModeAllowanceOut(BaseModel):
+    """One scan type's allowance. quota None = unlimited; enabled False = the
+    type isn't included in the plan."""
+    enabled: bool
+    quota: int | None = None
+    used: int = 0
+    left: int | None = None
+    can_scan: bool
+    reason: str | None = None
+
+
+class EntitlementOut(BaseModel):
+    """The customer's plan as both the portal and the operator console show it.
+    ``None`` quota / expiry mean unlimited / no end date. ``scan_quota`` is the
+    optional overall cap; ``modes`` holds each scan type's own allowance."""
+    state: Literal["unconfigured", "not_started", "expired", "exhausted", "active"]
+    can_scan: bool
+    reason: str | None = None
+    plan_type: Literal["poc", "licensed"] | None = None
+    starts_at: datetime | None = None
+    expires_at: datetime | None = None
+    days_left: int | None = None
+    scan_quota: int | None = None
+    scans_used: int = 0
+    scans_left: int | None = None
+    license_key: str | None = None
+    modes: dict[Literal["stealth", "normal", "aggressive", "deep"], ModeAllowanceOut] = {}
+    # A deep scan covers ONE asset: "distinct" = a different asset each time,
+    # "repeat" = the same asset may be deep-scanned again.
+    deep_repeat_policy: Literal["distinct", "repeat"] = "distinct"
+    deep_scanned_targets: list[str] = []
+
+
 class ClientPostureOut(BaseModel):
     risk_index: float
     exploitable_score: float
@@ -112,7 +145,12 @@ class ScanRequestCreate(BaseModel):
     # Specific hosts / sub-ranges to scan. Each MUST be inside the engagement
     # scope (re-validated server-side). None/empty → the whole engagement scope.
     targets: list[str] | None = None
-    intensity: Literal["light", "standard", "deep"] | None = None
+    # The scan type — and so the plan allowance — this request spends. "deep" is
+    # the every-port scan on EXACTLY ONE asset (targets must hold one IP).
+    scan_mode: Literal["stealth", "normal", "aggressive", "deep"] | None = None
+    # Legacy alias for scan_mode (probe preset names accepted too).
+    intensity: Literal["light", "standard", "stealth", "normal",
+                       "deep", "aggressive"] | None = None
     note: str | None = None
 
 
@@ -123,6 +161,7 @@ class ClientScanRequestOut(BaseModel):
     status: str
     targets: list[str] | None = None
     intensity: str | None = None
+    scan_mode: str | None = None
     note: str | None = None
     requested_at: datetime | None = None
 

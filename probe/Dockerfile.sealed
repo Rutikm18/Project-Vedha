@@ -39,23 +39,20 @@ ARG MTLS_CERT=""
 ARG MTLS_KEY=""
 ARG MTLS_CA_CERT=""
 
-ENV PROBE_LICENSE_PUBKEY=${PROBE_LICENSE_PUBKEY}
-ENV HW_BIND_FINGERPRINT=${HW_BIND_FINGERPRINT}
+# Compile the licence key + host fingerprint INTO the binary. They used to be
+# runtime ENV, so `docker run -e LICENSE_ENFORCED=false` (or a self-made key
+# pair) switched the licence off. agent/_sealed.py is regenerated here, before
+# Nuitka runs; a sealed binary ignores those environment variables entirely.
+COPY tools/write_sealed_consts.py ./tools/write_sealed_consts.py
+RUN python3 tools/write_sealed_consts.py \
+      --pubkey "${PROBE_LICENSE_PUBKEY}" --hw-fingerprint "${HW_BIND_FINGERPRINT}" && \
+    grep -q "^SEALED = True" agent/_sealed.py
 
 # Write mTLS certs (if provided) into the build context so Nuitka can embed them.
 RUN if [ -n "${MTLS_CERT}" ]; then \
       echo "${MTLS_CERT}" > /src/agent/mtls_cert.pem; \
       echo "${MTLS_KEY}"  > /src/agent/mtls_key.pem; \
       echo "${MTLS_CA_CERT}" > /src/agent/ca_cert.pem; \
-    fi
-
-# Build env flags for Nuitka embedding
-ARG ENV_FLAGS=""
-RUN if [ -n "${PROBE_LICENSE_PUBKEY}" ]; then \
-      ENV_FLAGS="${ENV_FLAGS} --include-env=PROBE_LICENSE_PUBKEY=${PROBE_LICENSE_PUBKEY}"; \
-    fi; \
-    if [ -n "${HW_BIND_FINGERPRINT}" ]; then \
-      ENV_FLAGS="${ENV_FLAGS} --include-env=HW_BIND_FINGERPRINT=${HW_BIND_FINGERPRINT}"; \
     fi
 
 # Compile: all Python → C → machine code → single executable.
@@ -76,7 +73,6 @@ RUN python3 -m nuitka --onefile --standalone --output-dir=/out \
       --include-package=cryptography --include-package=httpx \
       --include-package=websockets \
       --remove-output --assume-yes-for-downloads \
-      ${ENV_FLAGS} \
       agent/agent.py
 
 # ── Stage 2: minimal runtime (binary only — no Python, no source) ─────────────
@@ -97,15 +93,8 @@ ENV STATE_FILE=/var/lib/vedha-agent/state.json \
     PYTHONIOENCODING=utf-8 \
     LANG=C.UTF-8
 
-# Bake the vendor public key (same as build stage, needed at runtime).
-ARG PROBE_LICENSE_PUBKEY=""
-ENV PROBE_LICENSE_PUBKEY=${PROBE_LICENSE_PUBKEY}
-
-# The HW_BIND_FINGERPRINT is baked into the binary at compile time by Nuitka,
-# so the runtime image doesn't need it.  But the binary will read it from its
-# own embedded env and compare against get_hw_id() at startup.
-ARG HW_BIND_FINGERPRINT=""
-ENV HW_BIND_FINGERPRINT=${HW_BIND_FINGERPRINT}
+# No licence key / fingerprint ENV here: both are compiled into the binary
+# (agent/_sealed.py) and the sealed gate ignores the environment.
 
 COPY --from=build --chown=10001:10001 /out/vedha-agent /app/vedha-agent
 
