@@ -303,6 +303,72 @@ export interface ReportComplianceMapping {
   validation_gaps: string[];
 }
 
+export interface ReportDerivedGlobalControlPointer {
+  framework: string;
+  controls: string[];
+  rationale: string;
+}
+
+export interface ReportDerivedRegionalObligationPointer {
+  framework_id: string;
+  framework: string;
+  authority: string;
+  jurisdictions: string[];
+  source_reference: string;
+  granularity: string;
+  controls: string[];
+  rationale: string;
+  note: string | null;
+}
+
+export interface ReportDerivedFindingComplianceContext {
+  source: "derived_context_only";
+  assessment_status: "not_assessed";
+  certification_status: "not_a_certification";
+  category: string;
+  themes: string[];
+  used_generic_fallback: boolean;
+  asset_tags: string[];
+  global_framework_pointers: ReportDerivedGlobalControlPointer[];
+  regional_obligations: ReportDerivedRegionalObligationPointer[];
+}
+
+export interface ReportDerivedRegionalFramework {
+  framework_id: string;
+  name: string;
+  authority: string;
+  jurisdictions: string[];
+  source_reference: string;
+  granularity: string;
+  note: string | null;
+  tag_triggered: boolean;
+}
+
+export interface ReportDerivedReportingClock {
+  framework_id: string;
+  framework: string;
+  authority: string;
+  deadline_hours: number;
+  trigger: string;
+  reference: string;
+}
+
+export interface ReportDerivedRegionalCompliance {
+  source: "derived_context_only";
+  assessment_status: "not_assessed";
+  certification_status: "not_a_certification";
+  profile_source: "recorded_engagement_profile" | "default_generic_profile";
+  profile: {
+    sector?: string;
+    jurisdictions?: string[];
+    [key: string]: unknown;
+  };
+  asset_tags: string[];
+  frameworks: ReportDerivedRegionalFramework[];
+  reporting_clocks: ReportDerivedReportingClock[];
+  disclaimer: string;
+}
+
 export interface ReportFinding {
   id: string;
   title: string;
@@ -341,6 +407,7 @@ export interface ReportFinding {
   evidence: ReportEvidence;
   remediation: ReportRemediation;
   compliance_mappings: ReportComplianceMapping[];
+  derived_compliance_context: ReportDerivedFindingComplianceContext;
   lifecycle: ReportFindingEvent[];
   closure: ReportClosureProjection;
   current_sla: ReportSlaProjection;
@@ -398,6 +465,7 @@ export interface ReportDocument {
   summary: ReportSummary;
   findings: ReportFinding[];
   compliance_rollup: ReportComplianceRollup;
+  derived_regional_compliance: ReportDerivedRegionalCompliance;
   readiness: ReportReadiness;
 }
 

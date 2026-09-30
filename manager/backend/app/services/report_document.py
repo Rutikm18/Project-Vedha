@@ -22,6 +22,14 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.compliance.profile import EngagementProfile, profile_from_roe
+from app.compliance.registry import (
+    DISCLAIMER,
+    applicable_frameworks,
+    finding_obligations,
+    reporting_clocks,
+)
+from app.intel.tagging import tag_strings
 from app.models.asset import Asset
 from app.models.detection_run import DetectionRun
 from app.models.engagement import Engagement
@@ -42,6 +50,12 @@ from app.schemas.report_document import (
     ReportComplianceMapping,
     ReportComplianceRollup,
     ReportDetectionRunProvenance,
+    ReportDerivedFindingComplianceContext,
+    ReportDerivedGlobalControlPointer,
+    ReportDerivedRegionalCompliance,
+    ReportDerivedRegionalFramework,
+    ReportDerivedRegionalObligationPointer,
+    ReportDerivedReportingClock,
     ReportDocument,
     ReportDocumentControl,
     ReportEngagement,
@@ -60,6 +74,10 @@ from app.schemas.report_document import (
 )
 from app.services import finding_events, sla
 from app.services.evidence_integrity import verify_canonical_sha256
+from app.services.finding_compliance import (
+    compliance_for,
+    compliance_mapping_basis,
+)
 from app.services.finding_scan_provenance import (
     SCAN_PROVENANCE_KEY,
     SCAN_PROVENANCE_RECORDER,
@@ -786,7 +804,11 @@ def _detection_provenance(
         role=role,
         run_id=run.id,
         scan_result_id=run.scan_result_id,
-        scan_job_id=scan_result.job_id if scan_result is not None else None,
+        scan_job_id=(
+            scan_result.job_id
+            if scan_result is not None and scan_result.job_id is not None
+            else getattr(run, "job_id", None)
+        ),
         scan_attempt_id=scan_result.attempt_id if scan_result is not None else None,
         agent_id=scan_result.agent_id if scan_result is not None else None,
         scan_type=scan_result.scan_type if scan_result is not None else None,
@@ -1303,6 +1325,7 @@ def _finding(
     generated_at: datetime,
     sla_windows: dict[str, int],
     assignee_emails: dict[uuid.UUID, str],
+    compliance_profile: EngagementProfile,
 ) -> ReportFinding:
     evidence = normalize_evidence(finding.evidence)
     lifecycle = _timeline(finding, event_rows)
@@ -1475,10 +1498,98 @@ def _finding(
         evidence=evidence,
         remediation=remediation,
         compliance_mappings=mappings,
+        derived_compliance_context=_derived_finding_compliance_context(
+            finding,
+            asset,
+            compliance_profile,
+        ),
         lifecycle=lifecycle,
         closure=closure,
         current_sla=_sla_projection(finding, generated_at, sla_windows),
         readiness_gaps=_dedupe(gaps),
+    )
+
+
+def _derived_finding_compliance_context(
+    finding: Finding,
+    asset: Asset | None,
+    profile: EngagementProfile,
+) -> ReportDerivedFindingComplianceContext:
+    """Contextual control pointers, never an assessment or certification result."""
+    asset_tags = sorted(set(tag_strings(getattr(asset, "tags", None))))
+    regional = finding_obligations(finding, profile, asset_tags)
+    category, used_generic_fallback = compliance_mapping_basis(finding)
+    return ReportDerivedFindingComplianceContext(
+        category=category,
+        themes=list(regional["themes"]),
+        used_generic_fallback=used_generic_fallback,
+        asset_tags=asset_tags,
+        global_framework_pointers=[
+            ReportDerivedGlobalControlPointer(**pointer)
+            for pointer in compliance_for(finding)
+        ],
+        regional_obligations=[
+            ReportDerivedRegionalObligationPointer(
+                framework_id=pointer["framework_id"],
+                framework=pointer["framework"],
+                authority=pointer["authority"],
+                jurisdictions=list(pointer["jurisdictions"]),
+                source_reference=pointer["source"],
+                granularity=pointer["granularity"],
+                controls=list(pointer["controls"]),
+                rationale=pointer["rationale"],
+                note=pointer.get("note"),
+            )
+            for pointer in regional["frameworks"]
+        ],
+    )
+
+
+def _derived_regional_compliance(
+    engagement: Engagement,
+    profile: EngagementProfile,
+    asset_tags: set[str],
+) -> ReportDerivedRegionalCompliance:
+    """Engagement context derived from its stored profile and loaded asset tags."""
+    roe = (
+        engagement.rules_of_engagement
+        if isinstance(engagement.rules_of_engagement, dict)
+        else {}
+    )
+    raw_profile = roe.get("profile")
+    profile_source: Literal[
+        "recorded_engagement_profile", "default_generic_profile"
+    ] = "default_generic_profile"
+    if isinstance(raw_profile, dict):
+        try:
+            EngagementProfile.model_validate(raw_profile)
+            profile_source = "recorded_engagement_profile"
+        except ValueError:
+            pass
+
+    frameworks = applicable_frameworks(profile, asset_tags)
+    return ReportDerivedRegionalCompliance(
+        profile_source=profile_source,
+        profile=profile.model_dump(),
+        asset_tags=sorted(asset_tags),
+        frameworks=[
+            ReportDerivedRegionalFramework(
+                framework_id=framework.id,
+                name=framework.name,
+                authority=framework.authority,
+                jurisdictions=list(framework.jurisdictions),
+                source_reference=framework.source,
+                granularity=framework.granularity,
+                note=framework.note or None,
+                tag_triggered=bool(framework.trigger_tags & asset_tags),
+            )
+            for framework in frameworks
+        ],
+        reporting_clocks=[
+            ReportDerivedReportingClock(**clock)
+            for clock in reporting_clocks(frameworks)
+        ],
+        disclaimer=DISCLAIMER,
     )
 
 
@@ -1768,6 +1879,7 @@ def build_report_document(
     generated_at: datetime,
     sla_windows: dict[str, int],
     assignee_emails: dict[uuid.UUID, str] | None = None,
+    engagement_asset_tags: set[str] | None = None,
     snapshot_kind: Literal[
         "postgresql_repeatable_read_read_only",
         "sqlite_read_transaction",
@@ -1784,6 +1896,19 @@ def build_report_document(
     generated_at = generated_at.astimezone(timezone.utc)
     scan_results = scan_results or {}
     assignee_emails = assignee_emails or {}
+    profile = profile_from_roe(getattr(engagement, "rules_of_engagement", None))
+    if engagement_asset_tags is None:
+        # Direct/pure callers can still derive the context from supplied rows.
+        # The database loader supplies every in-scope asset's tags separately so
+        # a tag-triggered framework is visible even when that asset has no finding.
+        engagement_asset_tags = {
+            tag
+            for _, asset in finding_rows
+            if asset is not None
+            for tag in tag_strings(getattr(asset, "tags", None))
+        }
+    else:
+        engagement_asset_tags = set(engagement_asset_tags)
 
     events_by_finding: dict[uuid.UUID, list[FindingEvent]] = defaultdict(list)
     for row in event_rows:
@@ -1809,6 +1934,7 @@ def build_report_document(
             generated_at,
             sla_windows,
             assignee_emails,
+            profile,
         )
         for finding, asset in finding_rows
     ]
@@ -1828,6 +1954,11 @@ def build_report_document(
         summary=_summary(findings),
         findings=findings,
         compliance_rollup=compliance,
+        derived_regional_compliance=_derived_regional_compliance(
+            engagement,
+            profile,
+            engagement_asset_tags,
+        ),
         readiness=_readiness(
             engagement_out,
             findings,
@@ -1903,6 +2034,25 @@ async def load_report_document(
             .order_by(Finding.created_at, Finding.id)
         )
     ).all()
+    asset_tag_rows = (
+        (
+            await db.execute(
+                select(Asset.tags)
+                .join(Engagement, Engagement.id == Asset.engagement_id)
+                .where(
+                    Asset.engagement_id == engagement_id,
+                    Engagement.tenant_id == tenant_id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    engagement_asset_tags = {
+        tag
+        for stored_tags in asset_tag_rows
+        for tag in tag_strings(stored_tags)
+    }
     event_rows: list[FindingEvent] = []
     plan_rows: list[RemediationPlan] = []
     resolution_runs: dict[uuid.UUID, DetectionRun] = {}
@@ -2054,6 +2204,7 @@ async def load_report_document(
         generated_at=generated_at,
         sla_windows=windows,
         assignee_emails=assignee_emails,
+        engagement_asset_tags=engagement_asset_tags,
         snapshot_kind=snapshot_kind,
         snapshot_guarantee=snapshot_guarantee,
     )

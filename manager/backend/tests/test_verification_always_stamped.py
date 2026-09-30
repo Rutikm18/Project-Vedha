@@ -84,6 +84,7 @@ async def test_attack_path_findings_join_touched(monkeypatch):
     monkeypatch.setattr(engine_bridge, "_engagement_device_roles", _roles)
     monkeypatch.setattr(engine_bridge, "_resolve_asset", _asset)
     monkeypatch.setattr(engine_bridge, "_find_open_duplicate", _dup)
+    monkeypatch.setattr(engine_bridge, "_find_remediated_match", _dup)
 
     class _DB:
         def add(self, obj):

@@ -20,8 +20,8 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { redact } from "../../lib/report/finding-model";
 import { copyText } from "../../lib/clipboard";
+import { redact } from "../../lib/report/finding-model";
 import {
   executiveSummaryText,
   gapLabel,
@@ -29,6 +29,10 @@ import {
   type ReportAutoResolutionCoverage,
   type ReportComplianceMapping,
   type ReportDetectionRunProvenance,
+  type ReportDerivedFindingComplianceContext,
+  type ReportDerivedGlobalControlPointer,
+  type ReportDerivedRegionalCompliance,
+  type ReportDerivedRegionalObligationPointer,
   type ReportDocument,
   type ReportEvidence,
   type ReportEvidenceArtifact,
@@ -185,8 +189,8 @@ function Chips({ values, tone }: { values: string[]; tone?: "accent" | "risk" })
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
   const copy = useCallback(() => {
-    void copyText(value).then((success) => {
-      if (!success) return;
+    void copyText(value).then((succeeded) => {
+      if (!succeeded) return;
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1400);
     });
@@ -577,6 +581,170 @@ function RegulatoryProfile({ profile, index }: { profile: ReportRegulatoryProfil
   );
 }
 
+function DerivedGlobalControlPointer({ pointer }: { pointer: ReportDerivedGlobalControlPointer }) {
+  return (
+    <article className="cr-mapping">
+      <div className="cr-mapping-head">
+        <strong>{pointer.framework}</strong>
+        <span>Derived control pointer · not assessed</span>
+      </div>
+      <div className="cr-two-up">
+        <div><h6>Control pointers</h6><Chips values={pointer.controls} tone="accent" /></div>
+        <div><h6>Why this context was derived</h6><RecordedBlock value={pointer.rationale} /></div>
+      </div>
+    </article>
+  );
+}
+
+function DerivedRegionalObligation({ obligation }: { obligation: ReportDerivedRegionalObligationPointer }) {
+  return (
+    <article className="cr-mapping">
+      <div className="cr-mapping-head">
+        <strong>{obligation.framework}</strong>
+        <span>{obligation.framework_id}</span>
+      </div>
+      <dl className="cr-meta-grid cr-meta-grid--compact">
+        <div><dt>Authority</dt><dd>{obligation.authority}</dd></div>
+        <div><dt>Jurisdictions</dt><dd><Chips values={obligation.jurisdictions} /></dd></div>
+        <div><dt>Reference granularity</dt><dd>{displayLabel(obligation.granularity)}</dd></div>
+        <div><dt>Obligation pointers</dt><dd><Chips values={obligation.controls} tone="accent" /></dd></div>
+        <div className="cr-wide"><dt>Source reference</dt><dd>{obligation.source_reference}</dd></div>
+        <div className="cr-wide"><dt>Derived rationale</dt><dd>{obligation.rationale}</dd></div>
+        {obligation.note && <div className="cr-wide"><dt>Applicability note</dt><dd>{obligation.note}</dd></div>}
+      </dl>
+    </article>
+  );
+}
+
+function DerivedFindingCompliance({ context }: { context: ReportDerivedFindingComplianceContext }) {
+  return (
+    <div className="cr-stack">
+      <p className="cr-caution">
+        <AlertTriangle size={13} />
+        Derived context only. These pointers have not been assessed and are not a certification, attestation, legal conclusion, or recorded control result.
+      </p>
+      <dl className="cr-meta-grid">
+        <div><dt>Source</dt><dd>{displayLabel(context.source)}</dd></div>
+        <div><dt>Assessment status</dt><dd>{displayLabel(context.assessment_status)}</dd></div>
+        <div><dt>Certification status</dt><dd>{displayLabel(context.certification_status)}</dd></div>
+        <div><dt>Finding category</dt><dd>{displayLabel(context.category)}</dd></div>
+        <div><dt>Derived themes</dt><dd><Chips values={context.themes.map(displayLabel)} /></dd></div>
+        <div><dt>Asset tags considered</dt><dd><Chips values={context.asset_tags} /></dd></div>
+      </dl>
+      {context.used_generic_fallback && (
+        <p className="cr-caution">
+          <AlertTriangle size={13} />
+          Generic fallback warning: this finding category used the generic control-pointer set. Confirm the classification and control applicability before customer delivery.
+        </p>
+      )}
+      <div className="cr-subsection">
+        <h5>Derived global framework control pointers</h5>
+        {context.global_framework_pointers.length ? (
+          <div className="cr-stack">
+            {context.global_framework_pointers.map((pointer) => (
+              <DerivedGlobalControlPointer key={pointer.framework} pointer={pointer} />
+            ))}
+          </div>
+        ) : <p className="cr-unset">No global framework pointers were derived.</p>}
+      </div>
+      <div className="cr-subsection">
+        <h5>Derived regional obligation pointers</h5>
+        {context.regional_obligations.length ? (
+          <div className="cr-stack">
+            {context.regional_obligations.map((obligation) => (
+              <DerivedRegionalObligation
+                key={`${obligation.framework_id}-${obligation.controls.join("|")}`}
+                obligation={obligation}
+              />
+            ))}
+          </div>
+        ) : <p className="cr-unset">No regional obligation pointers were derived for this finding.</p>}
+      </div>
+    </div>
+  );
+}
+
+function DerivedRegionalCompliance({ context }: { context: ReportDerivedRegionalCompliance }) {
+  const sector = typeof context.profile.sector === "string" ? context.profile.sector : null;
+  const jurisdictions = Array.isArray(context.profile.jurisdictions)
+    ? context.profile.jurisdictions.filter((value): value is string => typeof value === "string")
+    : [];
+  const profileIsRecorded = context.profile_source === "recorded_engagement_profile";
+
+  return (
+    <div className="cr-subsection">
+      <h3>Derived regional applicability context</h3>
+      <p className="cr-caution">
+        <AlertTriangle size={13} />
+        Derived context only. Frameworks, obligations, and reporting clocks below are not assessed control results, a certification, an attestation, or legal advice.
+      </p>
+      <dl className="cr-meta-grid">
+        <div><dt>Source</dt><dd>{displayLabel(context.source)}</dd></div>
+        <div><dt>Assessment status</dt><dd>{displayLabel(context.assessment_status)}</dd></div>
+        <div><dt>Certification status</dt><dd>{displayLabel(context.certification_status)}</dd></div>
+        <div><dt>Profile basis</dt><dd>{displayLabel(context.profile_source)}</dd></div>
+        <div><dt>{profileIsRecorded ? "Configured sector" : "Default sector"}</dt><dd>{sector ? displayLabel(sector) : "Not recorded"}</dd></div>
+        <div><dt>{profileIsRecorded ? "Configured jurisdictions" : "Default jurisdictions"}</dt><dd><Chips values={jurisdictions} /></dd></div>
+        <div className="cr-wide"><dt>Asset tags considered</dt><dd><Chips values={context.asset_tags} /></dd></div>
+      </dl>
+
+      <div className="cr-subsection">
+        <h3>Applicable regional frameworks</h3>
+        {context.frameworks.length ? (
+          <div className="cr-stack">
+            {context.frameworks.map((framework) => (
+              <article className="cr-framework" key={framework.framework_id}>
+                <header>
+                  <div>
+                    <h3>{framework.name}</h3>
+                    <p>{framework.framework_id} · {framework.authority}</p>
+                  </div>
+                  <span>{framework.tag_triggered ? "Asset-tag triggered" : "Profile applicable"}</span>
+                </header>
+                <dl className="cr-meta-grid cr-meta-grid--compact">
+                  <div><dt>Jurisdictions</dt><dd><Chips values={framework.jurisdictions} /></dd></div>
+                  <div><dt>Reference granularity</dt><dd>{displayLabel(framework.granularity)}</dd></div>
+                  <div className="cr-wide"><dt>Source reference</dt><dd>{framework.source_reference}</dd></div>
+                  {framework.note && <div className="cr-wide"><dt>Applicability note</dt><dd>{framework.note}</dd></div>}
+                </dl>
+              </article>
+            ))}
+          </div>
+        ) : <p className="cr-unset">No regional frameworks were derived for this profile.</p>}
+      </div>
+
+      <div className="cr-subsection">
+        <h3>Contextual reporting clocks</h3>
+        <p className="cr-caution">
+          <AlertTriangle size={13} />
+          A listed deadline is a contextual trigger reference; this report does not assert that an incident or notification trigger occurred.
+        </p>
+        {context.reporting_clocks.length ? (
+          <div className="cr-table-wrap">
+            <table className="cr-table">
+              <caption>Potential reporting clocks derived from the regional profile</caption>
+              <thead>
+                <tr><th scope="col">Framework / authority</th><th scope="col">Deadline</th><th scope="col">Trigger</th><th scope="col">Reference</th></tr>
+              </thead>
+              <tbody>
+                {context.reporting_clocks.map((clock) => (
+                  <tr key={`${clock.framework_id}-${clock.deadline_hours}-${clock.trigger}`}>
+                    <th scope="row">{clock.framework}<br /><span>{clock.authority}</span></th>
+                    <td>{clock.deadline_hours} hours</td>
+                    <td>{clock.trigger}</td>
+                    <td>{clock.reference}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="cr-unset">No regional reporting clocks were derived for this profile.</p>}
+      </div>
+      <p className="cr-caution"><AlertTriangle size={13} />{context.disclaimer}</p>
+    </div>
+  );
+}
+
 function FindingReport({ finding, ordinal }: { finding: ReportFinding; ordinal: number }) {
   const severity = toSeverity(finding.severity);
   const findingRef = `F${String(ordinal).padStart(3, "0")}`;
@@ -817,6 +985,11 @@ function FindingReport({ finding, ordinal }: { finding: ReportFinding; ordinal: 
       </section>
 
       <section className="cr-finding-section">
+        <h4><ShieldCheck size={14} />Derived compliance context — not assessed</h4>
+        <DerivedFindingCompliance context={finding.derived_compliance_context} />
+      </section>
+
+      <section className="cr-finding-section">
         <h4><History size={14} />Complete finding lifecycle</h4>
         {finding.lifecycle.length ? (
           <div className="cr-stack">
@@ -892,7 +1065,7 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
         <a href="#scope-readiness">Scope &amp; readiness</a>
         <a href="#finding-register">Finding register</a>
         <a href="#closure-register">Retest &amp; closure</a>
-        <a href="#compliance-matrix">Compliance mappings</a>
+        <a href="#compliance-matrix">Compliance context</a>
         <a href="#methodology-limitations">Methodology &amp; limitations</a>
       </nav>
 
@@ -1055,7 +1228,11 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
         </section>
 
         <section className="cr-report-section" aria-labelledby="compliance-matrix">
-          <SectionHeading id="compliance-matrix" title="Versioned compliance mapping roll-up" description="Only mappings explicitly recorded on findings are included." />
+          <SectionHeading id="compliance-matrix" title="Compliance context and control mapping" description="Derived applicability context and reporting clocks are presented separately from versioned mappings explicitly recorded on findings." />
+          <DerivedRegionalCompliance context={report.derived_regional_compliance} />
+          <div className="cr-subsection">
+            <h3>Recorded finding-to-control mapping roll-up</h3>
+          </div>
           <p className="cr-caution"><AlertTriangle size={13} />This matrix is not a certification, audit opinion, or compliance verdict. Unrecorded controls are not inferred.</p>
           <dl className="cr-inline-meta">
             <div><dt>Source</dt><dd>{report.compliance_rollup.source}</dd></div>

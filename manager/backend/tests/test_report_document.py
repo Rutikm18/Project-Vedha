@@ -24,6 +24,7 @@ from app.services.evidence_integrity import (
 )
 from app.services.report_document import (
     _chunks,
+    _detection_provenance,
     _start_report_snapshot,
     build_report_document,
     extract_compliance_mappings,
@@ -282,6 +283,51 @@ def _scan_result(scan_result_id, engagement_id, **over):
     )
     base.update(over)
     return SimpleNamespace(**base)
+
+
+def test_detection_provenance_uses_run_job_when_scan_result_is_unavailable():
+    job_id = uuid.uuid4()
+    run = _run(
+        uuid.uuid4(),
+        uuid.uuid4(),
+        scan_result_id=uuid.uuid4(),
+        job_id=job_id,
+    )
+
+    provenance = _detection_provenance(run, None, role="latest_observation")
+
+    assert provenance is not None
+    assert provenance.scan_result_id == run.scan_result_id
+    assert provenance.scan_job_id == job_id
+    assert provenance.scan_result_recorded_at is None
+
+
+def test_detection_provenance_uses_run_job_when_scan_result_job_is_null():
+    job_id = uuid.uuid4()
+    engagement_id = uuid.uuid4()
+    scan_result_id = uuid.uuid4()
+    run = _run(
+        uuid.uuid4(),
+        engagement_id,
+        scan_result_id=scan_result_id,
+        job_id=job_id,
+    )
+    scan_result = _scan_result(
+        scan_result_id,
+        engagement_id,
+        job_id=None,
+    )
+
+    provenance = _detection_provenance(
+        run,
+        scan_result,
+        role="latest_observation",
+    )
+
+    assert provenance is not None
+    assert provenance.scan_result_id == scan_result_id
+    assert provenance.scan_job_id == job_id
+    assert provenance.scan_result_recorded_at == scan_result.created_at
 
 
 def _plan(finding_id, reviewed=True, **over):
@@ -951,6 +997,149 @@ def test_missing_compliance_and_manual_closure_proof_are_explicit_gaps():
     assert out.readiness.complete is False
 
 
+@pytest.mark.parametrize(
+    ("sector", "expected_frameworks"),
+    [
+        ("banking", {"rbi_csf", "rbi_itgov_2023", "certin_2022"}),
+        ("capital_markets", {"sebi_cscrf", "certin_2022"}),
+    ],
+)
+def test_derived_regional_context_exposes_profile_specific_pointers_only(
+    sector,
+    expected_frameworks,
+):
+    engagement = _engagement()
+    engagement.rules_of_engagement = {
+        **engagement.rules_of_engagement,
+        "profile": {"sector": sector, "jurisdictions": ["IN"]},
+    }
+    asset = _asset(
+        engagement.id,
+        tags={
+            "v": 1,
+            "auto": [],
+            "manual": [
+                {
+                    "key": "compliance_scope",
+                    "value": "swift_cscf_scope",
+                    "source": "manual",
+                }
+            ],
+        },
+    )
+    finding = _finding(
+        engagement.id,
+        asset.id,
+        None,
+        status=FindingStatus.open,
+        resolved_at=None,
+        resolution_method=None,
+        resolution_run_id=None,
+        reopened_count=0,
+        evidence={"output": "TLS 1.0 accepted"},
+    )
+
+    out = build_report_document(
+        engagement=engagement,
+        finding_rows=[(finding, asset)],
+        event_rows=[],
+        remediation_plan_rows=[],
+        resolution_runs={},
+        generated_at=NOW,
+        sla_windows={
+            "critical": 24,
+            "high": 72,
+            "medium": 168,
+            "low": 720,
+            "info": 0,
+        },
+    )
+
+    derived = out.derived_regional_compliance
+    assert derived.source == "derived_context_only"
+    assert derived.assessment_status == "not_assessed"
+    assert derived.certification_status == "not_a_certification"
+    assert derived.profile_source == "recorded_engagement_profile"
+    assert derived.profile == {"sector": sector, "jurisdictions": ["IN"]}
+    framework_ids = {item.framework_id for item in derived.frameworks}
+    assert expected_frameworks <= framework_ids
+    assert "swift_cscf" in framework_ids
+    assert next(
+        item for item in derived.frameworks if item.framework_id == "swift_cscf"
+    ).tag_triggered is True
+    assert any(clock.authority == "CERT-In" for clock in derived.reporting_clocks)
+
+    finding_context = out.findings[0].derived_compliance_context
+    assert finding_context.source == "derived_context_only"
+    assert finding_context.assessment_status == "not_assessed"
+    assert finding_context.certification_status == "not_a_certification"
+    assert finding_context.category == "weak_tls"
+    assert finding_context.used_generic_fallback is False
+    assert len(finding_context.global_framework_pointers) == 5
+    assert {
+        pointer.framework for pointer in finding_context.global_framework_pointers
+    } == {
+        "PCI DSS 4.0",
+        "ISO/IEC 27001:2022",
+        "NIST SP 800-53 Rev.5",
+        "SOC 2 (TSC)",
+        "HIPAA Security Rule",
+    }
+    assert expected_frameworks <= {
+        pointer.framework_id
+        for pointer in finding_context.regional_obligations
+    }
+
+    # Derived pointers must never masquerade as recorded/assessed mappings.
+    assert out.compliance_rollup.mapping_count == 0
+    assert "compliance_mappings_absent" in out.findings[0].readiness_gaps
+
+
+def test_derived_global_pointers_mark_generic_mapping_fallback():
+    engagement = _engagement(rules_of_engagement={})
+    asset = _asset(engagement.id)
+    finding = _finding(
+        engagement.id,
+        asset.id,
+        None,
+        title="Unclassified bespoke exposure",
+        description="A bespoke observation.",
+        remediation="Review the bespoke condition.",
+        cve_ids=[],
+        status=FindingStatus.open,
+        resolved_at=None,
+        resolution_method=None,
+        resolution_run_id=None,
+        reopened_count=0,
+        evidence={},
+    )
+
+    out = build_report_document(
+        engagement=engagement,
+        finding_rows=[(finding, asset)],
+        event_rows=[],
+        remediation_plan_rows=[],
+        resolution_runs={},
+        generated_at=NOW,
+        sla_windows={
+            "critical": 24,
+            "high": 72,
+            "medium": 168,
+            "low": 720,
+            "info": 0,
+        },
+    )
+
+    context = out.findings[0].derived_compliance_context
+    assert context.category == "generic"
+    assert context.used_generic_fallback is True
+    assert len(context.global_framework_pointers) == 5
+    assert context.regional_obligations == []
+    assert out.derived_regional_compliance.profile_source == (
+        "default_generic_profile"
+    )
+
+
 def test_opaque_compliance_reference_is_preserved_but_flagged_as_incomplete():
     engagement = _engagement()
     asset = _asset(engagement.id)
@@ -1536,6 +1725,7 @@ async def test_loader_explicitly_tenant_scopes_every_report_fact_query():
         side_effect=[
             result(scalar=engagement),
             result(rows=[(finding, asset)]),
+            result(scalar_rows=[asset.tags]),
             result(scalar_rows=[]),
             result(scalar_rows=[]),
             result(scalar_rows=[run]),
@@ -1553,11 +1743,77 @@ async def test_loader_explicitly_tenant_scopes_every_report_fact_query():
 
     assert document is not None
     statements = [str(call.args[0]) for call in db.execute.await_args_list]
-    for table in ("findings", "finding_events", "detection_runs", "scan_results"):
+    for table in (
+        "findings",
+        "assets",
+        "finding_events",
+        "detection_runs",
+        "scan_results",
+    ):
         statement = next(sql for sql in statements if f"FROM {table}" in sql)
         assert "JOIN engagements" in statement
         assert "engagements.tenant_id" in statement
         assert "engagement_id" in statement
+
+
+@pytest.mark.asyncio
+async def test_loader_includes_tags_from_assets_without_findings():
+    tenant_id = uuid.uuid4()
+    engagement = _engagement(
+        tenant_id=tenant_id,
+        rules_of_engagement={
+            "profile": {"sector": "generic", "jurisdictions": []},
+        },
+    )
+    swift_tags = {
+        "v": 1,
+        "auto": [],
+        "manual": [
+            {
+                "key": "compliance_scope",
+                "value": "swift_cscf_scope",
+                "source": "manual",
+            }
+        ],
+    }
+
+    def result(*, scalar=None, rows=None, scalar_rows=None):
+        value = MagicMock()
+        value.scalar_one_or_none.return_value = scalar
+        value.all.return_value = rows or []
+        value.scalars.return_value.all.return_value = scalar_rows or []
+        return value
+
+    db = MagicMock()
+    db.get_bind.return_value = SimpleNamespace(dialect=SimpleNamespace(name="test"))
+    db.execute = AsyncMock(
+        side_effect=[
+            result(scalar=engagement),
+            result(rows=[]),
+            result(scalar_rows=[swift_tags]),
+            result(scalar=None),
+        ]
+    )
+
+    document = await load_report_document(
+        db,
+        tenant_id=tenant_id,
+        engagement_id=engagement.id,
+        generated_at=NOW,
+    )
+
+    assert document is not None
+    assert document.summary.total_findings == 0
+    assert document.derived_regional_compliance.asset_tags == [
+        "compliance_scope:swift_cscf_scope"
+    ]
+    assert "swift_cscf" in {
+        framework.framework_id
+        for framework in document.derived_regional_compliance.frameworks
+    }
+    asset_sql = str(db.execute.await_args_list[2].args[0])
+    assert "FROM assets JOIN engagements" in asset_sql
+    assert "engagements.tenant_id" in asset_sql
 
 
 @pytest.mark.asyncio

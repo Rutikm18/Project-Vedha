@@ -26,6 +26,7 @@ from app.utils.db import get_or_404
 from app.models.enums import FindingSeverity, FindingStatus, ScanJobStatus, ScanJobType
 from app.models.finding import Finding
 from app.models.scan_job import ScanJob
+from app.services.finding_scan_provenance import record_scan_observation
 
 router = APIRouter(prefix="/engagements/{engagement_id}/ad", tags=["active-directory"])
 logger = structlog.get_logger()
@@ -163,23 +164,16 @@ async def _run_ad_assessment_and_save(
         return
 
     created = 0
+    recorded_at = datetime.now(timezone.utc)
+    job_uuid = uuid.UUID(job_id)
     async with AsyncSessionLocal() as db:
         for item in outcome["findings"]:
             try:
-                sev = item.get("severity")
-                sev = sev if isinstance(sev, FindingSeverity) else FindingSeverity(str(sev).lower())
-                db.add(Finding(
-                    engagement_id=uuid.UUID(engagement_id),
-                    severity=sev,
-                    status=FindingStatus.open,
-                    title=item.get("title", "AD finding"),
-                    description=item.get("description"),
-                    cve_ids=item.get("cve_ids"),
-                    mitre_techniques=item.get("mitre_techniques"),
-                    exploitable=item.get("exploitable", False),
-                    exploit_validated=item.get("exploit_validated", False),
-                    remediation=item.get("remediation"),
-                    evidence=item.get("evidence"),
+                db.add(_ad_finding(
+                    uuid.UUID(engagement_id),
+                    item,
+                    scan_job_id=job_uuid,
+                    recorded_at=recorded_at,
                 ))
                 created += 1
             except Exception as exc:
@@ -196,6 +190,48 @@ async def _run_ad_assessment_and_save(
         await db.commit()
 
     logger.info("ad.assess.background.done", engagement=engagement_id, findings=created)
+
+
+def _ad_finding(
+    engagement_id: uuid.UUID,
+    item: dict,
+    *,
+    scan_job_id: uuid.UUID,
+    recorded_at: datetime,
+) -> Finding:
+    severity = item.get("severity")
+    severity = (
+        severity
+        if isinstance(severity, FindingSeverity)
+        else FindingSeverity(str(severity).lower())
+    )
+    evidence = record_scan_observation(
+        item.get("evidence"),
+        scan_result_id=None,
+        scan_job_id=scan_job_id,
+        scan_type="ad_enum",
+        source="manager_scanner",
+        tool="ad_assessment",
+        recorded_at=recorded_at,
+        initial=True,
+    )
+    return Finding(
+        engagement_id=engagement_id,
+        severity=severity,
+        status=FindingStatus.open,
+        title=item.get("title", "AD finding"),
+        description=item.get("description"),
+        cve_ids=item.get("cve_ids"),
+        mitre_techniques=item.get("mitre_techniques"),
+        exploitable=item.get("exploitable", False),
+        exploit_validated=item.get("exploit_validated", False),
+        remediation=item.get("remediation"),
+        evidence=evidence,
+        first_seen=recorded_at,
+        last_seen=recorded_at,
+        initial_detection_run_id=None,
+        detection_run_id=None,
+    )
 
 
 async def _set_job_status(

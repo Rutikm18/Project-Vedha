@@ -54,6 +54,83 @@ const terminalEvent: ReportFindingEvent = {
   synthesized: false,
 };
 
+function derivedFindingCompliance(title: string): ReportFinding["derived_compliance_context"] {
+  const genericFallback = title.startsWith("Second");
+  return {
+    source: "derived_context_only",
+    assessment_status: "not_assessed",
+    certification_status: "not_a_certification",
+    category: genericFallback ? "generic" : "weak_tls",
+    themes: genericFallback ? ["security_governance"] : ["cryptography", "secure_communications"],
+    used_generic_fallback: genericFallback,
+    asset_tags: ["external", "internet-facing"],
+    global_framework_pointers: genericFallback ? [{
+      framework: "PCI DSS 4.0",
+      controls: ["6.3.3"],
+      rationale: "Generic security-control pointer for vulnerability remediation context.",
+    }, {
+      framework: "ISO/IEC 27001:2022",
+      controls: ["A.8.8"],
+      rationale: "Generic pointer to management of technical vulnerabilities.",
+    }, {
+      framework: "NIST SP 800-53 Rev.5",
+      controls: ["RA-5"],
+      rationale: "Generic pointer to vulnerability monitoring and scanning.",
+    }, {
+      framework: "SOC 2 (TSC)",
+      controls: ["CC7.1"],
+      rationale: "Generic pointer to detection and monitoring of configuration changes and vulnerabilities.",
+    }, {
+      framework: "HIPAA Security Rule",
+      controls: ["45 CFR 164.308(a)(8)"],
+      rationale: "Generic pointer to periodic technical and nontechnical evaluation.",
+    }] : [{
+      framework: "PCI DSS 4.0",
+      controls: ["4.2.1", "4.2.1.1"],
+      rationale: "Weak transport encryption can affect protection of cardholder data over open, public networks.",
+    }, {
+      framework: "ISO/IEC 27001:2022",
+      controls: ["A.8.24"],
+      rationale: "The cryptographic configuration relates to rules for effective use of cryptography.",
+    }, {
+      framework: "NIST SP 800-53 Rev.5",
+      controls: ["SC-8", "SC-13"],
+      rationale: "Deprecated TLS relates to transmission confidentiality and approved cryptographic protection.",
+    }, {
+      framework: "SOC 2 (TSC)",
+      controls: ["CC6.7"],
+      rationale: "Logical access safeguards include protecting data transmitted across external networks.",
+    }, {
+      framework: "HIPAA Security Rule",
+      controls: ["45 CFR 164.312(e)(1)"],
+      rationale: "Transmission security safeguards can include encryption and integrity controls.",
+    }],
+    regional_obligations: [{
+      framework_id: "rbi_csf",
+      framework: "RBI Cyber Security Framework in Banks",
+      authority: "Reserve Bank of India",
+      jurisdictions: ["IN"],
+      source_reference: "RBI circular DBS.CO/CSITE/BC.11/33.01.001/2015-16 (2 Jun 2016), Annex 1 baseline controls",
+      granularity: "framework_section",
+      controls: genericFallback ? ["Annex 1 baseline cyber-security controls"] : ["Annex 1 — network and data security controls"],
+      rationale: genericFallback
+        ? "The banking profile makes the baseline cyber-security framework contextually relevant."
+        : "Weak transport security on an internet-facing banking asset relates to baseline network and data protection expectations.",
+      note: "Confirm applicability and the latest RBI circulars with the regulated entity.",
+    }, {
+      framework_id: "certin_2022",
+      framework: "CERT-In Directions 2022",
+      authority: "Indian Computer Emergency Response Team",
+      jurisdictions: ["IN"],
+      source_reference: "CERT-In Directions No. 20(3)/2022-CERT-In, 28 Apr 2022",
+      granularity: "direction",
+      controls: ["Direction (ii) — cyber incident reporting", "Direction (iv) — ICT log retention"],
+      rationale: "The India profile makes incident-reporting and evidence-retention obligations relevant context.",
+      note: null,
+    }],
+  };
+}
+
 function finding(id: string, title: string): ReportFinding {
   return {
     id,
@@ -268,6 +345,7 @@ function finding(id: string, title: string): ReportFinding {
       rollup_usable: false,
       validation_gaps: ["mapping_review_required"],
     }],
+    derived_compliance_context: derivedFindingCompliance(title),
     lifecycle: [terminalEvent],
     closure: {
       current_disposition: "remediated",
@@ -473,6 +551,68 @@ const report: ReportDocument = {
     }],
     unmapped_finding_ids: [],
     gap: null,
+  },
+  derived_regional_compliance: {
+    source: "derived_context_only",
+    assessment_status: "not_assessed",
+    certification_status: "not_a_certification",
+    profile_source: "recorded_engagement_profile",
+    profile: {
+      sector: "banking",
+      jurisdictions: ["IN"],
+    },
+    asset_tags: ["external", "internet-facing"],
+    frameworks: [{
+      framework_id: "rbi_csf",
+      name: "RBI Cyber Security Framework in Banks",
+      authority: "Reserve Bank of India",
+      jurisdictions: ["IN"],
+      source_reference: "RBI circular DBS.CO/CSITE/BC.11/33.01.001/2015-16 (2 Jun 2016), Annex 1 baseline controls",
+      granularity: "framework_section",
+      note: "Banking-sector baseline; confirm applicability and current RBI amendments.",
+      tag_triggered: false,
+    }, {
+      framework_id: "certin_2022",
+      name: "CERT-In Directions 2022",
+      authority: "Indian Computer Emergency Response Team",
+      jurisdictions: ["IN"],
+      source_reference: "CERT-In Directions No. 20(3)/2022-CERT-In, 28 Apr 2022",
+      granularity: "direction",
+      note: null,
+      tag_triggered: false,
+    }, {
+      framework_id: "dpdp_2023",
+      name: "Digital Personal Data Protection Act and Rules",
+      authority: "Data Protection Board of India / Ministry of Electronics and Information Technology",
+      jurisdictions: ["IN"],
+      source_reference: "Digital Personal Data Protection Act 2023 and Digital Personal Data Protection Rules 2025",
+      granularity: "statutory_obligation",
+      note: "Applicability depends on whether personal data processing and breach triggers are present.",
+      tag_triggered: true,
+    }],
+    reporting_clocks: [{
+      framework_id: "rbi_csf",
+      framework: "RBI Cyber Security Framework in Banks",
+      authority: "Reserve Bank of India",
+      deadline_hours: 6,
+      trigger: "Unusual cyber-security incident",
+      reference: "RBI circular 2 Jun 2016 — report within 2–6 hours",
+    }, {
+      framework_id: "certin_2022",
+      framework: "CERT-In Directions 2022",
+      authority: "Indian Computer Emergency Response Team",
+      deadline_hours: 6,
+      trigger: "Listed Annexure I cyber incident",
+      reference: "CERT-In Directions 28-Apr-2022, direction (ii)",
+    }, {
+      framework_id: "dpdp_2023",
+      framework: "Digital Personal Data Protection Act and Rules",
+      authority: "Data Protection Board of India",
+      deadline_hours: 72,
+      trigger: "Personal data breach requiring detailed intimation",
+      reference: "DPDP Rules 2025 — breach intimation",
+    }],
+    disclaimer: "Control references are pointers to help auditors and owners locate the relevant obligation. They are not legal advice or a compliance attestation; confirm applicability with your compliance/legal team.",
   },
   readiness: {
     complete: false,
@@ -707,6 +847,77 @@ describe("canonical report renderer", () => {
     assert.match(html, /ISO\/IEC 27001/);
     assert.match(html, /not a certification, audit opinion, or compliance verdict/i);
     assert.doesNotMatch(html, /mapping-raw-must-not-render/);
+  });
+
+  test("renders derived regional applicability, source references, and reporting clocks separately from recorded mappings", () => {
+    const html = renderToStaticMarkup(createElement(CanonicalReportDocument, { report }));
+
+    assert.match(html, /Derived regional applicability context/);
+    assert.match(html, /Derived Context Only/);
+    assert.match(html, /Not Assessed/);
+    assert.match(html, /Not A Certification/);
+    assert.match(html, /Recorded Engagement Profile/);
+    assert.match(html, /Configured sector/);
+    assert.match(html, /Banking/);
+    assert.match(html, /Configured jurisdictions/);
+    assert.match(html, />IN</);
+    assert.match(html, /RBI Cyber Security Framework in Banks/);
+    assert.match(html, /Reserve Bank of India/);
+    assert.match(html, /DBS\.CO\/CSITE\/BC\.11\/33\.01\.001\/2015-16/);
+    assert.match(html, /CERT-In Directions 2022/);
+    assert.match(html, /Digital Personal Data Protection Act and Rules/);
+    assert.match(html, /Contextual reporting clocks/);
+    assert.match(html, /Unusual cyber-security incident/);
+    assert.match(html, /Listed Annexure I cyber incident/);
+    assert.match(html, /Personal data breach requiring detailed intimation/);
+    assert.match(html, /6 hours/);
+    assert.match(html, /72 hours/);
+    assert.match(html, /does not assert that an incident or notification trigger occurred/);
+    assert.match(html, /not legal advice or a compliance attestation/);
+    assert.match(html, /Recorded finding-to-control mapping roll-up/);
+  });
+
+  test("labels a backend default compliance profile as default rather than configured", () => {
+    const defaultProfileReport = structuredClone(report);
+    defaultProfileReport.derived_regional_compliance.profile_source = "default_generic_profile";
+    defaultProfileReport.derived_regional_compliance.profile = {
+      sector: "generic",
+      jurisdictions: [],
+    };
+
+    const html = renderToStaticMarkup(createElement(CanonicalReportDocument, { report: defaultProfileReport }));
+
+    assert.match(html, /Default Generic Profile/);
+    assert.match(html, /Default sector/);
+    assert.match(html, /Generic/);
+    assert.match(html, /Default jurisdictions/);
+  });
+
+  test("renders per-finding global and regional derived pointers with a generic-fallback warning", () => {
+    const html = renderToStaticMarkup(createElement(CanonicalReportDocument, { report }));
+
+    assert.equal((html.match(/Derived compliance context — not assessed/g) ?? []).length, report.findings.length);
+    assert.match(html, /Finding category/);
+    assert.match(html, /Weak Tls/);
+    assert.match(html, /Cryptography/);
+    assert.match(html, /Secure Communications/);
+    assert.match(html, /internet-facing/);
+    assert.match(html, /PCI DSS 4.0/);
+    assert.match(html, /4.2.1.1/);
+    assert.ok(html.includes("ISO/IEC 27001:2022"));
+    assert.match(html, /A.8.24/);
+    assert.match(html, /NIST SP 800-53 Rev.5/);
+    assert.match(html, /SC-13/);
+    assert.match(html, /SOC 2 \(TSC\)/);
+    assert.match(html, /CC6.7/);
+    assert.match(html, /HIPAA Security Rule/);
+    assert.match(html, /45 CFR 164.312\(e\)\(1\)/);
+    assert.match(html, /Derived regional obligation pointers/);
+    assert.match(html, /Annex 1 — network and data security controls/);
+    assert.match(html, /Weak transport security on an internet-facing banking asset/);
+    assert.match(html, /Generic fallback warning/);
+    assert.match(html, /generic control-pointer set/);
+    assert.match(html, /Confirm the classification and control applicability before customer delivery/);
   });
 
   test("renders complete regulatory profile applicability without implying compliance", () => {

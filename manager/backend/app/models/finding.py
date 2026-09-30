@@ -64,7 +64,7 @@ class Finding(Base, TimestampMixin):
     # last_seen:  the most recent run that reaffirmed it (advances each run).
     # A finding whose last_seen lags the engagement's latest run was NOT observed
     # in that run — i.e. a resolution candidate (surfaced, never auto-closed).
-    # initial_detection_run_id: the immutable run that first created it.
+    # initial_detection_run_id: the run that first created it (stable across runs).
     # detection_run_id: the run that last touched it (null for non-engine sources).
     first_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

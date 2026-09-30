@@ -976,6 +976,7 @@ async def patch_finding(
         db,
         finding,
         body,
+        tenant_id=current_user.tenant_id,
         actor_id=current_user.user_id,
         actor_type="manager",
         origin="manager",

@@ -8,9 +8,14 @@ def test_finding_has_resolution_lifecycle_columns():
     for name in (
         "resolution_miss_count", "resolved_at", "resolution_method",
         "resolution_run_id", "reopened_count", "detected_db_version",
+        "initial_detection_run_id",
+        "remediation_updated_at", "remediation_updated_by",
     ):
         assert name in cols, f"missing column {name}"
     assert cols["resolution_miss_count"].nullable is False
     assert cols["reopened_count"].nullable is False
     assert cols["detected_db_version"].nullable is True
     assert cols["resolved_at"].nullable is True
+    assert cols["initial_detection_run_id"].nullable is True
+    assert cols["remediation_updated_at"].nullable is True
+    assert cols["remediation_updated_by"].nullable is True

@@ -218,6 +218,24 @@ def build_posture_report_section(posture: dict) -> dict | None:
             "content": "\n".join(lines)}
 
 
+def build_posture_output(
+    engagement_id: uuid.UUID,
+    content: str,
+    *,
+    generated_at: datetime | None = None,
+) -> LLMOutput:
+    """Create deterministic posture text behind the mandatory human review gate."""
+    return LLMOutput(
+        engagement_id=engagement_id,
+        output_type="posture_progress",
+        prompt_hash=hashlib.sha256(content.encode()).hexdigest(),
+        model="deterministic",
+        output=content,
+        review_status=ReviewStatus.pending,
+        generated_at=generated_at or datetime.now(timezone.utc),
+    )
+
+
 async def _pending_outputs(db: AsyncSession, engagement_id: uuid.UUID, ids: list[uuid.UUID] | None):
     q = select(LLMOutput).where(
         LLMOutput.engagement_id == engagement_id,
@@ -328,15 +346,7 @@ async def _run_generation(engagement_id: str, job_id: str, opts: dict) -> None:
             posture_section = build_posture_report_section(posture_payload)
             if posture_section is not None:
                 content = posture_section["content"]
-                db.add(LLMOutput(
-                    engagement_id=eng_uuid,
-                    output_type="posture_progress",
-                    prompt_hash=hashlib.sha256(content.encode()).hexdigest(),
-                    model="deterministic",
-                    output=content,
-                    review_status=ReviewStatus.approved,
-                    generated_at=datetime.now(timezone.utc),
-                ))
+                db.add(build_posture_output(eng_uuid, content))
                 await db.flush()
                 sections += 1
         except Exception as exc:  # never let posture break the whole report

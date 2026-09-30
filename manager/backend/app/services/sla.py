@@ -70,8 +70,12 @@ def compute(finding: Finding, now: datetime | None = None,
 
     window_hours = (windows if windows is not None else _windows()).get(severity, 0)
     started = finding.first_seen or finding.created_at
-    # An approved deadline extension (services/deadlines.py) overrides the policy.
-    override = getattr(finding, "due_at", None)
+    # Only an explicitly approved extension may override the policy deadline.
+    override = (
+        getattr(finding, "due_at", None)
+        if getattr(finding, "due_at_source", None) == "extension"
+        else None
+    )
 
     # Untracked: closed finding, no SLA window (and no override), or no start time.
     if status not in _TRACKED_STATUSES or started is None or (window_hours <= 0 and override is None):

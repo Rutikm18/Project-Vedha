@@ -9,12 +9,18 @@ into a Finding row carrying severity, risk_score, MITRE technique and remediatio
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.detection import engine_bridge
 from app.models.enums import FindingSeverity, FindingStatus
+from app.services.finding_scan_provenance import (
+    SCAN_PROVENANCE_KEY,
+    record_scan_observation,
+)
 
 
 _POSTURE = {
@@ -84,3 +90,60 @@ async def test_no_posture_no_finding():
         await engine_bridge.create_findings_from_facts(db, engagement_id, result)
 
     assert [o for o in added if type(o).__name__ == "Finding"] == []
+
+
+@pytest.mark.asyncio
+async def test_posture_reaffirmation_preserves_manager_scan_provenance():
+    observed_at = datetime(2026, 9, 27, 8, 30, tzinfo=timezone.utc)
+    previous_evidence = record_scan_observation(
+        {"proof": "probe finding"},
+        scan_result_id=uuid.uuid4(),
+        scan_job_id=uuid.uuid4(),
+        scan_type="smb_scan",
+        source="probe",
+        tool="smb_scan",
+        recorded_at=observed_at,
+        initial=True,
+    )
+    trusted_provenance = previous_evidence[SCAN_PROVENANCE_KEY]
+    duplicate = SimpleNamespace(
+        evidence=previous_evidence,
+        last_seen=None,
+        detection_run_id=None,
+        resolution_miss_count=2,
+        risk_score=None,
+    )
+    incoming = {
+        **_POSTURE,
+        SCAN_PROVENANCE_KEY: {
+            "recorded_by": "scanner",
+            "schema_version": 1,
+            "initial": {"scan_result_id": str(uuid.uuid4())},
+        },
+    }
+    touched: list = []
+    db = MagicMock()
+
+    with (
+        patch.object(engine_bridge, "_resolve_asset", new=AsyncMock(return_value=None)),
+        patch.object(
+            engine_bridge,
+            "_find_open_duplicate",
+            new=AsyncMock(return_value=duplicate),
+        ),
+    ):
+        created, reaffirmed = await engine_bridge._persist_posture_findings(
+            db,
+            uuid.uuid4(),
+            uuid.uuid4(),
+            observed_at,
+            [incoming],
+            touched,
+            "db-v1",
+        )
+
+    assert created == 0
+    assert reaffirmed == 1
+    assert duplicate.evidence["title"] == _POSTURE["title"]
+    assert duplicate.evidence[SCAN_PROVENANCE_KEY] == trusted_provenance
+    assert duplicate.evidence[SCAN_PROVENANCE_KEY]["recorded_by"] == "vedha_manager"

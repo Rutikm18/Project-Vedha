@@ -109,10 +109,10 @@ export function AiReportPanel({ engagementId, findingCount }: {
   }, [jobStatus, refetchDrafts]);
 
   const genMut = useMutation({
-    mutationFn: () => fetchJson<AiReportJobStart>("/api/reports/generate", {
+    mutationFn: () => fetchJson<AiReportJobStart>(
+      `/api/engagements/${encodeURIComponent(engagementId)}/ai-report/generate`, {
       method: "POST",
       body: JSON.stringify({
-        engagementId,
         maxFindings: Math.min(Math.max(findingCount, 1), 50),
       }),
     }),

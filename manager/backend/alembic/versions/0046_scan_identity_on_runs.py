@@ -11,6 +11,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision: str = "0046"
 down_revision: Union[str, None] = "0045"
@@ -21,7 +22,10 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.add_column("scan_jobs", sa.Column("use_case_id", sa.String(64), nullable=True))
     op.add_column("scan_jobs", sa.Column("intensity", sa.String(16), nullable=True))
-    op.add_column("detection_runs", sa.Column("job_id", sa.dialects.postgresql.UUID(as_uuid=True), nullable=True))
+    op.add_column(
+        "detection_runs",
+        sa.Column("job_id", postgresql.UUID(as_uuid=True), nullable=True),
+    )
     op.create_index("ix_detection_runs_job_id", "detection_runs", ["job_id"])
 
     # Backfill run→job from the scan_result the run processed.

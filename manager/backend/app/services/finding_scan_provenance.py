@@ -8,6 +8,7 @@ record their real ScanJob and deliberately leave detection-run fields null.
 from __future__ import annotations
 
 import uuid
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
 
@@ -19,6 +20,30 @@ from app.models.finding import Finding
 SCAN_PROVENANCE_KEY = "scan_provenance"
 SCAN_PROVENANCE_RECORDER = "vedha_manager"
 SCAN_PROVENANCE_VERSION = 1
+
+
+def preserve_trusted_scan_provenance(
+    evidence: dict | None,
+    *,
+    previous_evidence: dict | None,
+) -> dict:
+    """Replace scanner evidence without losing manager-recorded scan identity.
+
+    Scanner payloads are untrusted, so any provenance block in ``evidence`` is
+    discarded. A previous block survives only when it carries the exact manager
+    recorder and schema-version contract used by this service.
+    """
+    out = dict(evidence) if isinstance(evidence, dict) else {}
+    out.pop(SCAN_PROVENANCE_KEY, None)
+    previous = previous_evidence if isinstance(previous_evidence, dict) else {}
+    provenance = previous.get(SCAN_PROVENANCE_KEY)
+    if (
+        isinstance(provenance, dict)
+        and provenance.get("recorded_by") == SCAN_PROVENANCE_RECORDER
+        and provenance.get("schema_version") == SCAN_PROVENANCE_VERSION
+    ):
+        out[SCAN_PROVENANCE_KEY] = deepcopy(provenance)
+    return out
 
 
 def record_scan_observation(
@@ -40,19 +65,13 @@ def record_scan_observation(
     stale scanner-specific fields keep their existing replacement semantics.
     Missing identifiers stay explicit ``None`` rather than being inferred.
     """
-    out = dict(evidence) if isinstance(evidence, dict) else {}
-    # Raw scanner evidence is untrusted and may itself contain a
-    # ``scan_provenance`` key. Only carry forward a block previously stamped by
-    # the manager; a scanner must never be able to forge run linkage.
-    previous = previous_evidence if isinstance(previous_evidence, dict) else {}
-    previous_provenance = previous.get(SCAN_PROVENANCE_KEY)
-    provenance = (
-        dict(previous_provenance)
-        if isinstance(previous_provenance, dict)
-        and previous_provenance.get("recorded_by") == SCAN_PROVENANCE_RECORDER
-        and previous_provenance.get("schema_version") == SCAN_PROVENANCE_VERSION
-        else {}
+    # Raw scanner evidence is untrusted and may itself contain a provenance
+    # key. Reuse the same trust boundary as every evidence-replacement path.
+    out = preserve_trusted_scan_provenance(
+        evidence,
+        previous_evidence=previous_evidence,
     )
+    provenance = dict(out.pop(SCAN_PROVENANCE_KEY, {}))
     provenance["recorded_by"] = SCAN_PROVENANCE_RECORDER
     provenance["schema_version"] = SCAN_PROVENANCE_VERSION
     timestamp = recorded_at or datetime.now(timezone.utc)
@@ -149,6 +168,10 @@ async def attach_detection_run_to_scan_findings(
         if (
             isinstance(latest_observation, dict)
             and latest_observation.get("scan_result_id") == scan_result_text
+            and (
+                finding.detection_run_id != detection_run_id
+                or latest_observation.get("detection_run_id") != run_text
+            )
         ):
             finding.detection_run_id = detection_run_id
             latest_observation = dict(latest_observation)

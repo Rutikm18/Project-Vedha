@@ -1,5 +1,66 @@
 /* Canonical live report — all selectors are scoped to avoid changing consoles. */
 
+.cr-export-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.cr-export-menu { position: relative; }
+.cr-export-menu > summary {
+  min-height: 38px;
+  list-style: none;
+  user-select: none;
+}
+.cr-export-menu > summary::-webkit-details-marker { display: none; }
+.cr-export-menu > summary[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.cr-export-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  width: min(280px, calc(100vw - 28px));
+  padding: 6px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-lg);
+}
+.cr-export-popover button {
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+}
+.cr-export-popover button:hover,
+.cr-export-popover button:focus-visible { background: var(--bg-surface); }
+.cr-export-popover strong,
+.cr-export-popover small { display: block; }
+.cr-export-popover strong { color: var(--text-primary); font-size: 12px; }
+.cr-export-popover small { margin-top: 2px; color: var(--text-muted); font-size: 10px; }
+.cr-export-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--nominal-color);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.cr-export-status[data-error="true"] {
+  max-width: 30ch;
+  color: var(--sev-critical-color);
+  white-space: normal;
+}
+
 .cr-report {
   width: min(1180px, 100%);
   margin-inline: auto;
@@ -371,7 +432,7 @@
 .cr-finding {
   overflow: hidden;
   border: 1px solid var(--border-default);
-  border-top: 3px solid var(--cr-severity);
+  border-top-color: var(--cr-severity);
   border-radius: var(--radius-md);
   background: var(--bg-panel);
 }
@@ -515,6 +576,8 @@
 }
 
 @media (max-width: 660px) {
+  .cr-export-status { display: none; }
+  .cr-export-popover { right: auto; left: 0; }
   .cr-report { border-inline: 0; border-radius: 0; }
   .cr-cover.report-cover { padding: 24px 18px; }
   .cr-cover.report-cover > dl > div { grid-template-columns: 1fr; gap: 3px; }

@@ -136,7 +136,9 @@ async def _handle_facts_ready(event: Event) -> None:
         # for a submission that was already detected. Findings absorb the repeat
         # (they reaffirm rather than duplicate), but campaign coverage maps
         # submissions to completed runs, so the phantom run corrupts that count.
-        # Detecting the same submission twice adds nothing, so don't.
+        # Detecting the same submission twice adds nothing, so don't. This is a
+        # fast path; create_findings_from_facts repeats the check while holding
+        # the engagement advisory lock, closing the concurrent-precheck race.
         # See docs/adr/0001-manager-detection-pipeline.md.
         from sqlalchemy import select as _select
         from app.models.detection_run import DetectionRun, RUN_COMPLETED
@@ -147,6 +149,13 @@ async def _handle_facts_ready(event: Event) -> None:
             ).limit(1)
         )).first()
         if already is not None:
+            from app.services.finding_scan_provenance import (
+                attach_detection_run_to_scan_findings,
+            )
+            await attach_detection_run_to_scan_findings(
+                db, sr.engagement_id, sr.id, already[0]
+            )
+            await db.commit()
             logger.info("outbox.facts_ready.already_detected",
                         scan_result_id=event.scan_result_id)
             return
@@ -177,6 +186,19 @@ async def _handle_facts_ready(event: Event) -> None:
             scan_result_id=sr.id,
             job_id=sr.job_id,
         )
+        completed_run_id = (await db.execute(
+            _select(DetectionRun.id).where(
+                DetectionRun.scan_result_id == sr.id,
+                DetectionRun.status == RUN_COMPLETED,
+            ).order_by(DetectionRun.started_at.desc()).limit(1)
+        )).scalar_one_or_none()
+        if completed_run_id is not None:
+            from app.services.finding_scan_provenance import (
+                attach_detection_run_to_scan_findings,
+            )
+            await attach_detection_run_to_scan_findings(
+                db, sr.engagement_id, sr.id, completed_run_id
+            )
         # All finding-producing paths for this scan have now run (engine here,
         # service_vuln/finding_translator at submit); stamp the unified
         # risk_score so nothing lands unprioritized. Best-effort.

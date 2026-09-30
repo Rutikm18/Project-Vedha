@@ -56,6 +56,18 @@ describe("canonical report exports", () => {
     assert.match(text, /Closure evidence count/);
     assert.match(text, /bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/);
     assert.match(text, /ISO\/IEC 27001:A\.8\.24/);
+    assert.match(text, /Derived compliance source/);
+    assert.match(text, /derived_context_only/);
+    assert.match(text, /not_assessed/);
+    assert.match(text, /not_a_certification/);
+    assert.match(text, /weak_tls/);
+    assert.match(text, /PCI DSS 4\.0/);
+    assert.match(text, /NIST SP 800-53 Rev\.5/);
+    assert.match(text, /SOC 2 \(TSC\)/);
+    assert.match(text, /HIPAA Security Rule/);
+    assert.match(text, /RBI Cyber Security Framework in Banks/);
+    assert.match(text, /generic/);
+    assert.match(text, /true/);
     assert.match(text, /closure_review_metadata_absent/);
     assert.doesNotMatch(text, /evidence-secret-report-value/);
     assert.doesNotMatch(text, /TLSv1 accepted/);
@@ -78,6 +90,7 @@ describe("canonical report exports", () => {
     for (const sheet of [
       "Overview", "Findings", "Evidence", "Remediation",
       "Closure", "Compliance", "Control Rollup", "Gaps",
+      "Derived Context", "Regional Context",
     ]) {
       assert.match(workbook, new RegExp(`name="${sheet}"`));
     }
@@ -87,8 +100,14 @@ describe("canonical report exports", () => {
     const remediation = zipEntry(file.bytes, "xl/worksheets/sheet4.xml").toString("utf8");
     const closure = zipEntry(file.bytes, "xl/worksheets/sheet5.xml").toString("utf8");
     const compliance = zipEntry(file.bytes, "xl/worksheets/sheet6.xml").toString("utf8");
+    const derivedContext = zipEntry(file.bytes, "xl/worksheets/sheet9.xml").toString("utf8");
+    const regionalContext = zipEntry(file.bytes, "xl/worksheets/sheet10.xml").toString("utf8");
     assert.match(overview, /Snapshot guarantee/);
     assert.match(overview, /repeatable_read/);
+    assert.match(overview, /Derived regional profile source/);
+    assert.match(overview, /recorded_engagement_profile/);
+    assert.match(overview, /not_assessed/);
+    assert.match(overview, /not_a_certification/);
     assert.match(evidence, /TLSv1 accepted/);
     assert.match(evidence, /retest_before/);
     assert.match(evidence, /Before-fix TLS capture/);
@@ -103,6 +122,19 @@ describe("canonical report exports", () => {
     assert.match(compliance, /Weak protocol affects/);
     assert.match(compliance, /mapping_review_required/);
     assert.match(zipEntry(file.bytes, "xl/worksheets/sheet8.xml").toString("utf8"), /closure_review_metadata_absent/);
+    assert.match(derivedContext, /Global framework pointers/);
+    assert.match(derivedContext, /PCI DSS 4\.0/);
+    assert.match(derivedContext, /NIST SP 800-53 Rev\.5/);
+    assert.match(derivedContext, /SOC 2 \(TSC\)/);
+    assert.match(derivedContext, /HIPAA Security Rule/);
+    assert.match(derivedContext, /Generic fallback/);
+    assert.match(derivedContext, />true</);
+    assert.match(regionalContext, /RBI Cyber Security Framework in Banks/);
+    assert.match(regionalContext, /CERT-In Directions 2022/);
+    assert.match(regionalContext, /Digital Personal Data Protection Act and Rules/);
+    assert.match(regionalContext, /RBI circular 2 Jun 2016 — report within 2–6 hours/);
+    assert.match(regionalContext, /DPDP Rules 2025 — breach intimation/);
+    assert.match(regionalContext, /not legal advice or a compliance attestation/);
     assert.doesNotMatch(file.bytes.toString("latin1"), /evidence-secret-report-value/);
   });
 
@@ -125,6 +157,17 @@ describe("canonical report exports", () => {
       "Retest evidence integrity",
       "after_evidence_hash_mismatch",
       "mapping_review_required",
+      "DERIVED REGIONAL COMPLIANCE CONTEXT — NOT ASSESSED",
+      "recorded_engagement_profile",
+      "RBI Cyber Security Framework in Banks",
+      "RBI circular 2 Jun 2016 — report within 2–6 hours",
+      "Derived compliance context — not assessed",
+      "PCI DSS 4.0",
+      "ISO/IEC 27001:2022",
+      "NIST SP 800-53 Rev.5",
+      "SOC 2 (TSC)",
+      "HIPAA Security Rule",
+      "Generic fallback warning",
       "COMPLIANCE CONTROL ROLLUP",
       "REPORT READINESS",
     ]) assert.match(sourceText, new RegExp(marker.replace(/[.*+?^{}()|[\]\\]/g, "\\$&")));
@@ -170,6 +213,17 @@ describe("canonical report exports", () => {
       "after_evidence_hash_mismatch",
       "mapping_review_required",
       "Weak protocol affects the recorded control objective",
+      "DERIVED REGIONAL COMPLIANCE CONTEXT — NOT ASSESSED",
+      "RBI Cyber Security Framework in Banks",
+      "CERT-In Directions 2022",
+      "DPDP Rules 2025 — breach intimation",
+      "Derived compliance context — not assessed",
+      "PCI DSS 4.0",
+      "ISO/IEC 27001:2022",
+      "NIST SP 800-53 Rev.5",
+      "SOC 2 (TSC)",
+      "HIPAA Security Rule",
+      "Generic fallback warning",
       "closure_review_metadata_absent",
     ]) assert.match(document, new RegExp(marker.replace(/[.*+?^{}()|[\]\\]/g, "\\$&")));
     assert.match(core, /2026-09-26T08:30:00\.000Z/);

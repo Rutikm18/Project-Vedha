@@ -13,7 +13,8 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, DateTime, ForeignKey, Index, String, UniqueConstraint, func, text,
+    Boolean, CheckConstraint, DateTime, ForeignKey, Index, String,
+    UniqueConstraint, func, text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -25,6 +26,11 @@ class RemediationPlan(Base, TimestampMixin):
     __tablename__ = "remediation_plans"
     __table_args__ = (
         UniqueConstraint("finding_id", "os", name="uq_remediation_finding_os"),
+        CheckConstraint(
+            "(subject_type = 'finding' AND finding_id IS NOT NULL) OR "
+            "(subject_type = 'bundle' AND fix_key IS NOT NULL)",
+            name="ck_remediation_subject",
+        ),
         Index("uq_remediation_bundle_os", "engagement_id", "fix_key", "os", unique=True,
               postgresql_where=text("subject_type = 'bundle'")),
     )

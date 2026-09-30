@@ -47,6 +47,8 @@ from app.detection.resolution import (
 )
 from app.ai.verification_graph import run_verification
 from app.config import get_settings
+from app.services.finding_events import record_event
+from app.services.finding_scan_provenance import preserve_trusted_scan_provenance
 
 logger = structlog.get_logger()
 
@@ -381,6 +383,39 @@ def _apply_regression_reopen(finding, run_id, now) -> None:
     finding.evidence = ev
 
 
+async def _record_regression_reopen(db, finding, run_id, now) -> None:
+    """Reopen a regression and persist the prior closure provenance."""
+    previous_status = finding.status
+    prior_method = finding.resolution_method
+    prior_run_id = finding.resolution_run_id
+    prior_resolved_at = finding.resolved_at
+    _apply_regression_reopen(finding, run_id, now)
+    await record_event(
+        db,
+        finding,
+        "reopened",
+        actor="detection-engine",
+        actor_type="system",
+        from_status=previous_status,
+        to_status=FindingStatus.open,
+        detail={
+            "origin": "detection_engine_regression",
+            "reason": "finding re-observed in a later detection run",
+            "run_id": str(run_id),
+            "observed_at": now.isoformat(),
+            "prior_resolution_method": prior_method,
+            "prior_resolution_run_id": (
+                str(prior_run_id) if prior_run_id is not None else None
+            ),
+            "prior_resolved_at": (
+                prior_resolved_at.isoformat()
+                if prior_resolved_at is not None
+                else None
+            ),
+        },
+    )
+
+
 async def _load_remediated_index(db, engagement_id) -> dict:
     """The regression candidates, in ONE query. See load_finding_index."""
     from app.discovery.finding_translator import load_finding_index
@@ -443,7 +478,10 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
                                              index=open_index)
             if dup is not None:
-                dup.evidence = p
+                dup.evidence = preserve_trusted_scan_provenance(
+                    p,
+                    previous_evidence=dup.evidence,
+                )
                 dup.last_seen = now
                 dup.detection_run_id = run_id
                 dup.resolution_miss_count = 0
@@ -456,8 +494,12 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                                                      title,
                                                      index=remediated_index)
             if regressed is not None:
-                _apply_regression_reopen(regressed, run_id, now)
-                regressed.evidence = {**(regressed.evidence or {}), **p, "regression": True}
+                await _record_regression_reopen(db, regressed, run_id, now)
+                previous_evidence = regressed.evidence
+                regressed.evidence = preserve_trusted_scan_provenance(
+                    {**(previous_evidence or {}), **p, "regression": True},
+                    previous_evidence=previous_evidence,
+                )
                 regressed.risk_score = Decimal(str(manager_risk)) if manager_risk is not None else None
                 touched.append(regressed)
                 reaffirmed += 1
@@ -487,6 +529,7 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                 evidence=p,
                 first_seen=now,
                 last_seen=now,
+                initial_detection_run_id=run_id,
                 detection_run_id=run_id,
                 detected_db_version=db_version,
             )
@@ -537,6 +580,7 @@ async def _engagement_device_roles(db: AsyncSession, engagement_id: uuid.UUID) -
 async def _persist_attack_paths(
     db: AsyncSession, engagement_id: uuid.UUID, run, facts: list[dict], now,
     cache: dict | None = None, open_index: dict | None = None,
+    remediated_index: dict | None = None,
     touched: list | None = None,
 ) -> int:
     """Correlate composite attack paths from the run's facts and persist them as
@@ -558,12 +602,36 @@ async def _persist_attack_paths(
                                              index=open_index)
             if dup is not None:
                 dup.severity = d["severity"]     # re-amplify if the role changed
-                dup.evidence = evidence
+                dup.evidence = preserve_trusted_scan_provenance(
+                    evidence,
+                    previous_evidence=dup.evidence,
+                )
                 dup.last_seen = now
                 dup.detection_run_id = run.id
                 dup.resolution_miss_count = 0
                 if touched is not None:
                     touched.append(dup)
+                continue
+            regressed = await _find_remediated_match(
+                db,
+                engagement_id,
+                asset_id,
+                title,
+                index=remediated_index,
+            )
+            if regressed is not None:
+                await _record_regression_reopen(db, regressed, run.id, now)
+                regressed.severity = d["severity"]
+                regressed.evidence = preserve_trusted_scan_provenance(
+                    {**evidence, "regression": True},
+                    previous_evidence=regressed.evidence,
+                )
+                if touched is not None:
+                    touched.append(regressed)
+                if remediated_index is not None:
+                    remediated_index.pop((asset_id, title), None)
+                if open_index is not None:
+                    open_index[(asset_id, title)] = regressed
                 continue
             path_finding = Finding(
                 engagement_id=engagement_id,
@@ -578,6 +646,7 @@ async def _persist_attack_paths(
                 evidence=evidence,
                 first_seen=now,
                 last_seen=now,
+                initial_detection_run_id=run.id,
                 detection_run_id=run.id,
             )
             db.add(path_finding)
@@ -660,6 +729,31 @@ async def create_findings_from_facts(
     # _lock_engagement_for_detection. Held until this transaction ends.
     await _lock_engagement_for_detection(db, engagement_id)
 
+    # The outbox is at-least-once. Its fast pre-check avoids normal replays, but
+    # two duplicate events can both pass that check before either transaction
+    # commits. Re-check under the per-engagement advisory lock so exactly one
+    # completed DetectionRun is created for a concrete ScanResult. A failed run
+    # is deliberately retryable.
+    if scan_result_id is not None:
+        completed_run_id = (
+            await db.execute(
+                select(DetectionRun.id)
+                .where(
+                    DetectionRun.scan_result_id == scan_result_id,
+                    DetectionRun.status == RUN_COMPLETED,
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if completed_run_id is not None:
+            logger.info(
+                "detection_run.scan_result_already_completed",
+                engagement_id=str(engagement_id),
+                scan_result_id=str(scan_result_id),
+                detection_run_id=str(completed_run_id),
+            )
+            return 0
+
     now = datetime.now(timezone.utc)
     db_version, db_fetched = _vuln_db_meta()
 
@@ -714,7 +808,10 @@ async def create_findings_from_facts(
                 if dup is not None:
                     # Same issue still present → reaffirm: advance last_seen and
                     # point it at this run (first_seen is preserved).
-                    dup.evidence = d
+                    dup.evidence = preserve_trusted_scan_provenance(
+                        d,
+                        previous_evidence=dup.evidence,
+                    )
                     dup.last_seen = now
                     dup.detection_run_id = run.id
                     dup.resolution_miss_count = 0   # re-observed → out of the resolution window
@@ -728,8 +825,12 @@ async def create_findings_from_facts(
                 if regressed is not None:
                     # An auto/manually-resolved issue is back → reopen the SAME row
                     # and flag the regression (its history is preserved).
-                    _apply_regression_reopen(regressed, run.id, now)
-                    regressed.evidence = {**(regressed.evidence or {}), **d, "regression": True}
+                    await _record_regression_reopen(db, regressed, run.id, now)
+                    previous_evidence = regressed.evidence
+                    regressed.evidence = preserve_trusted_scan_provenance(
+                        {**(previous_evidence or {}), **d, "regression": True},
+                        previous_evidence=previous_evidence,
+                    )
                     touched.append(regressed)
                     reaffirmed += 1
                     # Reopened rows leave the regression set and join the open one.
@@ -753,6 +854,7 @@ async def create_findings_from_facts(
                     evidence=d,
                     first_seen=now,
                     last_seen=now,
+                    initial_detection_run_id=run.id,
                     detection_run_id=run.id,
                     detected_db_version=db_version,
                 )
@@ -794,7 +896,8 @@ async def create_findings_from_facts(
         try:
             corr_new = await _persist_attack_paths(
                 db, engagement_id, run, detect_meta.get("accepted_facts") or [], now,
-                cache=asset_cache, open_index=open_index, touched=touched)
+                cache=asset_cache, open_index=open_index,
+                remediated_index=remediated_index, touched=touched)
             created += corr_new
         except Exception as exc:  # noqa: BLE001 — correlation must not sink the run
             logger.warning("detection_run.correlation_failed", error=str(exc))

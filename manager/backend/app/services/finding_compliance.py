@@ -233,6 +233,12 @@ _MAP: dict[str, dict[str, dict[str, Any]]] = {
 }
 
 
+def compliance_mapping_basis(finding: Any) -> tuple[str, bool]:
+    """Return the classified category and whether only generic pointers apply."""
+    category = classify_finding(finding)
+    return category, category == "generic" or category not in _MAP
+
+
 def compliance_for(finding: Any) -> list[dict[str, Any]]:
     """Return ``[{framework, controls, rationale}]`` for a finding, one entry per
     framework in ``FRAMEWORKS`` order. Never empty and never a blank framework:

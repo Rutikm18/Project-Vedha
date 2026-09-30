@@ -88,6 +88,36 @@ async def test_the_key_fits_a_postgres_bigint():
         assert 0 <= k <= 0x7FFFFFFFFFFFFFFF
 
 
+@pytest.mark.asyncio
+async def test_scan_result_replay_is_rechecked_after_engagement_lock():
+    """Concurrent duplicate events may both pass the outbox's unlocked fast
+    check. The serialized engine check must observe the first committed run
+    before it creates another DetectionRun for the same ScanResult."""
+    engagement_id = uuid.uuid4()
+    scan_result_id = uuid.uuid4()
+    completed_run_id = uuid.uuid4()
+    lock_result = MagicMock()
+    replay_result = MagicMock()
+    replay_result.scalar_one_or_none.return_value = completed_run_id
+    db = MagicMock()
+    db.execute = AsyncMock(side_effect=[lock_result, replay_result])
+    db.add = MagicMock()
+
+    created = await EB.create_findings_from_facts(
+        db,
+        engagement_id,
+        {"facts": [{"scanner": "tls_scan", "target": "192.0.2.10"}]},
+        scan_result_id=scan_result_id,
+    )
+
+    assert created == 0
+    assert db.add.call_count == 0
+    statements = [str(call.args[0]) for call in db.execute.await_args_list]
+    assert "pg_advisory_xact_lock" in statements[0]
+    assert "detection_runs.scan_result_id" in statements[1]
+    assert "detection_runs.status" in statements[1]
+
+
 # ── R2: redelivery must not re-detect ────────────────────────────────────────
 
 def _event(scan_result_id):

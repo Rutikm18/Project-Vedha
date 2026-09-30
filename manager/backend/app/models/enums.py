@@ -90,6 +90,7 @@ class FindingEventType(str, enum.Enum):
     extension_approved = "extension_approved"    # operator approved (due date moved)
     extension_rejected = "extension_rejected"    # operator rejected (due date unchanged)
     extension_withdrawn = "extension_withdrawn"  # customer withdrew a pending request
+    action_tracking_updated = "action_tracking_updated"  # remediation ownership or target changed
 
 
 class ScanJobType(str, enum.Enum):

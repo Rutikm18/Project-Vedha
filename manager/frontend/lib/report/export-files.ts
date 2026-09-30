@@ -109,7 +109,13 @@ const FINDING_HEADERS = [
   "Retest passed", "Retest completed", "Retest verified", "Retest before-evidence count",
   "Retest before-evidence hashes", "Retest after-evidence count", "Retest after-evidence hashes",
   "Retest integrity status", "Retest integrity gaps", "Closure gaps", "Compliance mappings",
-  "Compliance mappings rollup usable", "Compliance validation gaps", "Readiness gaps",
+  "Compliance mappings rollup usable", "Compliance validation gaps",
+  "Derived compliance source", "Derived assessment status", "Derived certification status",
+  "Derived finding category", "Derived themes", "Derived generic fallback", "Derived asset tags",
+  "Derived global control pointers", "Derived regional obligations",
+  "Regional profile source", "Regional sector", "Regional jurisdictions",
+  "Applicable regional frameworks", "Regional reporting clocks", "Regional context disclaimer",
+  "Readiness gaps",
 ];
 
 function findingRows(report: ReportDocument): Cell[][] {
@@ -182,6 +188,25 @@ function findingRows(report: ReportDocument): Cell[][] {
       .filter(Boolean).join("; "),
     finding.compliance_mappings.every((mapping) => mapping.rollup_usable) ? "true" : "false",
     finding.compliance_mappings.flatMap((mapping) => mapping.validation_gaps).join("; "),
+    finding.derived_compliance_context.source,
+    finding.derived_compliance_context.assessment_status,
+    finding.derived_compliance_context.certification_status,
+    finding.derived_compliance_context.category,
+    finding.derived_compliance_context.themes.join("; "),
+    String(finding.derived_compliance_context.used_generic_fallback),
+    finding.derived_compliance_context.asset_tags.join("; "),
+    recordedText(finding.derived_compliance_context.global_framework_pointers),
+    recordedText(finding.derived_compliance_context.regional_obligations),
+    report.derived_regional_compliance.profile_source,
+    typeof report.derived_regional_compliance.profile.sector === "string"
+      ? report.derived_regional_compliance.profile.sector
+      : "",
+    Array.isArray(report.derived_regional_compliance.profile.jurisdictions)
+      ? report.derived_regional_compliance.profile.jurisdictions.join("; ")
+      : "",
+    recordedText(report.derived_regional_compliance.frameworks),
+    recordedText(report.derived_regional_compliance.reporting_clocks),
+    report.derived_regional_compliance.disclaimer,
     finding.readiness_gaps.join("; "),
   ]);
 }
@@ -322,6 +347,10 @@ function buildXlsx(report: ReportDocument): Buffer {
     "Mapped at", "Reviewed by", "Reviewed at", "Limitations", "Customer statement", "Assessor",
     "Assessed at", "Evidence references", "Recorded reference", "Rollup usable", "Validation gaps",
   ]];
+  const derivedContextRows: Cell[][] = [[
+    "Finding ID", "Source", "Assessment status", "Certification status", "Category", "Themes",
+    "Generic fallback", "Asset tags", "Global framework pointers", "Regional obligations",
+  ]];
   const gapRows: Cell[][] = [["Level", "Finding ID", "Category", "Gap"]];
 
   function appendEvidenceRows(
@@ -389,6 +418,18 @@ function buildXlsx(report: ReportDocument): Buffer {
         mapping.recorded_reference ?? "", String(mapping.rollup_usable), mapping.validation_gaps.join("; "),
       ]);
     }
+    derivedContextRows.push([
+      finding.id,
+      finding.derived_compliance_context.source,
+      finding.derived_compliance_context.assessment_status,
+      finding.derived_compliance_context.certification_status,
+      finding.derived_compliance_context.category,
+      finding.derived_compliance_context.themes.join("; "),
+      String(finding.derived_compliance_context.used_generic_fallback),
+      finding.derived_compliance_context.asset_tags.join("; "),
+      recordedText(finding.derived_compliance_context.global_framework_pointers),
+      recordedText(finding.derived_compliance_context.regional_obligations),
+    ]);
     for (const gap of finding.readiness_gaps) gapRows.push(["Finding", finding.id, "readiness", gap]);
     for (const gap of finding.evidence.gaps) gapRows.push(["Finding", finding.id, "evidence", gap]);
     for (const gap of finding.remediation.gaps) gapRows.push(["Finding", finding.id, "remediation", gap]);
@@ -442,7 +483,65 @@ function buildXlsx(report: ReportDocument): Buffer {
     ["Compliance rollup source", report.compliance_rollup.source],
     ["Compliance rollup gap", report.compliance_rollup.gap ?? ""],
     ["Unmapped finding IDs", report.compliance_rollup.unmapped_finding_ids.join("; ")],
+    ["Derived regional context source", report.derived_regional_compliance.source],
+    ["Derived regional assessment status", report.derived_regional_compliance.assessment_status],
+    ["Derived regional certification status", report.derived_regional_compliance.certification_status],
+    ["Derived regional profile source", report.derived_regional_compliance.profile_source],
+    ["Derived regional profile", recordedText(report.derived_regional_compliance.profile)],
+    ["Derived regional asset tags", report.derived_regional_compliance.asset_tags.join("; ")],
+    ["Derived regional disclaimer", report.derived_regional_compliance.disclaimer],
   ];
+
+  const regionalContextRows: Cell[][] = [[
+    "Context type", "Context source", "Assessment status", "Certification status",
+    "Framework ID", "Framework", "Authority", "Jurisdictions", "Source reference",
+    "Granularity", "Tag-triggered", "Deadline hours", "Trigger", "Reporting reference",
+    "Profile source", "Sector", "Profile jurisdictions", "Note", "Disclaimer",
+  ], [
+    "Profile",
+    report.derived_regional_compliance.source,
+    report.derived_regional_compliance.assessment_status,
+    report.derived_regional_compliance.certification_status,
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    report.derived_regional_compliance.profile_source,
+    typeof report.derived_regional_compliance.profile.sector === "string"
+      ? report.derived_regional_compliance.profile.sector
+      : "",
+    Array.isArray(report.derived_regional_compliance.profile.jurisdictions)
+      ? report.derived_regional_compliance.profile.jurisdictions.join("; ")
+      : "",
+    "",
+    report.derived_regional_compliance.disclaimer,
+  ]];
+  for (const framework of report.derived_regional_compliance.frameworks) {
+    regionalContextRows.push([
+      "Applicable framework",
+      report.derived_regional_compliance.source,
+      report.derived_regional_compliance.assessment_status,
+      report.derived_regional_compliance.certification_status,
+      framework.framework_id, framework.name, framework.authority,
+      framework.jurisdictions.join("; "), framework.source_reference, framework.granularity,
+      String(framework.tag_triggered), "", "", "", "", "", "", framework.note ?? "", "",
+    ]);
+  }
+  for (const clock of report.derived_regional_compliance.reporting_clocks) {
+    regionalContextRows.push([
+      "Reporting clock",
+      report.derived_regional_compliance.source,
+      report.derived_regional_compliance.assessment_status,
+      report.derived_regional_compliance.certification_status,
+      clock.framework_id, clock.framework, clock.authority, "", "", "", "",
+      clock.deadline_hours, clock.trigger, clock.reference, "", "", "", "", "",
+    ]);
+  }
 
   const sheets: Array<{ name: string; rows: Cell[][] }> = [
     { name: "Overview", rows: overviewRows },
@@ -453,6 +552,8 @@ function buildXlsx(report: ReportDocument): Buffer {
     { name: "Compliance", rows: complianceRows },
     { name: "Control Rollup", rows: rollupRows },
     { name: "Gaps", rows: gapRows },
+    { name: "Derived Context", rows: derivedContextRows },
+    { name: "Regional Context", rows: regionalContextRows },
   ];
   const overrides = sheets.map((_, index) =>
     `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
@@ -508,6 +609,19 @@ export function reportLines(report: ReportDocument): ReportLine[] {
     labelled("Regulatory profiles", report.engagement.regulatory_profiles),
     labelled("Engagement metadata gaps", report.engagement.metadata_gaps),
     { text: "Compliance mappings are recorded references only; this report does not claim certification or regulatory attestation." },
+    { text: "" },
+    { text: "DERIVED REGIONAL COMPLIANCE CONTEXT — NOT ASSESSED", heading: true },
+    { text: "Derived context only. The following profile, frameworks, obligations, and reporting clocks are not assessed control results, a certification, an attestation, or legal advice." },
+    labelled("Context source", report.derived_regional_compliance.source),
+    labelled("Assessment status", report.derived_regional_compliance.assessment_status),
+    labelled("Certification status", report.derived_regional_compliance.certification_status),
+    labelled("Profile source", report.derived_regional_compliance.profile_source),
+    labelled("Sector and jurisdictions", report.derived_regional_compliance.profile),
+    labelled("Asset tags considered", report.derived_regional_compliance.asset_tags),
+    labelled("Applicable regional frameworks", report.derived_regional_compliance.frameworks),
+    labelled("Contextual reporting clocks", report.derived_regional_compliance.reporting_clocks),
+    labelled("Regional compliance disclaimer", report.derived_regional_compliance.disclaimer),
+    { text: "A listed reporting deadline is a contextual trigger reference; this report does not assert that an incident or notification trigger occurred." },
     { text: "" },
     { text: "EXECUTIVE SUMMARY", heading: true },
     labelled("Summary", report.summary),
@@ -646,6 +760,23 @@ export function reportLines(report: ReportDocument): ReportLine[] {
         [mapping.framework, mapping.control_id, mapping.control_title].filter(Boolean).join(" · ") || "Recorded mapping",
         mapping,
       ));
+    }
+    lines.push(
+      { text: "Derived compliance context — not assessed", heading: true },
+      { text: "Derived context only. These pointers are separate from recorded mappings and are not a certification, attestation, legal conclusion, or recorded control result." },
+      labelled("Derived source", finding.derived_compliance_context.source),
+      labelled("Derived assessment status", finding.derived_compliance_context.assessment_status),
+      labelled("Derived certification status", finding.derived_compliance_context.certification_status),
+      labelled("Derived category", finding.derived_compliance_context.category),
+      labelled("Derived themes", finding.derived_compliance_context.themes),
+      labelled("Asset tags considered", finding.derived_compliance_context.asset_tags),
+      labelled("Global framework control pointers", finding.derived_compliance_context.global_framework_pointers),
+      labelled("Regional obligation pointers", finding.derived_compliance_context.regional_obligations),
+    );
+    if (finding.derived_compliance_context.used_generic_fallback) {
+      lines.push({
+        text: "Generic fallback warning: this finding category used the generic control-pointer set. Confirm the classification and control applicability before customer delivery.",
+      });
     }
     lines.push(labelled("Finding readiness gaps", finding.readiness_gaps), { text: "" });
   });

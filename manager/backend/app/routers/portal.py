@@ -212,6 +212,7 @@ async def patch_portal_finding(
         db,
         finding,
         body,
+        tenant_id=user.tenant_id,
         actor_id=user.user_id,
         actor_type="customer",
         origin="portal",

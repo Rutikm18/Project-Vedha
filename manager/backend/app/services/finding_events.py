@@ -20,7 +20,6 @@ as a vertical timeline. `synthesize_events` is pure (no DB) and unit-tested alon
 """
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 from typing import Any
 
@@ -47,6 +46,7 @@ _LABELS: dict[str, str] = {
     "status_changed": "STATUS CHANGED",
     "verification_changed": "VERIFICATION UPDATED",
     "risk_changed": "RISK RESCORED",
+    "action_tracking_updated": "ACTION PLAN UPDATED",
     "note": "NOTE",
     "extension_requested": "EXTENSION REQUESTED",
     "extension_approved": "EXTENSION APPROVED",
@@ -99,8 +99,8 @@ def _detected_actor(finding) -> str:
 
 def _detected_detail(finding) -> dict:
     d: dict[str, Any] = {}
-    if getattr(finding, "detection_run_id", None):
-        d["detection_run_id"] = str(finding.detection_run_id)
+    if getattr(finding, "initial_detection_run_id", None):
+        d["initial_detection_run_id"] = str(finding.initial_detection_run_id)
     if getattr(finding, "detected_db_version", None):
         d["vuln_db_version"] = finding.detected_db_version
     sev = getattr(finding.severity, "value", finding.severity)

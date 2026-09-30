@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.enums import FindingSeverity, FindingStatus
 from app.models.finding import Finding
 from app.discovery.finding_translator import _resolve_asset, _find_open_duplicate
+from app.services.finding_scan_provenance import record_scan_observation
 
 logger = structlog.get_logger()
 
@@ -43,8 +44,9 @@ _WEAK_SSH_ALGOS = {
 }
 
 def _new_finding(engagement_id, asset, *, title, severity, description,
-                 remediation, evidence, cvss, cve_ids=None) -> Finding:
-    now = datetime.now(timezone.utc)
+                 remediation, evidence, cvss, cve_ids=None,
+                 observed_at: datetime | None = None) -> Finding:
+    now = observed_at or datetime.now(timezone.utc)
     return Finding(
         engagement_id=engagement_id,
         asset_id=asset.id if asset else None,
@@ -58,6 +60,8 @@ def _new_finding(engagement_id, asset, *, title, severity, description,
         evidence=evidence,
         first_seen=now,
         last_seen=now,
+        initial_detection_run_id=None,
+        detection_run_id=None,
     )
 
 
@@ -139,6 +143,10 @@ def _cleartext_rule(port: int, target: str) -> list[dict]:
 
 async def create_service_vuln_findings(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
+    *,
+    scan_result_id: uuid.UUID | None = None,
+    scan_job_id: uuid.UUID | None = None,
+    recorded_at: datetime | None = None,
 ) -> int:
     """Scan the result's `facts` for weak/outdated network services and persist
     Finding rows. Idempotent per (engagement, asset, title). Returns the count
@@ -148,7 +156,11 @@ async def create_service_vuln_findings(
     if not isinstance(facts, list):
         return 0
 
+    now = recorded_at or datetime.now(timezone.utc)
+    scan_type = result.get("scan_type")
+    tool = result.get("engine") or result.get("scanner")
     created = 0
+    updated = 0
     for fact in facts:
         if not isinstance(fact, dict) or fact.get("status") != "open":
             continue
@@ -169,12 +181,42 @@ async def create_service_vuln_findings(
 
         asset = await _resolve_asset(db, engagement_id, target)
         for c in candidates:
-            if await _find_open_duplicate(db, engagement_id, asset.id if asset else None, c["title"]):
+            duplicate = await _find_open_duplicate(
+                db, engagement_id, asset.id if asset else None, c["title"]
+            )
+            if duplicate:
+                duplicate.evidence = record_scan_observation(
+                    c["evidence"],
+                    scan_result_id=scan_result_id,
+                    scan_job_id=scan_job_id,
+                    scan_type=scan_type,
+                    source="probe",
+                    tool=tool,
+                    recorded_at=now,
+                    initial=False,
+                    previous_evidence=duplicate.evidence,
+                )
+                duplicate.last_seen = now
+                updated += 1
                 continue
-            db.add(_new_finding(engagement_id, asset, **c))
+            candidate = dict(c)
+            candidate["evidence"] = record_scan_observation(
+                c["evidence"],
+                scan_result_id=scan_result_id,
+                scan_job_id=scan_job_id,
+                scan_type=scan_type,
+                source="probe",
+                tool=tool,
+                recorded_at=now,
+                initial=True,
+            )
+            db.add(_new_finding(
+                engagement_id, asset, observed_at=now, **candidate
+            ))
             created += 1
 
-    if created:
+    if created or updated:
         await db.flush()
+    if created:
         logger.info("service_vuln.created", engagement_id=str(engagement_id), count=created)
     return created

@@ -82,8 +82,8 @@ export function ReportExportMenu({ engagementId, disabled = false }: {
   }
 
   return (
-    <div className="report-export-control no-print">
-      <details ref={detailsRef} className="report-export-menu">
+    <div className="cr-export-control no-print">
+      <details ref={detailsRef} className="cr-export-menu">
         <summary
           className="btn btn-secondary"
           aria-label="Export report"
@@ -96,7 +96,7 @@ export function ReportExportMenu({ engagementId, disabled = false }: {
           Export
           <ChevronDown size={13} aria-hidden />
         </summary>
-        <div className="report-export-popover" role="menu" aria-label="Report export formats">
+        <div className="cr-export-popover" role="menu" aria-label="Report export formats">
           {OPTIONS.map(({ format, label, description, icon: Icon }) => (
             <button
               key={format}
@@ -111,7 +111,7 @@ export function ReportExportMenu({ engagementId, disabled = false }: {
           ))}
         </div>
       </details>
-      <span className="report-export-status" data-error={Boolean(error) || undefined} aria-live="polite">
+      <span className="cr-export-status" data-error={Boolean(error) || undefined} aria-live="polite">
         {error || (message && <><CheckCircle2 size={12} aria-hidden />{message}</>)}
       </span>
     </div>

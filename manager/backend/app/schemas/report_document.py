@@ -315,6 +315,74 @@ class ReportComplianceMapping(BaseModel):
     validation_gaps: list[str] = Field(default_factory=list)
 
 
+class ReportDerivedGlobalControlPointer(BaseModel):
+    framework: str
+    controls: list[str] = Field(default_factory=list)
+    rationale: str
+
+
+class ReportDerivedRegionalObligationPointer(BaseModel):
+    framework_id: str
+    framework: str
+    authority: str
+    jurisdictions: list[str] = Field(default_factory=list)
+    source_reference: str
+    granularity: str
+    controls: list[str] = Field(default_factory=list)
+    rationale: str
+    note: str | None = None
+
+
+class ReportDerivedFindingComplianceContext(BaseModel):
+    source: Literal["derived_context_only"] = "derived_context_only"
+    assessment_status: Literal["not_assessed"] = "not_assessed"
+    certification_status: Literal["not_a_certification"] = "not_a_certification"
+    category: str
+    themes: list[str] = Field(default_factory=list)
+    used_generic_fallback: bool
+    asset_tags: list[str] = Field(default_factory=list)
+    global_framework_pointers: list[ReportDerivedGlobalControlPointer] = Field(
+        default_factory=list
+    )
+    regional_obligations: list[ReportDerivedRegionalObligationPointer] = Field(
+        default_factory=list
+    )
+
+
+class ReportDerivedRegionalFramework(BaseModel):
+    framework_id: str
+    name: str
+    authority: str
+    jurisdictions: list[str] = Field(default_factory=list)
+    source_reference: str
+    granularity: str
+    note: str | None = None
+    tag_triggered: bool = False
+
+
+class ReportDerivedReportingClock(BaseModel):
+    framework_id: str
+    framework: str
+    authority: str
+    deadline_hours: float
+    trigger: str
+    reference: str
+
+
+class ReportDerivedRegionalCompliance(BaseModel):
+    source: Literal["derived_context_only"] = "derived_context_only"
+    assessment_status: Literal["not_assessed"] = "not_assessed"
+    certification_status: Literal["not_a_certification"] = "not_a_certification"
+    profile_source: Literal[
+        "recorded_engagement_profile", "default_generic_profile"
+    ]
+    profile: dict[str, Any]
+    asset_tags: list[str] = Field(default_factory=list)
+    frameworks: list[ReportDerivedRegionalFramework] = Field(default_factory=list)
+    reporting_clocks: list[ReportDerivedReportingClock] = Field(default_factory=list)
+    disclaimer: str
+
+
 class ReportFinding(BaseModel):
     id: uuid.UUID
     title: str
@@ -353,6 +421,7 @@ class ReportFinding(BaseModel):
     evidence: ReportEvidence
     remediation: ReportRemediation
     compliance_mappings: list[ReportComplianceMapping] = Field(default_factory=list)
+    derived_compliance_context: ReportDerivedFindingComplianceContext
     lifecycle: list[FindingEventOut] = Field(default_factory=list)
     closure: ReportClosureProjection
     current_sla: ReportSlaProjection
@@ -410,4 +479,5 @@ class ReportDocument(BaseModel):
     summary: ReportSummary
     findings: list[ReportFinding]
     compliance_rollup: ReportComplianceRollup
+    derived_regional_compliance: ReportDerivedRegionalCompliance
     readiness: ReportReadiness
