@@ -145,7 +145,7 @@ export function Sidebar({ open, onClose, surface = "manager" }: SidebarProps) {
         boxShadow: "1px 0 0 rgba(15, 23, 42, 0.02)",
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
+        height: "100dvh",
         flexShrink: 0,
         overflowY: "auto",
       }}

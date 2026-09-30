@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useCountUp } from "../hooks/useCountUp";
 import { useConsolePath, useConsoleQuery } from "../lib/console-source";
 import { findingStatusStyle } from "../lib/severity";
+import { ErrorState } from "./states/DataState";
 
 /* ─── Types ─── */
 interface TimelinePoint { date: string; CRITICAL: number; HIGH: number; MEDIUM: number; LOW: number; }
@@ -179,27 +180,30 @@ export function DashboardCharts() {
   // Operator-only (a customer console has exactly one engagement): resolves to
   // `unavailable` in the portal, where the engagement-derived KPIs are omitted
   // rather than erroring.
-  const { data, isLoading } = useConsoleQuery<{
+  const engagementQuery = useConsoleQuery<{
     engagements?: Engagement[];
     timeline?: TimelinePoint[];
     activity?: ActivityItem[];
     stats?: Record<string, number>;
   }>("engagements");
+  const { data, isLoading } = engagementQuery;
 
   // Real findings drive the "Critical findings" table and the KEV count — same
   // queryKey as LiveOverview so React Query serves one shared, deduped request.
   // The operator endpoint paginates ({items:[…]}); the portal returns a bare
   // array. Normalise here so the table below is identical on both consoles.
-  const { data: findingsData } = useConsoleQuery<FindingPage | Finding[]>("topFindings");
+  const findingsQuery = useConsoleQuery<FindingPage | Finding[]>("topFindings");
+  const { data: findingsData, isLoading: findingsLoading } = findingsQuery;
   const findings: Finding[] = Array.isArray(findingsData)
     ? findingsData.slice(0, 5)
     : findingsData?.items ?? [];
-  const { data: findingSummary } = useConsoleQuery<FindingSummary>("findingsSummary");
+  const summaryQuery = useConsoleQuery<FindingSummary>("findingsSummary");
+  const { data: findingSummary, isLoading: summaryLoading } = summaryQuery;
 
   // Real activity feed (merged scan + finding events) — replaces the engagements
   // payload's always-empty activity array.
-  const { data: activityData, isLoading: activityLoading } =
-    useConsoleQuery<ActivityItem[]>("activity", { refetchInterval: 30_000 });
+  const activityQuery = useConsoleQuery<ActivityItem[]>("activity", { refetchInterval: 30_000 });
+  const { data: activityData, isLoading: activityLoading } = activityQuery;
   const activity: ActivityItem[] = activityData ?? [];
 
   const engagements: Engagement[] = data?.engagements ?? [];
@@ -218,8 +222,28 @@ export function DashboardCharts() {
     ...t, displayDate: i % 5 === 0 ? t.date.slice(5) : "",
   }));
 
+  const failedQueries = [engagementQuery, findingsQuery, summaryQuery, activityQuery]
+    .filter((query) => query.error);
+  const retryAll = () => {
+    void engagementQuery.refetch();
+    void findingsQuery.refetch();
+    void summaryQuery.refetch();
+    void activityQuery.refetch();
+  };
+
+  if (failedQueries.length === 4) {
+    return <ErrorState title="Dashboard trends didn't load." detail="The live data services are unavailable." onRetry={retryAll} />;
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {failedQueries.length > 0 && (
+        <div className="dashboard-partial-state" role="status">
+          <span>{failedQueries.length} dashboard {failedQueries.length === 1 ? "source is" : "sources are"} unavailable. Available data is still shown.</span>
+          <button type="button" onClick={retryAll}>Retry</button>
+        </div>
+      )}
 
       {/* ── KPI Row ── */}
       <div className="dashboard-kpi-grid">
@@ -229,7 +253,7 @@ export function DashboardCharts() {
             the LiveOverview ledger's open-findings total and engagement count. The
             two below are unique to this section (not on the ledger) and are kept. */}
         <KpiCard label="Assets Discovered"  value={isLoading ? 0 : totalAssets}       icon={<Users         size={14} />} accentColor="var(--sev-medium-color)" delay={0}  loading={isLoading} />
-        <KpiCard label="Validated Findings" value={isLoading ? 0 : validatedCount}    icon={<ShieldAlert   size={14} />} accentColor="var(--sev-high-color)"   delay={50} loading={isLoading} />
+        <KpiCard label="Validated Findings" value={summaryLoading ? 0 : validatedCount} icon={<ShieldAlert size={14} />} accentColor="var(--sev-high-color)" delay={50} loading={summaryLoading} />
       </div>
 
       {/* ── Charts Row ── */}
@@ -318,7 +342,7 @@ export function DashboardCharts() {
             </Link>
           </div>
 
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table className="responsive-table" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr className="dashboard-table-head">
                 {["Title", "Host", "Risk Score", "Status"].map((h) => (
@@ -334,7 +358,7 @@ export function DashboardCharts() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {findingsLoading ? (
                 [0, 1, 2, 3, 4].map((i) => (
                   <tr key={i} style={{ borderBottom: i < 4 ? "0.5px solid var(--border-subtle)" : "none" }}>
                     <td style={{ padding: "11px 20px" }} colSpan={4}><Bone w="90%" h={12} /></td>
@@ -351,12 +375,12 @@ export function DashboardCharts() {
                   const ss = findingStatusStyle(f.status);
                   const sev = (f.severity in SEV ? f.severity : "LOW") as keyof typeof SEV;
                   return (
-                    <tr key={f.id} className="table-row-hover stagger-item" style={{
+                    <tr key={f.id} data-card-row className="table-row-hover stagger-item" style={{
                       animationDelay: `${240 + i * 40}ms`,
                       borderBottom: i < topFindings.length - 1 ? "0.5px solid var(--border-subtle)" : "none",
                       cursor: "pointer",
                     }}>
-                      <td style={{ padding: "11px 20px", maxWidth: 280 }}>
+                      <td data-label="Finding" style={{ padding: "11px 20px", maxWidth: 280 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                           <SevBadge sev={sev} />
                           <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -364,7 +388,7 @@ export function DashboardCharts() {
                           </span>
                         </div>
                       </td>
-                      <td style={{ padding: "11px 20px" }}>
+                      <td data-label="Host" style={{ padding: "11px 20px" }}>
                         <span style={{
                           fontFamily: "var(--font-mono)", fontSize: 11,
                           color: "var(--accent)", background: "var(--accent-ghost)",
@@ -373,10 +397,10 @@ export function DashboardCharts() {
                           {f.affectedHost}
                         </span>
                       </td>
-                      <td style={{ padding: "11px 20px" }}>
+                      <td data-label="Risk score" style={{ padding: "11px 20px" }}>
                         <ScoreBar score={f.riskScore} />
                       </td>
-                      <td style={{ padding: "11px 20px" }}>
+                      <td data-label="Status" style={{ padding: "11px 20px" }}>
                         <span style={{
                           fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 600,
                           color: ss.color, background: ss.bg, borderRadius: 5, padding: "3px 8px",

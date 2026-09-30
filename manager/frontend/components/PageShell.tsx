@@ -80,7 +80,7 @@ export function PageShell({
   return (
     <div className="vedha-shell" style={{
       display: "flex",
-      height: "100vh",
+      height: "100dvh",
       fontFamily: "var(--font-body)",
       overflow: "hidden",
     }}>
@@ -126,7 +126,7 @@ export function PageShell({
           {/* Left */}
           <div className="vedha-page-header-left" style={{ display: "flex", alignItems: "center", gap: 8, flex: "1 1 0", minWidth: "min-content" }}>
             <button
-              className="md:hidden"
+              className="md:hidden touch-icon"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open sidebar"
               style={{
@@ -278,6 +278,7 @@ export function PageShell({
 
             {/* Theme toggle — rotates icon on hover */}
             <button
+              className="touch-icon"
               onClick={toggleTheme}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               style={{
@@ -333,6 +334,7 @@ export function PageShell({
                   </span>
                 </div>
                 <button
+                  className="touch-icon"
                   onClick={handleLogout}
                   title="Sign out"
                   style={{

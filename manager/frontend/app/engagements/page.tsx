@@ -190,7 +190,7 @@ export default function EngagementsPage() {
 
       {/* Table */}
       <div style={{ background: "var(--bg-panel)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflowX: "auto", boxShadow: "var(--shadow-sm)" }}>
-        <table style={{ width: "100%", minWidth: 980, borderCollapse: "collapse" }}>
+        <table className="responsive-table" style={{ width: "100%", minWidth: 980, borderCollapse: "collapse" }}>
           <thead>
             <tr>
               {["Engagement", "Client", "Status", "Scope", "Findings", "Assets", "Progress", "Dates", ""].map((h) => (
@@ -228,8 +228,8 @@ export default function EngagementsPage() {
               </tr>
             )}
             {engagements.map((eng) => (
-              <tr key={eng.id} className="card-hover" style={{ borderBottom: "1px solid var(--adv-border)" }}>
-                <td style={{ padding: "12px 14px" }}>
+              <tr key={eng.id} data-card-row className="card-hover" style={{ borderBottom: "1px solid var(--adv-border)" }}>
+                <td data-label="Engagement" style={{ padding: "12px 14px" }}>
                   <div style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-primary)", fontWeight: 600 }}>{eng.name}</div>
                   <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
                     {eng.tags.map((t) => (
@@ -237,12 +237,12 @@ export default function EngagementsPage() {
                     ))}
                   </div>
                 </td>
-                <td style={{ padding: "12px 14px", fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-secondary)" }}>{eng.client}</td>
-                <td style={{ padding: "12px 14px" }}>
+                <td data-label="Client" style={{ padding: "12px 14px", fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-secondary)" }}>{eng.client}</td>
+                <td data-label="Status" style={{ padding: "12px 14px" }}>
                   <span style={{ fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 650, color: statusColor(eng.status), background: `color-mix(in srgb, ${statusColor(eng.status)} 10%, transparent)`, border: `1px solid color-mix(in srgb, ${statusColor(eng.status)} 28%, transparent)`, borderRadius: 6, padding: "3px 7px" }}>{eng.status}</span>
                 </td>
-                <td style={{ padding: "12px 14px", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-secondary)" }}>{eng.scopeCidrs.length} CIDR{eng.scopeCidrs.length !== 1 ? "s" : ""}</td>
-                <td style={{ padding: "12px 14px" }}>
+                <td data-label="Scope" style={{ padding: "12px 14px", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-secondary)" }}>{eng.scopeCidrs.length} CIDR{eng.scopeCidrs.length !== 1 ? "s" : ""}</td>
+                <td data-label="Findings" style={{ padding: "12px 14px" }}>
                   <div style={{ display: "flex", gap: 5 }}>
                     {(["CRITICAL","HIGH","MEDIUM","LOW"] as const).map((s) => (eng.findingsBySeverity?.[s] ?? 0) > 0 ? (
                       <span title={`${s.toLowerCase()} findings`} key={s} style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 650, color: sevColor(s), background: `color-mix(in srgb, ${sevColor(s)} 9%, transparent)`, borderRadius: 5, padding: "2px 5px" }}>{s.slice(0, 1)} {eng.findingsBySeverity[s]}</span>
@@ -250,8 +250,8 @@ export default function EngagementsPage() {
                     {eng.findingCount === 0 && <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-muted)" }}>—</span>}
                   </div>
                 </td>
-                <td style={{ padding: "12px 14px", fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 650, color: "var(--text-primary)" }}>{eng.assetCount}</td>
-                <td style={{ padding: "12px 14px", minWidth: 100 }}>
+                <td data-label="Assets" style={{ padding: "12px 14px", fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 650, color: "var(--text-primary)" }}>{eng.assetCount}</td>
+                <td data-label="Progress" style={{ padding: "12px 14px", minWidth: 100 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <div style={{ flex: 1, height: 5, background: "var(--adv-panel)", borderRadius: 3, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${eng.progress}%`, background: eng.progress === 100 ? "var(--nominal-color)" : "var(--accent)", borderRadius: 3, transition: "width 0.4s ease" }} />
@@ -259,10 +259,10 @@ export default function EngagementsPage() {
                     <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-muted)", flexShrink: 0 }}>{eng.progress}%</span>
                   </div>
                 </td>
-                <td style={{ padding: "12px 14px", fontFamily: "var(--font-body)", fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                <td data-label="Dates" style={{ padding: "12px 14px", fontFamily: "var(--font-body)", fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
                   {eng.startDate} → {eng.endDate}
                 </td>
-                <td style={{ padding: "12px 14px" }}>
+                <td data-label="Action" style={{ padding: "12px 14px" }}>
                   <Link href={`/engagements/${eng.id}`}
                     style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
                     Open <ChevronRight size={12} />

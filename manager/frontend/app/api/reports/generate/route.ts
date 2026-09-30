@@ -1,53 +1,73 @@
 import { NextResponse } from "next/server";
-import { backend, bearerFrom, cookieFrom, BackendError } from "../../../../lib/backend";
+import { backend, bearerFrom, BackendError } from "../../../../lib/backend";
 
-// Report generation runs several model sections on the backend; give the proxy
-// the same generous budget the in-process generator used to have.
-export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-/**
- * POST /api/reports/generate
- *
- * BFF proxy to the backend report generator (FastAPI
- * `POST /engagements/{id}/ai-report/engagement`, or the portal equivalent).
- *
- * This route used to call Anthropic directly from Next.js, which bypassed the
- * AI gateway (hybrid pseudonymisation, sovereign in-bank models), the AI audit
- * chain and the sector brief, and let the model invent the remediation grouping.
- * The backend now loads the findings itself (no browser-supplied payload, no
- * 100-finding cap), computes the scorecard and the fix-bundle roadmap
- * deterministically, and routes every model call through the gateway.
- */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ALLOWED_KEYS = new Set(["engagementId", "sections", "maxFindings"]);
+const ALLOWED_SECTIONS = new Set(["technical_finding", "remediation"]);
+
 interface GenerateBody {
-  engagement?: { id?: string };
+  engagementId: string;
+  sections?: string[];
+  maxFindings?: number;
 }
 
-export async function POST(req: Request): Promise<Response> {
-  let body: GenerateBody;
-  try {
-    body = (await req.json()) as GenerateBody;
-  } catch {
-    return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
-  }
+function parseBody(value: unknown): GenerateBody | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const body = value as Record<string, unknown>;
+  if (Object.keys(body).some((key) => !ALLOWED_KEYS.has(key))) return null;
+  if (typeof body.engagementId !== "string" || !UUID.test(body.engagementId)) return null;
+  if (
+    body.sections !== undefined
+    && (!Array.isArray(body.sections)
+      || body.sections.some((section) => typeof section !== "string" || !ALLOWED_SECTIONS.has(section)))
+  ) return null;
+  if (
+    body.maxFindings !== undefined
+    && (typeof body.maxFindings !== "number"
+      || !Number.isInteger(body.maxFindings)
+      || body.maxFindings < 1
+      || body.maxFindings > 50)
+  ) return null;
+  return body as unknown as GenerateBody;
+}
 
-  const surface = req.headers.get("x-vedha-surface") === "portal" ? "portal" : "manager";
-  const authorization = req.headers.get("authorization") ?? "";
-  const portalToken = authorization.startsWith("Bearer ")
-    ? authorization.slice(7)
-    : cookieFrom(req, "vedha_portal_token");
-  const token = surface === "portal" ? portalToken : bearerFrom(req);
+/**
+ * Compatibility endpoint for the Reports workspace.
+ *
+ * The browser may choose the engagement and bounded generation options only.
+ * Manager re-loads the engagement and findings from PostgreSQL, then enforces
+ * tenant scope, RBAC, persistence, and human review. Caller-supplied report
+ * facts are deliberately rejected rather than forwarded to a model.
+ */
+export async function POST(request: Request): Promise<Response> {
+  const token = bearerFrom(request);
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  if (surface === "manager" && !body.engagement?.id) {
-    return NextResponse.json({ error: "engagement.id is required" }, { status: 400 });
+
+  const body = parseBody(await request.json().catch(() => null));
+  if (!body) {
+    return NextResponse.json(
+      { error: "Body must contain only a valid engagementId, optional sections, and maxFindings (1-50)." },
+      { status: 400 },
+    );
   }
 
-  const path = surface === "portal"
-    ? "/portal/ai-report/engagement"
-    : `/engagements/${encodeURIComponent(body.engagement!.id!)}/ai-report/engagement`;
+  const sections = body.sections ?? [];
   try {
-    const report = await backend<Record<string, unknown>>(path, { method: "POST", token });
-    return NextResponse.json(report);
+    const result = await backend<{ job_id: string; status: string }>(
+      `/engagements/${body.engagementId}/ai-report/generate`,
+      {
+        method: "POST",
+        token,
+        body: {
+          include_technical: sections.length === 0 || sections.includes("technical_finding"),
+          include_remediation: sections.length === 0 || sections.includes("remediation"),
+          max_findings: body.maxFindings ?? 10,
+        },
+      },
+    );
+    return NextResponse.json({ ...result, jobId: result.job_id }, { status: 202 });
   } catch (error) {
     const status = error instanceof BackendError ? error.status : 502;
     return NextResponse.json(

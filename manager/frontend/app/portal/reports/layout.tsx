@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 // opens /portal/reports directly gets an unstyled findings register — and an
 // export without the module's print rules.
 import "../../../styles/report-finding.css";
+import "../../../styles/report-document.css";
 
 export const metadata = {
   title: "Report · Vedha",

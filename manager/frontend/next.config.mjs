@@ -40,6 +40,9 @@ const nextConfig = {
   // Never ship readable browser source maps to the client, so "View source"
   // exposes only minified bundles, not original component code.
   productionBrowserSourceMaps: false,
+  // PDFKit performs font subsetting at request time. Keep it as a traced Node
+  // dependency instead of bundling its fontkit runtime into route chunks.
+  serverExternalPackages: ["pdfkit"],
   env: {
     NEXT_PUBLIC_APP_VERSION: APP_VERSION,
   },

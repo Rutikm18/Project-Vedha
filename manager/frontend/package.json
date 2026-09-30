@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "test:visual": "npm run build && playwright test",
+    "test:visual:update": "npm run build && playwright test --update-snapshots"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
@@ -17,20 +19,23 @@
     "fast-xml-parser": "^5.8.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1",
-    "next": "16.3.6",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "next": "16.3.7",
+    "pdfkit": "^0.20.2",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "recharts": "^3.8.1",
     "resend": "^6.12.4",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdfkit": "^0.17.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.6",
+    "eslint-config-next": "16.3.7",
     "tailwindcss": "^4",
     "tsx": "^4.22.3",
     "typescript": "^5"

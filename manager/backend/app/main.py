@@ -44,6 +44,7 @@ from app.routers.remediation import router as remediation_router
 from app.routers.remediation import bundles_router as remediation_bundles_router
 from app.routers.extensions import router as extensions_router
 from app.routers.engagement_report import router as engagement_report_router
+from app.routers.report_document import router as report_document_router
 from app.routers.sla_policy import engagement_router as engagement_sla_policy_router
 from app.routers.sla_policy import router as sla_policy_router
 from app.routers.scan_schedules import router as scan_schedules_router
@@ -243,6 +244,7 @@ app.include_router(remediation_router)
 app.include_router(remediation_bundles_router)
 app.include_router(extensions_router)
 app.include_router(engagement_report_router)
+app.include_router(report_document_router)
 app.include_router(sla_policy_router)
 app.include_router(engagement_sla_policy_router)
 app.include_router(integrations_router)

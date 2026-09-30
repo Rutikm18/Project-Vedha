@@ -91,7 +91,7 @@ function Dial({ score, color }: { score: number; color: string }) {
   }, [pct]);
 
   return (
-    <svg viewBox="0 0 120 120" width={132} height={132} aria-hidden focusable="false" style={{ flexShrink: 0 }}>
+    <svg viewBox="0 0 120 120" width={116} height={116} aria-hidden focusable="false" style={{ flexShrink: 0 }}>
       <circle
         cx="60" cy="60" r="46" fill="none" pathLength={100}
         stroke="var(--track-bg)" strokeWidth="7" strokeLinecap="round"
@@ -120,6 +120,7 @@ function MetricTile({ label, value, delta, hint }: {
 }) {
   return (
     <div
+      className="posture-metric"
       style={{
         flex: "1 1 120px", minWidth: 0, padding: "var(--space-3) var(--space-4)", borderRadius: "var(--r-md)",
         background: "var(--bg-surface)", border: "var(--hairline) solid var(--border-subtle)",
@@ -163,7 +164,7 @@ export function PostureScorecard() {
   };
 
   return (
-    <div style={{ display: "flex", gap: "var(--space-5)", alignItems: "center", flexWrap: "wrap", padding: "var(--space-5)", height: "100%", boxSizing: "border-box" }}>
+    <div className="posture-scorecard">
       {/* ---- dial ---------------------------------------------------------- */}
       <style>{`
         .posture-dial .dial-arc,
@@ -201,8 +202,8 @@ export function PostureScorecard() {
       </div>
 
       {/* ---- verdict + supporting metrics ---------------------------------- */}
-      <div style={{ flex: "1 1 200px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div className="posture-scorecard__main">
+        <div className="posture-scorecard__verdict">
           <span className="chip" style={{ color: g.color, background: g.bg, borderColor: g.edge, fontSize: "var(--fs-label)" }}>
             {g.read}
           </span>
@@ -212,7 +213,7 @@ export function PostureScorecard() {
           </span>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div className="posture-scorecard__metrics">
           {/* Both are 0–100 indices on the same log scale as the grade, NOT
               percentages — a 10x change in open risk moves either by ~25.
               "Exploitable" used to carry a "%" and read "share of risk", which
@@ -229,6 +230,12 @@ export function PostureScorecard() {
             delta={<Delta now={s.exploitable_score} prev={p?.exploitable_score} improvedWhenLower />}
             hint="Open risk carrying a known exploit, 0–100. Lower is better."
           />
+        </div>
+
+        <div className="posture-scorecard__movement" aria-label="Latest scan movement">
+          <span><b>{data.new_count ?? 0}</b> new</span>
+          <span><b>{data.resolved_count ?? 0}</b> patched</span>
+          <span><b>{data.persisting_count ?? 0}</b> persisting</span>
         </div>
       </div>
     </div>

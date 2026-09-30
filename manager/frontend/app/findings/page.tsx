@@ -3362,17 +3362,6 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   }, []);
   const scanValue = useCallback((s: ScanOption) => s.reference ?? s.jobId, []);
 
-  // Opening Compare with nothing chosen pre-selects the two most recent scans
-  // (newest = target B, previous = baseline A) — the "latest vs previous" diff an
-  // operator wants by default. Only fires when both are empty, so it never fights
-  // a manual pick.
-  useEffect(() => {
-    if (compareOpen && !compareA && !compareB && scanOptions.length >= 2) {
-      setCompareB(scanValue(scanOptions[0]));
-      setCompareA(scanValue(scanOptions[1]));
-    }
-  }, [compareOpen, compareA, compareB, scanOptions, scanValue]);
-
   const compareParams = new URLSearchParams();
   if (compareA) compareParams.set("a", compareA);
   if (compareB) compareParams.set("b", compareB);
@@ -3940,7 +3929,14 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                 className="findings-signal-filter findings-compare-toggle"
                 aria-pressed={compareOpen}
                 aria-expanded={compareOpen}
-                onClick={() => setCompareOpen((p) => !p)}
+                onClick={() => {
+                  const nextOpen = !compareOpen;
+                  if (nextOpen && !compareA && !compareB && scanOptions.length >= 2) {
+                    setCompareB(scanValue(scanOptions[0]));
+                    setCompareA(scanValue(scanOptions[1]));
+                  }
+                  setCompareOpen(nextOpen);
+                }}
                 style={{
                   border: `var(--hairline) solid ${compareOpen ? "var(--border-accent)" : "var(--border-subtle)"}`,
                   background: compareOpen ? "var(--accent-ghost)" : "transparent",

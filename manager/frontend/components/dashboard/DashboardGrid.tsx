@@ -19,7 +19,18 @@
 import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Gauge, Timer, Activity, Shield, GitCompareArrows, Cpu } from "lucide-react";
+import {
+  Activity,
+  AlertOctagon,
+  CheckCircle2,
+  ClockAlert,
+  Cpu,
+  Gauge,
+  GitCompareArrows,
+  Shield,
+  Timer,
+  WifiOff,
+} from "lucide-react";
 import { Panel } from "../console/Primitives";
 import { Freshness } from "../console/Freshness";
 import { DataState, SkeletonRows, EmptyState } from "../states/DataState";
@@ -42,6 +53,92 @@ const AGENT_STATUS: Record<AgentStatus, { color: string; label: string; pulse: b
   BUSY:    { color: "var(--state-busy)",    label: "Busy",    pulse: true  },
   OFFLINE: { color: "var(--text-muted)",    label: "Offline", pulse: false },
 };
+
+interface AttentionFindingSummary { criticalOpen?: number; highOpen?: number }
+interface AttentionSlaSummary { summary?: { breached?: number; atRisk?: number } }
+
+function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
+  const findings = useConsoleQuery<AttentionFindingSummary>("findingsSummary", { refetchInterval: 60_000 });
+  const sla = useConsoleQuery<AttentionSlaSummary>("sla", { refetchInterval: 60_000 });
+  const agents = useConsoleQuery<Array<{ status?: string }>>("agents", { refetchInterval: 15_000 });
+
+  const loading = findings.isLoading || sla.isLoading || agents.isLoading;
+  const failed = [findings.error, sla.error, agents.error].filter(Boolean).length;
+  const critical = findings.data?.criticalOpen ?? 0;
+  const breached = sla.data?.summary?.breached ?? 0;
+  const offline = (agents.data ?? []).filter((agent) => !["ONLINE", "BUSY"].includes(agent.status ?? "")).length;
+  const items = [
+    critical > 0 ? {
+      label: `${critical} critical ${critical === 1 ? "finding" : "findings"}`,
+      detail: "Triage and contain first",
+      tone: "var(--sev-critical-color)",
+      icon: AlertOctagon,
+      href: "/findings?severity=CRITICAL&status=open",
+    } : null,
+    breached > 0 ? {
+      label: `${breached} SLA ${breached === 1 ? "breach" : "breaches"}`,
+      detail: "Past remediation target",
+      tone: "var(--sev-high-color)",
+      icon: ClockAlert,
+      href: "/findings?sla=breached",
+    } : null,
+    offline > 0 ? {
+      label: `${offline} ${offline === 1 ? "probe" : "probes"} offline`,
+      detail: "Coverage may be incomplete",
+      tone: "var(--sev-medium-color)",
+      icon: WifiOff,
+      href: "/fleet",
+    } : null,
+  ].filter(Boolean) as Array<{
+    label: string; detail: string; tone: string; icon: React.ElementType; href: string;
+  }>;
+
+  if (loading && items.length === 0) {
+    return (
+      <section className="attention-strip attention-strip--loading" aria-label="Loading urgent work" aria-busy="true">
+        <SkeletonRows rows={1} height={58} />
+      </section>
+    );
+  }
+
+  return (
+    <section
+      className="attention-strip"
+      data-clear={items.length === 0 || undefined}
+      aria-labelledby="attention-title"
+    >
+      <div className="attention-strip__intro">
+        <span className="attention-strip__icon" aria-hidden>
+          {items.length > 0 ? <AlertOctagon size={16} /> : <CheckCircle2 size={16} />}
+        </span>
+        <div>
+          <h2 id="attention-title">Needs attention now</h2>
+          <p>
+            {items.length > 0
+              ? "Evidence-backed work ordered by immediate operational impact."
+              : "No critical findings, SLA breaches, or offline probes are recorded."}
+          </p>
+        </div>
+      </div>
+
+      {items.length > 0 && (
+        <div className="attention-strip__items">
+          {items.map(({ label, detail, tone, icon: Icon, href }) => (
+            <button key={href} type="button" onClick={() => onOpen(href)} style={{ "--attention-tone": tone } as React.CSSProperties}>
+              <Icon size={15} aria-hidden />
+              <span><strong>{label}</strong><small>{detail}</small></span>
+            </button>
+          ))}
+        </div>
+      )}
+      {failed > 0 && (
+        <span className="attention-strip__partial" role="status">
+          {failed} live {failed === 1 ? "signal is" : "signals are"} temporarily unavailable.
+        </span>
+      )}
+    </section>
+  );
+}
 
 function AgentRow({ agent }: { agent: Agent }) {
   const st = AGENT_STATUS[agent.status];
@@ -162,7 +259,8 @@ export function DashboardGrid() {
         .console-band > .panel { height: 100%; }
 
         .band-1 { grid-template-columns: minmax(0, 1fr); }
-        .band-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .band-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+        .band-2 > .panel { height: auto; }
         /* band-3: patch matrix gets slightly more width than the two exposure cards
            but not so much that they look mismatched side-by-side. */
         .band-3 { grid-template-columns: minmax(300px, 1.15fr) minmax(220px, 1fr) minmax(220px, 1fr); }
@@ -183,6 +281,8 @@ export function DashboardGrid() {
           .console-band:last-of-type { margin-bottom: 0; }
         }
       `}</style>
+
+      <NeedsAttention onOpen={(href) => router.push(href)} />
 
       <div className="console-band band-1">
         <LiveOverview
