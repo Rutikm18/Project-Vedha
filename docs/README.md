@@ -2,6 +2,8 @@
 
 Central docs map. All documentation now lives here — the repo root is clean.
 
+**Project status — what is done, what is open, what needs the owner: [STATUS.md](STATUS.md).**
+
 ## Directory structure
 
 | Directory | Holds |
