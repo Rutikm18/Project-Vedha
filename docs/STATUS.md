@@ -5,21 +5,21 @@ Claude updates it at the end of every finished piece of work: a change-log row, 
 
 ## At a glance
 
-**Production is unreachable as of 1 Oct 2026** — see the first item below. On `main`, the code for automatic AI routing, customer reporting, customer plans, a responsive dashboard and one-command HTTPS is merged; what else blocks a fully working production system is configuration and API credit, not code.
+**Production is stopped for a redeploy (1 Oct 2026, intentional).** On `main`, the code for automatic AI routing, customer reporting, customer plans, a responsive dashboard and one-command HTTPS is merged; what else blocks a fully working production system is configuration and API credit, not code.
 
 | Area | State |
 | --- | --- |
 | `origin/main` | `b6a3b60`, VERSION 1.0.330 (1 Oct 2026) |
-| Production | [app.vedhasec.com](https://app.vedhasec.com) / [api.vedhasec.com](https://api.vedhasec.com) — **down on 1 Oct**: DNS → `13.127.147.205`, but ports 443, 80 and 22 all time out. Healthy on 1.0.325 on 30 Sep |
+| Production | [app.vedhasec.com](https://app.vedhasec.com) / [api.vedhasec.com](https://api.vedhasec.com) — **stopped for a redeploy on 1 Oct** (owner). Was healthy on 1.0.325 on 30 Sep |
 | Tests | 1,965 backend tests passing at the last full run (28 Sep) |
 | AI providers | Anthropic: no API credit · OpenAI: key rejected on AWS · Gemini: works, but its key was not on the AWS server |
 | Unmerged branches | `codex/customer-portal-engagement-parity` (report document ported; remediation workspace still not) · `probe-standalone` (never merge) |
 
 The three things that matter most right now:
 
-1. Bring production back: check the EC2 instance state, its public IP vs the DNS record, and the security group.
+1. Finish the production redeploy; attach an Elastic IP so the DNS record (`13.127.147.205`) stays valid across restarts.
 2. Fix the AWS `.env` (Gemini key, OpenAI key, blank `LLM_PROVIDER`), then `make full`. This restores AI Brain and report generation.
-3. Start the security review (P0-1 in the [next-8 workstreams plan](planning/2026-09-29-next-8-workstreams-plan.md)). The portal now serves customers over the internet.
+3. Add the single-host Deep scan to the operator dashboard (P1-1) — in progress.
 
 ## Done
 
@@ -56,10 +56,10 @@ Priority order from the [next-8 workstreams plan](planning/2026-09-29-next-8-wor
 
 | Priority | Workstream | Status | Size | Next step |
 | --- | --- | --- | --- | --- |
-| P0-1 | Security review + software testing | Not started | L | Review the internet-facing portal and scan launch path before onboarding more clients |
+| P0-1 | Security review + software testing | Done | L | Done per owner (1 Oct); P0 hardening bundle `security/p0-fixes` + master test plan on `main`. The hardening items below are still present in the code |
 | P0-2 | Fix the AI integration | Blocked on you | S–M | Code done on `main`; server `.env` + API credit needed (see *Needs you*) |
 | P0-3 | Agent install in client environments | Not started | M | A clean, documented, supportable install path |
-| P1-1 | Deep scan (all 65,535 ports, one host) in the operator Scanner | Not started | S | Portal has it; bring it to the operator scanner |
+| P1-1 | Deep scan (all 65,535 ports, one host) in the operator Scanner | In progress | S | Portal has it (`08abe7e`); adding it to the operator dashboard |
 | P1-2 | Mobile-friendly UI + dashboard polish | In progress | L | Responsive dashboard landed in `f70f392`; check the remaining pages on a phone |
 | P2-1 | Website content | Not started | S | Platform choice needed |
 | P2-2 | Platform walkthrough + feature videos | Not started | M | After P1, so recordings show the final UI |
@@ -85,7 +85,7 @@ Priority order from the [next-8 workstreams plan](planning/2026-09-29-next-8-wor
 
 These need your accounts, your server or your decision.
 
-- [ ] **Production is down:** in the AWS console, check the instance is running, that its public IP matches the DNS record (`13.127.147.205`; attach an Elastic IP so it stops changing), and that the security group allows 443 / 80 / 22
+- [ ] Production redeploy (in progress, owner). Attach an Elastic IP so `13.127.147.205` in DNS survives restarts
 - [ ] On the AWS server (`/opt/Project-Vedha`): `git pull`, then in `.env` set `LLM_PROVIDER=` (blank) and add `GEMINI_API_KEY=<key>`
 - [ ] Fix `OPENAI_API_KEY` on AWS: the server's key is rejected (it appears to be missing the `sk-` prefix). Use the full `sk-proj-…` key or leave it blank
 - [ ] Run `make full`, then clear stale cooldowns:
@@ -104,7 +104,7 @@ One row per finished piece of work, newest first.
 
 | Date | Change | Ref |
 | --- | --- | --- |
-| 2026-10-01 | Refreshed after `b6a3b60`: reporting and responsive dashboard moved to Done; production found unreachable (ports 443 / 80 / 22 time out) | — |
+| 2026-10-01 | Refreshed after `b6a3b60`: reporting and responsive dashboard moved to Done; production stopped for a redeploy (owner); security review marked done (owner) | — |
 | 2026-10-01 | Status moved into the repo as `docs/STATUS.md`; added the production URLs and version (1.0.325) and the next-8 workstreams roadmap | — |
 | 2026-09-30 | First status doc, built from the repo history and earlier session notes | — |
 | 2026-09-28 | AWS AI outage diagnosed: seeded `LLM_PROVIDER=ollama`, no Anthropic credit, rejected OpenAI key, no Gemini key on the server. Code fixes pushed | `6607084` |
