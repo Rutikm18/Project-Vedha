@@ -45,6 +45,11 @@ jobs:
           tests/test_banner_pass_concurrency.py tests/test_stage_fanout_policy.py
           tests/test_tail_budget.py tests/test_syn_coverage_and_pacing.py
           tests/test_hw_bind.py tests/test_sealed_gate.py
+      - name: Installer contract (POSIX sh; the curl | sh path customers run)
+        if: runner.os != 'Windows'
+        run: |
+          sh -n install.sh
+          python -m pytest -q tests/test_installer_contract.py
       - name: doctor smoke (exits 0 on a healthy host)
         run: python -m agent.setup doctor
       - name: Generate SBOM (CycloneDX)
