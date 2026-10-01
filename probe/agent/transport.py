@@ -28,6 +28,35 @@ import httpx
 LOG = logging.getLogger("transport")
 
 
+def _websocket_ssl_context(base_url: str, verify: bool | str, cert) -> "ssl.SSLContext | None":
+    """The WebSocket's TLS settings, mirroring the HTTPS client's.
+
+    httpx gets the CA bundle / verify flag / client cert directly, but
+    websockets.connect() uses its own default context — so behind a
+    TLS-inspecting proxy (PROBE_CA_BUNDLE) the REST calls worked while every
+    wss:// handshake failed and the agent silently fell back to long-polling.
+    None means "websockets' default" (system trust store), the normal case.
+    """
+    import ssl
+
+    if not base_url.startswith("https://"):
+        return None
+    if verify is True and not cert:
+        return None
+    if verify is False:
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+    elif isinstance(verify, str):
+        context = ssl.create_default_context(cafile=verify)
+    else:
+        context = ssl.create_default_context()
+    if cert:
+        certfile, keyfile = cert if isinstance(cert, tuple) else (cert, None)
+        context.load_cert_chain(certfile, keyfile)
+    return context
+
+
 def _strip_nul(obj: Any) -> Any:
     """Recursively remove NUL (U+0000) characters from every string in a payload.
 
@@ -231,6 +260,8 @@ class Transport:
             cert = (client_cert, client_key)
         elif client_cert:
             cert = client_cert
+
+        self._ws_ssl = _websocket_ssl_context(self._base_url, verify, cert)
 
         self._client = httpx.Client(
             base_url=platform_url.rstrip("/"),
@@ -1022,6 +1053,8 @@ class Transport:
             if int(websockets.__version__.split(".", 1)[0]) < 14
             else {"additional_headers": self.auth_header}
         )
+        if self._ws_ssl is not None and self.ws_url.startswith("wss://"):
+            header_arg["ssl"] = self._ws_ssl
         ws = await websockets.connect(
             self.ws_url,
             open_timeout=15.0,
