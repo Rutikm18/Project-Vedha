@@ -62,7 +62,7 @@ const CONTROL_FIELDS = [
 ] as const;
 
 const CONTROL_TIME_FIELDS = new Set(["prepared_at", "reviewed_at", "approved_at", "issue_date"]);
-const ReportTimeZoneContext = createContext("UTC");
+export const ReportTimeZoneContext = createContext("UTC");
 
 function displayLabel(value: string): string {
   return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -746,7 +746,7 @@ function DerivedRegionalCompliance({ context }: { context: ReportDerivedRegional
   );
 }
 
-function FindingReport({ finding, ordinal }: { finding: ReportFinding; ordinal: number }) {
+export function FindingReport({ finding, ordinal }: { finding: ReportFinding; ordinal: number }) {
   const severity = toSeverity(finding.severity);
   const findingRef = `F${String(ordinal).padStart(3, "0")}`;
   const closure = finding.closure;
