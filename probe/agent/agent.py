@@ -254,8 +254,12 @@ def _preflight_scope_check(network_segments: list[str]) -> None:
     deliberately declare a remote range they route to.
     """
     if not network_segments:
-        say("⚠ PROBE_NETWORK_SEGMENTS is empty — the probe will REJECT every job.", 1)
-        say("  Set it to the CIDR(s) this probe can reach (e.g. its own /24).", 1)
+        # The normal case for an enrolled agent: its ceiling is the authorized
+        # scope in the Manager's signed Site policy (the engagement scope for an
+        # install token), loaded after enrolment. Startup stops with a clear
+        # message if that policy turns out to authorize nothing.
+        say("Scan range: from the Manager's Site policy after enrolment "
+            "(set PROBE_NETWORK_SEGMENTS only to narrow it further).", 1)
         return
     ip = _detect_primary_ipv4()
     if not ip:

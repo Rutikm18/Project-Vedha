@@ -591,29 +591,44 @@ if [ -n "$_img_arch" ] && [ "$_img_arch" != "$_host_arch" ]; then
   say "  emulation (slow) or fail to start. Prefer an image built for $_host_arch."
 fi
 
-# Keep the host-bound license identity stable when the bootstrap container is
-# recreated without its PAT. A locally administered MAC derived from the
-# container name is deterministic and does not collide with vendor OUIs.
-if [ -z "${PROBE_MAC_ADDRESS:-}" ]; then
-  PROBE_MAC_ADDRESS="$(docker run --rm --network none --read-only \
-    --cap-drop ALL --security-opt no-new-privileges:true --user 10001:10001 \
-    --entrypoint python "$IMAGE" -c \
-    'import hashlib,sys; d=hashlib.sha256(sys.argv[1].encode()).digest(); print("02:42:%02x:%02x:%02x:%02x" % tuple(d[:4]))' \
-    "$NAME")"
-fi
-if [ -z "${PROBE_HW_ID:-}" ]; then
-  PROBE_HW_ID="$(docker run --rm --read-only --cap-drop ALL \
-    --security-opt no-new-privileges:true --pids-limit 64 --user 10001:10001 \
-    --hostname "$NAME" --mac-address "$PROBE_MAC_ADDRESS" \
-    --entrypoint python "$IMAGE" -c \
-    'from agent.hw_bind import get_hw_id; print(get_hw_id())' 2>/dev/null || true)"
-  if [ -z "$PROBE_HW_ID" ]; then
-    say "ERROR: could not derive the probe hardware id."
-    say "  If your Docker is rootless or Docker Desktop, it may reject --mac-address,"
-    say "  which the host-license binding requires. Use a rootful Docker Engine, or set"
-    say "  PROBE_MAC_ADDRESS + PROBE_HW_ID explicitly for a MAC-independent enrollment."
-    exit 1
+# Host binding is a LICENSING control: it only exists for the licensed agent
+# (LICENSE_ENFORCED=true). It pins a deterministic container MAC and records the
+# hardware id derived from it. The standard agent skips it entirely — on hosts
+# where --mac-address is rejected or silently ignored (rootless Docker, Podman,
+# a Docker CLI older than its daemon) every container gets a random MAC, the id
+# changes, and the agent would refuse to start.
+if [ "$LICENSE_ENFORCED" = "true" ]; then
+  # A locally administered MAC derived from the container name is deterministic
+  # and does not collide with vendor OUIs.
+  if [ -z "${PROBE_MAC_ADDRESS:-}" ]; then
+    PROBE_MAC_ADDRESS="$(docker run --rm --network none --read-only \
+      --cap-drop ALL --security-opt no-new-privileges:true --user 10001:10001 \
+      --entrypoint python "$IMAGE" -c \
+      'import hashlib,sys; d=hashlib.sha256(sys.argv[1].encode()).digest(); print("02:42:%02x:%02x:%02x:%02x" % tuple(d[:4]))' \
+      "$NAME")"
   fi
+  if [ -z "${PROBE_HW_ID:-}" ]; then
+    # Prints the hardware id only when the requested MAC really took effect.
+    PROBE_HW_ID="$(docker run --rm --read-only --cap-drop ALL \
+      --security-opt no-new-privileges:true --pids-limit 64 --user 10001:10001 \
+      --hostname "$NAME" --mac-address "$PROBE_MAC_ADDRESS" \
+      --entrypoint python "$IMAGE" -c \
+      'import sys, uuid
+from agent.hw_bind import get_hw_id
+want = int(sys.argv[1].replace(":", ""), 16)
+raise SystemExit(print(get_hw_id()) if uuid.getnode() == want else 3)' \
+      "$PROBE_MAC_ADDRESS" 2>/dev/null || true)"
+    if [ -z "$PROBE_HW_ID" ]; then
+      say "ERROR: this Docker cannot pin the container MAC address that the licensed agent's"
+      say "  host binding needs (rootless Docker, Podman, Docker Desktop, or a Docker CLI older"
+      say "  than its daemon). Use a rootful Docker Engine with matching client and daemon, or"
+      say "  set PROBE_MAC_ADDRESS + PROBE_HW_ID explicitly."
+      exit 1
+    fi
+  fi
+else
+  PROBE_MAC_ADDRESS=""
+  PROBE_HW_ID=""
 fi
 
 # Images before the non-root hardening ran as root and may have left the named
@@ -688,12 +703,13 @@ if not 1 <= seconds <= 86400:
     raise SystemExit("PROBE_MAX_JOB_SECONDS must be 1..86400")
 if not 1 <= timeout <= 600:
     raise SystemExit("PROBE_REGISTRATION_TIMEOUT must be 1..600")
-if not re.fullmatch(r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", mac):
-    raise SystemExit("PROBE_MAC_ADDRESS must be a colon-separated MAC address")
-if int(mac[:2], 16) & 1:
-    raise SystemExit("PROBE_MAC_ADDRESS must be unicast")
-if not re.fullmatch(r"[0-9a-f]{32}", hwid):
-    raise SystemExit("PROBE_HW_ID must be a 32-character lowercase hex fingerprint")
+if licensing == "true" or mac or hwid:
+    if not re.fullmatch(r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", mac):
+        raise SystemExit("PROBE_MAC_ADDRESS must be a colon-separated MAC address")
+    if int(mac[:2], 16) & 1:
+        raise SystemExit("PROBE_MAC_ADDRESS must be unicast")
+    if not re.fullmatch(r"[0-9a-f]{32}", hwid):
+        raise SystemExit("PROBE_HW_ID must be a 32-character lowercase hex fingerprint")
 if not 1 <= len(name) <= 255 or "\n" in name or "\r" in name:
     raise SystemExit("PROBE_NAME must be a single line of 1..255 characters")
 parsed = urlparse(url)
@@ -818,7 +834,9 @@ write_env_file() {
     printf 'PROBE_NETWORK_SEGMENTS=%s\n' "$PROBE_NETWORK_SEGMENTS"
     printf 'PROBE_MAX_TARGETS=%s\n' "$PROBE_MAX_TARGETS"
     printf 'PROBE_MAX_JOB_SECONDS=%s\n' "$PROBE_MAX_JOB_SECONDS"
-    printf 'HW_BIND_FINGERPRINT=%s\n' "$PROBE_HW_ID"
+    if [ -n "$PROBE_HW_ID" ]; then
+      printf 'HW_BIND_FINGERPRINT=%s\n' "$PROBE_HW_ID"
+    fi
     if [ -n "$PROBE_ENROLL_TOKEN" ]; then
       # Pre-authorized, Site-bound enrollment token. Consumed once on first boot
       # to auto-approve; the durable identity is the device key + refresh secret.
@@ -847,7 +865,7 @@ write_env_file() {
 run_probe_container() {
   write_env_file
   docker run -d --name "$NAME" --hostname "$NAME" \
-    --mac-address "$PROBE_MAC_ADDRESS" --restart unless-stopped \
+    ${PROBE_MAC_ADDRESS:+--mac-address "$PROBE_MAC_ADDRESS"} --restart unless-stopped \
     --read-only \
     --tmpfs /tmp:size=64m,mode=1777 \
     --cap-drop ALL \

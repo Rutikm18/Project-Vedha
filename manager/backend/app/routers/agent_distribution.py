@@ -86,7 +86,7 @@ def install_commands(manager_url: str, token: str | None = None) -> dict[str, st
     }
 
 
-@router.get("/install.sh", include_in_schema=False)
+@router.api_route("/install.sh", methods=["GET", "HEAD"], include_in_schema=False)
 async def install_script() -> Response:
     try:
         release = load_current_release()
@@ -116,7 +116,7 @@ def _release_or_503() -> agent_release.AgentRelease:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "No agent release is available") from exc
 
 
-@router.get("/manifest.json", include_in_schema=False)
+@router.api_route("/manifest.json", methods=["GET", "HEAD"], include_in_schema=False)
 async def manifest() -> Response:
     release = _release_or_503()
     return FileResponse(
@@ -126,7 +126,7 @@ async def manifest() -> Response:
     )
 
 
-@router.get("/manifest.json.sig", include_in_schema=False)
+@router.api_route("/manifest.json.sig", methods=["GET", "HEAD"], include_in_schema=False)
 async def manifest_signature() -> Response:
     release = _release_or_503()
     if not release.signed:
@@ -151,7 +151,7 @@ async def _rate_limit_download(redis, request: Request) -> None:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many agent downloads; wait a minute")
 
 
-@router.get("/image/{arch}", include_in_schema=False)
+@router.api_route("/image/{arch}", methods=["GET", "HEAD"], include_in_schema=False)
 async def agent_image(arch: str, request: Request, db: DB, redis: RedisConn) -> Response:
     await _rate_limit_download(redis, request)
 

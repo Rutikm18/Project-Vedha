@@ -67,6 +67,7 @@ def test_manager_accepts_what_the_tool_builds(tmp_path, key):
 
     assert calls == [("vedha-agent:1.0.500-amd64", "amd64"), ("vedha-agent:1.0.500-arm64", "arm64")]
     assert (tmp_path / "out" / "CURRENT").read_text().strip() == "1.0.500"
+    assert oct(final.stat().st_mode & 0o777) == "0o755"  # readable by a non-root manager
     release = agent_release.load_release(tmp_path / "out", public, require_signature=True)
     assert release.version == "1.0.500" and release.signed
     assert release.arches == ["amd64", "arm64"]

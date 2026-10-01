@@ -204,6 +204,8 @@ def build_release(
     if final.exists():
         raise ReleaseError(f"{final} already exists — releases are immutable; bump VERSION")
     staging = Path(tempfile.mkdtemp(prefix=f".{version}-", dir=out))
+    # mkdtemp is 0700; the manager may read the store as a non-root user.
+    staging.chmod(0o755)
     try:
         installer = staging / "install.sh"
         embed_installer(installer_source, installer, spki_b64=spki_b64_from_raw(raw_b64), version=version)
