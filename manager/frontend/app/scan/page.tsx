@@ -13,7 +13,7 @@ import { PageShell } from "../../components/PageShell";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { useToast } from "../../hooks/useToast";
 import { createScannerWorkspaceApi, type ScannerWorkspaceSurface } from "../../lib/scanner-workspace-api";
-import type { ScanLaunchBody } from "../../lib/scan-launch";
+import { DEEP_SCAN_UC, buildDeepScanLaunch, type ScanLaunchBody } from "../../lib/scan-launch";
 import { INTENSITY, type Intensity } from "../../lib/scan-intensity";
 import { launchableModes, modeShort } from "../../lib/entitlements";
 import { DeepScanCard } from "../../components/portal/DeepScanCard";
@@ -101,8 +101,6 @@ interface EngineManifest {
 ══════════════════════════════════════════════════════ */
 
 const NETWORK_VA_ID = "uc_network_va";
-/** Portal Deep scan runs this capability on exactly one asset (manager-pinned). */
-const DEEP_SCAN_UC = "uc_deep_port_sweep";
 // Product decision: the Scanner surface currently exposes only the complete
 // Network VA workflow. The catalog and Manager capabilities remain intact so
 // specialized use cases can be enabled later without a backend migration.
@@ -859,16 +857,16 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
     await dispatch(buildLaunchBody(), selectedUc);
   }
 
-  /** Portal Deep scan: every port on exactly one asset. The manager pins the
-   *  use case, preset and the single target; this only names the intent. */
+  /** Deep scan: every port on exactly one asset. On the portal the manager pins
+   *  the use case, preset and target and charges the plan; on the operator
+   *  Scanner it is a plain enqueue that is never charged to the customer. */
   async function launchDeep(ip: string) {
     if (!selectedEng) { toastErr("Select an engagement"); return; }
     const probe = deepProbes.find((p) => !p.current_job_id) ?? deepProbes[0];
-    await dispatch({
-      engagement_id: selectedEng, use_case_id: DEEP_SCAN_UC, targets: [ip],
-      intensity: "aggressive", preferred_agent_id: probe?.id,
-      params: { scan_mode: "deep" },
-    }, DEEP_SCAN_UC);
+    await dispatch(buildDeepScanLaunch({
+      engagementId: selectedEng, ip, probeId: probe?.id,
+      audience: isPortal ? "portal" : "operator",
+    }), DEEP_SCAN_UC);
   }
 
   async function dispatch(body: ScanLaunchBody, launchedUc: string) {
@@ -1229,9 +1227,14 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
           </div>
         </div>
 
-        {/* ── Portal Deep scan: one asset, every port (only when the plan includes it) ── */}
+        {/* ── Deep scan: one asset, every port. Portal: only when the plan includes
+             it. Operator: always — unlimited, never charged to the customer. ── */}
         {isPortal && plan?.modes?.deep?.enabled && (
           <DeepScanCard plan={plan} scope={selectedEngagement?.scopeCidrs ?? []}
+            probeReady={deepProbes.length > 0} launching={launching} onLaunch={(ip) => void launchDeep(ip)} />
+        )}
+        {!isPortal && (
+          <DeepScanCard plan={null} scope={selectedEngagement?.scopeCidrs ?? []}
             probeReady={deepProbes.length > 0} launching={launching} onLaunch={(ip) => void launchDeep(ip)} />
         )}
 

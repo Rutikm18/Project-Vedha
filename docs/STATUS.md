@@ -19,7 +19,7 @@ The three things that matter most right now:
 
 1. Finish the production redeploy; attach an Elastic IP so the DNS record (`13.127.147.205`) stays valid across restarts.
 2. Fix the AWS `.env` (Gemini key, OpenAI key, blank `LLM_PROVIDER`), then `make full`. This restores AI Brain and report generation.
-3. Add the single-host Deep scan to the operator dashboard (P1-1) — in progress.
+3. Agent install in client environments (P0-3) — the next roadmap item not yet started.
 
 ## Done
 
@@ -27,6 +27,7 @@ Merged and pushed to `origin/main`, newest first.
 
 | Shipped | Area | What | Ref |
 | --- | --- | --- | --- |
+| 1 Oct 2026 | Scanner | Operator Scanner gets the single-asset Deep scan card (every TCP port on one IP); never charged to the customer's Deep allowance | `feat/operator-deep-scan` |
 | 1 Oct 2026 | Reports | Complete customer security reporting: canonical report document, scan provenance (ported from the Codex branch, migrations renumbered to 0050 / 0051, no model picker) | `82492a7`, `b6a3b60` |
 | 30 Sep 2026 | UI | Responsive dashboard and canonical reporting | `f70f392` |
 | 29 Sep 2026 | Deploy | One-command HTTPS: `make tls DOMAIN=… EMAIL=…` and the `./setup-https.sh` wizard; production live on vedhasec.com | `17df1b4`–`fbaa397` |
@@ -59,7 +60,7 @@ Priority order from the [next-8 workstreams plan](planning/2026-09-29-next-8-wor
 | P0-1 | Security review + software testing | Done | L | Done per owner (1 Oct); P0 hardening bundle `security/p0-fixes` + master test plan on `main`. The hardening items below are still present in the code |
 | P0-2 | Fix the AI integration | Blocked on you | S–M | Code done on `main`; server `.env` + API credit needed (see *Needs you*) |
 | P0-3 | Agent install in client environments | Not started | M | A clean, documented, supportable install path |
-| P1-1 | Deep scan (all 65,535 ports, one host) in the operator Scanner | In progress | S | Portal has it (`08abe7e`); adding it to the operator dashboard |
+| P1-1 | Deep scan (all 65,535 ports, one host) in the operator Scanner | Done | S | Card on the operator Scanner; the ≤3-host Deep Port Sweep stays in the catalog (hidden while `SHOW_EXTENDED_USE_CASES = false`) |
 | P1-2 | Mobile-friendly UI + dashboard polish | In progress | L | Responsive dashboard landed in `f70f392`; check the remaining pages on a phone |
 | P2-1 | Website content | Not started | S | Platform choice needed |
 | P2-2 | Platform walkthrough + feature videos | Not started | M | After P1, so recordings show the final UI |
@@ -76,6 +77,7 @@ Priority order from the [next-8 workstreams plan](planning/2026-09-29-next-8-wor
 | Legacy OTP auth still in `manager/frontend/lib/auth-store.ts` | Security | Not started | In-memory OTP store left over from old auth. Confirm unused, then remove. |
 | Operator console has no role gate *(from notes)* | Portal | Not started | A portal customer can reach the operator login and gets a confusing refusal. |
 | AI Brain chain panel not checked in a browser | AI / UI | Not started | Type check and lint pass; visual check still to do. |
+| Frontend packages `pdfkit` and `@playwright/test` missing from the installed `node_modules` | Frontend | Blocked on you | Declared by the 30 Sep / 1 Oct reporting and responsive commits but not installed: `tests/report-export*.test.ts` fail and `tsc` reports 3 errors until `npm install` runs in `manager/frontend`. |
 | Batch lane for reports (about 50% cheaper) | AI | Deferred | Makes report generation an hours-long async job — a product decision. |
 | Node CLI calls Anthropic directly | AI | Deferred | `manager/frontend/cli` bypasses the manager's gateway and fallback. Operator-local, not on the customer data path. |
 | Portal Spec 2 (incident IDs `VDH-####`) and Spec 3 (integrations) *(from notes)* | Portal | Deferred | Each needs its own spec. |
@@ -93,6 +95,7 @@ These need your accounts, your server or your decision.
 - [ ] Re-run the AI diagnostic and confirm `GENERATE OK -> served by gemini`
 - [ ] Rotate the OpenAI key: a fragment of it was written to the AWS API logs before the scrub fix
 - [ ] Add Anthropic API credit at console.anthropic.com so Claude answers first (Claude Pro/Max subscriptions do not include API access)
+- [ ] Run `npm install` in `manager/frontend` (adds `pdfkit` and `@playwright/test`, which the reporting work needs). Other sessions share that `node_modules`, so I left it to you
 - [ ] Optional: add a free `GROQ_API_KEY` as a second free fallback, and set `AI_DAILY_CAP_USD` (e.g. `anthropic=20,openai=10`)
 - [ ] Decide the roadmap questions in the [next-8 workstreams plan](planning/2026-09-29-next-8-workstreams-plan.md#decisions-needed-from-you): P0 order, which paid AI API and monthly cap, sealed agent image by default, retire the ≤3-host deep scan, website platform and video voice
 - [ ] Decide: port the Codex branch's remediation workspace onto `main`?
@@ -104,6 +107,7 @@ One row per finished piece of work, newest first.
 
 | Date | Change | Ref |
 | --- | --- | --- |
+| 2026-10-01 | Operator Deep scan (P1-1) done: same one-asset card as the portal, never charged to the customer; checked live in the browser; 2,139 backend tests pass; frontend 337 of 339 (the 2 failures are the missing `pdfkit` / `@playwright/test` packages) | `feat/operator-deep-scan` |
 | 2026-10-01 | Refreshed after `b6a3b60`: reporting and responsive dashboard moved to Done; production stopped for a redeploy (owner); security review marked done (owner) | — |
 | 2026-10-01 | Status moved into the repo as `docs/STATUS.md`; added the production URLs and version (1.0.325) and the next-8 workstreams roadmap | — |
 | 2026-09-30 | First status doc, built from the repo history and earlier session notes | — |

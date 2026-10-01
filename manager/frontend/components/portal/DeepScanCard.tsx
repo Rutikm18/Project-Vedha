@@ -1,9 +1,12 @@
 "use client";
 
 /* Deep scan — every TCP port plus the full assessment, on exactly ONE asset.
-   The customer enters a single IP; the card explains the plan's rules before
-   they spend a scan (one asset only, in scope, repeat policy, what's left).
-   The manager re-validates all of it — this is the explanation, not the gate. */
+   Shown on both Scanners. On the portal the customer enters a single IP and the
+   card explains the plan's rules before they spend a scan (one asset only, in
+   scope, repeat policy, what's left). On the operator Scanner there is no plan
+   (`plan={null}`): operators are unlimited and the card says the scan is not
+   charged to the customer. The manager re-validates everything — this is the
+   explanation, not the gate. */
 
 import { useState } from "react";
 import { Crosshair, Loader, Play } from "lucide-react";
@@ -12,6 +15,7 @@ import type { Entitlement } from "../../lib/entitlements";
 /** Client-side pre-check for a single asset. Returns a sentence, or null. */
 export function deepTargetProblem(
   raw: string, scope: string[], history: string[], distinct: boolean,
+  scopeLabel = "your authorized scope",
 ): string | null {
   const value = raw.trim();
   if (!value) return "Enter the one IP address to deep-scan.";
@@ -22,7 +26,7 @@ export function deepTargetProblem(
   if (v4 && v4.slice(1, 5).some((o) => Number(o) > 255)) return `'${value}' isn't an IP address.`;
   const host = value.replace(/\/(32|128)$/, "");
   if (v4 && scope.length && !scope.some((cidr) => ipv4InCidr(host, cidr)))
-    return `${host} is outside your authorized scope.`;
+    return `${host} is outside ${scopeLabel}.`;
   if (distinct && history.some((t) => t.replace(/\/(32|128)$/, "") === host))
     return `${host} has already had a deep scan. Your plan allows one per asset — choose another.`;
   return null;
@@ -44,8 +48,45 @@ function ipv4InCidr(ip: string, cidr: string): boolean {
   return (a & mask) === (b & mask);
 }
 
+export interface DeepScanCopy {
+  badge: string;
+  rules: string[];
+  footer: string;
+  scopeLabel: string;
+}
+
+/** Everything the card says, for a customer plan or (null) the operator. */
+export function deepScanCopy(plan: Entitlement | null): DeepScanCopy {
+  if (!plan) {
+    const scopeLabel = "this engagement's scope";
+    return {
+      badge: "Operator · not counted",
+      rules: [
+        `Exactly one asset per deep scan — a single IP inside ${scopeLabel}.`,
+        "Operator scans don't use the customer's Deep allowance and can repeat an asset.",
+      ],
+      footer: "Runs on the engagement's scope and doesn't use the customer's Deep allowance.",
+      scopeLabel,
+    };
+  }
+  const scopeLabel = "your authorized scope";
+  const left = plan.modes.deep.left;
+  return {
+    badge: left == null ? "Unlimited" : `${left} left`,
+    rules: [
+      `Exactly one asset per deep scan — a single IP inside ${scopeLabel}.`,
+      plan.deep_repeat_policy === "distinct"
+        ? "Each deep scan must be a different asset."
+        : "You may deep-scan the same asset again.",
+    ],
+    footer: "Uses 1 deep scan from your plan.",
+    scopeLabel,
+  };
+}
+
 export function DeepScanCard({ plan, scope, probeReady, launching, onLaunch }: {
-  plan: Entitlement;
+  /** The customer's plan on the portal; null on the operator Scanner. */
+  plan: Entitlement | null;
   scope: string[];
   probeReady: boolean;
   launching: boolean;
@@ -53,10 +94,11 @@ export function DeepScanCard({ plan, scope, probeReady, launching, onLaunch }: {
 }) {
   const [ip, setIp] = useState("");
   const [touched, setTouched] = useState(false);
-  const deep = plan.modes.deep;
-  const distinct = plan.deep_repeat_policy === "distinct";
-  const problem = deepTargetProblem(ip, scope, plan.deep_scanned_targets, distinct);
-  const blocked = !deep.can_scan ? deep.reason : !probeReady
+  const copy = deepScanCopy(plan);
+  const history = plan?.deep_scanned_targets ?? [];
+  const distinct = plan?.deep_repeat_policy === "distinct";
+  const problem = deepTargetProblem(ip, scope, history, distinct, copy.scopeLabel);
+  const blocked = plan && !plan.modes.deep.can_scan ? plan.modes.deep.reason : !probeReady
     ? "No online vedha-agent can run a deep scan right now." : null;
 
   return (
@@ -69,16 +111,13 @@ export function DeepScanCard({ plan, scope, probeReady, launching, onLaunch }: {
           <p>Every one of the 65,535 TCP ports plus the full assessment (banners, OS, TLS/SMB/DB/RDP)
             on a single host. Takes 20–90 minutes.</p>
         </div>
-        <span className="dsc-left">{deep.left == null ? "Unlimited" : `${deep.left} left`}</span>
+        <span className="dsc-left">{copy.badge}</span>
       </header>
 
       <ul className="dsc-rules">
-        <li>Exactly <b>one asset</b> per deep scan — a single IP inside your authorized scope.</li>
-        <li>{distinct
-          ? <>Each deep scan must be a <b>different asset</b>.</>
-          : <>You may deep-scan the <b>same asset again</b>.</>}</li>
-        {plan.deep_scanned_targets.length > 0 && (
-          <li>Already deep-scanned: {plan.deep_scanned_targets.map((t) => (
+        {copy.rules.map((rule) => <li key={rule}>{rule}</li>)}
+        {history.length > 0 && (
+          <li>Already deep-scanned: {history.map((t) => (
             <code key={t}>{t.replace(/\/(32|128)$/, "")}</code>
           ))}</li>
         )}
@@ -102,7 +141,7 @@ export function DeepScanCard({ plan, scope, probeReady, launching, onLaunch }: {
         </button>
       </form>
       <p id="deep-scan-msg" className="dsc-msg" role={blocked || (touched && problem) ? "alert" : undefined}>
-        {blocked ?? (touched ? problem : null) ?? "Uses 1 deep scan from your plan."}
+        {blocked ?? (touched ? problem : null) ?? copy.footer}
       </p>
     </section>
   );
