@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
@@ -33,7 +33,6 @@ from app.models.enums import (
 from app.models.finding import Finding
 from app.models.llm_output import LLMOutput
 from app.models.probe_enrollment import ProbeEnrollmentRequest
-from app.models.probe_site import ProbeSite
 from app.models.remediation_plan import RemediationPlan
 from app.models.scan_job import ScanJob
 from app.models.scan_request import ScanRequest, SR_PENDING
@@ -1221,6 +1220,7 @@ async def portal_workspace_fleet_approve(
         _keyed_hash,
         _next_probe_name,
         _provision_agent_for_site,
+        engagement_site,
     )
 
     engagement_id = assert_client(user)
@@ -1275,14 +1275,7 @@ async def portal_workspace_fleet_approve(
     probe_name = (body.probe_name or "").strip()
     if not probe_name:
         probe_name = await _next_probe_name(db, user.tenant_id)
-    site = ProbeSite(
-        tenant_id=user.tenant_id,
-        name=f"engagement-{str(engagement_id)[:8]}-{str(request_row.id)[:8]}",
-        status="active",
-        authorized_cidrs=authorized_cidrs,
-        excluded_cidrs=list(engagement.excluded_cidrs or []),
-        approved_capabilities=capabilities,
-    )
+    site = engagement_site(engagement, user.tenant_id, request_row)
     db.add(site)
     await db.flush()
 
@@ -1315,6 +1308,115 @@ async def portal_workspace_fleet_approve(
         "state": request_row.state,
         "probe_name": probe_name,
     }
+
+
+class PortalInstallTokenCreate(BaseModel):
+    """Fleet → Add agent. The browser picks only a label; the engagement, scope,
+    lifetime (24 h) and single use are fixed server-side."""
+
+    name: str | None = Field(default=None, max_length=120)
+
+
+@router.get("/workspace/fleet/install",
+            summary="What the customer needs to install the vedha-agent")
+async def portal_workspace_fleet_install(request: Request, user: ClientUser, db: DB):
+    from app.routers.agent_distribution import release_status
+    from app.routers.probe_enrollment import engagement_enrollment_blocker
+
+    engagement_id = assert_client(user)
+    engagement = (await db.execute(
+        select(Engagement).where(
+            Engagement.id == engagement_id,
+            Engagement.tenant_id == user.tenant_id,
+        )
+    )).scalar_one_or_none()
+    return {
+        **release_status(detailed=False, request=request),
+        "can_add_agent": engagement_enrollment_blocker(engagement) is None,
+        "blocker": engagement_enrollment_blocker(engagement),
+    }
+
+
+@router.post("/workspace/fleet/enroll-tokens", status_code=status.HTTP_201_CREATED,
+             summary="Create a single-use install command for this engagement")
+async def portal_workspace_fleet_create_token(
+    body: PortalInstallTokenCreate,
+    request: Request,
+    user: ClientUser,
+    db: DB,
+):
+    from app.routers.agent_distribution import install_commands, manager_url_for
+    from app.routers.probe_enrollment import issue_engagement_token, token_out
+
+    engagement_id = assert_client(user)
+    engagement = (await db.execute(
+        select(Engagement).where(
+            Engagement.id == engagement_id,
+            Engagement.tenant_id == user.tenant_id,
+        ).with_for_update()
+    )).scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    token, raw = await issue_engagement_token(
+        db,
+        tenant_id=user.tenant_id,
+        engagement=engagement,
+        name=(body.name or "").strip() or "vedha-agent",
+        created_by=str(user.user_id),
+        now=now,
+    )
+    manager_url, _ = manager_url_for(request)
+    return {**token_out(token, now), "token": raw, "commands": install_commands(manager_url, raw)}
+
+
+@router.get("/workspace/fleet/enroll-tokens",
+            summary="Install commands created for this engagement")
+async def portal_workspace_fleet_list_tokens(user: ClientUser, db: DB):
+    from app.models.probe_enrollment import ProbeEnrollmentToken
+    from app.routers.probe_enrollment import token_out
+
+    engagement_id = assert_client(user)
+    rows = (await db.execute(
+        select(ProbeEnrollmentToken)
+        .where(
+            ProbeEnrollmentToken.tenant_id == user.tenant_id,
+            ProbeEnrollmentToken.engagement_id == engagement_id,
+        )
+        .order_by(ProbeEnrollmentToken.created_at.desc())
+        .limit(50)
+    )).scalars().all()
+    now = datetime.now(timezone.utc)
+    return [token_out(row, now) for row in rows]
+
+
+@router.delete("/workspace/fleet/enroll-tokens/{token_id}",
+               status_code=status.HTTP_204_NO_CONTENT,
+               summary="Revoke an unused install command")
+async def portal_workspace_fleet_revoke_token(token_id: uuid.UUID, user: ClientUser, db: DB):
+    from app.models.probe_enrollment import ProbeEnrollmentToken
+
+    engagement_id = assert_client(user)
+    row = (await db.execute(
+        select(ProbeEnrollmentToken).where(
+            ProbeEnrollmentToken.id == token_id,
+            ProbeEnrollmentToken.tenant_id == user.tenant_id,
+            ProbeEnrollmentToken.engagement_id == engagement_id,
+        ).with_for_update()
+    )).scalar_one_or_none()
+    if row is None:
+        # Another engagement's token is indistinguishable from a missing one.
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Install command not found")
+    if row.revoked_at is None:
+        row.revoked_at = datetime.now(timezone.utc)
+        record_audit(
+            db,
+            actor_id=user.user_id,
+            action="probe.enrollment_token.revoked",
+            engagement_id=engagement_id,
+            resource_type="probe_enrollment_token",
+            resource_id=row.id,
+            detail={"origin": "portal"},
+        )
+    return None
 
 
 @router.get("/workspace/fleet/agents/{agent_id}/jobs",

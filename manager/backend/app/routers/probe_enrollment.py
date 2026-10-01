@@ -24,11 +24,13 @@ from app.config import get_settings
 from app.dependencies import AuthUser, DB, RedisConn
 from app.models.agent import Agent, AgentStatus
 from app.models.audit_log import AuditLog
+from app.models.engagement import Engagement
 from app.models.probe_enrollment import AgentCredential, ProbeEnrollmentRequest, ProbeEnrollmentToken
 from app.models.probe_site import ProbeSite
 from app.models.tenant import Tenant
 from app.ratelimit import client_ip
 from app.schemas.engagement import validate_scope_entries
+from app.services.audit import record_audit
 
 router = APIRouter(prefix="/probe-enrollment", tags=["probe-enrollment"])
 logger = structlog.get_logger()
@@ -133,10 +135,22 @@ class EnrollmentCreate(BaseModel):
 
 
 class EnrollTokenCreate(BaseModel):
+    """A token installs an agent either into a pre-built Site (``site_id``) or for
+    an engagement (``engagement_id``): the Site is then built from the
+    engagement's scope at enrolment and the agent is assigned to it."""
     name: str = Field(min_length=1, max_length=120)
-    site_id: uuid.UUID
+    site_id: uuid.UUID | None = None
+    engagement_id: uuid.UUID | None = None
     expires_in_minutes: int = Field(default=60, ge=5, le=1440)
     max_uses: int = Field(default=1, ge=1, le=1000)
+
+    @model_validator(mode="after")
+    def exactly_one_target(self):
+        if (self.site_id is None) == (self.engagement_id is None):
+            raise ValueError("provide exactly one of site_id or engagement_id")
+        if self.engagement_id is not None and self.max_uses != 1:
+            raise ValueError("an engagement token installs exactly one agent (max_uses must be 1)")
+        return self
 
 
 class EnrollmentSecret(BaseModel):
@@ -308,6 +322,127 @@ async def _provision_agent_for_site(
     return agent
 
 
+# ── Engagement-bound enrolment (Fleet → Add agent) ───────────────────────────
+# A customer (portal) or operator creates a single-use token FOR an engagement;
+# the agent that enrols with it gets a Site built from that engagement's scope
+# and is assigned to the engagement. Same outcome as approving a device code in
+# the portal, minus the code — so both paths share these helpers.
+MAX_LIVE_ENGAGEMENT_TOKENS = 5
+ENGAGEMENT_TOKEN_TTL_MINUTES = 24 * 60
+
+
+def engagement_site(engagement: Engagement, tenant_id: uuid.UUID, request_row: ProbeEnrollmentRequest) -> ProbeSite:
+    """The Site an agent gets when it is enrolled for an engagement: the
+    engagement's scope and exclusions as they are at enrolment time, and exactly
+    the capabilities the device reported (so the provisioning subset-check holds)."""
+    return ProbeSite(
+        tenant_id=tenant_id,
+        name=f"engagement-{str(engagement.id)[:8]}-{str(request_row.id)[:8]}",
+        status="active",
+        authorized_cidrs=list(engagement.scope_cidrs or []),
+        excluded_cidrs=list(engagement.excluded_cidrs or []),
+        approved_capabilities=list(dict.fromkeys(request_row.reported_capabilities or [])),
+    )
+
+
+def engagement_enrollment_blocker(engagement: Engagement | None) -> str | None:
+    """Why an engagement cannot take a new agent right now; None when it can."""
+    if engagement is None:
+        return "Engagement not found"
+    if engagement.assigned_agent_id is not None:
+        return "This engagement already has an assigned vedha-agent"
+    if not list(engagement.scope_cidrs or []):
+        return "Add an authorized engagement scope before enrolling a vedha-agent"
+    return None
+
+
+def _live_token_filter(now: datetime):
+    return (
+        ProbeEnrollmentToken.revoked_at.is_(None),
+        ProbeEnrollmentToken.expires_at > now,
+        ProbeEnrollmentToken.uses < ProbeEnrollmentToken.max_uses,
+    )
+
+
+async def issue_engagement_token(
+    db,
+    *,
+    tenant_id: uuid.UUID,
+    engagement: Engagement | None,
+    name: str,
+    created_by: str,
+    now: datetime,
+    expires_in_minutes: int = ENGAGEMENT_TOKEN_TTL_MINUTES,
+) -> tuple[ProbeEnrollmentToken, str]:
+    """Create a single-use install token for an engagement. Returns (row, raw);
+    the raw token is shown once and only its hash is stored."""
+    blocker = engagement_enrollment_blocker(engagement)
+    if blocker is not None:
+        raise HTTPException(404 if engagement is None else 409, blocker)
+    live = (await db.execute(
+        select(ProbeEnrollmentToken.id).where(
+            ProbeEnrollmentToken.engagement_id == engagement.id, *_live_token_filter(now),
+        )
+    )).scalars().all()
+    if len(live) >= MAX_LIVE_ENGAGEMENT_TOKENS:
+        raise HTTPException(
+            409,
+            f"{len(live)} install commands are still unused — revoke one before creating another",
+        )
+    raw, token_hash, token_prefix = generate_enroll_token()
+    token = ProbeEnrollmentToken(
+        tenant_id=tenant_id,
+        engagement_id=engagement.id,
+        site_id=None,
+        name=name.strip() or "vedha-agent",
+        token_hash=token_hash,
+        token_prefix=token_prefix,
+        max_uses=1,
+        expires_at=now + timedelta(minutes=expires_in_minutes),
+        created_by=created_by,
+    )
+    db.add(token)
+    await db.flush()
+    record_audit(
+        db,
+        actor_id=created_by,
+        action="probe.enrollment_token.created",
+        engagement_id=engagement.id,
+        resource_type="probe_enrollment_token",
+        resource_id=token.id,
+        detail={"engagement_id": str(engagement.id), "max_uses": 1,
+                "expires_at": token.expires_at.isoformat()},
+    )
+    return token, raw
+
+
+def token_out(row: ProbeEnrollmentToken, now: datetime) -> dict:
+    """A token as Fleet lists it — never the raw value or its hash."""
+    if row.revoked_at is not None:
+        state = "revoked"
+    elif row.uses >= row.max_uses:
+        state = "used"
+    elif row.expires_at <= now:
+        state = "expired"
+    else:
+        state = "active"
+    return {
+        "id": str(row.id),
+        "name": row.name,
+        "token_prefix": row.token_prefix,
+        "site_id": str(row.site_id) if row.site_id else None,
+        "engagement_id": str(row.engagement_id) if row.engagement_id else None,
+        "max_uses": row.max_uses,
+        "uses": row.uses,
+        "created_at": row.created_at.isoformat() if getattr(row, "created_at", None) else None,
+        "expires_at": row.expires_at.isoformat(),
+        "last_used_at": row.last_used_at.isoformat() if row.last_used_at else None,
+        "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
+        "usable": enroll_token_is_usable(row, now),
+        "state": state,
+    }
+
+
 # ── Trust-on-first-use auto-enrollment (single-owner fleets) ─────────────────
 _AUTO_ENROLL_SITE_NAME = "auto-enroll"
 
@@ -411,17 +546,41 @@ async def create_enrollment_request(
             .with_for_update()
         )).scalar_one_or_none()
         if enroll_token_is_usable(token, now):
-            site = (await db.execute(
-                select(ProbeSite).where(
-                    ProbeSite.id == token.site_id,
-                    ProbeSite.tenant_id == token.tenant_id,
-                    ProbeSite.status == "active",
-                )
-            )).scalar_one_or_none()
+            site = None
+            engagement = None
+            if token.engagement_id is not None:
+                # Engagement token: build the Site from the engagement's scope as
+                # it is NOW and assign the agent to it. If the engagement can no
+                # longer take an agent, degrade to manual approval (never widen).
+                engagement = (await db.execute(
+                    select(Engagement).where(
+                        Engagement.id == token.engagement_id,
+                        Engagement.tenant_id == token.tenant_id,
+                    ).with_for_update()
+                )).scalar_one_or_none()
+                blocker = engagement_enrollment_blocker(engagement)
+                if blocker is None and row.reported_capabilities:
+                    site = engagement_site(engagement, token.tenant_id, row)
+                    db.add(site)
+                    await db.flush()
+                else:
+                    logger.warning(
+                        "probe_enrollment.engagement_token_degraded",
+                        token_id=str(token.id),
+                        reason=blocker or "device reported no capabilities",
+                    )
+            elif token.site_id is not None:
+                site = (await db.execute(
+                    select(ProbeSite).where(
+                        ProbeSite.id == token.site_id,
+                        ProbeSite.tenant_id == token.tenant_id,
+                        ProbeSite.status == "active",
+                    )
+                )).scalar_one_or_none()
             if site is not None:
                 base_name = (row.hostname_hint or "probe").strip() or "probe"
                 probe_name = f"{base_name}-{fingerprint[:8]}"
-                await _provision_agent_for_site(
+                agent = await _provision_agent_for_site(
                     db,
                     row=row,
                     site=site,
@@ -435,6 +594,18 @@ async def create_enrollment_request(
                 token.uses += 1
                 token.last_used_at = now
                 auto_approved = True
+                if engagement is not None:
+                    engagement.assigned_agent_id = agent.id
+                    record_audit(
+                        db,
+                        actor_id=f"enroll-token:{token.id}",
+                        action="portal.agent.assigned",
+                        engagement_id=engagement.id,
+                        resource_type="agent",
+                        resource_id=agent.id,
+                        detail={"origin": "enroll-token", "token_id": str(token.id),
+                                "site_id": str(site.id)},
+                    )
 
     # Trust-on-first-use: no token, but the operator has opted the whole Manager
     # into auto-enroll (settings.probe_auto_enroll, single-owner fleets). The
@@ -771,48 +942,66 @@ async def refresh_device_token(body: TokenRefresh, request: Request, db: DB, red
 @router.post("/enroll-tokens", status_code=status.HTTP_201_CREATED)
 async def create_enroll_token(
     body: EnrollTokenCreate,
+    request: Request,
     db: DB,
     current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
 ):
-    site = (await db.execute(
-        select(ProbeSite).where(
-            ProbeSite.id == body.site_id,
-            ProbeSite.tenant_id == current_user.tenant_id,
-            ProbeSite.status == "active",
-        )
-    )).scalar_one_or_none()
-    if site is None:
-        raise HTTPException(404, "Site not found")
+    from app.routers.agent_distribution import install_commands, manager_url_for
 
     now = datetime.now(timezone.utc)
-    raw, token_hash, token_prefix = generate_enroll_token()
-    token = ProbeEnrollmentToken(
-        tenant_id=current_user.tenant_id,
-        site_id=site.id,
-        name=body.name.strip(),
-        token_hash=token_hash,
-        token_prefix=token_prefix,
-        max_uses=body.max_uses,
-        expires_at=now + timedelta(minutes=body.expires_in_minutes),
-        created_by=str(current_user.user_id),
-    )
-    db.add(token)
-    await db.flush()
-    db.add(AuditLog(
-        actor_id=str(current_user.user_id),
-        action="probe.enrollment_token.created",
-        resource_type="probe_enrollment_token",
-        resource_id=token.id,
-        detail={"site_id": str(site.id), "max_uses": token.max_uses},
-        timestamp=now,
-    ))
+    if body.engagement_id is not None:
+        engagement = (await db.execute(
+            select(Engagement).where(
+                Engagement.id == body.engagement_id,
+                Engagement.tenant_id == current_user.tenant_id,
+            ).with_for_update()
+        )).scalar_one_or_none()
+        token, raw = await issue_engagement_token(
+            db,
+            tenant_id=current_user.tenant_id,
+            engagement=engagement,
+            name=body.name,
+            created_by=str(current_user.user_id),
+            now=now,
+            expires_in_minutes=body.expires_in_minutes,
+        )
+    else:
+        site = (await db.execute(
+            select(ProbeSite).where(
+                ProbeSite.id == body.site_id,
+                ProbeSite.tenant_id == current_user.tenant_id,
+                ProbeSite.status == "active",
+            )
+        )).scalar_one_or_none()
+        if site is None:
+            raise HTTPException(404, "Site not found")
+
+        raw, token_hash, token_prefix = generate_enroll_token()
+        token = ProbeEnrollmentToken(
+            tenant_id=current_user.tenant_id,
+            site_id=site.id,
+            name=body.name.strip(),
+            token_hash=token_hash,
+            token_prefix=token_prefix,
+            max_uses=body.max_uses,
+            expires_at=now + timedelta(minutes=body.expires_in_minutes),
+            created_by=str(current_user.user_id),
+        )
+        db.add(token)
+        await db.flush()
+        db.add(AuditLog(
+            actor_id=str(current_user.user_id),
+            action="probe.enrollment_token.created",
+            resource_type="probe_enrollment_token",
+            resource_id=token.id,
+            detail={"site_id": str(site.id), "max_uses": token.max_uses},
+            timestamp=now,
+        ))
+    manager_url, _ = manager_url_for(request)
     return {
-        "id": str(token.id),
+        **token_out(token, now),
         "token": raw,  # shown once
-        "token_prefix": token_prefix,
-        "site_id": str(site.id),
-        "max_uses": token.max_uses,
-        "expires_at": token.expires_at.isoformat(),
+        "commands": install_commands(manager_url, raw),
     }
 
 
@@ -820,24 +1009,19 @@ async def create_enroll_token(
 async def list_enroll_tokens(
     db: DB,
     current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
+    engagement_id: uuid.UUID | None = None,
 ):
-    rows = (await db.execute(
+    query = (
         select(ProbeEnrollmentToken)
         .where(ProbeEnrollmentToken.tenant_id == current_user.tenant_id)
         .order_by(ProbeEnrollmentToken.created_at.desc())
-    )).scalars().all()
+        .limit(200)
+    )
+    if engagement_id is not None:
+        query = query.where(ProbeEnrollmentToken.engagement_id == engagement_id)
+    rows = (await db.execute(query)).scalars().all()
     now = datetime.now(timezone.utc)
-    return [{
-        "id": str(row.id),
-        "name": row.name,
-        "token_prefix": row.token_prefix,
-        "site_id": str(row.site_id),
-        "max_uses": row.max_uses,
-        "uses": row.uses,
-        "expires_at": row.expires_at.isoformat(),
-        "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
-        "usable": enroll_token_is_usable(row, now),
-    } for row in rows]
+    return [token_out(row, now) for row in rows]
 
 
 @router.delete("/enroll-tokens/{token_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -861,7 +1045,8 @@ async def revoke_enroll_token(
             action="probe.enrollment_token.revoked",
             resource_type="probe_enrollment_token",
             resource_id=row.id,
-            detail={"site_id": str(row.site_id)},
+            detail={"site_id": str(row.site_id) if row.site_id else None,
+                    "engagement_id": str(row.engagement_id) if row.engagement_id else None},
             timestamp=row.revoked_at,
         ))
     return None
