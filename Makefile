@@ -26,7 +26,7 @@ endif
 # it into the backend image via the VEDHA_VERSION build arg.
 export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
 
-.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat seal seal-parity agent-keygen agent-release agent-publish agent-verify clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback
+.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat seal seal-parity agent-keygen agent-release agent-publish agent-verify onprem-bundle clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback
 
 version: ## Print the current deployed version
 	@echo $(VEDHA_VERSION)
@@ -185,6 +185,12 @@ agent-verify: ## Verify the built release: make agent-verify PUB=<AGENT_RELEASE_
 agent-publish: ## Copy the built release to the manager: make agent-publish TO=user@host:/path (or a local dir)
 	@test -n "$(TO)" || { echo "TO is required, e.g. TO=ubuntu@1.2.3.4:/opt/Project-Vedha/manager/agent-releases (local dev: TO=manager/agent-releases)"; exit 2; }
 	@$(RELEASE_PY) scripts/agent_release.py publish dist/agent-release --to "$(TO)"
+
+# On request only: an encrypted, signed platform bundle for ONE on-prem customer.
+#   make onprem-bundle CUSTOMER="ACME Bank" RECIPIENT=age1...   (their `age-keygen` public key)
+onprem-bundle: ## On-prem customer bundle (encrypted to them, signed): make onprem-bundle CUSTOMER=... RECIPIENT=age1...
+	@test -n "$(CUSTOMER)" -a -n "$(RECIPIENT)" || { echo "CUSTOMER and RECIPIENT (the customer's age public key) are required"; exit 2; }
+	@$(RELEASE_PY) scripts/onprem_bundle.py build --customer "$(CUSTOMER)" --recipient "$(RECIPIENT)" --key "$(AGENT_RELEASE_KEY)" $(if $(wildcard dist/agent-release/CURRENT),--agent-release dist/agent-release,)
 
 # ── AWS / EC2 deploy targets ──────────────────────────────────────────────────
 # All use the PROBE-FREE manager stack. `make full` is the full-stack deploy;

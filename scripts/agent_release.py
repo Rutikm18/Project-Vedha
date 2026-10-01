@@ -90,7 +90,11 @@ def load_private_key(path: Path):
 
 
 def public_raw_b64(private_key) -> str:
-    return base64.b64encode(private_key.public_key().public_bytes_raw()).decode()
+    serialization, _, _ = _crypto()
+    # Encoding.Raw rather than public_bytes_raw(): that needs cryptography >= 40,
+    # and Debian 12 / older build machines ship 38.
+    raw = private_key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    return base64.b64encode(raw).decode()
 
 
 def spki_b64_from_raw(raw_b64: str) -> str:
