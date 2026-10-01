@@ -1,5 +1,11 @@
 # Vedha Agent (Probe) — Install & Run Guide (Linux · macOS · Windows)
 
+> **Customer installs now go through Fleet → Add agent**, which prints one
+> command with a single-use install token; the manager serves the signed agent
+> itself. See [CUSTOMER_AGENT_INSTALL.md](CUSTOMER_AGENT_INSTALL.md) and the
+> operator runbook [AGENT_DISTRIBUTION.md](../operations/AGENT_DISTRIBUTION.md).
+> The paths below remain for development, labs and native installs.
+
 > Expert, step-by-step installation for the Vedha probe on every supported OS, with
 > the exact commands for each path. The probe is a **thin agent**: it dials *out* to
 > the manager, pulls scope-bound jobs, scans the **local** network, and returns

@@ -1,6 +1,6 @@
 # P0-3 · Installing the Vedha agent in a client environment — approach
 
-Date: 2026-10-01 · Status: **approach for review — nothing implemented yet**
+Date: 2026-10-01 · Status: **Phase 1 built on `feat/agent-install` (2 Oct) — see §10**
 Roadmap item: P0-3 in [`2026-09-29-next-8-workstreams-plan.md`](2026-09-29-next-8-workstreams-plan.md)
 
 ## 1. Summary
@@ -203,3 +203,75 @@ lookup was rate-limited, so treat it as likely rather than certain.
 | P13 | **Support bundles and logs** sent to Vedha contain IPs and hostnames | research | Redaction (exists) plus explicit consent; store in India; delete after the ticket closes |
 | P14 | **The agent is a pivot** if the manager is compromised: it can be tasked inside the customer network | research | Agent-side scope enforcement (exists); signed job policy (key exists); a customer-visible switch to stop the agent; alert on scope changes |
 | P15 | **Prompt injection through scan data**: banners and hostnames are attacker-controlled and flow into AI prompts | research | Treat scan data as untrusted in prompts; masking; label AI output as unverified (already in the portal) |
+
+## 10. Decisions (2 Oct 2026) and what Phase 1 built
+
+### 10.1 Decisions from the owner
+
+| # | Decision | Taken |
+|---|---|---|
+| 1 | Image hosting | **No public image.** Vedha is centrally hosted; customers get only the agent, served by the manager behind an install token. Platform images go only to on-prem customers, on request, through secure sharing |
+| 2 | Image type | Standard image for now. A sealed image needs a per-host licence that can only be issued after the agent runs — "licence at enrolment" is the next step (§10.4) |
+| 3 | Default enrolment | Single-use install token in the command (no approval step); device-code approval stays as the fallback |
+| 6 | Signing | The existing-style Ed25519 vendor key, kept on the build machine |
+| — | Windows / macOS scripts | Left as they are (owner) |
+
+### 10.2 What was built (branch `feat/agent-install`)
+
+| Piece | Where |
+|---|---|
+| Signed release store + `/agent/install.sh`, `/agent/manifest.json(.sig)` (public), `/agent/image/{arch}` (live token only, rate limited), `/agent/release` | `manager/backend/app/agent_release.py`, `routers/agent_distribution.py` |
+| Engagement-bound install tokens (migration 0052): single-use, 24 h, ≤ 5 live per engagement; Site built from the engagement scope at enrolment; agent assigned to the engagement; degrades to manual approval, never widens scope | `routers/probe_enrollment.py`, `routers/portal.py` |
+| Release tooling: keygen / build (amd64 + arm64) / verify / publish; installer gets the public key embedded | `scripts/agent_release.py`, `make agent-*` |
+| Installer: `--token`, verified download (OpenSSL 3 signature + SHA-256), `--proxy`, `--no-proxy`, `--ca-bundle`, `--name`, `--require-signature`, log caps, Docker at boot | `probe/install.sh` |
+| Fleet → Add agent (operator + portal): release status, engagement picker, one command, inspect-first variant, checklist, live "agent enrolled", revoke | `manager/frontend/app/fleet/AddAgent.tsx` |
+| On-prem bundles: images + compose + agent release, signed manifest, encrypted with `age` to the customer's key, checksum for a second channel, ledger, verifying loader | `scripts/onprem_bundle.py`, `deploy/onprem/vedha-onprem-load.sh` |
+| Runbook and customer guide | `docs/operations/AGENT_DISTRIBUTION.md`, `docs/probe/CUSTOMER_AGENT_INSTALL.md` |
+
+Gaps closed: G1, G2, G3, G5 (standard agent), G6 (tooling; arm64 proven live), G7, G8 (guide; no screenshots yet).
+Failure points addressed: F1, F2 (including the WebSocket), F4, F6, F13, F14, F16, F19, F21, F22.
+
+### 10.3 Proven end to end (isolated stack, 2 Oct)
+
+Signed arm64 release → manager → `curl … | sh` on a Debian 12 host container. Five agents were
+installed, from both operator and portal tokens. Each enrolled with no approval, was bound to its
+engagement with exactly that scope, came online over WebSocket, burnt its token (reuse → 401) and
+left a complete audit trail. Live portal checks:
+
+- a forged `engagement_id` was ignored;
+- revoking another engagement's token returned 404;
+- portal tokens got 403 on operator APIs.
+
+The on-prem bundle loaded with the right key and was refused on a wrong key, a wrong checksum and a
+tampered file re-encrypted to the customer.
+
+The live test found four real bugs, all fixed with regression tests:
+
+1. **Hardware binding broke installs.** Hosts that ignore `--mac-address` (rootless Docker,
+   Podman, a Docker CLI older than its daemon) gave the agent a random MAC, so its hardware ID
+   changed and it refused to start. Binding is now applied only to the licensed agent, and that
+   path checks the MAC took effect.
+2. **Enrolment commit race.** The manager committed the enrolment after answering (FastAPI 0.141
+   runs teardown post-response). An auto-approved agent polled first, got 404, and burnt its
+   single-use token. The manager now commits first, and the agent gives a request it just created
+   a 15-second grace window.
+3. **Loader file count.** The loader miscounted files when the bundle contained a nested
+   `manifest.json`.
+4. **Old `cryptography`.** The release tool required `cryptography` 40 or later; Debian 12 ships
+   38.
+
+Tests: backend 2,201+ (new: release store, routes, tokens, release-tool and bundle-tool
+cross-tests); probe 2,473; frontend 10 Fleet tests; `tsc` and ESLint clean apart from the known
+missing packages.
+
+### 10.4 Still open
+
+| Item | Why it matters | Next step |
+|---|---|---|
+| **F18: domain categorisation** | `vedhasec.com` is under 32 days old; web filters block it | Owner submits it to the filtering vendors (see Needs you) |
+| Sealed agent for customers | Protects the agent code | Manager issues the licence at enrolment (hostid from the agent, signed by the vendor key); then ship the floating sealed image |
+| amd64 release proven live | Only arm64 was run end to end | Build `make agent-release` on the release machine and install once on an x86 VM |
+| Podman / RHEL (F5) | RHEL ships Podman | Test the installer with `podman-docker`; document |
+| Reachability test, clock / DNS preflight (F8–F10) | Faster diagnosis | Add to the installer and the Fleet panel |
+| Version, upgrade, support bundle, duplicates (F12, F15, F17, G9) | Phase 2 "supportable" | As planned in §7 |
+| Virtual appliance | No-Docker customers | Phase 3 |
