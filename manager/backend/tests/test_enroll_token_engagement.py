@@ -59,6 +59,10 @@ class FakeDB:
     def __init__(self, *results):
         self.results = list(results)
         self.added: list = []
+        self.commits = 0
+
+    async def commit(self):
+        self.commits += 1
 
     async def execute(self, _query):
         if not self.results:
@@ -220,6 +224,8 @@ class TestConsume:
         response = asyncio.run(pe.create_enrollment_request(_enroll_body("vet_live"), _request(), db, _redis()))
 
         assert response["state"] == "approved" and "user_code" not in response
+        # committed before answering: the device polls immediately (race fix)
+        assert db.commits == 1
         agent = db.of(Agent)[0]
         site = db.of(ProbeSite)[0]
         assert engagement.assigned_agent_id == agent.id

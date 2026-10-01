@@ -1587,6 +1587,11 @@ def _enroll_device(
     request_id = state.get("enrollment_request_id")
     device_secret = state.get("enrollment_device_secret")
     poll_interval = 5
+    # A request created by THIS call may 404 for a moment: a manager that commits
+    # after responding (or a replica behind it) can answer the first poll before
+    # the row is visible. Treating that as "gone" re-enrols, and with a
+    # single-use install token that burns the token. Allow a short grace window.
+    fresh_until = 0.0
     if not request_id or not device_secret:
         enroll_payload = {
             "signing_public_key": signing_public_key,
@@ -1646,6 +1651,7 @@ def _enroll_device(
         request_id = response["request_id"]
         device_secret = response["device_secret"]
         poll_interval = int(response.get("poll_interval_seconds") or 5)
+        fresh_until = time.monotonic() + 15
         transport.update_state({
             "enrollment_request_id": request_id,
             "enrollment_device_secret": device_secret,
@@ -1726,6 +1732,10 @@ def _enroll_device(
                 raise TransportError(f"Enrollment {state_name}: {response.get('reason', '')}".strip())
             raise RuntimeError(f"unexpected enrollment state: {state_name}")
         except EnrollmentRequestNotFound as exc:
+            if time.monotonic() < fresh_until:
+                _dbg("enrollment request not visible yet — retrying within the grace window")
+                time.sleep(1)
+                continue
             # The request we were polling is GONE on the manager (spent, expired,
             # purged, or the manager's enrollment store was reset). This is the
             # bug that surfaced as "connection error … retrying [n/12]" then a

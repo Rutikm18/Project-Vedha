@@ -631,6 +631,11 @@ async def create_enrollment_request(
             )
             auto_approved = True
 
+    # Commit BEFORE answering. get_db commits in dependency teardown, which this
+    # FastAPI runs after the response is sent; an auto-approved device polls
+    # straight away, can reach the other worker first, get 404 for its own
+    # request, and spend its single-use install token on nothing.
+    await db.commit()
     response: dict = {
         "request_id": str(row.id),
         "device_secret": device_secret,
@@ -882,6 +887,11 @@ async def activate_enrollment(request_id: uuid.UUID, body: EnrollmentActivate, r
         row.activated_at = now
         row.version += 1
     token = create_device_access_token(str(agent.id), str(agent.tenant_id), agent.credential_generation)
+    policy = _policy(site)
+    # The device uses this credential immediately; the middleware rejects it
+    # unless the agent row already reads lifecycle_status=active. Commit first
+    # (see create_enrollment_request).
+    await db.commit()
     return {
         "state": "active",
         "agent_id": str(agent.id),
@@ -889,7 +899,7 @@ async def activate_enrollment(request_id: uuid.UUID, body: EnrollmentActivate, r
         "access_expires_in_seconds": 600,
         "refresh_secret": refresh_secret,
         "credential_generation": agent.credential_generation,
-        "policy": _policy(site),
+        "policy": policy,
     }
 
 
@@ -998,11 +1008,9 @@ async def create_enroll_token(
             timestamp=now,
         ))
     manager_url, _ = manager_url_for(request)
-    return {
-        **token_out(token, now),
-        "token": raw,  # shown once
-        "commands": install_commands(manager_url, raw),
-    }
+    out = {**token_out(token, now), "token": raw, "commands": install_commands(manager_url, raw)}
+    await db.commit()  # Fleet lists tokens right after creating one; raw token shown once
+    return out
 
 
 @router.get("/enroll-tokens")

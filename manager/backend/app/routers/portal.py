@@ -1365,7 +1365,9 @@ async def portal_workspace_fleet_create_token(
         now=now,
     )
     manager_url, _ = manager_url_for(request)
-    return {**token_out(token, now), "token": raw, "commands": install_commands(manager_url, raw)}
+    out = {**token_out(token, now), "token": raw, "commands": install_commands(manager_url, raw)}
+    await db.commit()  # the panel lists tokens right after creating one
+    return out
 
 
 @router.get("/workspace/fleet/enroll-tokens",
