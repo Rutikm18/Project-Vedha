@@ -1,0 +1,70 @@
+/*
+ * report-finding-elevated.css — visual elevation for the technical finding
+ * renderer. Scoped to .cr-finding; purely presentational (no content changes).
+ * Imported AFTER report-document.css so these rules win the cascade.
+ *
+ * Adds: a triage risk-band (.cr-riskband), a severity spine, lifted header
+ * typography, scannable metadata grids, muted recorded-gaps, and print color.
+ */
+
+/* severity spine */
+.cr-finding { position: relative; padding-left: 18px; }
+.cr-finding::before {
+  content: ""; position: absolute; left: 0; top: 2px; bottom: 2px; width: 4px;
+  border-radius: 3px; background: var(--cr-severity, var(--text-muted));
+}
+
+/* header typography */
+.cr-finding-head h3 { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.25; margin: 2px 0; }
+.cr-finding-ordinal { font-family: var(--font-mono); font-weight: 700; color: var(--cr-severity); }
+
+/* triage risk band */
+.cr-riskband { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 2px; }
+.cr-rb-item {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px;
+  background: var(--bg-surface); border: 1px solid var(--border, rgba(127, 127, 127, .28));
+  font-size: 11px; line-height: 1.6; white-space: nowrap;
+}
+.cr-rb-item b {
+  font-weight: 700; color: var(--text-muted); font-size: 9px; text-transform: uppercase; letter-spacing: .04em;
+}
+.cr-rb-cvss {
+  background: color-mix(in srgb, var(--cr-severity) 16%, var(--bg-surface));
+  border-color: color-mix(in srgb, var(--cr-severity) 35%, transparent);
+}
+.cr-rb-exploit { background: var(--sev-critical-bg); color: var(--sev-critical-color); border-color: transparent; font-weight: 650; }
+.cr-rb-sla[data-tone="overdue"] { background: var(--sev-critical-bg); color: var(--sev-critical-color); border-color: transparent; }
+.cr-rb-sla[data-tone="warn"] { background: var(--sev-medium-bg); color: var(--sev-medium-color); border-color: transparent; }
+.cr-rb-vector { display: inline-flex; flex-wrap: wrap; gap: 3px; margin-left: 2px; }
+.cr-rb-metric {
+  font-family: var(--font-mono); font-size: 10px; padding: 1px 5px; border-radius: 4px;
+  background: var(--bg-hover, var(--bg-surface)); color: var(--text-muted);
+}
+
+/* scannable metadata grids */
+.cr-finding .cr-meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 2px 22px; }
+.cr-finding .cr-meta-grid > div {
+  display: grid; grid-template-columns: minmax(118px, 42%) 1fr; gap: 10px;
+  padding: 4px 0; border-bottom: 1px solid var(--border, rgba(127, 127, 127, .18));
+}
+.cr-finding .cr-meta-grid > div.cr-wide { grid-column: 1 / -1; }
+.cr-finding .cr-meta-grid dt { font-size: 10.5px; letter-spacing: .02em; }
+.cr-finding .cr-meta-grid dd { font-size: 12px; }
+
+/* mute recorded gaps */
+.cr-finding .cr-missing { color: var(--text-muted); opacity: .75; font-style: italic; }
+
+/* section headers */
+.cr-finding .cr-finding-section > h4 {
+  display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 650;
+  text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted);
+  border-bottom: 1px solid var(--border, rgba(127, 127, 127, .22)); padding-bottom: 5px; margin-bottom: 8px;
+}
+.cr-finding .cr-finding-section > h4 svg { color: var(--cr-severity); flex: none; }
+
+@media print {
+  .cr-finding-section { break-inside: avoid; }
+  .cr-rb-item, .cr-rb-cvss, .cr-rb-exploit, .cr-rb-sla, .cr-rb-metric {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+}

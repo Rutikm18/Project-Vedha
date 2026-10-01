@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 // module's print overrides rely on.
 import "../../styles/report-finding.css";
 import "../../styles/report-document.css";
+import "../../styles/report-finding-elevated.css";
 
 export const metadata = {
   title: "Report · Vedha",

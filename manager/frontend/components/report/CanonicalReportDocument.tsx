@@ -44,6 +44,7 @@ import {
   type ReportRetestRecord,
 } from "../../lib/report/report-document";
 import { SEV_COLOR, toSeverity } from "../../lib/severity";
+import { FindingRiskBand } from "./FindingRiskBand";
 
 const CONTROL_FIELDS = [
   ["version", "Report version"],
@@ -762,6 +763,7 @@ function FindingReport({ finding, ordinal }: { finding: ReportFinding; ordinal: 
           </div>
           <h3>{finding.title}</h3>
           <p>{finding.id}</p>
+          <FindingRiskBand finding={finding} />
         </div>
       </header>
 
