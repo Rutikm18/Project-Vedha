@@ -4,10 +4,9 @@ import { withBackend } from "../../../../lib/with-backend";
 
 export const GET = withBackend(async (_req, { token }) => {
   const requests = await backend<unknown[]>("/probe-enrollment/requests", { token });
-  return NextResponse.json({
-    requests,
-    manager_url: (process.env.MANAGER_PUBLIC_URL ?? "").replace(/\/$/, ""),
-  });
+  // The install command (with its manager URL and token) now comes from the
+  // backend's /probe-enrollment/enroll-tokens, so both Fleet surfaces agree.
+  return NextResponse.json({ requests });
 });
 
 export const POST = withBackend(async (req: NextRequest, { token }) => {

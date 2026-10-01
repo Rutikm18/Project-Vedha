@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, CheckCircle2, ChevronDown, Clipboard, Clock3, Cpu, Fingerprint, Laptop, Loader2,
+  Activity, CheckCircle2, ChevronDown, Clock3, Cpu, Fingerprint, Laptop, Loader2,
   MapPin, Network, RadioTower, RefreshCw, Server, ShieldCheck, XCircle,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { useToast } from "../../hooks/useToast";
-import { copyText } from "../../lib/clipboard";
 import { createFleetWorkspaceApi, type FleetWorkspaceSurface } from "../../lib/fleet-workspace-api";
+import AddAgent, { ADD_AGENT_STYLES } from "./AddAgent";
 import FleetJobs from "./FleetJobs";
 
 interface EnrollmentRequest {
@@ -26,7 +26,6 @@ interface EnrollmentRequest {
 
 interface FleetResponse {
   requests: EnrollmentRequest[];
-  manager_url: string;
 }
 
 // Map an enrollment state to a color + human word. Status is never conveyed by
@@ -99,7 +98,7 @@ function ago(iso: string | null): string {
 export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspaceSurface }) {
   const toast = useToast();
   const api = useMemo(() => createFleetWorkspaceApi(surface), [surface]);
-  const [data, setData] = useState<FleetResponse>({ requests: [], manager_url: "" });
+  const [data, setData] = useState<FleetResponse>({ requests: [] });
   const [agents, setAgents] = useState<Probe[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -163,17 +162,6 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
   const request = data.requests.find((row) => row.request_id === selected) ?? null;
   const capabilities = useMemo(() => request?.capabilities ?? [], [request]);
   const onlineCount = useMemo(() => agents.filter((a) => a.online).length, [agents]);
-  const managerUrl = data.manager_url || "https://manager.example.com";
-  // Two ways to run the same installer: pipe-to-shell for a fresh host, and a
-  // run-only command for operators who already downloaded install.sh (inspect-first).
-  const installCommand = `curl --proto '=https' --tlsv1.2 -fsS https://downloads.vedha.example/probe/install.sh | sudo sh -s -- --manager ${managerUrl}`;
-  const runCommand = `sudo sh install.sh --manager ${managerUrl}`;
-
-  const copyCommand = (cmd: string) =>
-    void copyText(cmd).then((ok) => (
-      ok ? toast.success("Command copied") : toast.error("Copy failed — select the command and copy it manually")
-    ));
-
   async function approve(event: React.FormEvent) {
     event.preventDefault();
     if (surface === "manager" && !request) return;
@@ -201,7 +189,7 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
   const Shell = surface === "portal" ? PortalShell : PageShell;
   return (
     <Shell title="Fleet" subtitle="Enroll and govern vedha-agent devices">
-      <style>{STYLES}</style>
+      <style>{STYLES + ADD_AGENT_STYLES}</style>
       <div className="flt-page">
 
         {/* ── All jobs across every probe (filter by probe + engagement) ── */}
@@ -209,47 +197,8 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
           <FleetJobs surface={surface} />
         </section>
 
-        {/* ── Add a probe ── */}
-        <section className="flt-card">
-          <div className="flt-card-head">
-            <span className="flt-head-icon"><ShieldCheck size={17} /></span>
-            <div>
-              <strong className="flt-head-title">Add a vedha-agent</strong>
-              <div className="flt-head-sub">The command contains no PAT, admin secret, Site scope, or job ID.</div>
-            </div>
-          </div>
-          <div className="flt-cmds">
-            <div className="flt-cmd">
-              <span className="flt-cmd-label">New host — download &amp; run in one command</span>
-              <div className="flt-install">
-                <code className="flt-code">{installCommand}</code>
-                <button
-                  className="flt-icon-btn"
-                  aria-label="Copy install command for a new host"
-                  onClick={() => copyCommand(installCommand)}
-                >
-                  <Clipboard size={15} />
-                </button>
-              </div>
-            </div>
-            <div className="flt-cmd">
-              <span className="flt-cmd-label">Already downloaded install.sh — run it</span>
-              <div className="flt-install">
-                <code className="flt-code">{runCommand}</code>
-                <button
-                  className="flt-icon-btn"
-                  aria-label="Copy run command for an already-downloaded installer"
-                  onClick={() => copyCommand(runCommand)}
-                >
-                  <Clipboard size={15} />
-                </button>
-              </div>
-            </div>
-          </div>
-          {!data.manager_url && (
-            <p className="flt-warn">Set MANAGER_PUBLIC_URL on the frontend before copying this command in production.</p>
-          )}
-        </section>
+        {/* ── Add an agent: install token + one command (served by this manager) ── */}
+        <AddAgent surface={surface} api={api} />
 
         {/* ── Connected probes (live status) ── */}
         <section className="flt-card flt-card-flush">
@@ -271,7 +220,7 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
             <div className="flt-empty-block">
               <Server size={22} color="var(--text-faint)" />
               <div className="flt-empty-title">No vedha-agents connected yet</div>
-              <div className="flt-empty-hint">{surface === "portal" ? "Run the installer, then enter its verification code below. The agent will inherit this engagement's authorized scope." : "Approve a pending request below. Once a vedha-agent activates and sends its first heartbeat, it appears here with live status."}</div>
+              <div className="flt-empty-hint">{surface === "portal" ? "Generate an install command above and run it on a Linux host in your network — the agent enrols itself with this engagement's scope." : "Generate an install command above, or approve a pending request below. Once a vedha-agent sends its first heartbeat it appears here with live status."}</div>
             </div>
           ) : (
             <div className="flt-agents">
@@ -391,7 +340,7 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
             <div className="flt-card-head">
               <span className="flt-head-icon"><Network size={16} /></span>
               <div>
-                <strong className="flt-head-title">{surface === "portal" ? "Approve agent for this engagement" : "Approve Site policy"}</strong>
+                <strong className="flt-head-title">{surface === "portal" ? "Or approve with an installer code" : "Approve Site policy"}</strong>
                 <div className="flt-head-sub">{surface === "portal" ? "The installer code identifies the device. Scope and exclusions come only from this engagement." : "One click to authorize — name auto-assigns and scope/capabilities fill in from the device. Tune later in Site settings."}</div>
               </div>
             </div>
