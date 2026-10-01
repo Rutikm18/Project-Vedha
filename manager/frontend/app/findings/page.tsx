@@ -2526,6 +2526,7 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 
 /* ── 5. Filters ──────────────────────────────────────────────────────── */
 .findings-filter-panel {
+  min-width: 0; overflow: hidden;
   border: var(--hairline) solid var(--border-subtle); border-radius: var(--r-lg);
   padding: var(--space-4); background: var(--bg-panel); box-shadow: var(--shadow-sm);
 }
@@ -2554,7 +2555,7 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 .findings-shortcuts span { display: inline-flex; align-items: center; gap: 5px; }
 .findings-shortcuts b { color: var(--text-muted); font: 600 10px/1.2 var(--font-mono); }
 .findings-scope-grid {
-  display: grid; grid-template-columns: repeat(2, minmax(210px, 1fr)); gap: 12px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
   margin-bottom: var(--space-4); padding-bottom: var(--space-4); border-bottom: var(--hairline) solid var(--border-subtle);
 }
 .findings-filter-grid { display: grid; grid-template-columns: minmax(250px, 1.6fr) repeat(3, minmax(140px, .7fr)); gap: 12px; align-items: end; }
@@ -2634,6 +2635,8 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 
 .findings-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
 .findings-workspace[data-detail="true"] { grid-template-columns: minmax(300px, 356px) minmax(0, 1fr); gap: 18px; }
+.findings-workspace[data-detail="true"] .findings-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.findings-workspace[data-detail="true"] .findings-filter-grid > fieldset:first-child { grid-column: 1 / -1; }
 /* Give the queue a share of the extra width on large displays rather than
    handing all of it to the detail pane. Pairs with the --page-max ladder. */
 @media (min-width: 1600px) {
@@ -3155,7 +3158,7 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   .finding-detail-header, .finding-ai-triage, .finding-action-bar { padding-right: 18px; padding-left: 18px; }
   .finding-detail-content { padding: 18px; }
 }
-@media (max-width: 920px) {
+@media (max-width: 1080px) {
   .findings-workspace[data-detail="true"] { grid-template-columns: minmax(0, 1fr); }
   .findings-workspace[data-detail="true"] .findings-queue { display: none; }
   .finding-detail-column { order: -1; position: static; max-height: none; overflow: visible; overscroll-behavior: auto; scrollbar-gutter: auto; }
@@ -3573,7 +3576,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
    * as "the click did nothing". Bring it into view. */
   useEffect(() => {
     if (!selectedId) return;
-    if (typeof window === "undefined" || window.innerWidth > 920) return;
+    if (typeof window === "undefined" || window.innerWidth > 1080) return;
     detailRef.current?.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
   }, [selectedId]);
 

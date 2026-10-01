@@ -68,7 +68,7 @@ describe("findings detail layout", () => {
   test("returns the detail panel to document flow on narrow screens", () => {
     assert.match(
       findingsPage,
-      /@media \(max-width: 920px\)[\s\S]*?\.finding-detail-column\s*\{[^}]*position:\s*static;[^}]*max-height:\s*none;[^}]*overflow:\s*visible;/,
+      /@media \(max-width: 1080px\)[\s\S]*?\.finding-detail-column\s*\{[^}]*position:\s*static;[^}]*max-height:\s*none;[^}]*overflow:\s*visible;/,
     );
   });
 

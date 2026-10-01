@@ -124,7 +124,10 @@ export function PageShell({
           gap: 12,
         }}>
           {/* Left */}
-          <div className="vedha-page-header-left" style={{ display: "flex", alignItems: "center", gap: 8, flex: "1 1 0", minWidth: "min-content" }}>
+          <div className="vedha-page-header-left" style={{
+            display: "flex", alignItems: "center", gap: 8,
+            flex: "0 1 460px", minWidth: 0, overflow: "hidden",
+          }}>
             <button
               className="md:hidden touch-icon"
               onClick={() => setSidebarOpen(true)}
@@ -206,10 +209,11 @@ export function PageShell({
               out stay pinned and always reachable. */}
           <div className="vedha-page-header-tools" style={{
             display: "flex", alignItems: "center", gap: 10,
-            flex: "0 1 auto", minWidth: 0, justifyContent: "flex-end",
+            flex: "1 1 520px", minWidth: 0, justifyContent: "flex-end", overflow: "hidden",
           }}>
             <div className="vedha-page-header-scroll" style={{
               display: "flex", alignItems: "center", gap: 10, minWidth: 0,
+              width: 0, flex: "1 1 auto",
               overflowX: "auto", scrollbarWidth: "none",
             }}>
             {headerActions && (
@@ -269,101 +273,102 @@ export function PageShell({
             })}
 
             </div>
+            <div className="vedha-page-header-pinned" style={{ display: "flex", alignItems: "center", gap: 10, flex: "0 0 auto" }}>
+              <div className="vedha-page-header-divider" style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
 
-            <div className="vedha-page-header-divider" style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
+              {/* Reload after a short delay — a newly enrolled vedha-agent lands in
+                  the API a moment after the UI action, so an instant reload can miss it. */}
+              {!hideRefresh && <RefreshButton size={30} />}
 
-            {/* Reload after a short delay — a newly enrolled vedha-agent lands in
-                the API a moment after the UI action, so an instant reload can miss it. */}
-            {!hideRefresh && <RefreshButton size={30} />}
+              {/* Theme toggle — rotates icon on hover */}
+              <button
+                className="touch-icon"
+                onClick={toggleTheme}
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  flexShrink: 0,
+                  border: "0.5px solid var(--border-subtle)",
+                  background: "transparent",
+                  cursor: "pointer",
+                  color: "var(--text-muted)",
+                  transition: "all 0.18s var(--ease-spring)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--accent)";
+                  e.currentTarget.style.color = "var(--accent)";
+                  e.currentTarget.style.background = "var(--accent-ghost)";
+                  e.currentTarget.style.transform = "scale(1.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border-subtle)";
+                  e.currentTarget.style.color = "var(--text-muted)";
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+              >
+                <span style={{
+                  display: "flex",
+                  transition: "transform 0.3s var(--ease-spring)",
+                }}>
+                  {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+                </span>
+              </button>
 
-            {/* Theme toggle — rotates icon on hover */}
-            <button
-              className="touch-icon"
-              onClick={toggleTheme}
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 30,
-                height: 30,
-                borderRadius: 8,
-                flexShrink: 0,
-                border: "0.5px solid var(--border-subtle)",
-                background: "transparent",
-                cursor: "pointer",
-                color: "var(--text-muted)",
-                transition: "all 0.18s var(--ease-spring)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "var(--accent)";
-                e.currentTarget.style.color = "var(--accent)";
-                e.currentTarget.style.background = "var(--accent-ghost)";
-                e.currentTarget.style.transform = "scale(1.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--border-subtle)";
-                e.currentTarget.style.color = "var(--text-muted)";
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-            >
-              <span style={{
-                display: "flex",
-                transition: "transform 0.3s var(--ease-spring)",
-              }}>
-                {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-              </span>
-            </button>
-
-            {/* User badge + logout */}
-            {userEmail && (
-              <>
-                <div className="vedha-page-header-divider" style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <User size={14} color="var(--text-muted)" />
-                  <span style={{
-                    fontSize: 11,
-                    color: "var(--text-secondary)",
-                    maxWidth: 140,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}>
-                    {userEmail}
-                  </span>
-                </div>
-                <button
-                  className="touch-icon"
-                  onClick={handleLogout}
-                  title="Sign out"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 30,
-                    height: 30,
-                    borderRadius: 8,
-                    border: "0.5px solid var(--border-subtle)",
-                    background: "transparent",
-                    cursor: "pointer",
-                    color: "var(--text-muted)",
-                    transition: "all 0.15s",
-                    flexShrink: 0,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--sev-critical-color)";
-                    e.currentTarget.style.color = "var(--sev-critical-color)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--border-subtle)";
-                    e.currentTarget.style.color = "var(--text-muted)";
-                  }}
-                >
-                  <LogOut size={14} />
-                </button>
-              </>
-            )}
+              {/* User badge + logout */}
+              {userEmail && (
+                <>
+                  <div className="vedha-page-header-divider" style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
+                  <div className="vedha-page-account" style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                    <User size={14} color="var(--text-muted)" />
+                    <span style={{
+                      fontSize: 11,
+                      color: "var(--text-secondary)",
+                      maxWidth: 140,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {userEmail}
+                    </span>
+                  </div>
+                  <button
+                    className="touch-icon"
+                    onClick={handleLogout}
+                    title="Sign out"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 30,
+                      height: 30,
+                      borderRadius: 8,
+                      border: "0.5px solid var(--border-subtle)",
+                      background: "transparent",
+                      cursor: "pointer",
+                      color: "var(--text-muted)",
+                      transition: "all 0.15s",
+                      flexShrink: 0,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = "var(--sev-critical-color)";
+                      e.currentTarget.style.color = "var(--sev-critical-color)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border-subtle)";
+                      e.currentTarget.style.color = "var(--text-muted)";
+                    }}
+                  >
+                    <LogOut size={14} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </header>
 
@@ -434,6 +439,13 @@ const SHELL_RESPONSIVE_STYLES = `
 .vedha-page-header-scroll::-webkit-scrollbar { display: none; }
 .vedha-page-header-scroll > *, .vedha-page-header-tools > :not(.vedha-page-header-scroll) { flex-shrink: 0; }
 
+@media (max-width: 1360px) {
+  .vedha-page-title-divider, .vedha-page-subtitle { display: none; }
+  .vedha-page-header-left { flex-basis: 220px !important; }
+  .vedha-page-header-tools { flex-basis: 460px !important; }
+  .vedha-page-account span { max-width: 104px !important; }
+}
+
 @media (min-width: 768px) and (max-width: 1023px) {
   .vedha-page-title-divider, .vedha-page-subtitle { display: none; }
   .vedha-page-header { padding: 0 14px !important; }
@@ -459,12 +471,20 @@ const SHELL_RESPONSIVE_STYLES = `
     width: 100%;
     min-width: 0;
     gap: 6px !important;
-    justify-content: flex-start;
-    overflow-x: auto;
+    justify-content: flex-start !important;
+    overflow: hidden !important;
+  }
+  .vedha-page-header-tools::-webkit-scrollbar { display: none; }
+  .vedha-page-header-scroll {
+    width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
-  .vedha-page-header-tools::-webkit-scrollbar { display: none; }
+  .vedha-page-header-pinned { gap: 6px !important; }
+  .vedha-page-account span { display: none; }
   .vedha-page-header-actions, .vedha-page-status { flex-shrink: 0; }
   .vedha-page-header-divider { display: none; }
   .vedha-page-status { height: 26px !important; padding: 0 8px !important; }

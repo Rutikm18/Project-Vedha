@@ -2,25 +2,26 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 import { canonicalReport } from "../tests/fixtures/canonical-report";
 
 const ROUTES = [
-  "/",
-  "/engagements",
-  "/engagements/e2e",
-  "/scan",
-  "/campaign",
-  "/fleet",
-  "/findings",
-  "/reports",
-  "/customers",
-  "/aibrain",
-  "/settings",
-  "/portal",
-  "/portal/findings",
-  "/portal/scans",
-  "/portal/fleet",
-  "/portal/scope",
-  "/portal/reports",
-  "/portal/assistant",
-  "/portal/settings",
+  { path: "/", slug: "dashboard" },
+  { path: "/engagements", slug: "engagements" },
+  { path: "/engagements/e2e", slug: "engagements-e2e" },
+  { path: "/scan", slug: "scan" },
+  { path: "/campaign", slug: "campaign" },
+  { path: "/fleet", slug: "fleet" },
+  { path: "/findings", slug: "findings" },
+  { path: "/findings?finding=finding-e2e", slug: "findings-detail" },
+  { path: "/reports", slug: "reports" },
+  { path: "/customers", slug: "customers" },
+  { path: "/aibrain", slug: "aibrain" },
+  { path: "/settings", slug: "settings" },
+  { path: "/portal", slug: "portal" },
+  { path: "/portal/findings", slug: "portal-findings" },
+  { path: "/portal/scans", slug: "portal-scans" },
+  { path: "/portal/fleet", slug: "portal-fleet" },
+  { path: "/portal/scope", slug: "portal-scope" },
+  { path: "/portal/reports", slug: "portal-reports" },
+  { path: "/portal/assistant", slug: "portal-assistant" },
+  { path: "/portal/settings", slug: "portal-settings" },
 ] as const;
 
 const engagement = {
@@ -43,28 +44,45 @@ const engagement = {
 
 const finding = {
   id: "finding-e2e",
-  title: "Public management interface",
+  title: "SMBv1 enabled (wormable, deprecated) (port 445)",
   severity: "CRITICAL",
   status: "OPEN",
   affectedHost: "192.0.2.10",
   discoveredAt: "2026-09-29T08:00:00Z",
   first_seen: "2026-09-29T08:00:00Z",
+  lastSeen: "2026-09-30T08:00:00Z",
+  category: "Network exposure",
   description: "An administrative service is reachable from the internet.",
   technicalDetails: "The service answered on TCP 8443.",
+  attackPath: "External network → SMB service → remote code execution",
   evidence: [{ label: "Scanner", content: "tcp/8443 open", type: "network" }],
   impact: "An attacker can reach a privileged management surface.",
   remediation: ["Restrict access to the management network."],
   mitre: [],
+  killChain: [],
+  compliance: [],
   cwe: [],
   cve: ["CVE-2026-0001"],
   cve_ids: ["CVE-2026-0001"],
+  cves: ["CVE-2026-0001"],
   riskScore: 940,
   risk_score: 94,
+  riskBreakdown: { cvss: 392, epss: 120, kev: 180, exploit: 120, asset: 72, lateral: 56 },
   cvss: "9.8",
   cvss_score: 9.8,
   cvssVector: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+  epssScore: 0.82,
+  epssPercentile: 0.97,
+  epssRecorded: true,
+  kevListed: true,
+  kevStatusRecorded: true,
+  exploitMaturity: "WEAPONIZED",
+  exploitMaturityRecorded: true,
+  pocAvailable: true,
   activelyExploited: true,
   detectionCoverage: "BLIND",
+  fpProbability: 0.02,
+  fpProbabilityRecorded: true,
   aiTriage: {
     priority: "P0",
     reasoning: "Internet-reachable privileged service with active exploitation evidence.",
@@ -72,6 +90,18 @@ const finding = {
     confidence: 0.96,
   },
 };
+
+const slaItems = Array.from({ length: 8 }, (_, index) => ({
+  id: index === 0 ? finding.id : `${finding.id}-${index + 1}`,
+  title: index % 2 === 0
+    ? "Outdated SSH server (Dropbear 2017.75)"
+    : "Weak SSH cryptographic algorithms offered",
+  severity: index < 2 ? "HIGH" : "MEDIUM",
+  deadline: "2026-09-29T00:00:00Z",
+  hoursRemaining: -(8 + index * 24),
+  hoursTotal: 72,
+  state: "breached",
+}));
 
 const campaignProgress = {
   engagement_id: "e2e",
@@ -135,8 +165,8 @@ async function mockApi(route: Route) {
     lowOpen: 0, infoOpen: 0, validated: 1, blind: 1, averageRisk: 71.5,
   });
   if (path === "/api/findings/sla-summary") return json(route, {
-    summary: { breached: 1, atRisk: 1, dueSoon: 0, onTrack: 1, totalTracked: 3 },
-    items: [{ id: finding.id, title: finding.title, severity: "CRITICAL", deadline: "2026-09-29T00:00:00Z", hoursRemaining: -8, hoursTotal: 24, state: "breached" }],
+    summary: { breached: 8, atRisk: 1, dueSoon: 0, onTrack: 1, totalTracked: 10 },
+    items: slaItems,
   });
   if (path === "/api/findings") return json(route, {
     items: [finding], total: 1, page: 1, pageSize: 100, pages: 1,
@@ -251,8 +281,7 @@ test.beforeEach(async ({ context, page }) => {
   await page.route("**/api/**", mockApi);
 });
 
-for (const path of ROUTES) {
-  const slug = path === "/" ? "dashboard" : path.slice(1).replaceAll("/", "-");
+for (const { path, slug } of ROUTES) {
   test(`${path} stays responsive`, async ({ page }, testInfo) => {
     const pageErrors: string[] = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -269,6 +298,41 @@ for (const path of ROUTES) {
       page: document.documentElement.scrollWidth,
     }));
     expect(overflow.page, `${path} should not overflow horizontally`).toBeLessThanOrEqual(overflow.viewport + 1);
+
+    const layoutViolations = await page.evaluate(() => {
+      const violations: string[] = [];
+      const visible = (element: Element | null): element is HTMLElement => {
+        if (!(element instanceof HTMLElement)) return false;
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+
+      const headerLeft = document.querySelector(".vedha-page-header-left");
+      const headerTools = document.querySelector(".vedha-page-header-tools");
+      if (visible(headerLeft) && visible(headerTools)) {
+        const left = headerLeft.getBoundingClientRect();
+        const tools = headerTools.getBoundingClientRect();
+        const sharesRow = left.top < tools.bottom - 1 && tools.top < left.bottom - 1;
+        if (sharesRow && left.right > tools.left + 1) {
+          violations.push(`Page header regions overlap by ${Math.ceil(left.right - tools.left)}px`);
+        }
+      }
+
+      const filterPanel = document.querySelector(".findings-filter-panel");
+      if (visible(filterPanel)) {
+        const panel = filterPanel.getBoundingClientRect();
+        document.querySelectorAll(".findings-filter-panel .findings-filter-group").forEach((group) => {
+          if (!visible(group)) return;
+          const rect = group.getBoundingClientRect();
+          if (rect.left < panel.left - 1 || rect.right > panel.right + 1) {
+            violations.push(`Findings filter escapes its panel: ${group.textContent?.trim().slice(0, 40) ?? "unnamed filter"}`);
+          }
+        });
+      }
+
+      return violations;
+    });
+    expect(layoutViolations, `${path} has overlapping or escaped layout regions`).toEqual([]);
 
     if ((testInfo.project.use.viewport?.width ?? 1440) <= 768) {
       const undersized = await page.locator("button:visible").evaluateAll((buttons) => buttons

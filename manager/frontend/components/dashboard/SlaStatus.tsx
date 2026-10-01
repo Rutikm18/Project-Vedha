@@ -47,7 +47,9 @@ const STATE: Record<SlaState, { label: string; color: string; bg: string; edge: 
   on_track: { label: "On track", color: "var(--accent)",             bg: "var(--accent-bg)",       edge: "var(--accent-edge)",       rank: 3 },
 };
 
-const VISIBLE_ROWS = 8;
+// Five urgent rows keep the dashboard's primary comparison balanced at common
+// desktop heights. The full queue remains one explicit action away.
+const VISIBLE_ROWS = 5;
 
 /** Time left, or "Overdue" once the window has closed. */
 function timeLabel(item: SlaItem): string {

@@ -6,8 +6,9 @@
  *
  * Layout is a hierarchy argument, not a packing problem. Tiers:
  *   1. Ledger      — full bleed. What is open, right now.
- *   2. Posture     — wide left, clock right. Are we winning, and what is late.
- *   3. Exposure    — three equal panels. Where the risk sits.
+ *   2. Posture     — posture and scan change left, clock right. Are we winning,
+ *                    what changed, and what is late.
+ *   3. Exposure    — two equal panels. Where the risk sits.
  *   4. Fleet       — live probe/agent state (kept from the previous dashboard;
  *                    it's real-time operational data the ledger doesn't cover).
  * Nothing below tier 1 competes with tier 1 for attention: smaller type, no
@@ -260,24 +261,18 @@ export function DashboardGrid() {
 
         .band-1 { grid-template-columns: minmax(0, 1fr); }
         .band-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+        .band-2__stack { display: grid; min-width: 0; gap: var(--space-4); }
+        .band-2__stack > .panel,
         .band-2 > .panel { height: auto; }
-        /* band-3: patch matrix gets slightly more width than the two exposure cards
-           but not so much that they look mismatched side-by-side. */
-        .band-3 { grid-template-columns: minmax(300px, 1.15fr) minmax(220px, 1fr) minmax(220px, 1fr); }
+        .band-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .band-4 { grid-template-columns: minmax(0, 1fr); }
 
-        /* At 1100px the three-column layout starts to feel cramped; collapse
-           patch matrix to full-width with the two exposure cards beneath it. */
-        @media (max-width: 1100px) {
-          .band-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .band-3 > :first-child { grid-column: span 2; }
-        }
         @media (max-width: 900px) {
           .band-2, .band-3 { grid-template-columns: minmax(0, 1fr); }
-          .band-3 > :first-child { grid-column: span 1; }
         }
         @media (max-width: 640px) {
           .console-band { gap: var(--space-3); margin-bottom: var(--space-3); }
+          .band-2__stack { gap: var(--space-3); }
           .console-band:last-of-type { margin-bottom: 0; }
         }
       `}</style>
@@ -291,9 +286,14 @@ export function DashboardGrid() {
       </div>
 
       <div className="console-band band-2">
-        <Panel title="Security posture" eyebrow={postureEyebrow} icon={<Gauge size={13} />} headingLevel={3} note={<FreshNote dataset="posture" />}>
-          <PostureScorecard />
-        </Panel>
+        <div className="band-2__stack">
+          <Panel title="Security posture" eyebrow={postureEyebrow} icon={<Gauge size={13} />} headingLevel={3} note={<FreshNote dataset="posture" />}>
+            <PostureScorecard />
+          </Panel>
+          <Panel title="Scan-to-scan change" eyebrow={matrixEyebrow} icon={<GitCompareArrows size={13} />} headingLevel={3} note={<FreshNote dataset="posture" />}>
+            <PatchComparisonMatrix />
+          </Panel>
+        </div>
         <Panel title="Remediation SLA" eyebrow="Clock running" icon={<Timer size={13} />} headingLevel={3} note={<FreshNote dataset="sla" />}>
           {/* SlaStatus reads useSearchParams() for its shareable ?sla= filter; that
               API bails static prerender unless wrapped in a Suspense boundary (Next 15). */}
@@ -304,9 +304,6 @@ export function DashboardGrid() {
       </div>
 
       <div className="console-band band-3">
-        <Panel title="Scan-to-scan change" eyebrow={matrixEyebrow} icon={<GitCompareArrows size={13} />} headingLevel={3} note={<FreshNote dataset="posture" />}>
-          <PatchComparisonMatrix />
-        </Panel>
         <Panel title="Protocol risk" eyebrow="Worst finding on each exposed service" icon={<Activity size={13} />} headingLevel={3} note={<FreshNote dataset="exposure" />}>
           <ProtocolRiskCard />
         </Panel>
