@@ -162,3 +162,44 @@ interception with a test CA, clock skew); one real end-to-end install against `a
 4. **Podman support in Phase 1** (needed for RHEL customers), or Docker-only first?
 5. **Virtual appliance:** Phase 3 as proposed, or sooner if your first customers are Windows/VMware shops?
 6. **Signing method:** existing Ed25519 vendor key (recommended now) or cosign keyless?
+
+## 9. Deeper research (2026-10-02): 19 more field failure points and 5 privacy ones
+
+Method: vendor knowledge bases (Palo Alto, Cisco, Tenable, AWS, Docker), field reports, then each
+point checked against Vedha's code. **Verified** = confirmed in the code or by a lookup;
+**research** = documented elsewhere, not yet reproduced with Vedha; **to confirm** = the source
+lookup was rate-limited, so treat it as likely rather than certain.
+
+### 9.1 New field failure points
+
+| # | Failure | Basis | Symptom | Mitigation |
+|---|---|---|---|---|
+| F18 | **`vedhasec.com` is a newly registered domain** (created 2026-09-28). Palo Alto blocks "Newly Registered Domains" (< 32 days) by recommended default; Umbrella, Zscaler and Fortinet have similar categories | **Verified** (whois) + [Palo Alto URL categories](https://docs.paloaltonetworks.com/advanced-url-filtering/administration/url-filtering-basics/url-categories) | Agent can't reach the manager even with 443 open; installer download blocked | **Now:** submit `vedhasec.com` for categorisation (Palo Alto Test-A-Site, Zscaler, Fortinet, Cisco Talos, Broadcom, Check Point). Client checklist: allow-list `api.vedhasec.com`. Pre-flight recognises a filter block page or proxy-issued certificate |
+| F19 | **Proxy settings don't reach the agent container**: the installer's env file has no `HTTPS_PROXY` / `NO_PROXY` | **Verified** (`install.sh` `write_env_file`) | Host curl works, agent can't connect | Pass proxy variables into the env file; `--proxy` flag |
+| F20 | **Authenticating proxies** (NTLM / Kerberos) | to confirm (httpx supports Basic proxy auth only) | 407 Proxy Authentication Required | IP-based proxy exemption for the agent VM; Basic credentials; state it in the requirements |
+| F21 | **Agent container logs unbounded** (no `--log-opt`) | **Verified** (`docker run` flags) | Customer VM disk fills over months | `--log-opt max-size=10m --log-opt max-file=5` |
+| F22 | **Docker not enabled at boot** | **Verified** (no `systemctl enable docker`) | Agent offline after the VM reboots | Installer enables Docker; pre-flight warns |
+| F23 | **No ICMP host discovery**: the container has no `NET_RAW` | **Verified** (`--cap-drop ALL`) | Hosts that only answer ping look "down" | Optional `NET_RAW`; explain it in the reachability test |
+| F24 | **Container DNS differs from the host** (split DNS, VPN-only resolvers, systemd-resolved stub) | research | Name resolution fails inside the container only | Pre-flight resolves from inside the container; `--dns` passthrough |
+| F25 | **MTU black hole** on VPN / IPsec / GRE paths | research ([Server Fault](https://serverfault.com/questions/1170054/why-does-an-ssl-handshake-fail-due-to-small-mtu)) | TLS handshake hangs with no error | Timed handshake in pre-flight; document MSS clamping |
+| F26 | **End-of-life host OS** (CentOS 7, RHEL 7): old Docker, old CA store | research | Installer download or Docker features fail | Supported-OS list; pre-flight refuses EOL with the reason |
+| F27 | **SELinux enforcing** with bind mounts (e.g. a CA bundle) | research ([GitHub](https://github.com/letsencrypt/boulder/issues/4165)) | Permission denied inside the container | `:z` on bind mounts; named volumes for state (already) |
+| F28 | **firewalld reload removes Docker's rules** (RHEL family) | research | Agent loses network after a firewall change | Document; pre-flight detects firewalld; recommend Docker's firewalld zone |
+| F29 | **Docker Desktop** on customer machines: paid licence for companies > 250 staff or > $10M revenue, and its NAT hides the LAN | research ([Docker licence](https://docs.docker.com/subscription-billing/desktop-license/)) | Licence exposure; scans can't see targets | Supported only: Docker Engine / Podman on Linux, or the appliance |
+| F30 | **IPS / NAC reacts to the scan**: port-scan detection shuns the agent IP; NAC (e.g. Cisco ISE) quarantines its switch port | research ([Cisco port scan detection](https://secure.cisco.com/secure-firewall/docs/port-scan-detection)) | Mid-scan, everything turns "filtered"; agent goes offline | Allow-list the agent IP in IPS/NAC; detect a sudden all-filtered pattern, stop and alert |
+| F31 | **Fragile devices and stateful firewalls**: printers, OT/PLCs and old embedded devices crash; scanning *through* a firewall exhausts its session table | research ([Tenable fragile devices](https://docs.tenable.com/cyber-exposure-studies/ransomware/Content/AvoidScanningFragileDevices.htm)) | Device or network outage blamed on Vedha | Fragile-asset guard (exists); agent on the same segment as targets; Stealth for sensitive segments; OT passive only |
+| F32 | **Agent VM changes IP** (DHCP) | research | IPS/NAC allow-lists stop matching, which leads to F30 | Require a static IP or DHCP reservation |
+| F33 | **EDR / antivirus flags the agent**: scanners and Nuitka-packed binaries are often flagged heuristically | research | Agent quarantined or blocked | Code-sign releases; publish hashes for allow-listing; submit to AV vendors |
+| F34 | **Change windows and time zones**: scans run outside an approved window | research | Change-ticket violations, SOC escalations | Scan windows per engagement, in the customer's time zone |
+| F35 | **NTP blocked** (UDP 123), the usual root cause of clock skew (F9) | research | TLS and token errors after days of drift | Pre-flight checks time sync; document NTP egress |
+| F36 | Idle timeouts on long-lived connections (AWS NAT / NLB: fixed 350 s) | research ([AWS](https://aws.amazon.com/blogs/networking-and-content-delivery/implementing-long-running-tcp-connections-within-vpc-networking/)) | Silent disconnects | **Already handled**: WebSocket ping every 30 s (`transport.py`) |
+
+### 9.2 New privacy failure points
+
+| # | Failure | Basis | Mitigation |
+|---|---|---|---|
+| P11 | **Certificate Transparency leaks customer names** if each customer gets its own subdomain (`<slug>.portal.vedhasec.com` is planned) | **Verified** plan in `customer_access.py`; [CT subdomain discovery](https://inventivehq.com/blog/subdomain-discovery-using-certificate-transparency-logs) | Wildcard certificate (DNS challenge) or path-based tenancy; never put customer names in public certificates |
+| P12 | **AI providers keep prompts for a period** (abuse monitoring) unless zero-data-retention terms apply | to confirm | Record each provider's retention in the sub-processor list; seek zero-retention terms; masked identifiers by default |
+| P13 | **Support bundles and logs** sent to Vedha contain IPs and hostnames | research | Redaction (exists) plus explicit consent; store in India; delete after the ticket closes |
+| P14 | **The agent is a pivot** if the manager is compromised: it can be tasked inside the customer network | research | Agent-side scope enforcement (exists); signed job policy (key exists); a customer-visible switch to stop the agent; alert on scope changes |
+| P15 | **Prompt injection through scan data**: banners and hostnames are attacker-controlled and flow into AI prompts | research | Treat scan data as untrusted in prompts; masking; label AI output as unverified (already in the portal) |
