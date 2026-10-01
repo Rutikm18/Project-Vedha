@@ -31,6 +31,19 @@ _PUBLIC_ENROLLMENT_PATHS = (
     re.compile(r"^/probe-enrollment/requests/[0-9a-fA-F-]+/activate$"),
     re.compile(r"^/probe-enrollment/token$"),
 )
+# Agent distribution: the installer and signed manifest are public; the image
+# route authenticates its own enrolment token (a vet_ token is not a JWT).
+_PUBLIC_DISTRIBUTION_PATHS = (
+    re.compile(r"^/agent/install\.sh$"),
+    re.compile(r"^/agent/manifest\.json(\.sig)?$"),
+    re.compile(r"^/agent/image/[a-z0-9]{1,16}$"),
+)
+
+
+def _is_public_distribution_request(path: str, method: str) -> bool:
+    return method.upper() in ("GET", "HEAD") and any(
+        pattern.fullmatch(path) for pattern in _PUBLIC_DISTRIBUTION_PATHS
+    )
 
 
 def _is_public_enrollment_request(path: str, method: str) -> bool:
@@ -95,6 +108,7 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
             path in _PUBLIC_PATHS
             or path.startswith(_PUBLIC_PREFIXES)
             or _is_public_enrollment_request(path, request.method)
+            or _is_public_distribution_request(path, request.method)
         ):
             return await call_next(request)
 

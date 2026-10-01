@@ -175,6 +175,19 @@ class Settings(BaseSettings):
     # still enforces its own local ceiling, and jobs carry per-engagement scope).
     probe_auto_enroll_cidrs: str = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 
+    # Agent distribution (app/agent_release.py). The manager serves the signed
+    # agent release from this read-only directory; nothing is pulled from a
+    # public registry. AGENT_RELEASE_PUBLIC_KEY is the base64 raw Ed25519 key
+    # printed by `scripts/agent-release.sh keygen`. Production refuses to serve a
+    # release that is unsigned or doesn't verify; development may opt in with
+    # AGENT_RELEASE_REQUIRE_SIGNATURE=true.
+    agent_release_dir: str = "/var/lib/vedha/agent-releases"
+    agent_release_public_key: str = ""
+    agent_release_require_signature: bool = False
+    # Public base URL of this API (https://api.example.com) — what a customer's
+    # host dials. Used to build the install command shown in Fleet.
+    manager_public_url: str = ""
+
     # Peers whose X-Forwarded-For is believed (Caddy + the Next BFF on the private
     # docker network). A request from any other peer is keyed on its socket IP,
     # so a direct caller cannot spoof its way past the rate limiter.

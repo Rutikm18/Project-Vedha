@@ -31,6 +31,9 @@ x-backend-env: &backend-env
   REDIS_URL: redis://redis:6379/0
   JWT_SECRET: ${JWT_SECRET:-change-me-at-least-32-chars-long!!}
   PROBE_POLICY_SIGNING_KEY: ${PROBE_POLICY_SIGNING_KEY:-}
+  AGENT_RELEASE_PUBLIC_KEY: ${AGENT_RELEASE_PUBLIC_KEY:-}
+  AGENT_RELEASE_REQUIRE_SIGNATURE: ${AGENT_RELEASE_REQUIRE_SIGNATURE:-false}
+  MANAGER_PUBLIC_URL: ${MANAGER_PUBLIC_URL:-}
   APP_ENV: ${APP_ENV:-development}
   AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -164,6 +167,9 @@ services:
     # Production install.sh enforces this via manager/docker-compose.yml.
     ports:
       - "127.0.0.1:${API_PORT:-18080}:8000"
+    volumes:
+      # Agent releases published by scripts/agent-release.sh (read-only here).
+      - ${AGENT_RELEASE_HOST_DIR:-./manager/agent-releases}:/var/lib/vedha/agent-releases:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

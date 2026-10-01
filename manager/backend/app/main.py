@@ -18,6 +18,7 @@ from app.routers.users import router as users_router
 from app.routers.analytics import router as analytics_router
 from app.routers.ad import router as ad_router
 from app.routers.agents import router as agents_router
+from app.routers.agent_distribution import router as agent_distribution_router
 from app.routers.agent_ws import router as agent_ws_router  # WebSocket probe push
 from app.routers.ai_report import router as ai_report_router
 from app.routers.ai import router as ai_router
@@ -250,6 +251,7 @@ app.include_router(engagement_sla_policy_router)
 app.include_router(integrations_router)
 app.include_router(agents_router)
 app.include_router(probe_enrollment_router)
+app.include_router(agent_distribution_router)
 app.include_router(agent_ws_router)
 app.include_router(vuln_router)
 app.include_router(exploits_router)
