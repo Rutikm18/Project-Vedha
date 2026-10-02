@@ -52,7 +52,7 @@ describe("Fleet → Add agent BFF", () => {
     await createToken(new NextRequest("http://localhost/api/fleet/enroll-tokens", {
       method: "POST", headers: auth, body: JSON.stringify({ engagement_id: "eng-1", name: "edge" }),
     }));
-    assert.equal(seen[0].body.expires_in_minutes, 1440);
+    assert.equal((seen[0].body as { expires_in_minutes: number }).expires_in_minutes, 1440);
   });
 
   test("set access expiry maps to the backend PATCH", async () => {
