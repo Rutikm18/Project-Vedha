@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   CheckCircle2,
   ChevronDown,
@@ -33,11 +34,29 @@ function responseFilename(header: string | null, fallback: string): string {
   return ascii || fallback;
 }
 
+const GUTTER = 14;
+const MENU_WIDTH = 280;
+
+/** Where the format list opens, in viewport coordinates: 8 px under the
+ *  button, right-aligned to it, never past the screen's 14 px gutter. The list
+ *  is portaled to <body> because the PageShell header clips overflow — opened
+ *  in place it was cut off out of sight, so "Export" appeared to do nothing. */
+export function exportMenuPosition(
+  button: { left: number; right: number; bottom: number },
+  viewportWidth: number,
+): { top: number; left: number; width: number } {
+  const width = Math.min(MENU_WIDTH, viewportWidth - GUTTER * 2);
+  const left = Math.max(GUTTER, Math.min(button.right - width, viewportWidth - width - GUTTER));
+  return { top: button.bottom + 8, left, width };
+}
+
 export function ReportExportMenu({ engagementId, disabled = false }: {
   engagementId?: string;
   disabled?: boolean;
 }) {
-  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuAt, setMenuAt] = useState<{ top: number; left: number; width: number } | null>(null);
   const [active, setActive] = useState<ReportExportFormat | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -47,7 +66,7 @@ export function ReportExportMenu({ engagementId, disabled = false }: {
     setActive(format);
     setError("");
     setMessage(`Preparing ${format.toUpperCase()}…`);
-    if (detailsRef.current) detailsRef.current.open = false;
+    setMenuAt(null);
 
     try {
       const response = await fetch("/api/reports/export", {
@@ -81,22 +100,67 @@ export function ReportExportMenu({ engagementId, disabled = false }: {
     }
   }
 
+  const unavailable = disabled || !engagementId || Boolean(active);
+  const open = menuAt !== null;
+
+  function toggle() {
+    if (unavailable) return;
+    if (open) { setMenuAt(null); return; }
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) setMenuAt(exportMenuPosition(rect, window.innerWidth));
+  }
+
+  // Close on an outside press, Escape, scroll or resize (the list is fixed to
+  // where the button was when it opened).
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setMenuAt(null);
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target) || buttonRef.current?.contains(target)) return;
+      close();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      close();
+      buttonRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [open]);
+
   return (
     <div className="cr-export-control no-print">
-      <details ref={detailsRef} className="cr-export-menu">
-        <summary
-          className="btn btn-secondary"
-          aria-label="Export report"
-          aria-disabled={disabled || !engagementId || Boolean(active)}
-          onClick={(event) => {
-            if (disabled || !engagementId || active) event.preventDefault();
-          }}
+      <button
+        ref={buttonRef}
+        type="button"
+        className="btn btn-secondary cr-export-trigger"
+        aria-label="Export report"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-disabled={unavailable}
+        onClick={toggle}
+      >
+        {active ? <Loader2 size={14} className="spin" aria-hidden /> : <Download size={14} aria-hidden />}
+        Export
+        <ChevronDown size={13} aria-hidden />
+      </button>
+      {menuAt && createPortal(
+        <div
+          ref={menuRef}
+          className="cr-export-popover no-print"
+          role="menu"
+          aria-label="Report export formats"
+          style={{ position: "fixed", top: menuAt.top, left: menuAt.left, right: "auto", width: menuAt.width }}
         >
-          {active ? <Loader2 size={14} className="spin" aria-hidden /> : <Download size={14} aria-hidden />}
-          Export
-          <ChevronDown size={13} aria-hidden />
-        </summary>
-        <div className="cr-export-popover" role="menu" aria-label="Report export formats">
           {OPTIONS.map(({ format, label, description, icon: Icon }) => (
             <button
               key={format}
@@ -109,8 +173,9 @@ export function ReportExportMenu({ engagementId, disabled = false }: {
               <span><strong>{label}</strong><small>{description}</small></span>
             </button>
           ))}
-        </div>
-      </details>
+        </div>,
+        document.body,
+      )}
       <span className="cr-export-status" data-error={Boolean(error) || undefined} aria-live="polite">
         {error || (message && <><CheckCircle2 size={12} aria-hidden />{message}</>)}
       </span>
