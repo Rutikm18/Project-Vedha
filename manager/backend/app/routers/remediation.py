@@ -30,6 +30,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import require_role
+from app.ratelimit import ai_rate_limit
 from app.dependencies import DB, AuthUser
 from app.models.engagement import Engagement
 from app.models.finding import Finding
@@ -197,7 +198,7 @@ async def get_remediation(
                       platform=shown)
 
 
-@router.post("/{finding_id}/remediation/refine",
+@router.post("/{finding_id}/remediation/refine", dependencies=[Depends(ai_rate_limit)],
              response_model=RemediationPlanOut,
              summary="Refine the plan with AI (gateway-routed, cached, unreviewed until published)")
 async def refine_remediation(
@@ -246,7 +247,7 @@ async def refine_remediation(
     return _serialize(finding_id, key, plan, row=row, bundle=link, platform=shown)
 
 
-@router.post("/{finding_id}/remediation/generate",
+@router.post("/{finding_id}/remediation/generate", dependencies=[Depends(ai_rate_limit)],
              response_model=RemediationPlanOut,
              summary="Deprecated alias of /remediation/refine")
 async def generate_remediation(

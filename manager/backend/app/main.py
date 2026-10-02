@@ -117,6 +117,13 @@ async def lifespan(app: FastAPI):
 
 # ── App factory ───────────────────────────────────────────────────────────────
 
+def api_docs_urls(production: bool) -> dict[str, str | None]:
+    """The interactive API docs are a map of every route: off in production."""
+    if production:
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
+
+
 app = FastAPI(
     title="Vedha VAPT Platform API",
     description=(
@@ -125,9 +132,7 @@ app = FastAPI(
         "attack path analysis, and detection coverage."
     ),
     version=get_version(),
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    **api_docs_urls(get_settings().is_production),
     lifespan=lifespan,
 )
 

@@ -103,6 +103,10 @@ def rate_limit(scope: str, limit: int, window_sec: int):
 login_rate_limit = rate_limit("login", limit=5, window_sec=60)
 
 
+# AI routes spend paid API credit: cap each client IP at 30 calls a minute.
+ai_rate_limit = rate_limit("ai", limit=30, window_sec=60)
+
+
 # ── Per-account login failures ────────────────────────────────────────────────
 # Counts FAILURES only and clears on success: a legitimate user is never locked
 # out by their own successful logins, and an attacker can hold an account's

@@ -29,6 +29,13 @@ COPY . .
 # DETECTION_ENGINE_PATH points here.
 COPY --from=detection_engine . /opt/detection_engine
 
+# Run as an unprivileged user (the API needs no root).
+# /var/lib/vedha is where offline intel bundles are written when VEDHA_INTEL_DIR points there.
+RUN useradd --system --uid 10001 --no-create-home vedha \
+    && mkdir -p /var/lib/vedha \
+    && chown -R vedha /app /var/lib/vedha
+USER vedha
+
 EXPOSE 8000
 
 # Default command serves the API. The compose `migrate` service overrides this

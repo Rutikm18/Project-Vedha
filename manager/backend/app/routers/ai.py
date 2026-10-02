@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
 from app.dependencies import DB, AuthUser
 from app.ai.audit_chain import ACTION as AI_AUDIT_ACTION, persist_ai_calls, verify_chain
 from app.auth.rbac import require_role
 from app.compliance.citations import check_citations
+from app.ratelimit import ai_rate_limit
 from app.models.audit_log import AuditLog
 from app.models.engagement import Engagement
 from app.schemas.ai import AiGenerateRequest, AiGenerateResponse, AiStatusResponse
@@ -25,7 +26,7 @@ async def ai_status(current_user: AuthUser):
     return await ManagerLlmService().status()
 
 
-@router.post("/generate", response_model=AiGenerateResponse, summary="Generate grounded defensive guidance")
+@router.post("/generate", dependencies=[Depends(ai_rate_limit)], response_model=AiGenerateResponse, summary="Generate grounded defensive guidance")
 async def ai_generate(request: AiGenerateRequest, current_user: AuthUser, db: DB):
     brief = None
     if request.engagement_id is not None:
