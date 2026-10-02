@@ -36,6 +36,7 @@ Central docs map. All documentation now lives here — the repo root is clean.
 - [Client Prerequisites](deployment/CLIENT_PREREQUISITES.md) — what a client provides before an engagement
 
 ### Operations
+- [Branch merge assessment (3 Oct)](planning/2026-10-03-branch-merge-assessment.md) — what is on the integration branch, what is not (Codex branch) and why
 - [Agent distribution runbook](operations/AGENT_DISTRIBUTION.md) — sign + publish agent releases from the build machine, how Fleet → Add agent works, on-prem encrypted bundles
 - [Debugging the Agent](operations/DEBUGGING_THE_AGENT.md) — log verbosity, where logs/state are stored per platform, diagnostic subcommands, symptom→fix table, Windows agent
 - [Troubleshooting](operations/TROUBLESHOOTING.md) — scanner error codes and operator actions
