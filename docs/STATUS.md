@@ -9,7 +9,7 @@ Claude updates it at the end of every finished piece of work: a change-log row, 
 
 | Area | State |
 | --- | --- |
-| `origin/main` | `46623ae`. The integration branch landed: agent install, portal plan locks, report export fix, new logo, Technical Findings report, operator Deep scan, design system doc. **Not yet on it:** the 6 commits on `claude/adoring-maxwell-uz71b2` (see *Done, waiting for merge*) |
+| `origin/main` | `58f1a5d`. The integration branch landed at `46623ae` (agent install, portal plan locks, report export fix, new logo, Technical Findings report, operator Deep scan, design system doc), followed by `make prod-diagnose`. **Not yet on it:** the commits on `claude/adoring-maxwell-uz71b2` (see *Done, waiting for merge*), which already contains `58f1a5d` |
 | Production | [app.vedhasec.com](https://app.vedhasec.com) / [api.vedhasec.com](https://api.vedhasec.com) — **stopped for a redeploy on 1 Oct** (owner). Was healthy on 1.0.325 on 30 Sep |
 | Tests | On `claude/adoring-maxwell-uz71b2` (3 Oct): backend 2,309 passed, 9 skipped · frontend 436 of 436 · probe 2,512 (not re-run, no probe change) · lint 0 errors · one Alembic head (`0055`) |
 | AI providers | Anthropic: no API credit · OpenAI: key rejected on AWS · Gemini: works, but its key was not on the AWS server |
@@ -116,7 +116,7 @@ These need your accounts, your server or your decision.
 - [ ] After the redeploy, set up Email and Slack under Settings (the new notification rules only reach channels that are set up), then press the integration's test button. `AUTH_SECRET` is no longer read by the frontend; it can be removed from the AWS `.env` (harmless if left)
 - [ ] Command-line users: `vedha login` now asks for email and password instead of emailing a code, and stores a 30-day token that `vedha logout` revokes
 - [ ] **Today:** submit `vedhasec.com` for web-filter categorisation (Palo Alto, Zscaler, Fortinet, Cisco Talos, Broadcom, Check Point). Domains under about 32 days old are commonly blocked as "newly registered", which would stop customer agents reaching the manager
-- [ ] Merge `claude/adoring-maxwell-uz71b2` into `main` (6 commits, a fast-forward of `origin/main` `46623ae`): open a pull request, or run `git push origin claude/adoring-maxwell-uz71b2:main`. Then redeploy. In your primary checkout, commit or set aside uncommitted changes and pull
+- [ ] Merge `claude/adoring-maxwell-uz71b2` into `main`. It already contains `origin/main` `58f1a5d`, so `git push origin claude/adoring-maxwell-uz71b2:main` is a fast-forward; or open a pull request. Then redeploy. In your primary checkout, commit or set aside uncommitted changes and pull
 - [ ] After deploying, the migrations run `0052` and `0053` (agent install), `0054` (plan locks) and `0055` (notification rules). Existing customers keep full access until you lock something, and every organisation starts with the default notification rules
 - [ ] Clean up the plan-locks / export test leftovers: containers `vedha-export-before`, `vedha-export-after`, `vedha-export-ui-before`, `vedha-export-ui-after`, `vedha-locks-pg`; images `vedha-frontend:exporttest`, `:exportfix`, `:menufix`; and, once pushed, the merged branches and worktrees listed in the change log row for 2026-10-03 (merge all)
 - [ ] On your build machine, run `make agent-keygen`. Keep `~/.vedha/agent-release-key.pem` off the server and back it up offline. Put the printed `AGENT_RELEASE_PUBLIC_KEY=…` in the AWS `.env`
