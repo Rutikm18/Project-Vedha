@@ -13,7 +13,7 @@ Claude updates it at the end of every finished piece of work: a change-log row, 
 | Production | [app.vedhasec.com](https://app.vedhasec.com) / [api.vedhasec.com](https://api.vedhasec.com) — **stopped for a redeploy on 1 Oct** (owner). Was healthy on 1.0.325 on 30 Sep |
 | Tests | 2,181 backend tests passing, 8 skipped (2 Oct, full run). Frontend 346 of 348 (the 2 failures are the missing `pdfkit` package) |
 | AI providers | Anthropic: no API credit · OpenAI: key rejected on AWS · Gemini: works, but its key was not on the AWS server |
-| Waiting for your push | `feat/portal-plan-locks`, 9 commits on top of `origin/main` `4c78573`: report export fix, portal plan locks, operator Deep scan, this status doc. See *Needs you* |
+| Waiting for your push | `feat/portal-plan-locks`, on top of `origin/main` `4c78573`: report export fix, portal plan locks, operator Deep scan, new logo and favicon, this status doc. See *Needs you* |
 | Unmerged branches | `codex/customer-portal-engagement-parity` (report document ported; remediation workspace still not) · `probe-standalone` (never merge) |
 
 The things that matter most right now:
@@ -73,6 +73,7 @@ Priority order from the [next-8 workstreams plan](planning/2026-09-29-next-8-wor
 | --- | --- | --- | --- |
 | Report export did nothing in production | Reports | Done (branch) | The Export menu opened inside a page-header box that hides overflow, so nothing showed. It now opens in a layer above the page, closes on Escape, an outside click or scroll, and fits a phone screen. Reproduced in the production image, checked on desktop and mobile, and a PDF download verified. `c4161aa` |
 | Portal plan locks (POC vs licensed) | Portal | Done (branch) | In each customer's Plan panel, the operator can lock finding severities and features at any time, on POC or licensed plans. A new POC starts with Critical and High locked. The lockable features are AI assistant, Reports, Remediation & fix bundles and Compliance briefs. Locked findings never leave the server: one database-level guard filters every customer query. The portal shows them as "N locked findings · Available on a licensed plan". Locked features show a lock panel. Written reports are withheld while any severity is locked. Migration `0052`. [Design](superpowers/specs/2026-10-02-portal-plan-locks-design.md). `35581b4`–`72d6bea` |
+| New logo and favicon | Brand | Done (branch) | Your new mark replaces the shield icon in the sidebar and on both login pages. The stacked logo (mark + "vedha") is on the customer portal login. Favicon is served as SVG (follows light/dark), ICO and Apple touch icon. Clean SVGs and PNGs are in `manager/frontend/public/brand/`. Checked in the browser on desktop and phone |
 | Settings page redesign: research and design | Settings | Doc done; build not started | Draws on GitHub, Vercel, Datadog, Stripe, Tenable, Rapid7, Snyk, Salesforce and Checkmarx. Proposes a new structure and gives every field its meaning, default, owner, effect and backend status. Found 4 defects in today's page (listed below). [Design](superpowers/specs/2026-10-03-settings-page-design.md) |
 
 ### Other open items
@@ -131,6 +132,7 @@ One row per finished piece of work, newest first.
 
 | Date | Change | Ref |
 | --- | --- | --- |
+| 2026-10-03 | New logo and favicon: shared `VedhaMark` / `VedhaLogoStacked` components, favicon SVG + ICO + Apple icon, brand files in `public/brand/`; both login pages checked in the browser | `feat/portal-plan-locks` |
 | 2026-10-03 | Settings page research and design doc (no code): a new structure, each field's meaning, default, owner and effect, and 4 defects found in today's page | `docs/superpowers/specs/2026-10-03-settings-page-design.md` |
 | 2026-10-03 | Portal plan locks done: severity and feature locks per customer, a central server guard, teaser rows and lock panels in the portal. 2,181 backend tests pass; frontend 346 of 348 (missing `pdfkit`) | `35581b4`–`72d6bea` |
 | 2026-10-02 | Report export fixed: the page header clipped the menu, which now opens above the page. Verified in the production image on desktop and mobile | `c4161aa` |

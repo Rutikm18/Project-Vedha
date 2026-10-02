@@ -4,8 +4,9 @@ import React, { Suspense, useCallback, useEffect, useRef, useState } from "react
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight, Check, Eye, EyeOff, Fingerprint, Loader2,
-  LockKeyhole, Shield, ShieldCheck,
+  LockKeyhole, ShieldCheck,
 } from "lucide-react";
+import { VedhaMark } from "../../components/brand/VedhaMark";
 
 export default function LoginPage() {
   return (
@@ -139,7 +140,7 @@ function LoginForm() {
         <div className="login-story-orb login-story-orb-b" aria-hidden />
 
         <div className="login-brand">
-          <span className="login-brand-mark"><Shield size={20} strokeWidth={2.2} /></span>
+          <span className="login-brand-mark"><VedhaMark size={22} /></span>
           <span>VEDHA</span>
           <span className="login-version">ENTERPRISE</span>
         </div>
@@ -181,7 +182,7 @@ function LoginForm() {
       <section className="login-access">
         <div className="login-form-wrap">
           <div className="login-mobile-brand">
-            <span className="login-brand-mark"><Shield size={18} /></span>
+            <span className="login-brand-mark"><VedhaMark size={20} /></span>
             <span>VEDHA</span>
           </div>
 
