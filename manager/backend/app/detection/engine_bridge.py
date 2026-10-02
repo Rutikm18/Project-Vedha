@@ -715,39 +715,41 @@ async def _record_run_membership(db: AsyncSession, run: DetectionRun) -> None:
 async def _notify_new_findings(db: AsyncSession, engagement_id: uuid.UUID, run_id: uuid.UUID) -> None:
     """Tell the tenant about the Critical / High findings this run opened (one
     message per severity, per run), if their notification rules say so. Never
-    raises: a notification must not fail a detection run."""
+    raises, and runs in a savepoint so even a database error here cannot spoil the
+    detection run's own transaction."""
     try:
         from app.models.engagement import Engagement
         from app.services.notification_rules import notify_event_safe
 
-        opened = (await db.execute(
-            select(Finding.severity, Finding.title).where(
-                Finding.initial_detection_run_id == run_id,
-                Finding.severity.in_([FindingSeverity.critical, FindingSeverity.high]),
-            )
-        )).all()
-        if not opened:
-            return
-        eng = (await db.execute(
-            select(Engagement.tenant_id, Engagement.name).where(Engagement.id == engagement_id)
-        )).one_or_none()
-        if eng is None:
-            return
-        tenant_id, name = eng
-        for severity, label, event in (
-            (FindingSeverity.critical, "Critical", "critical_finding"),
-            (FindingSeverity.high, "High", "high_finding"),
-        ):
-            titles = [t for s, t in opened if s == severity]
-            if not titles:
-                continue
-            shown = "\n".join(f"- {t}" for t in titles[:5])
-            more = f"\n…and {len(titles) - 5} more" if len(titles) > 5 else ""
-            await notify_event_safe(
-                db, tenant_id, event,
-                f"Vedha: {len(titles)} new {label} finding{'s' if len(titles) != 1 else ''} in {name}",
-                f"A scan of '{name}' opened {len(titles)} {label} finding{'s' if len(titles) != 1 else ''}:\n"
-                f"{shown}{more}")
+        async with db.begin_nested():
+            opened = (await db.execute(
+                select(Finding.severity, Finding.title).where(
+                    Finding.initial_detection_run_id == run_id,
+                    Finding.severity.in_([FindingSeverity.critical, FindingSeverity.high]),
+                )
+            )).all()
+            if not opened:
+                return
+            eng = (await db.execute(
+                select(Engagement.tenant_id, Engagement.name).where(Engagement.id == engagement_id)
+            )).one_or_none()
+            if eng is None:
+                return
+            tenant_id, name = eng
+            for severity, label, event in (
+                (FindingSeverity.critical, "Critical", "critical_finding"),
+                (FindingSeverity.high, "High", "high_finding"),
+            ):
+                titles = [t for s, t in opened if s == severity]
+                if not titles:
+                    continue
+                shown = "\n".join(f"- {t}" for t in titles[:5])
+                more = f"\n…and {len(titles) - 5} more" if len(titles) > 5 else ""
+                await notify_event_safe(
+                    db, tenant_id, event,
+                    f"Vedha: {len(titles)} new {label} finding{'s' if len(titles) != 1 else ''} in {name}",
+                    f"A scan of '{name}' opened {len(titles)} {label} finding{'s' if len(titles) != 1 else ''}:\n"
+                    f"{shown}{more}")
     except Exception as exc:  # noqa: BLE001 — notification must not fail the run
         logger.warning("detection_run.notify_failed", run_id=str(run_id), error=str(exc))
 

@@ -103,8 +103,23 @@ def rate_limit(scope: str, limit: int, window_sec: int):
 login_rate_limit = rate_limit("login", limit=5, window_sec=60)
 
 
-# AI routes spend paid API credit: cap each client IP at 30 calls a minute.
-ai_rate_limit = rate_limit("ai", limit=30, window_sec=60)
+def user_rate_limit(scope: str, limit: int, window_sec: int):
+    """Like rate_limit, but keyed by the signed-in user rather than the address.
+
+    Behind the dashboard every request reaches this API from the BFF's address, so
+    an IP key would put the whole deployment in one bucket. The auth middleware has
+    already run, so request.state.user_id is set; an unauthenticated caller falls
+    back to its IP.
+    """
+    async def _dep(request: Request, redis=Depends(get_redis)) -> None:
+        user_id = getattr(request.state, "user_id", None)
+        who = f"user:{user_id}" if user_id else f"ip:{client_ip(request)}"
+        await _check(redis, f"{scope}:{who}", limit, window_sec)
+    return _dep
+
+
+# AI routes spend paid API credit: each signed-in user gets 30 calls a minute.
+ai_rate_limit = user_rate_limit("ai", limit=30, window_sec=60)
 
 
 # ── Per-account login failures ────────────────────────────────────────────────

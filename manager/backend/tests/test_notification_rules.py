@@ -275,12 +275,23 @@ def _spy(monkeypatch):
     return calls
 
 
+def _savepoint():
+    class _Ctx:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+    return _Ctx()
+
+
 def _detection_db(opened, engagement):
     first, second = MagicMock(), MagicMock()
     first.all = MagicMock(return_value=opened)
     second.one_or_none = MagicMock(return_value=engagement)
     db = MagicMock()
     db.execute = AsyncMock(side_effect=[first, second])
+    db.begin_nested = _savepoint
     return db
 
 
@@ -304,6 +315,7 @@ def test_detection_run_with_no_critical_or_high_sends_nothing(monkeypatch):
     empty = MagicMock()
     empty.all = MagicMock(return_value=[])
     db.execute = AsyncMock(return_value=empty)
+    db.begin_nested = _savepoint
     run(_notify_new_findings(db, uuid.uuid4(), uuid.uuid4()))
     assert calls == [] and db.execute.await_count == 1
 
@@ -312,6 +324,7 @@ def test_detection_run_survives_a_notification_failure():
     from app.detection.engine_bridge import _notify_new_findings
     db = MagicMock()
     db.execute = AsyncMock(side_effect=RuntimeError("db gone"))
+    db.begin_nested = _savepoint
     run(_notify_new_findings(db, uuid.uuid4(), uuid.uuid4()))      # must not raise
 
 
