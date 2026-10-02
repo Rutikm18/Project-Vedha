@@ -42,6 +42,7 @@ from app.routers.health import router as health_router
 from app.routers.probe_enrollment import router as probe_enrollment_router
 from app.routers.integrations import router as integrations_router
 from app.routers.notification_rules import router as notification_rules_router
+from app.routers.org_settings import router as org_settings_router
 from app.routers.remediation import router as remediation_router
 from app.routers.remediation import bundles_router as remediation_bundles_router
 from app.routers.report_document import router as report_document_router
@@ -256,6 +257,7 @@ app.include_router(sla_policy_router)
 app.include_router(engagement_sla_policy_router)
 app.include_router(integrations_router)
 app.include_router(notification_rules_router)
+app.include_router(org_settings_router)
 app.include_router(agents_router)
 app.include_router(probe_enrollment_router)
 app.include_router(agent_distribution_router)

@@ -35,6 +35,7 @@ from app.models.sla_policy import SlaPolicy
 from app.models.integration import Integration
 from app.models.notification_rule import NotificationRule
 from app.models.sla_alert import SlaAlert
+from app.models.tenant_settings import TenantSettings
 from app.models.worker_heartbeat import WorkerHeartbeat
 
 __all__ = [
@@ -46,6 +47,6 @@ __all__ = [
     "AttackTimeline", "DetectionConfig", "LLMOutput", "OutboxEvent",
     "DetectionRun", "DetectionRunFinding", "AgentRecommendation", "PersonalAccessToken",
     "ProbeSite", "ProbeEnrollmentRequest", "AgentCredential", "ProbeEnrollmentToken",
-    "ValidationRequest", "ScanRequest", "CustomerEntitlement", "RemediationPlan", "DeadlineExtensionRequest", "SlaPolicy", "Integration", "NotificationRule", "SlaAlert",
+    "ValidationRequest", "ScanRequest", "CustomerEntitlement", "RemediationPlan", "DeadlineExtensionRequest", "SlaPolicy", "Integration", "NotificationRule", "SlaAlert", "TenantSettings",
     "WorkerHeartbeat",
 ]

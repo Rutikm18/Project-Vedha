@@ -64,17 +64,23 @@ def create_device_access_token(
     )
 
 
-def create_refresh_token(subject: str, tenant_id: str) -> tuple[str, str]:
-    """Returns (token, jti) — jti is stored in Redis for revocation."""
+def create_refresh_token(subject: str, tenant_id: str, auth_time: int | None = None) -> tuple[str, str]:
+    """Returns (token, jti) — jti is stored in Redis for revocation.
+
+    `auth_time` is when the user actually signed in (epoch seconds). It is carried
+    unchanged through every refresh rotation, which is what lets an organisation's
+    absolute session limit hold even though each rotation issues a fresh token."""
     jti = str(uuid.uuid4())
-    expire = _now() + timedelta(days=settings.refresh_token_expire_days)
+    now = _now()
+    expire = now + timedelta(days=settings.refresh_token_expire_days)
     payload = {
         "sub": subject,
         "tenant_id": tenant_id,
         "type": "refresh",
         "exp": expire,
-        "iat": _now(),
+        "iat": now,
         "jti": jti,
+        "auth_time": int(auth_time if auth_time is not None else now.timestamp()),
     }
     return jwt.encode(payload, _SECRET, algorithm=_ALGORITHM), jti
 

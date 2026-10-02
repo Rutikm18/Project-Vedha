@@ -93,7 +93,7 @@ export async function PUT(req: Request) {
   try {
     const d = await backend<{ access_token: string; refresh_token: string }>(
       "/auth/refresh",
-      { method: "POST", body: { refresh_token: refreshToken } },
+      { method: "POST", body: { refresh_token: refreshToken }, headers: forwardedFor(req) },
     );
     // The refresh door is operator-only too: never turn a customer's token into
     // an operator session.

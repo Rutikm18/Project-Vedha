@@ -17,6 +17,7 @@ account state is re-validated on every rotation; the token travels in the body.
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
@@ -28,6 +29,8 @@ from app.auth.jwt import create_refresh_token, decode_token
 from app.auth.router import logout, refresh
 from app.models.enums import UserRole
 from app.schemas.auth import RefreshRequest
+
+_REQ = SimpleNamespace(client=SimpleNamespace(host="203.0.113.1"), headers={})
 
 
 class FakeRedis:
@@ -97,7 +100,7 @@ async def test_refresh_rotates_and_new_token_is_registered():
     redis, user = FakeRedis(), _user()
     token = await _issued(redis, user)
 
-    resp = await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=redis)
+    resp = await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=redis, request=_REQ)
 
     new_jti = decode_token(resp.refresh_token)["jti"]
     assert f"rt:{new_jti}" in redis.kv
@@ -107,10 +110,10 @@ async def test_refresh_rotates_and_new_token_is_registered():
 async def test_refresh_token_is_single_use():
     redis, user = FakeRedis(), _user()
     token = await _issued(redis, user)
-    await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=redis)
+    await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=redis, request=_REQ)
 
     with pytest.raises(HTTPException) as exc:
-        await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=redis)
+        await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=redis, request=_REQ)
     assert exc.value.status_code == 401
 
 
@@ -120,13 +123,13 @@ async def test_reuse_of_consumed_token_revokes_whole_user_session_family():
     newer token must die too, forcing a fresh password login."""
     redis, user = FakeRedis(), _user()
     stolen = await _issued(redis, user)
-    rotated = await refresh(RefreshRequest(refresh_token=stolen), db=_db(user), redis=redis)
+    rotated = await refresh(RefreshRequest(refresh_token=stolen), db=_db(user), redis=redis, request=_REQ)
 
     with pytest.raises(HTTPException):
-        await refresh(RefreshRequest(refresh_token=stolen), db=_db(user), redis=redis)
+        await refresh(RefreshRequest(refresh_token=stolen), db=_db(user), redis=redis, request=_REQ)
 
     with pytest.raises(HTTPException) as exc:
-        await refresh(RefreshRequest(refresh_token=rotated.refresh_token), db=_db(user), redis=redis)
+        await refresh(RefreshRequest(refresh_token=rotated.refresh_token), db=_db(user), redis=redis, request=_REQ)
     assert exc.value.status_code == 401
 
 
@@ -138,7 +141,7 @@ async def test_unregistered_token_rejected():
     token, _ = create_refresh_token(subject=str(user.id), tenant_id=str(user.tenant_id))
 
     with pytest.raises(HTTPException) as exc:
-        await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=redis)
+        await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=redis, request=_REQ)
     assert exc.value.status_code == 401
 
 
@@ -155,7 +158,7 @@ async def test_refresh_rejects_unusable_account(user_over, tenant_active):
     token = await _issued(redis, user)
 
     with pytest.raises(HTTPException) as exc:
-        await refresh(RefreshRequest(refresh_token=token), db=_db(user, tenant_active), redis=redis)
+        await refresh(RefreshRequest(refresh_token=token), db=_db(user, tenant_active), redis=redis, request=_REQ)
     assert exc.value.status_code == 401
 
 
@@ -165,7 +168,7 @@ async def test_refresh_rejects_deleted_user():
     token = await _issued(redis, user)
 
     with pytest.raises(HTTPException) as exc:
-        await refresh(RefreshRequest(refresh_token=token), db=_db(None), redis=redis)
+        await refresh(RefreshRequest(refresh_token=token), db=_db(None), redis=redis, request=_REQ)
     assert exc.value.status_code == 401
 
 
@@ -176,7 +179,7 @@ async def test_access_token_cannot_be_used_as_refresh():
     access = create_access_token(str(user.id), str(user.tenant_id), "manager")
 
     with pytest.raises(HTTPException) as exc:
-        await refresh(RefreshRequest(refresh_token=access), db=_db(user), redis=redis)
+        await refresh(RefreshRequest(refresh_token=access), db=_db(user), redis=redis, request=_REQ)
     assert exc.value.status_code == 401
 
 
@@ -190,7 +193,7 @@ async def test_refresh_fails_closed_when_store_unavailable():
     broken.getdel = AsyncMock(side_effect=ConnectionError("redis down"))
 
     with pytest.raises(HTTPException) as exc:
-        await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=broken)
+        await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=broken, request=_REQ)
     assert exc.value.status_code == 503
 
 
@@ -204,7 +207,7 @@ async def test_logout_revokes_the_refresh_token():
     await logout(RefreshRequest(refresh_token=token), redis=redis)
 
     with pytest.raises(HTTPException) as exc:
-        await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=redis)
+        await refresh(RefreshRequest(refresh_token=token), db=_db(user), redis=redis, request=_REQ)
     assert exc.value.status_code == 401
 
 

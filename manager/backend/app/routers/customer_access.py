@@ -253,8 +253,32 @@ async def _apply_fragile_guard(db, engagement: Engagement, job: ScanJob) -> None
                   "_fragile_excluded": plan.hosts}
 
 
+async def _apply_scan_policy(db, tenant_id: uuid.UUID, role: str, job: ScanJob) -> dict | None:
+    """The organisation's scan policy for a job built outside the normal enqueue
+    path: refuse during a blackout (an admin may override when the policy allows,
+    returned so the caller can audit it) and merge the global exclusions."""
+    from app.services import org_settings
+
+    policy = await org_settings.get_section(db, tenant_id, "scan")
+    window = org_settings.active_blackout(policy)
+    override = None
+    if window is not None:
+        if policy.admin_override and role == "admin":
+            override = {"window": window.name}
+        else:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Scanning is paused by the blackout window '{window.name}'."
+                + (" An admin can override it." if policy.admin_override else ""))
+    if policy.global_exclusions:
+        params = job.result or {}
+        job.result = {**params, "_excluded_cidrs": org_settings.merge_global_exclusions(
+            params.get("_excluded_cidrs"), policy)}
+    return override
+
+
 def apply_entitlement_config(row: CustomerEntitlement, body: EntitlementConfig,
-                             *, now: datetime) -> None:
+                             *, now: datetime, defaults=None) -> None:
     """Pure: write a configuration onto a (new or existing) entitlement row.
     Usage (scans_used) is kept — re-configuring a plan never hands back scans
     silently; that's what ``reset_usage`` on /adjust is for."""
@@ -275,25 +299,28 @@ def apply_entitlement_config(row: CustomerEntitlement, body: EntitlementConfig,
         setattr(row, f"{mode}_quota", getattr(body, f"{mode}_quota"))
     row.deep_repeat_policy = body.deep_repeat_policy
     row.notes = body.notes
-    _apply_locks(row, body)
+    _apply_locks(row, body, defaults)
     if body.plan_type == PLAN_LICENSED and not row.license_key:
         row.license_key = entitlements.generate_license_key()
 
 
-def _apply_locks(row: CustomerEntitlement, body: EntitlementConfig) -> None:
+def _apply_locks(row: CustomerEntitlement, body: EntitlementConfig, defaults=None) -> None:
     """Locks are never taken away or added implicitly on an existing plan: an
     omitted list keeps the current one. A brand-new row (attributes still None
-    before its first flush) gets the plan type's defaults."""
+    before its first flush) gets the organisation's new-customer defaults, or the
+    built-in ones when none are set."""
+    poc_severities = list(defaults.poc_locked_severities) if defaults else list(DEFAULT_POC_LOCKED_SEVERITIES)
+    poc_features = list(defaults.poc_locked_features) if defaults else []
     if body.locked_severities is not None:
         chosen = set(body.locked_severities)
         row.locked_severities = [s for s in LOCKABLE_SEVERITIES if s in chosen]
     elif row.locked_severities is None:
-        row.locked_severities = list(DEFAULT_POC_LOCKED_SEVERITIES) if body.plan_type == PLAN_POC else []
+        row.locked_severities = [s for s in LOCKABLE_SEVERITIES if s in poc_severities] if body.plan_type == PLAN_POC else []
     if body.locked_features is not None:
         chosen = set(body.locked_features)
         row.locked_features = [f for f in LOCKABLE_FEATURES if f in chosen]
     elif row.locked_features is None:
-        row.locked_features = []
+        row.locked_features = [f for f in LOCKABLE_FEATURES if f in poc_features] if body.plan_type == PLAN_POC else []
 
 
 def _admin_view(row: CustomerEntitlement | None) -> EntitlementAdminOut:
@@ -452,7 +479,9 @@ async def put_entitlement(
                 "locked_severities": list(r.locked_severities or []),
                 "locked_features": list(r.locked_features or [])}
     before = None if created else _snapshot(row)
-    apply_entitlement_config(row, body, now=datetime.now(timezone.utc))
+    from app.services import org_settings
+    defaults = await org_settings.get_section(db, current_user.tenant_id, "customer-defaults") if created else None
+    apply_entitlement_config(row, body, now=datetime.now(timezone.utc), defaults=defaults)
     row.updated_by = current_user.user_id
     await db.flush()
     await db.refresh(row)
@@ -577,9 +606,14 @@ async def approve_scan_request(
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "Assign an agent to this engagement before approving scans")
     await _apply_fragile_guard(db, eng, job)
+    blackout_override = await _apply_scan_policy(db, current_user.tenant_id, current_user.role, job)
     db.add(job)
     await db.flush()
     await db.refresh(job)
+    if blackout_override is not None:
+        record_audit(db, actor_id=current_user.user_id, action="scan.blackout_override",
+                     engagement_id=engagement_id, resource_type="scan_job", resource_id=job.id,
+                     detail=blackout_override)
     sr.status = SR_APPROVED
     sr.reviewed_by = current_user.user_id
     sr.reviewed_at = datetime.now(timezone.utc)

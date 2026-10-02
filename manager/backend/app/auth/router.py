@@ -216,6 +216,16 @@ async def login(
             detail=_GENERIC_401,
         ) from None
 
+    # Organisation sign-in network policy. Refused with the SAME generic 401 as a bad
+    # password: a distinct answer would tell someone outside the allowed networks that
+    # their (stolen) password is right. The reason is logged for the administrator.
+    from app.services import org_settings
+    auth_policy = await org_settings.get_section(db, user.tenant_id, "auth")
+    if not org_settings.sign_in_allowed(auth_policy, role=user.role.value, address=client_ip(request)):
+        await record_login_failure(redis, body.email)
+        bound.warning("auth.login.network_blocked", user_id=str(user.id), role=user.role.value)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_GENERIC_401)
+
     # Portal scoping + audience separation. Computed BEFORE the token try below so
     # a misconfigured client login surfaces as 403 rather than being masked as 401.
     extra_claims = access_claims_for(user)
@@ -297,6 +307,7 @@ def _session_store_unavailable(exc: Exception) -> HTTPException:
 @router.post("/refresh", response_model=TokenResponse, summary="Rotate access token using refresh token")
 async def refresh(
     body: RefreshRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ):
@@ -333,6 +344,22 @@ async def refresh(
         logger.warning("auth.refresh.rejected", user_id=user_id, reason_code=exc.reason_code)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_SESSION_EXPIRED) from None
 
+    # Organisation policy at every rotation: the sign-in network rule, and the
+    # absolute session limit measured from the ORIGINAL sign-in (auth_time rides
+    # through each rotation). A token issued before the claim existed starts its
+    # clock now, so switching a limit on never signs everyone out at once.
+    from app.services import org_settings
+    auth_policy = await org_settings.get_section(db, user.tenant_id, "auth")
+    if not org_settings.sign_in_allowed(auth_policy, role=user.role.value, address=client_ip(request)):
+        logger.warning("auth.refresh.network_blocked", user_id=user_id, role=user.role.value)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_SESSION_EXPIRED)
+    raw_auth_time = payload.get("auth_time")
+    auth_time = (datetime.fromtimestamp(int(raw_auth_time), timezone.utc)
+                 if isinstance(raw_auth_time, (int, float)) else None)
+    if org_settings.session_expired(auth_policy, role=user.role.value, auth_time=auth_time):
+        logger.info("auth.refresh.session_limit", user_id=user_id, role=user.role.value)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_SESSION_EXPIRED)
+
     access = create_access_token(
         subject=str(user.id),
         tenant_id=str(user.tenant_id),
@@ -342,6 +369,7 @@ async def refresh(
     new_refresh, new_jti = create_refresh_token(
         subject=str(user.id),
         tenant_id=str(user.tenant_id),
+        auth_time=int(raw_auth_time) if isinstance(raw_auth_time, (int, float)) else None,
     )
     try:
         await refresh_store.issue(redis, new_jti, str(user.id))

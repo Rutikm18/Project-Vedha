@@ -151,8 +151,10 @@ async def portal_me(user: ClientUser, db: DB):
 @router.get("/entitlement", response_model=EntitlementOut,
             summary="Your plan: POC or licence, scans left, days left")
 async def portal_entitlement(user: ClientUser, db: DB):
+    from app.services import org_settings
     view = await entitlements.view_for(db, assert_client(user))
-    return EntitlementOut(**entitlements.view_dict(view))
+    defaults = await org_settings.get_section(db, user.tenant_id, "customer-defaults")
+    return EntitlementOut(**entitlements.view_dict(view), support_contact=defaults.support_contact or None)
 
 
 @router.get("/findings", response_model=list[ClientFindingOut],
