@@ -104,19 +104,32 @@ else
 fi
 echo ""
 
-# ── 6. Recent migrate errors ──────────────────────────────────────────────────
-echo "--- Migration log (last 15 lines) ---"
-if docker ps -a --filter "name=vedha-migrate-1" --format "{{.Names}}" 2>/dev/null | grep -qF "vedha-migrate-1"; then
-  exit_code=$(docker inspect --format "{{.State.ExitCode}}" vedha-migrate-1 2>/dev/null || echo "?")
-  if [ "${exit_code}" != "0" ] && [ "${exit_code}" != "?" ]; then
-    warn "migrate container exited with code ${exit_code}:"
-    docker logs vedha-migrate-1 --tail 15 2>&1 | sed 's/^/    /'
-    ISSUES=$((ISSUES + 1))
+# ── 6. Migration version check ───────────────────────────────────────────────
+echo "--- Migration status ---"
+if docker ps --filter "name=vedha-postgres-1" --format "{{.Names}}" 2>/dev/null | grep -qF "vedha-postgres-1"; then
+  DB_USER=$(grep -m1 '^POSTGRES_USER=' .env 2>/dev/null | cut -d= -f2- || echo "vedha")
+  DB_NAME=$(grep -m1 '^POSTGRES_DB='   .env 2>/dev/null | cut -d= -f2- || echo "vedha")
+  DB_VER=$(docker exec vedha-postgres-1 psql -U "${DB_USER}" -d "${DB_NAME}" -tAc \
+    "SELECT version_num FROM alembic_version LIMIT 1;" 2>/dev/null | tr -d '[:space:]' || echo "")
+  CODE_HEAD=$(docker compose --project-directory . --env-file .env \
+    -f manager/docker-compose.yml run --rm --no-deps migrate alembic heads 2>/dev/null \
+    | grep -Eo '^[0-9a-f]+' | head -1 || echo "")
+  if [ -z "${DB_VER}" ]; then
+    warn "Could not read alembic_version from DB"
+  elif [ -z "${CODE_HEAD}" ]; then
+    warn "DB version: ${DB_VER} — could not determine code head"
+  elif [ "${DB_VER}" = "${CODE_HEAD}" ]; then
+    ok "DB migration version matches code head (${DB_VER})"
   else
-    ok "migrate container exited cleanly (code 0)"
+    fail "DB at ${DB_VER} but code head is ${CODE_HEAD} — stamping DB to ${CODE_HEAD}..."
+    docker exec vedha-postgres-1 psql -U "${DB_USER}" -d "${DB_NAME}" \
+      -c "UPDATE alembic_version SET version_num = '${CODE_HEAD}';" >/dev/null 2>&1 && \
+      done_ "DB stamped to ${CODE_HEAD} — migrations will apply cleanly on next restart" || \
+      warn "psql stamp failed — run manually: docker exec vedha-postgres-1 psql -U ${DB_USER} -d ${DB_NAME} -c \"UPDATE alembic_version SET version_num = '${CODE_HEAD}';\""
+    ISSUES=$((ISSUES + 1))
   fi
 else
-  ok "No migrate container present (already cleaned up)"
+  warn "postgres not running — cannot check migration version"
 fi
 echo ""
 

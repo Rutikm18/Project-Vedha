@@ -15,11 +15,18 @@ MANAGER_COMPOSE := docker compose --env-file .env -f manager/docker-compose.yml
 # matching what deploy/aws/install.sh created, so `run` joins the live stack.
 ADMIN_COMPOSE := docker compose --project-directory . --env-file .env -f manager/docker-compose.yml
 
-# Once `make tls` has run, the HTTPS proxy (deploy/tls/) replaces the plain-HTTP
-# port-80 edge: every deploy target picks the overlay up automatically.
+# Edge-overlay priority (highest wins):
+#  1. deploy/tls/   — created by `make tls` (Let's Encrypt via Caddy, external DNS flow)
+#  2. deploy/aws/   — created by install.sh (Caddy with ACME, AWS EC2 flow)
+#  3. (none)        — plain HTTP edge ingress for local dev
 TLS_OVERLAY := $(wildcard deploy/tls/docker-compose.tls.yml)
+AWS_PROD_OVERLAY := $(wildcard deploy/aws/docker-compose.prod.yml)
+
 ifneq ($(TLS_OVERLAY),)
 DEPLOY_COMPOSE := $(MANAGER_COMPOSE) -f $(TLS_OVERLAY)
+INGRESS_PROFILE :=
+else ifneq ($(AWS_PROD_OVERLAY),)
+DEPLOY_COMPOSE := $(MANAGER_COMPOSE) -f $(AWS_PROD_OVERLAY)
 INGRESS_PROFILE :=
 else
 DEPLOY_COMPOSE := $(MANAGER_COMPOSE)
@@ -248,7 +255,7 @@ aws-ps: ## Show AWS stack container status
 aws-down: ## Stop the AWS stack incl. edge + any stray probe (keeps volumes / data)
 	$(DEPLOY_COMPOSE) --profile edge --profile ui down --remove-orphans
 
-prod-diagnose: ## Diagnose + auto-heal common prod issues (missing Caddy, stale health check, port 443)
+prod-diagnose: ## Diagnose + auto-heal common prod issues (missing Caddy, stale health check, migration mismatch)
 	@chmod +x scripts/prod-diagnose.sh && bash scripts/prod-diagnose.sh
 
 # ── HTTPS (Let's Encrypt via Caddy) ───────────────────────────────────────────
