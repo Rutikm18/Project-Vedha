@@ -39,7 +39,9 @@ from app.models.detection_run_finding import (
     DetectionRunFinding, RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED,
     RUN_FINDING_RESOLVED,
 )
-from app.discovery.finding_translator import _resolve_asset, _find_open_duplicate
+from app.discovery.finding_translator import (
+    AssetCache, _find_open_duplicate, _resolve_asset, prime_asset_cache,
+)
 from app.detection.attack_paths import attack_path_findings
 from app.detection.prioritization import _posture_risk_on_manager_scale
 from app.detection.resolution import (
@@ -856,7 +858,7 @@ async def create_findings_from_facts(
         touched: list = []
         # One asset cache shared by the CVE, posture and attack-path loops: the same
         # host is resolved ONCE per run instead of once per finding (kills the N+1).
-        asset_cache: dict = {}
+        asset_cache: AssetCache = AssetCache()
         # The same treatment for the dedup/regression lookups, which were the
         # other N+1 in these loops: TWO queries load this engagement's existing
         # findings, instead of one or two per finding produced (~12 per host, so
@@ -871,6 +873,14 @@ async def create_findings_from_facts(
         # plus the detection-trace coverage roll-up (which rules were blind/clean/
         # not-assessed) so a non-finding can explain itself.
         cve_dicts, posture_dicts, detect_meta = await _run_detection_engine(facts)
+        # Every host this run can touch, looked up in ONE query per 1,000 instead of
+        # one per host (the remaining per-host N+1: ~1 SELECT per distinct host).
+        await prime_asset_cache(
+            db, engagement_id,
+            [f.get("target") for f in facts if isinstance(f, dict)]
+            + [d.get("asset_ip") for d in cve_dicts]
+            + [p.get("asset_ip") for p in posture_dicts],
+            asset_cache)
         for d in cve_dicts:
             try:
                 cve = d.get("cve_id") or "finding"
