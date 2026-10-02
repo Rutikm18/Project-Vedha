@@ -19,15 +19,31 @@ import {
   createSettingsWorkspaceApi,
   type SettingsWorkspaceSurface,
 } from "../../lib/settings-workspace-api";
+import {
+  PROVIDER_ENV, TIER_LABEL, chainStateText, chainSummary, fixHint, nextUp, providerLabel, spendText,
+  type ChainEntry, type ProviderId,
+} from "../../lib/ai-chain";
+import {
+  DEFAULT_EXPIRY_DAYS, DEFAULT_PRESET, EXPIRY_DAYS, SCOPE_PRESETS, STALE_AFTER_DAYS,
+  createPayload, describeScopes, patStatus, patWarnings, sortPats,
+  type ScopePreset,
+} from "../../lib/api-keys";
+import {
+  CHANNELS, changedEvents, effectiveRule, savePayload, setEnabled, toggleChannel,
+  type Channel, type NotificationRule, type RuleDraft,
+} from "../../lib/notification-rules";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AiStatus {
-  provider: "ollama" | "local_openai" | "openrouter" | "anthropic" | "openai" | "gemini";
+  provider: ProviderId | null;
   model: string;
   configured: boolean;
   privacy: "local" | "cloud";
   reason?: string;
+  /** The live fallback chain, in the order providers are tried. */
+  chain?: ChainEntry[];
+  providers?: Array<{ id: ProviderId; label: string; configured: boolean; reason?: string }>;
 }
 
 interface DeploymentStatus {
@@ -80,8 +96,9 @@ interface Pat {
   token_prefix: string;
   scopes: string[];
   created_at: string;
-  expires_at?: string;
-  last_used_at?: string;
+  expires_at?: string | null;
+  last_used_at?: string | null;
+  revoked_at?: string | null;
 }
 
 interface Agent {
@@ -311,16 +328,21 @@ function ApiKeysSection() {
 
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
+  const [presetId, setPresetId] = useState<ScopePreset["id"]>(DEFAULT_PRESET);
+  const [expiryDays, setExpiryDays] = useState<number>(DEFAULT_EXPIRY_DAYS);
   const [msg, setMsg] = useState<string | null>(null);
   const [newToken, setNewToken] = useState<string | null>(null);
 
   const createMutation = useMutation({
     mutationFn: () => fetchJson<{ token: string }>("/api/auth/pats", {
-      method: "POST", body: JSON.stringify({ name: name.trim(), scopes: ["read", "write"] }),
+      method: "POST", body: JSON.stringify(createPayload(name, presetId, expiryDays)),
     }),
     onSuccess: (data) => {
       setNewToken(data.token);
       setName("");
+      setPresetId(DEFAULT_PRESET);
+      setExpiryDays(DEFAULT_EXPIRY_DAYS);
+      setMsg(null);
       setCreating(false);
       void qc.invalidateQueries({ queryKey: ["pats"] });
     },
@@ -333,9 +355,12 @@ function ApiKeysSection() {
     onError: (e) => setMsg(e instanceof Error ? e.message : "Revoke failed"),
   });
 
+  const now = new Date();
+  const preset = SCOPE_PRESETS.find((p) => p.id === presetId) ?? SCOPE_PRESETS[0];
+
   return (
     <div className="settings-panel animate-slide-in">
-      <SectionTitle icon={KeyRound} title="API Keys (Personal Access Tokens)" detail="Long-lived credentials for probe agents, CI pipelines, and automation. Grant only required scopes." />
+      <SectionTitle icon={KeyRound} title="API Keys (Personal Access Tokens)" detail="Credentials for probe agents, CI pipelines, and automation. Give each key only the access it needs, and let it expire." />
 
       {newToken && (
         <div className="settings-pat-reveal">
@@ -353,31 +378,42 @@ function ApiKeysSection() {
 
       {isLoading && <p className="settings-loading-msg">Loading tokens…</p>}
       <div className="settings-pat-list">
-        {(pats ?? []).map((pat) => {
-          const expired = pat.expires_at ? new Date(pat.expires_at) < new Date() : false;
+        {sortPats(pats ?? [], now).map((pat) => {
+          const status = patStatus(pat, now);
+          const warnings = patWarnings(pat, now);
           return (
-            <article key={pat.id} className={`settings-pat-row ${expired ? "settings-pat-row--expired" : ""}`}>
+            <article key={pat.id} className={`settings-pat-row ${status !== "active" ? "settings-pat-row--expired" : ""}`}>
               <div className="settings-pat-info">
                 <strong>{pat.name}</strong>
                 <div className="settings-pat-meta">
                   <code className="settings-pat-prefix">{pat.token_prefix}…</code>
-                  {pat.scopes.map((s) => <span key={s} className="settings-scope-chip">{s}</span>)}
-                  {expired && <span className="settings-expired-chip">Expired</span>}
+                  <span className="settings-scope-chip" title={pat.scopes.join(", ")}>{describeScopes(pat.scopes)}</span>
+                  {status === "expired" && <span className="settings-expired-chip">Expired</span>}
+                  {status === "revoked" && <span className="settings-expired-chip">Revoked</span>}
+                  {warnings.includes("no_expiry") && (
+                    <span className="settings-expired-chip" title="This key never expires. Revoke it and create one with an expiry.">No expiry</span>
+                  )}
+                  {warnings.includes("unused") && (
+                    <span className="settings-expired-chip" title={`Not used for ${STALE_AFTER_DAYS} days or more. Revoke it if it is no longer needed.`}>Unused</span>
+                  )}
                 </div>
                 <div className="settings-pat-dates">
                   <span>Created {formatDate(pat.created_at)}</span>
                   {pat.expires_at && <span>· Expires {formatDate(pat.expires_at)}</span>}
-                  <span>· Last used {formatRelative(pat.last_used_at)}</span>
+                  {pat.revoked_at && <span>· Revoked {formatDate(pat.revoked_at)}</span>}
+                  <span>· Last used {formatRelative(pat.last_used_at ?? undefined)}</span>
                 </div>
               </div>
-              <button
-                className="btn btn-sm btn-danger-ghost"
-                onClick={() => revokeMutation.mutate(pat.id)}
-                disabled={revokeMutation.isPending}
-                title="Revoke this token"
-              >
-                <Trash2 size={12} /> Revoke
-              </button>
+              {status !== "revoked" && (
+                <button
+                  className="btn btn-sm btn-danger-ghost"
+                  onClick={() => revokeMutation.mutate(pat.id)}
+                  disabled={revokeMutation.isPending}
+                  title="Revoke this token"
+                >
+                  <Trash2 size={12} /> Revoke
+                </button>
+              )}
             </article>
           );
         })}
@@ -386,13 +422,33 @@ function ApiKeysSection() {
 
       {creating ? (
         <div className="settings-pat-create-form">
-          <input
-            placeholder="Token name (e.g. ci-scanner-prod)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={inlineInput({ maxWidth: 360 })}
-          />
-          <div style={{ display: "flex", gap: 8 }}>
+          <label style={{ display: "grid", gap: 4, fontSize: 11.5, color: "var(--text-muted)" }}>
+            Name
+            <input
+              placeholder="What it is for, e.g. ci-scanner-prod"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={120}
+              style={inlineInput({ maxWidth: 360 })}
+            />
+          </label>
+          <fieldset style={{ border: 0, padding: 0, margin: "10px 0 0", display: "grid", gap: 6 }}>
+            <legend style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 4 }}>Access</legend>
+            {SCOPE_PRESETS.map((p) => (
+              <label key={p.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, cursor: "pointer" }}>
+                <input type="radio" name="pat-scope" checked={presetId === p.id} onChange={() => setPresetId(p.id)} style={{ marginTop: 3 }} />
+                <span><strong>{p.label}</strong><br /><span style={{ color: "var(--text-muted)", fontSize: 11.5 }}>{p.detail}</span></span>
+              </label>
+            ))}
+          </fieldset>
+          <label style={{ display: "grid", gap: 4, fontSize: 11.5, color: "var(--text-muted)", marginTop: 10 }}>
+            Expires after
+            <select value={expiryDays} onChange={(e) => setExpiryDays(Number(e.target.value))}
+              style={inlineInput({ maxWidth: 200 })}>
+              {EXPIRY_DAYS.map((d) => <option key={d} value={d}>{d} days{d === DEFAULT_EXPIRY_DAYS ? " (recommended)" : ""}</option>)}
+            </select>
+          </label>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             <button
               className="btn btn-primary btn-sm"
               onClick={() => createMutation.mutate()}
@@ -401,23 +457,29 @@ function ApiKeysSection() {
               {createMutation.isPending ? <RefreshCw size={12} className="spin" /> : <Plus size={12} />}
               Create token
             </button>
-            <button className="btn btn-secondary btn-sm" onClick={() => { setCreating(false); setName(""); }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => { setCreating(false); setName(""); setMsg(null); }}>
               Cancel
             </button>
           </div>
-          {msg && <p className="settings-feedback-msg">{msg}</p>}
+          <p style={{ fontSize: 11, color: "var(--text-muted)", margin: "8px 0 0" }}>
+            {preset.label} for {expiryDays} days. Keys cannot create other keys.
+          </p>
+          {msg && <p className="settings-feedback-msg" role="alert">{msg}</p>}
         </div>
       ) : (
-        <button className="btn btn-secondary" style={{ marginTop: 12 }} onClick={() => setCreating(true)}>
-          <Plus size={14} /> New API key
-        </button>
+        <>
+          <button className="btn btn-secondary" style={{ marginTop: 12 }} onClick={() => { setCreating(true); setMsg(null); }}>
+            <Plus size={14} /> New API key
+          </button>
+          {msg && <p className="settings-feedback-msg" role="alert">{msg}</p>}
+        </>
       )}
 
       <div className="settings-decision-note">
         <Shield size={16} />
         <div>
           <strong>Security hygiene</strong>
-          <p>Create one PAT per automation identity. Set an expiry. Revoke on rotation, credential leak, or agent decommission. Never share tokens between agents.</p>
+          <p>Create one key per automation identity. Prefer read-only access and a short expiry. Revoke on rotation, credential leak, or agent decommission. Never share keys between agents.</p>
         </div>
       </div>
     </div>
@@ -503,61 +565,83 @@ function AiRuntimeSection({ surface }: { surface: SettingsWorkspaceSurface }) {
     refetchInterval: 30_000,
   });
   const runtime = query.data;
+  const chain = runtime?.chain ?? [];
+  const summary = chainSummary(chain);
+  const next = nextUp(chain);
+  // Spend, fixes and server setting names are for the operator, not the customer.
+  const operator = surface === "manager";
+  const ready = chain.length > 0 ? summary.ready > 0 : (runtime?.configured ?? false);
+  const notInChain = (runtime?.providers ?? []).filter((p) => !p.configured && !chain.some((c) => c.provider === p.id));
+  const local = next ? next.tier === "local" : runtime?.privacy === "local";
+
   return (
     <div className="settings-panel animate-slide-in">
-      <SectionTitle icon={Bot} title="AI runtime" detail="Manager owns model execution, prompt policy, and provider credentials." badge="Manager only" />
+      <SectionTitle icon={Bot} title="AI runtime"
+        detail="Vedha tries each AI provider in order and uses the first one that is available. Nothing to pick." badge="Automatic" />
       <ReadOnlyNotice />
-      <div className="settings-runtime-hero" data-ready={runtime?.configured ?? false}>
-        <span>{runtime?.privacy === "cloud" ? <Cloud size={21} /> : <Server size={21} />}</span>
+      <div className="settings-runtime-hero" data-ready={ready}>
+        <span>{local ? <Server size={21} /> : <Cloud size={21} />}</span>
         <div>
-          <small>Effective runtime</small>
-          <strong>{runtime ? `${runtime.provider.toUpperCase()} · ${runtime.model}` : "Checking configuration…"}</strong>
-          <p>{runtime?.privacy === "local" ? "Prompts stay on the configured Ollama host." : "Prompts are sent to the configured cloud model provider."}</p>
+          <small>Answering next</small>
+          <strong>{next ? `${providerLabel(next.provider)} · ${next.model}`
+            : runtime?.provider ? `${providerLabel(runtime.provider)} · ${runtime.model}` : query.isLoading ? "Checking configuration…" : "No provider available"}</strong>
+          <p>{!next && !runtime?.configured ? "No AI provider is configured on the server."
+            : local ? "Prompts stay on your network."
+            : next?.tier === "free" ? "Prompts go to a free cloud model, with names and addresses masked."
+            : "Prompts are sent to the cloud provider shown."}</p>
         </div>
-        <span className={`badge ${runtime?.configured ? "badge-success" : "badge-high"}`}>{runtime?.configured ? "Available" : "Action needed"}</span>
+        <span className={`badge ${ready ? "badge-success" : "badge-high"}`}>
+          {chain.length > 0 ? `${summary.ready} of ${summary.total} ready` : ready ? "Available" : "Action needed"}
+        </span>
       </div>
+      {chain.length > 0 && summary.ready === 0 && (
+        <div className="settings-warning" role="alert"><TriangleAlert size={14} /> No provider is available right now. AI answers will fail until one recovers{operator ? " or its key is fixed" : ""}.</div>
+      )}
+      {query.isError && (
+        <div className="settings-warning" role="alert"><TriangleAlert size={14} /> Could not load the AI status.{" "}
+          <button type="button" className="btn btn-sm btn-secondary" onClick={() => void query.refetch()}>Retry</button></div>
+      )}
       {runtime?.reason && <div className="settings-warning"><TriangleAlert size={14} /> {runtime.reason}</div>}
-      <div className="settings-provider-grid">
-        <article data-active={runtime?.provider === "ollama"}>
-          <header><Server size={17} /><div><strong>Ollama</strong><small>Default · local · no API fee</small></div></header>
-          <p>Best for private deployments and predictable cost.</p>
-          <dl>
-            <div><dt>Provider</dt><dd>LLM_PROVIDER=ollama</dd></div>
-            <div><dt>Endpoint</dt><dd>OLLAMA_BASE_URL</dd></div>
-            <div><dt>Model</dt><dd>OLLAMA_MODEL</dd></div>
-          </dl>
-        </article>
-        <article data-active={runtime?.provider === "openrouter"}>
-          <header><Cloud size={17} /><div><strong>OpenRouter</strong><small>Cloud · free router available</small></div></header>
-          <p>Use <code>openrouter/free</code> for zero-cost experimentation.</p>
-          <dl>
-            <div><dt>Provider</dt><dd>LLM_PROVIDER=openrouter</dd></div>
-            <div><dt>Secret</dt><dd>OPENROUTER_API_KEY</dd></div>
-            <div><dt>Free model</dt><dd>OPENROUTER_MODEL=openrouter/free</dd></div>
-          </dl>
-        </article>
-        <article data-active={runtime?.provider === "anthropic"}>
-          <header><Bot size={17} /><div><strong>Anthropic</strong><small>Claude · server-side cloud</small></div></header>
-          <p>Claude models for grounded briefs. Credentials remain server-only.</p>
-          <dl>
-            <div><dt>Provider</dt><dd>LLM_PROVIDER=anthropic</dd></div>
-            <div><dt>Secret</dt><dd>ANTHROPIC_API_KEY</dd></div>
-            <div><dt>Model</dt><dd>LLM_MODEL</dd></div>
-          </dl>
-        </article>
-        <article data-active={runtime?.provider === "gemini"}>
-          <header><Cloud size={17} /><div><strong>Google Gemini</strong><small>Cloud · Generative Language API</small></div></header>
-          <p>Fast, low-cost cloud model. Credentials remain server-only.</p>
-          <dl>
-            <div><dt>Provider</dt><dd>LLM_PROVIDER=gemini</dd></div>
-            <div><dt>Secret</dt><dd>GEMINI_API_KEY</dd></div>
-            <div><dt>Model</dt><dd>GEMINI_MODEL</dd></div>
-          </dl>
-        </article>
-      </div>
+
+      {chain.length > 0 && (
+        <ol className="settings-chain" aria-label="Provider order">
+          {chain.map((entry, i) => {
+            const spend = operator ? spendText(entry) : null;
+            const hint = operator ? fixHint(entry) : null;
+            return (
+              <li key={entry.provider} data-state={entry.state}>
+                <span className="settings-chain-order" aria-hidden="true">{i + 1}</span>
+                <span className="settings-chain-dot" aria-hidden="true" />
+                <div>
+                  <strong>{providerLabel(entry.provider)}</strong>
+                  <small>{entry.model}</small>
+                </div>
+                <div className="settings-chain-meta">
+                  <span className="settings-cadence-chip">{TIER_LABEL[entry.tier]}</span>
+                  <small>{chainStateText(entry)}{spend ? ` · ${spend}` : ""}</small>
+                </div>
+                {hint && <p className="settings-chain-hint">{hint}</p>}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+
+      {operator && notInChain.length > 0 && (
+        <div className="settings-decision-note">
+          <Server size={16} />
+          <div>
+            <strong>Not in the chain</strong>
+            <p>{notInChain.map((p) => `${providerLabel(p.id)} (set ${PROVIDER_ENV[p.id]} on the server)`).join(" · ")}</p>
+          </div>
+        </div>
+      )}
       <div className="settings-decision-note">
         <ShieldCheck size={16} />
-        <div><strong>Recommended production default</strong><p>Use Ollama when engagement evidence cannot leave your network. Use OpenRouter only after reviewing the selected model&apos;s data retention and contractual controls.</p></div>
+        <div>
+          <strong>How it works</strong>
+          <p>Each request goes to the first provider in the list that is ready. If one runs out of credit, hits a limit or rejects its key, it cools down and the next one answers. Free models only see masked names and addresses{operator ? ". Order, keys and spend caps are set on the server (LLM_CHAIN, the provider keys and AI_DAILY_CAP_USD)" : ""}.</p>
+        </div>
       </div>
     </div>
   );
@@ -752,70 +836,127 @@ function SlaSection() {
 
 // ─── Section: Notifications ───────────────────────────────────────────────────
 
-const DEFAULT_RULES = [
-  { event: "Critical finding opened",    cadence: "Immediate",   channels: ["email", "slack"], enabled: true },
-  { event: "High finding opened",         cadence: "Near-real-time", channels: ["slack"],       enabled: true },
-  { event: "SLA enters at-risk state",    cadence: "At threshold", channels: ["email", "slack"], enabled: true },
-  { event: "Finding status changed",      cadence: "Digest",       channels: ["email"],          enabled: false },
-  { event: "Report approved",             cadence: "Immediate",    channels: ["email"],          enabled: true },
-  { event: "New probe enrolled",          cadence: "Immediate",    channels: ["slack"],          enabled: true },
-  { event: "Detection coverage gap found",cadence: "Immediate",    channels: ["email", "slack"], enabled: false },
-];
+const CHANNEL_LABEL: Record<Channel, string> = { email: "Email", slack: "Slack" };
 
 function NotificationsSection() {
-  const [rules, setRules] = useState(DEFAULT_RULES);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const qc = useQueryClient();
+  const rulesQuery = useQuery({
+    queryKey: ["notification-rules"],
+    queryFn: () => fetchJson<NotificationRule[]>("/api/notification-rules"),
+  });
+  const integrations = useQuery({
+    queryKey: ["integrations"],
+    queryFn: () => fetchJson<IntegrationRow[]>("/api/integrations"),
+  });
+  const [draft, setDraft] = useState<RuleDraft>({});
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  function toggle(index: number) {
-    setRules((prev) => prev.map((r, i) => i === index ? { ...r, enabled: !r.enabled } : r));
-  }
+  const rules = rulesQuery.data ?? [];
+  const changed = changedEvents(rules, draft);
+  // A channel only delivers if its integration is set up and switched on.
+  const channelReady = (c: Channel) => (integrations.data ?? []).some((i) => i.kind === c && i.enabled);
 
-  async function save() {
-    setSaving(true); setMsg(null);
-    await new Promise((r) => setTimeout(r, 600));
-    setMsg("Notification policy saved.");
-    setSaving(false);
-  }
+  const save = useMutation({
+    mutationFn: () => fetchJson<NotificationRule[]>("/api/notification-rules", {
+      method: "PUT", body: JSON.stringify(savePayload(rules, draft)),
+    }),
+    // "Saved" only once the server has confirmed it, and what we show is what it stored.
+    onSuccess: (saved) => {
+      qc.setQueryData(["notification-rules"], saved);
+      setDraft({});
+      setMsg({ ok: true, text: "Notification rules saved." });
+    },
+    onError: (e) => setMsg({ ok: false, text: e instanceof Error ? e.message : "Save failed" }),
+  });
 
   return (
     <div className="settings-panel animate-slide-in">
-      <SectionTitle icon={Bell} title="Notification rules" detail="Configure which security events trigger alerts and through which channels." />
+      <SectionTitle icon={Bell} title="Notification rules"
+        detail="Choose which security events send an alert, and through which channel. Channels are set up under Email and Slack." />
+
+      {rulesQuery.isLoading && <p className="settings-loading-msg">Loading notification rules…</p>}
+      {rulesQuery.isError && (
+        <div className="settings-warning" role="alert">
+          <TriangleAlert size={14} /> Could not load the rules.{" "}
+          <button type="button" className="btn btn-sm btn-secondary" onClick={() => void rulesQuery.refetch()}>Retry</button>
+        </div>
+      )}
+
       <div className="settings-notification-list">
-        {rules.map((rule, i) => (
-          <article key={rule.event} className={`settings-notification-row ${rule.enabled ? "" : "settings-notification-row--off"}`}>
-            <button
-              className={`settings-notification-toggle ${rule.enabled ? "settings-notification-toggle--on" : ""}`}
-              onClick={() => toggle(i)}
-              title={rule.enabled ? "Disable" : "Enable"}
-            >
-              {rule.enabled ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-            </button>
-            <div className="settings-notification-info">
-              <strong>{rule.event}</strong>
-              <div className="settings-notification-meta">
-                <span className="settings-cadence-chip">{rule.cadence}</span>
-                {rule.channels.map((c) => (
-                  <span key={c} className="settings-channel-chip">
-                    {c === "email" ? <Mail size={10} /> : <MessageCircle size={10} />} {c}
-                  </span>
+        {rules.map((saved) => {
+          const rule = effectiveRule(saved, draft);
+          const edited = changed.includes(rule.event);
+          return (
+            <article key={rule.event}
+              className={`settings-notification-row ${rule.enabled ? "" : "settings-notification-row--off"}`}>
+              <button type="button"
+                className={`settings-notification-toggle ${rule.enabled ? "settings-notification-toggle--on" : ""}`}
+                aria-pressed={rule.enabled}
+                aria-label={`${rule.enabled ? "Turn off" : "Turn on"}: ${rule.label}`}
+                onClick={() => { setMsg(null); setDraft(setEnabled(saved, draft, !rule.enabled)); }}
+                title={rule.enabled ? "Turn off" : "Turn on"}>
+                {rule.enabled ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+              </button>
+              <div className="settings-notification-info">
+                <strong>{rule.label}{edited && <span style={{ color: "var(--accent)", fontWeight: 600 }}> · unsaved</span>}</strong>
+                <div className="settings-notification-meta">
+                  <span className="settings-cadence-chip">{rule.cadence}</span>
+                  {CHANNELS.map((c) => {
+                    const on = rule.channels.includes(c);
+                    return (
+                      <button key={c} type="button" className="settings-channel-chip"
+                        aria-pressed={on}
+                        aria-label={`${CHANNEL_LABEL[c]} for ${rule.label}`}
+                        onClick={() => { setMsg(null); setDraft(toggleChannel(saved, draft, c)); }}
+                        style={{ cursor: "pointer", opacity: on ? 1 : 0.4, background: on ? undefined : "transparent" }}>
+                        {c === "email" ? <Mail size={10} /> : <MessageCircle size={10} />} {CHANNEL_LABEL[c]}
+                      </button>
+                    );
+                  })}
+                  {!rule.connected && (
+                    <span className="settings-cadence-chip"
+                      title="Nothing in Vedha sends this alert yet. Your choice is saved for when it does.">
+                      Not connected yet
+                    </span>
+                  )}
+                </div>
+                {rule.enabled && rule.connected && rule.channels.length === 0 && (
+                  <small style={{ color: "var(--sev-high-color)" }}>Pick at least one channel, or nothing will be sent.</small>
+                )}
+                {rule.enabled && rule.connected && rule.channels.filter((c) => !channelReady(c)).map((c) => (
+                  <small key={c} style={{ display: "block", color: "var(--text-muted)" }}>
+                    {CHANNEL_LABEL[c]} is not set up, so this alert will not reach it. Set it up under {CHANNEL_LABEL[c]} in the menu.
+                  </small>
                 ))}
               </div>
-            </div>
-            <span className={`badge ${rule.enabled ? "badge-success" : "badge-info"}`}>
-              {rule.enabled ? "On" : "Off"}
-            </span>
-          </article>
-        ))}
+              <span className={`badge ${rule.enabled ? "badge-success" : "badge-info"}`}>{rule.enabled ? "On" : "Off"}</span>
+            </article>
+          );
+        })}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
-        <button onClick={() => void save()} disabled={saving}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
+        <button type="button" onClick={() => save.mutate()} disabled={save.isPending || changed.length === 0}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px",
             borderRadius: 8, border: "0.5px solid var(--border-accent)", background: "var(--accent-ghost)",
-            color: "var(--accent)", cursor: saving ? "default" : "pointer", fontWeight: 600, fontSize: 12 }}>
-          {saving ? "Saving…" : "Save notification rules"}
+            color: "var(--accent)", cursor: save.isPending || changed.length === 0 ? "default" : "pointer",
+            fontWeight: 600, fontSize: 12, opacity: changed.length === 0 ? 0.6 : 1 }}>
+          {save.isPending ? "Saving…" : "Save notification rules"}
         </button>
-        {msg && <span style={{ fontSize: 11.5, color: "var(--nominal-color)" }}>{msg}</span>}
+        {changed.length > 0 && (
+          <>
+            <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+              {changed.length} unsaved change{changed.length === 1 ? "" : "s"}
+            </span>
+            <button type="button" className="btn btn-sm btn-secondary" disabled={save.isPending}
+              onClick={() => { setDraft({}); setMsg(null); }}>Discard</button>
+          </>
+        )}
+        {msg && (
+          <span role="status" style={{ fontSize: 11.5, color: msg.ok ? "var(--nominal-color)" : "var(--sev-critical-color)" }}>
+            {msg.text}
+          </span>
+        )}
       </div>
     </div>
   );
