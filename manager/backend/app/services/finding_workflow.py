@@ -52,6 +52,24 @@ async def get_finding_for_action(
     return finding
 
 
+async def _announce_status_change(db, finding, tenant_id, previous_status, reason) -> None:
+    """Queue the "finding status changed" notification. Building the message and
+    queueing it are both guarded: a notification problem must never fail the
+    status change that triggered it."""
+    try:
+        old = getattr(previous_status, "value", previous_status)
+        new = getattr(finding.status, "value", finding.status)
+        title = " ".join(str(getattr(finding, "title", "")).split())[:200]
+        severity = getattr(getattr(finding, "severity", None), "value", getattr(finding, "severity", ""))
+        why = f". Reason: {' '.join(str(reason).split())[:300]}" if reason else "."
+        await notify_event_safe(
+            db, tenant_id, "finding_status_changed",
+            f"Vedha: finding moved from {old} to {new}",
+            f"'{title}' ({severity}) changed status from {old} to {new}{why}")
+    except Exception:  # noqa: BLE001 — see docstring
+        pass
+
+
 async def patch_finding(
     db: AsyncSession,
     finding: Finding,
@@ -213,15 +231,7 @@ async def patch_finding(
         )
 
     if status_changed:
-        # Never lets a notification problem fail the status change itself.
-        old = getattr(previous_status, "value", previous_status)
-        new = getattr(finding.status, "value", finding.status)
-        title = " ".join(str(finding.title).split())[:200]
-        await notify_event_safe(
-            db, tenant_id, "finding_status_changed",
-            f"Vedha: finding moved from {old} to {new}",
-            f"'{title}' ({getattr(finding.severity, 'value', finding.severity)}) changed status "
-            f"from {old} to {new}" + (f". Reason: {' '.join(str(action_reason).split())[:300]}" if action_reason else "."))
+        await _announce_status_change(db, finding, tenant_id, previous_status, action_reason)
 
     record_audit(
         db,
