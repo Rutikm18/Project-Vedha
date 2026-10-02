@@ -46,7 +46,7 @@ jobs:
           tests/test_tail_budget.py tests/test_syn_coverage_and_pacing.py
           tests/test_hw_bind.py tests/test_sealed_gate.py
           tests/test_enroll_fresh_request_grace.py tests/test_ws_tls_settings.py
-          tests/test_agent_closure.py
+          tests/test_agent_closure.py tests/test_instance_lock.py
       - name: Installer contract (POSIX sh; the curl | sh path customers run)
         if: runner.os != 'Windows'
         run: |
