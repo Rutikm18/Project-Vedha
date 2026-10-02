@@ -416,11 +416,13 @@ function ExecutiveTab({ summary, trends, findings }: {
   const p = summary.posture;
   const openCrit = summary.severity_counts?.critical ?? 0;
   const openHigh = summary.severity_counts?.high ?? 0;
-
+  // Locked severities are hidden by the server, so "no findings" would overclaim.
+  const someLocked = (usePortalEntitlement().data?.locked_severities?.length ?? 0) > 0;
+  
   const riskStatement = openCrit > 0 ? "Immediate action required"
     : openHigh > 0 ? "Elevated risk — action recommended"
     : summary.open_findings > 0 ? "Managed — remediation in progress"
-    : "Secure posture — no open findings";
+    : (someLocked ? "No open findings in your plan's severities" : "Secure posture — no open findings");
 
   const riskColor = openCrit > 0 ? "var(--sev-critical-color)"
     : openHigh > 0 ? "var(--sev-high-color)"
@@ -439,7 +441,7 @@ function ExecutiveTab({ summary, trends, findings }: {
       : null,
     summary.open_findings > 0
       ? { text: "Retest each remediated finding and verify the fix before closure.", tone: "var(--accent)" }
-      : { text: "No open findings — maintain posture with periodic scheduled scans.", tone: "var(--nominal-color)" },
+      : { text: `${someLocked ? "No open findings in your plan's severities" : "No open findings"} — maintain posture with periodic scheduled scans.`, tone: "var(--nominal-color)" },
   ].filter(Boolean) as Array<{ text: string; tone: string }>;
 
   const topFindings = [...findings]
