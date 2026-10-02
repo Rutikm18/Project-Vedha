@@ -667,8 +667,15 @@ rollback_previous_release() {
   fi
 }
 
+# Build images one service at a time, then start without building. migrate, api
+# and worker all tag the SAME vedha-backend image; building them together makes
+# BuildKit race to write that tag in the containerd image store ("image already
+# exists"). Building the backend once (via api) and the frontend separately — two
+# single-target builds — avoids the collision; migrate/worker reuse the image.
+"${COMPOSE_CMD[@]}" build api 2>&1 | tee -a "$DEPLOY_LOG" || die "backend image build failed"
+"${COMPOSE_CMD[@]}" build frontend 2>&1 | tee -a "$DEPLOY_LOG" || die "frontend image build failed"
 # Remove orphaned containers from previous deploys (profile changes, service renames)
-"${COMPOSE_CMD[@]}" up -d --build --remove-orphans 2>&1 | tee -a "$DEPLOY_LOG"
+"${COMPOSE_CMD[@]}" up -d --no-build --remove-orphans 2>&1 | tee -a "$DEPLOY_LOG"
 
 # ── 14. Wait for API health ───────────────────────────────────────────────────
 step "Health check (up to ${DEPLOY_TIMEOUT}s)"
