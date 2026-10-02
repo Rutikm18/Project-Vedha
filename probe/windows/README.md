@@ -55,7 +55,7 @@ powershell -ExecutionPolicy Bypass -File setup.ps1 -Manager https://manager.exam
 | Python | 3.10+ | `setup.ps1` builds a private venv from it |
 | Deps | auto-installed | `httpx websockets cryptography impacket ldap3 dnspython` (from `requirements-runtime.txt`) |
 | Env | auto-set by the script | `PLATFORM_URL`, `PROBE_NAME`, `PROBE_NETWORK_SEGMENTS`, `STATE_FILE`, `RESULT_SPOOL_DIR` |
-| Firewall | outbound only | allow this PC → `13.127.147.205:80` (Caddy edge; no inbound) |
+| Firewall | outbound only | allow this PC → your Vedha manager over HTTPS (443, outbound only; no inbound) |
 
 State/identity/logs live under `C:\ProgramData\vedha-agent\`.
 
@@ -74,7 +74,7 @@ State/identity/logs live under `C:\ProgramData\vedha-agent\`.
 | `README-CUSTOMER.txt` | short in-repo customer note |
 
 **Advanced (optional, for sealed distribution to untrusted customers):**
-`build-agent-exe.ps1` + `package-zip.ps1` build a single `vedha-agent.exe` and a
+`build-agent-exe.ps1` (Nuitka, agent code only, no readable source) + `package-zip.ps1` build a `vedha-agent\` folder with `vedha-agent.exe` and a
 ZIP (see the exe launchers `run.cmd` / `install.ps1`). Not needed for the git flow
 above.
 

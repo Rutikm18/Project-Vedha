@@ -34,7 +34,7 @@ def test_installer_rejects_missing_or_unknown_arguments() -> None:
         ["sh", str(INSTALLER)], env=env, text=True, capture_output=True, check=False
     )
     unknown = subprocess.run(
-        ["sh", str(INSTALLER), "--token", "secret"],
+        ["sh", str(INSTALLER), "--admin-password", "secret"],
         env=env,
         text=True,
         capture_output=True,
@@ -78,3 +78,41 @@ def test_installer_without_token_still_shows_manual_approval() -> None:
 
     assert result.returncode == 0, result.stderr
     assert "Fleet UI approval required" in result.stdout
+
+
+def test_token_flag_selects_the_signed_manager_release() -> None:
+    result = _dry_run("--manager", "https://api.vedhasec.com", "--token", "vet_fromfleet123456")
+
+    assert result.returncode == 0, result.stderr
+    assert "signed agent release from https://api.vedhasec.com/agent" in result.stdout
+    assert "auto-enroll via pre-authorized token" in result.stdout
+    assert "vet_fromfleet123456" not in result.stdout
+
+
+def test_proxy_and_ca_flags_are_accepted(tmp_path) -> None:
+    ca = tmp_path / "corp-ca.pem"
+    ca.write_text("-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n")
+    result = _dry_run(
+        "--manager", "https://api.vedhasec.com", "--token", "vet_x1234567",
+        "--proxy", "http://proxy.corp:3128", "--no-proxy", ".corp.local",
+        "--ca-bundle", str(ca), "--name", "branch-agent", "--require-signature",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Proxy: http://proxy.corp:3128" in result.stdout
+    assert f"Extra CA bundle: {ca}" in result.stdout
+
+
+def test_flags_that_need_a_value_fail_cleanly() -> None:
+    for flag in ("--token", "--proxy", "--ca-bundle", "--name"):
+        result = _dry_run("--manager", "https://api.vedhasec.com", flag)
+        assert result.returncode == 2, flag
+        assert "requires" in result.stdout
+
+
+def test_repo_installer_carries_empty_release_markers() -> None:
+    """scripts/agent_release.py fills these in; the repo copy must keep exactly one
+    empty marker each or the release build refuses to package it."""
+    source = INSTALLER.read_text(encoding="utf-8")
+    assert source.count('\nVEDHA_RELEASE_SPKI=""\n') == 1
+    assert source.count('\nVEDHA_RELEASE_VERSION=""\n') == 1

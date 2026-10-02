@@ -18,8 +18,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile, status
+from pydantic import BaseModel, Field, field_validator
+
+from app import agent_access
+from app.routers.probe_enrollment import ENGAGEMENT_TOKEN_TTL_MINUTES, INSTALL_TOKEN_LIFETIMES
 from sqlalchemy import func, select
 
 from app.auth.portal_scope import ClientUser, assert_client, client_scoped
@@ -33,7 +36,6 @@ from app.models.enums import (
 from app.models.finding import Finding
 from app.models.llm_output import LLMOutput
 from app.models.probe_enrollment import ProbeEnrollmentRequest
-from app.models.probe_site import ProbeSite
 from app.models.remediation_plan import RemediationPlan
 from app.models.scan_job import ScanJob
 from app.models.scan_request import ScanRequest, SR_PENDING
@@ -1221,6 +1223,7 @@ async def portal_workspace_fleet_approve(
         _keyed_hash,
         _next_probe_name,
         _provision_agent_for_site,
+        engagement_site,
     )
 
     engagement_id = assert_client(user)
@@ -1275,14 +1278,7 @@ async def portal_workspace_fleet_approve(
     probe_name = (body.probe_name or "").strip()
     if not probe_name:
         probe_name = await _next_probe_name(db, user.tenant_id)
-    site = ProbeSite(
-        tenant_id=user.tenant_id,
-        name=f"engagement-{str(engagement_id)[:8]}-{str(request_row.id)[:8]}",
-        status="active",
-        authorized_cidrs=authorized_cidrs,
-        excluded_cidrs=list(engagement.excluded_cidrs or []),
-        approved_capabilities=capabilities,
-    )
+    site = engagement_site(engagement, user.tenant_id, request_row)
     db.add(site)
     await db.flush()
 
@@ -1315,6 +1311,127 @@ async def portal_workspace_fleet_approve(
         "state": request_row.state,
         "probe_name": probe_name,
     }
+
+
+class PortalInstallTokenCreate(BaseModel):
+    """Fleet → Add agent. The browser picks a label and how long the command
+    stays valid (1 h / 24 h / 7 days); the engagement, scope and single use are
+    fixed server-side."""
+
+    name: str | None = Field(default=None, max_length=120)
+    lifetime_minutes: int = Field(default=ENGAGEMENT_TOKEN_TTL_MINUTES)
+
+    @field_validator("lifetime_minutes")
+    @classmethod
+    def _allowed_lifetime(cls, value: int) -> int:
+        if value not in INSTALL_TOKEN_LIFETIMES:
+            raise ValueError(f"lifetime_minutes must be one of {sorted(INSTALL_TOKEN_LIFETIMES)}")
+        return value
+
+
+@router.get("/workspace/fleet/install",
+            summary="What the customer needs to install the vedha-agent")
+async def portal_workspace_fleet_install(request: Request, user: ClientUser, db: DB):
+    from app.routers.agent_distribution import release_status
+    from app.routers.probe_enrollment import engagement_enrollment_blocker
+
+    engagement_id = assert_client(user)
+    engagement = (await db.execute(
+        select(Engagement).where(
+            Engagement.id == engagement_id,
+            Engagement.tenant_id == user.tenant_id,
+        )
+    )).scalar_one_or_none()
+    return {
+        **release_status(detailed=False, request=request),
+        "can_add_agent": engagement_enrollment_blocker(engagement) is None,
+        "blocker": engagement_enrollment_blocker(engagement),
+    }
+
+
+@router.post("/workspace/fleet/enroll-tokens", status_code=status.HTTP_201_CREATED,
+             summary="Create a single-use install command for this engagement")
+async def portal_workspace_fleet_create_token(
+    body: PortalInstallTokenCreate,
+    request: Request,
+    user: ClientUser,
+    db: DB,
+):
+    from app.routers.agent_distribution import install_commands, manager_url_for
+    from app.routers.probe_enrollment import issue_engagement_token, token_out
+
+    engagement_id = assert_client(user)
+    engagement = (await db.execute(
+        select(Engagement).where(
+            Engagement.id == engagement_id,
+            Engagement.tenant_id == user.tenant_id,
+        ).with_for_update()
+    )).scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    token, raw = await issue_engagement_token(
+        db,
+        tenant_id=user.tenant_id,
+        engagement=engagement,
+        name=(body.name or "").strip() or "vedha-agent",
+        created_by=str(user.user_id),
+        now=now,
+        expires_in_minutes=body.lifetime_minutes,
+    )
+    manager_url, _ = manager_url_for(request)
+    out = {**token_out(token, now), "token": raw, "commands": install_commands(manager_url, raw)}
+    await db.commit()  # the panel lists tokens right after creating one
+    return out
+
+
+@router.get("/workspace/fleet/enroll-tokens",
+            summary="Install commands created for this engagement")
+async def portal_workspace_fleet_list_tokens(user: ClientUser, db: DB):
+    from app.models.probe_enrollment import ProbeEnrollmentToken
+    from app.routers.probe_enrollment import token_out
+
+    engagement_id = assert_client(user)
+    rows = (await db.execute(
+        select(ProbeEnrollmentToken)
+        .where(
+            ProbeEnrollmentToken.tenant_id == user.tenant_id,
+            ProbeEnrollmentToken.engagement_id == engagement_id,
+        )
+        .order_by(ProbeEnrollmentToken.created_at.desc())
+        .limit(50)
+    )).scalars().all()
+    now = datetime.now(timezone.utc)
+    return [token_out(row, now) for row in rows]
+
+
+@router.delete("/workspace/fleet/enroll-tokens/{token_id}",
+               status_code=status.HTTP_204_NO_CONTENT,
+               summary="Revoke an unused install command")
+async def portal_workspace_fleet_revoke_token(token_id: uuid.UUID, user: ClientUser, db: DB):
+    from app.models.probe_enrollment import ProbeEnrollmentToken
+
+    engagement_id = assert_client(user)
+    row = (await db.execute(
+        select(ProbeEnrollmentToken).where(
+            ProbeEnrollmentToken.id == token_id,
+            ProbeEnrollmentToken.tenant_id == user.tenant_id,
+            ProbeEnrollmentToken.engagement_id == engagement_id,
+        ).with_for_update()
+    )).scalar_one_or_none()
+    if row is None:
+        # Another engagement's token is indistinguishable from a missing one.
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Install command not found")
+    if row.revoked_at is None:
+        row.revoked_at = datetime.now(timezone.utc)
+        record_audit(
+            db,
+            actor_id=user.user_id,
+            action="probe.enrollment_token.revoked",
+            engagement_id=engagement_id,
+            resource_type="probe_enrollment_token",
+            resource_id=row.id,
+            detail={"origin": "portal"},
+        )
+    return None
 
 
 @router.get("/workspace/fleet/agents/{agent_id}/jobs",
@@ -1448,6 +1565,9 @@ async def portal_agents(user: ClientUser, db: DB):
         "network_segments": list(agent.network_segments or []),
         "current_job_id": str(agent.current_job_id) if agent.current_job_id else None,
         "online": online,
+        # Read-only for the customer: the operator sets expiry; the customer sees it.
+        "access_expires_at": agent.access_expires_at.isoformat() if agent.access_expires_at else None,
+        "access_expired": agent_access.is_expired(agent.access_expires_at, now),
     }]
 
 

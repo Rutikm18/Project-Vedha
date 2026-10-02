@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import json
 import re
 import uuid
 
@@ -7,6 +8,7 @@ from fastapi import Request, Response
 from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.agent_access import EXPIRED_MESSAGE, is_expired, path_allows_after_expiry
 from app.auth.jwt import PORTAL_AUDIENCE, decode_token
 from app.auth.pat import TOKEN_PREFIX, hash_pat_token, pat_scope_allows
 from app.database import AsyncSessionLocal
@@ -31,6 +33,19 @@ _PUBLIC_ENROLLMENT_PATHS = (
     re.compile(r"^/probe-enrollment/requests/[0-9a-fA-F-]+/activate$"),
     re.compile(r"^/probe-enrollment/token$"),
 )
+# Agent distribution: the installer and signed manifest are public; the image
+# route authenticates its own enrolment token (a vet_ token is not a JWT).
+_PUBLIC_DISTRIBUTION_PATHS = (
+    re.compile(r"^/agent/install\.sh$"),
+    re.compile(r"^/agent/manifest\.json(\.sig)?$"),
+    re.compile(r"^/agent/image/[a-z0-9]{1,16}$"),
+)
+
+
+def _is_public_distribution_request(path: str, method: str) -> bool:
+    return method.upper() in ("GET", "HEAD") and any(
+        pattern.fullmatch(path) for pattern in _PUBLIC_DISTRIBUTION_PATHS
+    )
 
 
 def _is_public_enrollment_request(path: str, method: str) -> bool:
@@ -95,6 +110,7 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
             path in _PUBLIC_PATHS
             or path.startswith(_PUBLIC_PREFIXES)
             or _is_public_enrollment_request(path, request.method)
+            or _is_public_distribution_request(path, request.method)
         ):
             return await call_next(request)
 
@@ -203,6 +219,15 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
                 return Response(
                     content='{"detail":"Device credential revoked, disabled, or stale"}',
                     status_code=401,
+                    media_type="application/json",
+                )
+            # Access expiry set from Fleet. An in-flight scan may still upload its
+            # finished hosts (result/chunk routes); every other device route is
+            # refused so no new work starts.
+            if is_expired(agent.access_expires_at) and not path_allows_after_expiry(path):
+                return Response(
+                    content=f'{{"detail":{json.dumps(EXPIRED_MESSAGE)}}}',
+                    status_code=403,
                     media_type="application/json",
                 )
 

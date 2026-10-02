@@ -10,19 +10,19 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$Manager = 'http://13.127.147.205:18080',
-  [string]$ExePath = "$PSScriptRoot\dist\vedha-agent.exe",
+  [Parameter(Mandatory = $true)][string]$Manager,
+  [string]$AgentDir = "$PSScriptRoot\dist\vedha-agent",
   [string]$OutZip  = "$PSScriptRoot\dist\vedha-probe-win.zip"
 )
 $ErrorActionPreference = 'Stop'
 
-if (-not (Test-Path $ExePath)) { throw "exe not found: $ExePath  (run build-agent-exe.ps1 first)" }
+if (-not (Test-Path (Join-Path $AgentDir 'vedha-agent.exe'))) { throw "compiled agent not found in $AgentDir  (run build-agent-exe.ps1 first)" }
 
 $stage = Join-Path $PSScriptRoot 'dist\_stage'
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 
-Copy-Item $ExePath                                   (Join-Path $stage 'vedha-agent.exe')
+Copy-Item $AgentDir                                  (Join-Path $stage 'vedha-agent') -Recurse
 Copy-Item (Join-Path $PSScriptRoot 'run.cmd')        $stage
 Copy-Item (Join-Path $PSScriptRoot 'install.ps1')    $stage
 Copy-Item (Join-Path $PSScriptRoot 'install.cmd')    $stage
@@ -33,7 +33,7 @@ Copy-Item (Join-Path $PSScriptRoot 'README-CUSTOMER.txt') (Join-Path $stage 'REA
 # Bake the chosen manager URL into the staged launchers.
 foreach ($f in @('run.cmd','install.ps1')) {
   $p = Join-Path $stage $f
-  (Get-Content $p) -replace 'http://13\.127\.147\.205:18080', $Manager | Set-Content $p
+  (Get-Content $p) -replace '__VEDHA_MANAGER_URL__', $Manager | Set-Content $p
 }
 
 if (Test-Path $OutZip) { Remove-Item $OutZip -Force }

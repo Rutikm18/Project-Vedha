@@ -16,7 +16,7 @@ To remove:
      Right-click  uninstall.cmd  ->  Run as administrator
 
 Firewall (only if outbound is restricted):
-   Allow this PC to reach   13.127.147.205  TCP 80   (OUTBOUND only).
+   Allow this PC to reach   your Vedha manager address (shown in the portal)  TCP 443   (OUTBOUND only).
    The agent never opens an inbound port.
 
 Logs:      C:\ProgramData\vedha-agent\logs\agent.log

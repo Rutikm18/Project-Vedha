@@ -5,10 +5,11 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$Manager = 'http://13.127.147.205:18080',
+  [string]$Manager = '__VEDHA_MANAGER_URL__',
   [string]$Scope   = ''    # CIDR; empty = auto-detect this host's /24
 )
 $ErrorActionPreference = 'Stop'
+if ($Manager -like '__*') { Write-Error 'No manager address. Re-create the package with package-zip.ps1 -Manager https://api.your-domain.com, or pass -Manager.'; exit 1 }
 
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) { Write-Error 'Administrator required. Right-click install.cmd -> Run as administrator.'; exit 1 }
@@ -25,7 +26,10 @@ if (Get-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue) {
   Start-Sleep -Seconds 1
 }
 
-Copy-Item (Join-Path $PSScriptRoot 'vedha-agent.exe') (Join-Path $installDir 'vedha-agent.exe') -Force
+# The compiled agent is a folder (vedha-agent\vedha-agent.exe + its libraries).
+$appDir = Join-Path $installDir 'app'
+if (Test-Path $appDir) { Remove-Item $appDir -Recurse -Force }
+Copy-Item (Join-Path $PSScriptRoot 'vedha-agent') $appDir -Recurse -Force
 
 # Local scan ceiling (empty => the manager will not dispatch jobs).
 if (-not $Scope) {
@@ -41,12 +45,14 @@ $wrapper = @"
 @echo off
 set "PLATFORM_URL=$Manager"
 set "VERIFY_TLS=true"
+rem The compiled agent is not host-sealed: the manager controls access (install token, expiry, revoke).
+set "LICENSE_ENFORCED=false"
 set "PROBE_NAME=%COMPUTERNAME%-probe"
 set "PROBE_NETWORK_SEGMENTS=$Scope"
 set "STATE_FILE=$installDir\state.json"
 set "RESULT_SPOOL_DIR=$spoolDir"
 cd /d "$installDir"
-"$installDir\vedha-agent.exe" run >> "$logDir\agent.log" 2>&1
+"$appDir\vedha-agent.exe" run >> "$logDir\agent.log" 2>&1
 "@
 Set-Content -Path (Join-Path $installDir 'agent-service.cmd') -Value $wrapper -Encoding ASCII
 

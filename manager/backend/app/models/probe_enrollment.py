@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -78,14 +78,26 @@ class ProbeEnrollmentToken(Base, TimestampMixin):
     """
 
     __tablename__ = "probe_enrollment_tokens"
-    __table_args__ = (UniqueConstraint("token_hash", name="uq_probe_enroll_token_hash"),)
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_probe_enroll_token_hash"),
+        CheckConstraint(
+            "site_id IS NOT NULL OR engagement_id IS NOT NULL",
+            name="ck_probe_enrollment_tokens_target",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default="gen_random_uuid()")
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    site_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("probe_sites.id", ondelete="RESTRICT"), nullable=False, index=True
+    # Exactly what the token installs an agent for: a pre-built Site (operator
+    # API), or an engagement — then the Site is built from the engagement's scope
+    # when the agent enrols and the agent is assigned to that engagement.
+    site_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("probe_sites.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    engagement_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("engagements.id", ondelete="CASCADE"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False)

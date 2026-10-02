@@ -1,25 +1,31 @@
 <#
-  Vedha Agent - one-shot automated setup (SOURCE mode; no exe build needed).
-  Pull the repo, run this, done. It creates a venv, installs deps, detects the
-  local scan scope, and either runs the agent now or installs it as a background
-  task that survives reboot.
+  Vedha Agent - LAB / DEVELOPMENT setup (SOURCE mode; ships readable Python).
+
+  NOT FOR CUSTOMER SITES. This path ships source, installs Python and (with
+  -DefenderExcludePython) weakens Microsoft Defender. Customer installs use the
+  compiled, signed agent from Fleet -> Add agent (docs/probe/CUSTOMER_AGENT_INSTALL.md).
+  Kept here for the lab only.
 
   Usage (from probe\windows):
-    powershell -ExecutionPolicy Bypass -File setup.ps1 -Foreground   # run now, no admin (test)
-    powershell -ExecutionPolicy Bypass -File setup.ps1               # install background task (admin)
+    powershell -ExecutionPolicy Bypass -File setup.ps1 -Manager https://api.your-domain.com -Foreground
+    powershell -ExecutionPolicy Bypass -File setup.ps1 -Manager https://api.your-domain.com
   Options:
-    -Manager <url>   default http://13.127.147.205
-    -Scope <cidr>    default = auto-detect this host's /24
-    -Update          git pull before setting up
+    -Manager <url>            REQUIRED, e.g. https://api.your-domain.com
+    -Scope <cidr>             default = auto-detect this host's /24
+    -Update                   git pull before setting up
+    -DefenderExcludePython    opt-in: exclude python.exe from Defender (lab only;
+                              a customer security team must never allow this)
 #>
 [CmdletBinding()]
 param(
-  [string]$Manager = 'http://13.127.147.205',
+  [Parameter(Mandatory = $true)][string]$Manager,
   [string]$Scope   = '',
   [switch]$Foreground,
-  [switch]$Update
+  [switch]$Update,
+  [switch]$DefenderExcludePython
 )
 $ErrorActionPreference = 'Stop'
+Write-Warning 'setup.ps1 is the LAB source-mode path (ships readable Python). For customer sites use the compiled agent from Fleet -> Add agent.'
 $probeRoot = Split-Path $PSScriptRoot -Parent      # ...\probe
 
 # Admin? (affects Python install scope + the background-task install)
@@ -92,8 +98,14 @@ $vpy  = Join-Path $venv 'Scripts\python.exe'
 # and it would also block the agent at runtime. Exclude the venv + state dir (admin only).
 $agentDataDir = Join-Path $env:ProgramData 'vedha-agent'
 if ($isAdmin) {
+  # Path exclusions are scoped to the agent's own venv + state dir.
   foreach ($ex in @($venv, $agentDataDir)) { try { Add-MpPreference -ExclusionPath $ex -ErrorAction SilentlyContinue } catch {} }
-  try { Add-MpPreference -ExclusionProcess 'python.exe' -ErrorAction SilentlyContinue } catch {}
+  # Excluding python.exe PROCESS-WIDE weakens Defender for EVERY Python program on
+  # the machine. Opt-in only, and never on a customer site.
+  if ($DefenderExcludePython) {
+    Write-Warning 'Excluding python.exe from Defender for the WHOLE machine (-DefenderExcludePython). Lab use only.'
+    try { Add-MpPreference -ExclusionProcess 'python.exe' -ErrorAction SilentlyContinue } catch {}
+  }
 } else {
   Write-Warning 'Not admin: if pip fails on impacket (Errno 22) or the agent gets blocked, Windows Defender is the cause. Re-run elevated (setup.cmd), or add: Add-MpPreference -ExclusionPath "<repo folder>".'
 }

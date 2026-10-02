@@ -28,6 +28,44 @@ import httpx
 LOG = logging.getLogger("transport")
 
 
+def _websocket_ssl_context(base_url: str, verify: bool | str, cert) -> "ssl.SSLContext | None":
+    """The WebSocket's TLS settings, mirroring the HTTPS client's.
+
+    httpx gets the CA bundle / verify flag / client cert directly, but
+    websockets.connect() builds its own context — so behind a TLS-inspecting proxy
+    (PROBE_CA_BUNDLE) the REST calls worked while every wss:// handshake failed and
+    the agent silently fell back to long-polling; and on macOS a bare context skips
+    the system keychain (CERTIFICATE_VERIFY_FAILED on a valid cert).
+
+      * default      : the system store plus certifi (the macOS fix),
+      * a CA bundle  : ONLY that bundle (exactly what httpx does with verify=<path>),
+      * verify off   : no verification (development only),
+      * client cert  : loaded for mutual TLS.
+    None for a plain ws:// manager.
+    """
+    import ssl
+
+    if not base_url.startswith("https://"):
+        return None
+    if verify is False:
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+    elif isinstance(verify, str):
+        context = ssl.create_default_context(cafile=verify)
+    else:
+        context = ssl.create_default_context()
+        try:
+            import certifi
+            context.load_verify_locations(certifi.where())
+        except ImportError:
+            pass  # fall back to the system store alone
+    if cert:
+        certfile, keyfile = cert if isinstance(cert, tuple) else (cert, None)
+        context.load_cert_chain(certfile, keyfile)
+    return context
+
+
 def _strip_nul(obj: Any) -> Any:
     """Recursively remove NUL (U+0000) characters from every string in a payload.
 
@@ -48,6 +86,13 @@ def _strip_nul(obj: Any) -> Any:
 
 class TransportError(Exception):
     """Raised when a transport operation fails permanently (not retryable)."""
+
+
+class AccessExpiredError(TransportError):
+    """The manager refused because this agent's ACCESS EXPIRY (set in Fleet) has
+    passed. Not a stale or revoked credential: the identity is intact and works
+    again when an administrator extends the date, so callers must WAIT and retry —
+    never clear state or re-enrol."""
 
 
 class DeviceAlreadyEnrolledError(TransportError):
@@ -99,6 +144,19 @@ HEARTBEAT_LEASE_REVOKED = "lease_revoked"
 DEVICE_REFRESH_OK = "ok"
 DEVICE_REFRESH_REJECTED = "rejected"
 DEVICE_REFRESH_UNAVAILABLE = "unavailable"
+#   * EXPIRED     - the manager refused because the agent's ACCESS EXPIRY (set in
+#     Fleet) has passed. Not a revocation: the credential is intact and works
+#     again the moment an administrator extends the date, so the agent must keep
+#     its identity and wait, not stop or re-enrol.
+DEVICE_REFRESH_EXPIRED = "expired"
+
+# What the manager says when an agent's Fleet-set access expiry has passed (its
+# 403 body). Matched as a phrase so an ordinary "token expired" never counts.
+ACCESS_EXPIRED_PHRASE = "access has expired"
+
+
+def is_access_expired_response(status_code: int, text: str) -> bool:
+    return status_code == 403 and ACCESS_EXPIRED_PHRASE in (text or "").lower()
 
 
 def manager_fingerprint(platform_url: str) -> str:
@@ -233,6 +291,9 @@ class Transport:
             cert = (client_cert, client_key)
         elif client_cert:
             cert = client_cert
+
+        self._ws_ssl = _websocket_ssl_context(self._base_url, verify, cert)
+        self._last_refresh_outcome: str | None = None
 
         self._client = httpx.Client(
             base_url=platform_url.rstrip("/"),
@@ -521,7 +582,17 @@ class Transport:
         """Backwards-compatible bool wrapper over `refresh_device_access_ex`."""
         return self.refresh_device_access_ex(signing_private_key) == DEVICE_REFRESH_OK
 
+    @property
+    def access_expired(self) -> bool:
+        """True when the most recent token refresh was refused for access expiry."""
+        return self._last_refresh_outcome == DEVICE_REFRESH_EXPIRED
+
     def refresh_device_access_ex(self, signing_private_key: bytes) -> str:
+        outcome = self._refresh_device_access_impl(signing_private_key)
+        self._last_refresh_outcome = outcome
+        return outcome
+
+    def _refresh_device_access_impl(self, signing_private_key: bytes) -> str:
         """Refresh the short-lived device access token, reporting WHY it failed.
 
         Returns DEVICE_REFRESH_OK / _REJECTED / _UNAVAILABLE. The caller needs
@@ -553,6 +624,8 @@ class Transport:
                     "signature": signature,
                 },
             )
+            if is_access_expired_response(response.status_code, response.text):
+                return DEVICE_REFRESH_EXPIRED        # access expiry, not revocation
             if response.status_code in (401, 403, 409):
                 return DEVICE_REFRESH_REJECTED       # authoritative "no"
             if response.status_code >= 500:
@@ -744,12 +817,17 @@ class Transport:
             job_id, engagement_id, job_type, status, params
         """
         if not self.ensure_device_access():
+            if self.access_expired:
+                raise AccessExpiredError("Agent access has expired (set in Fleet).")
             raise TransportError("Device credential refresh rejected during job poll.")
         r = self._client.get(
             f"/agents/{self._agent_id}/jobs",
             headers=self.auth_header,
             params={"limit": limit},
         )
+        if is_access_expired_response(r.status_code, r.text):
+            self._last_refresh_outcome = DEVICE_REFRESH_EXPIRED
+            raise AccessExpiredError("Agent access has expired (set in Fleet).")
         if r.status_code in (401, 403):
             # The token was time-valid (ensure_device_access above was happy) but
             # the manager REJECTED it — a stale credential generation, revoked
@@ -762,6 +840,9 @@ class Transport:
                     headers=self.auth_header,
                     params={"limit": limit},
                 )
+            if is_access_expired_response(r.status_code, r.text):
+                self._last_refresh_outcome = DEVICE_REFRESH_EXPIRED
+                raise AccessExpiredError("Agent access has expired (set in Fleet).")
             if r.status_code in (401, 403):
                 raise TransportError("Token rejected during job poll — re-register needed.")
         r.raise_for_status()
@@ -1024,30 +1105,12 @@ class Transport:
             if int(websockets.__version__.split(".", 1)[0]) < 14
             else {"additional_headers": self.auth_header}
         )
-        # Build an SSL context using the same CA bundle as httpx/certifi so the
-        # WebSocket handshake trusts the same certs as REST calls. Without this,
-        # websockets creates a bare ssl.SSLContext that skips the system keychain
-        # on macOS, causing CERTIFICATE_VERIFY_FAILED even though the cert is valid.
-        ssl_ctx: "ssl.SSLContext | bool"
-        if self.ws_url.startswith("wss://"):
-            import ssl as _ssl
-            ssl_ctx = _ssl.create_default_context()
-            try:
-                import certifi as _certifi
-                ssl_ctx.load_verify_locations(_certifi.where())
-            except ImportError:
-                pass  # fall back to the default CA store
-            if self._ca_bundle:
-                ssl_ctx.load_verify_locations(self._ca_bundle)
-            if not self._verify_tls:
-                ssl_ctx.check_hostname = False
-                ssl_ctx.verify_mode = _ssl.CERT_NONE
-        else:
-            ssl_ctx = False  # ws:// — no TLS
-
+        # One TLS context for the WebSocket, built from the same settings as the
+        # HTTPS client (see _websocket_ssl_context).
+        if self.ws_url.startswith("wss://") and self._ws_ssl is not None:
+            header_arg["ssl"] = self._ws_ssl
         ws = await websockets.connect(
             self.ws_url,
-            ssl=ssl_ctx,
             open_timeout=15.0,
             close_timeout=5.0,
             ping_interval=30,      # built-in keep-alive

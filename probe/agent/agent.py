@@ -45,6 +45,8 @@ from agent.instance_lock import (
 )
 from agent.transport import (
     DEVICE_REFRESH_OK,
+    AccessExpiredError,
+    DEVICE_REFRESH_EXPIRED,
     DEVICE_REFRESH_REJECTED,
     DEVICE_REFRESH_UNAVAILABLE,
     HEARTBEAT_LEASE_REVOKED,
@@ -254,8 +256,12 @@ def _preflight_scope_check(network_segments: list[str]) -> None:
     deliberately declare a remote range they route to.
     """
     if not network_segments:
-        say("⚠ PROBE_NETWORK_SEGMENTS is empty — the probe will REJECT every job.", 1)
-        say("  Set it to the CIDR(s) this probe can reach (e.g. its own /24).", 1)
+        # The normal case for an enrolled agent: its ceiling is the authorized
+        # scope in the Manager's signed Site policy (the engagement scope for an
+        # install token), loaded after enrolment. Startup stops with a clear
+        # message if that policy turns out to authorize nothing.
+        say("Scan range: from the Manager's Site policy after enrolment "
+            "(set PROBE_NETWORK_SEGMENTS only to narrow it further).", 1)
         return
     ip = _detect_primary_ipv4()
     if not ip:
@@ -662,6 +668,14 @@ def main() -> None:
 
             poll_fail_streak = 0  # a clean pass clears the outage counter
 
+        except AccessExpiredError:
+            # Access expiry set in Fleet: wait, keep the identity (no clear_state,
+            # no re-enrolment) and resume by itself once the date is extended.
+            wait = _bounded_env_int("PROBE_EXPIRED_RETRY_SECS", 300, 30, 3600)
+            say("This agent's access has expired (set in Fleet). Waiting — it resumes "
+                f"by itself once extended. Re-checking in {wait // 60 or 1} min.", 1)
+            time.sleep(wait)
+            continue
         except TransportError:
             say("Token rejected — re-registering...")
             transport.clear_state()
@@ -1080,6 +1094,12 @@ async def _ws_connection_loop(
                     say(f"WebSocket displaced: {msg.get('message', '?')}")
                     break
 
+                elif msg_type == "access_expired":
+                    # The manager closes the socket right after this; the reconnect
+                    # path then waits (PROBE_EXPIRED_RETRY_SECS) instead of looping.
+                    say(f"Access expired: {msg.get('message', 'extend it in Fleet')}")
+                    break
+
         except websockets.exceptions.ConnectionClosed as exc:
             close_code = exc.rcvd.code if exc.rcvd is not None else None
             say(f"WebSocket closed (code={close_code}) — reconnecting in {backoff:.0f}s...")
@@ -1107,6 +1127,15 @@ async def _ws_connection_loop(
                         transport.ensure_device_access, force=True)
                 except Exception as rexc:  # noqa: BLE001
                     _dbg(f"forced device-access refresh raised: {rexc!r}")
+                if transport.access_expired:
+                    # Fleet-set access expiry, not a dead credential: stay in the
+                    # loop, keep the identity, and retry slowly.
+                    wait = _bounded_env_int("PROBE_EXPIRED_RETRY_SECS", 300, 30, 3600)
+                    say("This agent's access has expired (set in Fleet). Waiting — it "
+                        f"resumes by itself once extended. Re-checking in {wait // 60 or 1} min.", 1)
+                    auth_failures = 0
+                    await asyncio.sleep(wait)
+                    continue
                 if not refreshed or auth_failures >= WS_AUTH_FAIL_LIMIT:
                     say("WebSocket auth keeps failing — the device credential looks "
                         "stale; falling back to re-registration.", 1)
@@ -1583,6 +1612,11 @@ def _enroll_device(
     request_id = state.get("enrollment_request_id")
     device_secret = state.get("enrollment_device_secret")
     poll_interval = 5
+    # A request created by THIS call may 404 for a moment: a manager that commits
+    # after responding (or a replica behind it) can answer the first poll before
+    # the row is visible. Treating that as "gone" re-enrols, and with a
+    # single-use install token that burns the token. Allow a short grace window.
+    fresh_until = 0.0
     if not request_id or not device_secret:
         enroll_payload = {
             "signing_public_key": signing_public_key,
@@ -1642,6 +1676,7 @@ def _enroll_device(
         request_id = response["request_id"]
         device_secret = response["device_secret"]
         poll_interval = int(response.get("poll_interval_seconds") or 5)
+        fresh_until = time.monotonic() + 15
         transport.update_state({
             "enrollment_request_id": request_id,
             "enrollment_device_secret": device_secret,
@@ -1722,6 +1757,10 @@ def _enroll_device(
                 raise TransportError(f"Enrollment {state_name}: {response.get('reason', '')}".strip())
             raise RuntimeError(f"unexpected enrollment state: {state_name}")
         except EnrollmentRequestNotFound as exc:
+            if time.monotonic() < fresh_until:
+                _dbg("enrollment request not visible yet — retrying within the grace window")
+                time.sleep(1)
+                continue
             # The request we were polling is GONE on the manager (spent, expired,
             # purged, or the manager's enrollment store was reset). This is the
             # bug that surfaced as "connection error … retrying [n/12]" then a
@@ -1851,6 +1890,18 @@ def _obtain_identity(
                 outcome = transport.refresh_device_access_ex(signing_sk)
                 if outcome == DEVICE_REFRESH_OK:
                     say("Refreshed short-lived device access token.", 1)
+                    continue
+
+                if outcome == DEVICE_REFRESH_EXPIRED:
+                    # Access expiry set in Fleet. The credential is fine; the
+                    # manager will accept it again as soon as an administrator
+                    # extends the date. Keep the identity, stay quiet, retry slowly
+                    # — never stop (a restart loop) or re-enrol (a stray request).
+                    wait = _bounded_env_int("PROBE_EXPIRED_RETRY_SECS", 300, 30, 3600)
+                    say("This agent's access has expired (set in Fleet). Waiting — it "
+                        f"resumes by itself once an administrator extends it. "
+                        f"Re-checking in {wait // 60 or 1} min.", 1)
+                    time.sleep(wait)
                     continue
 
                 # WHOSE credential is this? Device credentials are issued BY a
@@ -2086,6 +2137,29 @@ if __name__ == "__main__":
                 say("  Self-test FAILED — see above for details.")
                 sys.exit(1)
             say("Self-test passed.")
+        elif arg == "runtime-check":
+            # Build gate for the compiled / closure-only agent: import every
+            # module of ours it may load (lazily, mid-scan) plus its third-party
+            # libraries. A module the compiler or the image dropped fails HERE,
+            # at build time, instead of as ModuleNotFoundError in a customer scan.
+            # No network, no licence, no host state.
+            import importlib
+            from agent._closure import MODULES
+            failed = []
+            for name in MODULES:
+                try:
+                    importlib.import_module(name)  # agent-closure: verified-names
+                except Exception as exc:  # noqa: BLE001 — report every broken module
+                    failed.append(f"{name}: {type(exc).__name__}: {exc}")
+            for lib in ("httpx", "websockets", "cryptography", "impacket", "ldap3", "dns.resolver"):
+                try:
+                    importlib.import_module(lib)  # agent-closure: verified-names
+                except Exception as exc:  # noqa: BLE001
+                    failed.append(f"{lib}: {type(exc).__name__}: {exc}")
+            if failed:
+                print("runtime-check FAILED:\n  " + "\n  ".join(failed))
+                sys.exit(1)
+            print(f"runtime-check OK: {len(MODULES)} agent modules and 6 libraries load")
         elif arg == "manifest":
             # Deterministic capability surface — printed as raw JSON (no logging
             # prefix) so CI can diff the SEALED binary against the plaintext build.

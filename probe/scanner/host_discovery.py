@@ -59,6 +59,7 @@ import shutil
 import socket
 import struct
 import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -201,16 +202,17 @@ OUI_VENDORS = {
 # Vendors that, when they own the OUI, strongly imply a handheld mobile device.
 MOBILE_VENDORS = {"Apple", "Samsung", "Google", "Xiaomi", "Huawei", "OnePlus"}
 
-_MAC_RE = re.compile(r"([0-9a-fA-F]{1,2}(?::[0-9a-fA-F]{1,2}){5})")
+_MAC_RE = re.compile(r"([0-9a-fA-F]{1,2}(?:[:-][0-9a-fA-F]{1,2}){5})")
 _BAD_MACS = {"ff:ff:ff:ff:ff:ff", "00:00:00:00:00:00"}
 
 
 def normalize_mac(mac: str) -> str | None:
-    """Zero-pad each octet ('d2:58:2b:ff:cb:4' -> 'd2:58:2b:ff:cb:04'); lower."""
+    """Zero-pad each octet ('d2:58:2b:ff:cb:4' -> 'd2:58:2b:ff:cb:04'); lower.
+    Accepts Windows dash form ('aa-bb-cc-dd-ee-ff') as well as colon form."""
     m = _MAC_RE.search(mac or "")
     if not m:
         return None
-    parts = m.group(1).split(":")
+    parts = m.group(1).replace("-", ":").split(":")
     if len(parts) != 6:
         return None
     norm = ":".join(p.rjust(2, "0").lower() for p in parts)
@@ -341,8 +343,15 @@ def read_neighbor(ip: str) -> Neighbor | None:
     # CWE-78/88: keep argv as a list so the target is a single discrete argument —
     # a metacharacter- or space-laden value can never split into extra args or reach
     # a shell, and the neighbour tool treats it strictly as an address, not a flag.
-    bsd = ["ndp", "-n", ip] if is_v6 else ["arp", "-n", ip]
-    for cmd in (["ip", "neigh", "show", ip], bsd):
+    if sys.platform == "win32":
+        # Windows `arp -a <ip>` prints dash-separated MACs (handled by normalize_mac).
+        # IPv6 neighbours would need `netsh interface ipv6 show neighbors`; until then
+        # a v6 lookup returns None and the caller falls back to TCP-only liveness.
+        candidates = [] if is_v6 else [["arp", "-a", ip]]
+    else:
+        bsd = ["ndp", "-n", ip] if is_v6 else ["arp", "-n", ip]
+        candidates = [["ip", "neigh", "show", ip], bsd]
+    for cmd in candidates:
         exe = cmd[0]
         if not shutil.which(exe):
             continue
@@ -367,13 +376,14 @@ def read_arp_table() -> dict[str, str]:
     preferred for liveness decisions. Never raises.
     """
     table: dict[str, str] = {}
-    for cmd in ("ip neigh", "arp -an"):
-        exe = cmd.split()[0]
+    commands = [["arp", "-a"]] if sys.platform == "win32" else [["ip", "neigh"], ["arp", "-an"]]
+    for cmd in commands:
+        exe = cmd[0]
         if not shutil.which(exe):
             continue
         try:
             out = subprocess.run(
-                cmd.split(), capture_output=True, text=True, timeout=5,
+                cmd, capture_output=True, text=True, timeout=5,
             ).stdout
         except (OSError, subprocess.SubprocessError):
             continue

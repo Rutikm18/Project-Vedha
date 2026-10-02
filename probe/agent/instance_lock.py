@@ -42,10 +42,43 @@ import time
 from pathlib import Path
 from typing import IO
 
-try:                                    # POSIX only; the probe targets Linux/macOS
+try:                                    # POSIX (Linux/macOS)
     import fcntl
 except ImportError:                     # pragma: no cover - non-POSIX
     fcntl = None                        # type: ignore[assignment]
+
+try:                                    # Windows
+    import msvcrt
+except ImportError:                     # pragma: no cover - POSIX
+    msvcrt = None                       # type: ignore[assignment]
+
+# On Windows we lock a single byte far past any content we write. Windows
+# byte-range locks are MANDATORY (they block reads), so keeping the locked byte
+# away from the diagnostic JSON at offset 0 lets a contending process still read
+# _holder_hint. On POSIX the flock is on the whole file and advisory, so this
+# offset is unused there.
+_WINDOWS_LOCK_OFFSET = 1 << 30
+
+
+def locking_available() -> bool:
+    return fcntl is not None or msvcrt is not None
+
+
+def _take_lock(handle: IO) -> None:
+    """Non-blocking exclusive lock. Raises OSError if another process holds it."""
+    if fcntl is not None:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    elif msvcrt is not None:            # pragma: no cover - exercised on Windows CI
+        handle.seek(_WINDOWS_LOCK_OFFSET)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+
+
+def _drop_lock(handle: IO) -> None:
+    if fcntl is not None:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    elif msvcrt is not None:            # pragma: no cover - exercised on Windows CI
+        handle.seek(_WINDOWS_LOCK_OFFSET)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
 
 
 class InstanceLockError(RuntimeError):
@@ -97,7 +130,7 @@ def acquire_instance_lock(state_file: str | Path) -> IO | None:
         path.parent.mkdir(parents=True, exist_ok=True)
     except OSError:
         return None                     # unwritable dir — do not block the scan
-    if fcntl is None:                   # pragma: no cover - non-POSIX
+    if not locking_available():         # pragma: no cover - no fcntl and no msvcrt
         return None
 
     try:
@@ -106,7 +139,7 @@ def acquire_instance_lock(state_file: str | Path) -> IO | None:
         return None
 
     try:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        _take_lock(handle)
     except OSError:
         hint = _holder_hint(path)
         handle.close()
@@ -137,8 +170,7 @@ def release_instance_lock(handle: IO | None) -> None:
     if handle is None:
         return
     try:
-        if fcntl is not None:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        _drop_lock(handle)
     except OSError:
         pass
     try:

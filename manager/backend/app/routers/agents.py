@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func, select
 
+from app import agent_access
 from app.auth.jwt import create_access_token
 from app.auth.rbac import require_role
 from app.config import get_settings
@@ -883,8 +884,48 @@ async def list_agents(db: DB, current_user: AuthUser):
             "agent_version": getattr(a, "agent_version", None),
             "installer_version": getattr(a, "installer_version", None),
             "build_digest": getattr(a, "build_digest", None),
+            "access_expires_at": _expiry.isoformat() if (_expiry := getattr(a, "access_expires_at", None)) else None,
+            "access_expired": agent_access.is_expired(getattr(a, "access_expires_at", None), now),
         })
     return out
+
+
+class AgentExpiryUpdate(BaseModel):
+    """Set, extend or clear an agent's access expiry from Fleet. null clears it
+    (no expiry). A past instant is allowed — it expires the agent immediately."""
+    access_expires_at: datetime | None = None
+
+
+@router.patch("/{agent_id}/access-expiry", summary="Set or clear an agent's access expiry (Fleet)")
+async def set_agent_access_expiry(
+    agent_id: uuid.UUID,
+    body: AgentExpiryUpdate,
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
+):
+    agent = (await db.execute(
+        select(Agent).where(Agent.id == agent_id, Agent.tenant_id == current_user.tenant_id)
+        .with_for_update()
+    )).scalar_one_or_none()
+    if agent is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Agent not found")
+    new_value = body.access_expires_at
+    if new_value is not None and new_value.tzinfo is None:
+        new_value = new_value.replace(tzinfo=timezone.utc)
+    agent.access_expires_at = new_value
+    from app.services.audit import record_audit
+    record_audit(
+        db, actor_id=current_user.user_id, action="agent.access_expiry.set",
+        resource_type="agent", resource_id=agent.id,
+        detail={"access_expires_at": new_value.isoformat() if new_value else None},
+    )
+    await db.flush()
+    now = datetime.now(timezone.utc)
+    return {
+        "id": str(agent.id),
+        "access_expires_at": new_value.isoformat() if new_value else None,
+        "access_expired": agent_access.is_expired(new_value, now),
+    }
 
 
 @router.post("/heartbeat", summary="Agent sends health ping every 30s")

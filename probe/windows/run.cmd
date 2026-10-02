@@ -5,8 +5,14 @@ rem Close the window to stop. For a permanent install, use install.cmd instead.
 setlocal
 cd /d "%~dp0"
 
-set "PLATFORM_URL=http://13.127.147.205:18080"
+set "PLATFORM_URL=__VEDHA_MANAGER_URL__"
+if "%PLATFORM_URL:~0,2%"=="__" (
+  echo ERROR: this package has no manager address. Re-create it with package-zip.ps1 -Manager https://api.your-domain.com
+  pause
+  exit /b 1
+)
 set "VERIFY_TLS=true"
+set "LICENSE_ENFORCED=false"
 set "PROBE_NAME=%COMPUTERNAME%-probe"
 set "STATE_FILE=%ProgramData%\vedha-agent\state.json"
 set "RESULT_SPOOL_DIR=%ProgramData%\vedha-agent\spool"
@@ -23,5 +29,5 @@ echo(
 if "%PROBE_NETWORK_SEGMENTS%"=="" echo    WARNING: no local /24 detected - the probe will connect but get NO jobs.
 echo Starting vedha-agent (close this window to stop)...
 echo(
-"%~dp0vedha-agent.exe" run
+"%~dp0vedha-agent\vedha-agent.exe" run
 endlocal

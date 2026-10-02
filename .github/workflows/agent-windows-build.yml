@@ -1,0 +1,79 @@
+name: vedha-agent-windows-build
+
+# Builds the compiled Windows agent on a real Windows runner and proves it:
+#   * only the agent's own code is compiled in (tools/agent_closure.py --check),
+#   * the output folder holds no Python source or bytecode of ours,
+#   * the compiled binary can import every module the agent loads lazily
+#     (vedha-agent runtime-check),
+#   * it starts and answers `version` / `hostid` / `manifest`,
+#   * the install and package scripts parse as PowerShell.
+# The zip is uploaded as a workflow artifact; publishing it to the manager is a
+# separate, deliberate step.
+on:
+  pull_request:
+    paths:
+      - "probe/agent/**"
+      - "probe/scanner/**"
+      - "probe/workflow/**"
+      - "probe/windows/**"
+      - "probe/tools/agent_closure.py"
+      - "probe/requirements-runtime.txt"
+      - ".github/workflows/agent-windows-build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: probe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Closure check (only the agent's own code is compiled)
+        run: python tools/agent_closure.py --check
+
+      - name: PowerShell scripts parse
+        run: |
+          foreach ($f in 'windows\build-agent-exe.ps1','windows\install.ps1','windows\uninstall.ps1','windows\package-zip.ps1','windows\setup.ps1') {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errors) | Out-Null
+            if ($errors) { $errors | ForEach-Object { Write-Error "$f : $($_.Message)" }; exit 1 }
+            Write-Host "ok  $f"
+          }
+
+      - name: Build the compiled agent (Nuitka)
+        run: powershell -ExecutionPolicy Bypass -File windows\build-agent-exe.ps1
+
+      - name: Smoke test the compiled agent
+        run: |
+          $exe = 'windows\dist\vedha-agent\vedha-agent.exe'
+          & $exe version;  if ($LASTEXITCODE -ne 0) { exit 1 }
+          & $exe hostid;   if ($LASTEXITCODE -ne 0) { exit 1 }
+          & $exe runtime-check; if ($LASTEXITCODE -ne 0) { exit 1 }
+          $env:LICENSE_ENFORCED = 'false'
+          $manifest = & $exe manifest | ConvertFrom-Json
+          if (-not $manifest.capabilities) { Write-Error 'manifest has no capabilities'; exit 1 }
+          Write-Host "manifest ok: $($manifest.capabilities.Count) capabilities"
+
+      - name: No source or bytecode of ours in the output
+        run: |
+          $dist = (Resolve-Path 'windows\dist\vedha-agent').Path
+          $bad = Get-ChildItem $dist -Recurse -File -Include *.py,*.pyc |
+            Where-Object { $_.FullName.Substring($dist.Length + 1) -match '^(agent|scanner|workflow|main_scripts|cve|tests)\\' }
+          if ($bad) { $bad | ForEach-Object { Write-Error "shipped: $($_.FullName)" }; exit 1 }
+          if (Get-ChildItem $dist -Recurse -File -Filter 'findings*') { Write-Error 'findings module present'; exit 1 }
+          Write-Host 'clean'
+
+      - name: Package
+        run: powershell -ExecutionPolicy Bypass -File windows\package-zip.ps1 -Manager https://api.example.invalid
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vedha-agent-windows
+          path: probe/windows/dist/vedha-probe-win.zip

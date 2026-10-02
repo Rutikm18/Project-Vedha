@@ -64,3 +64,30 @@ class TestDeviceHint:
 
     def test_no_signal(self):
         assert device_hint(None, None, set()) is None
+
+
+class TestWindowsMac:
+    """Windows `arp -a` prints MACs with dashes; device inventory was blank on
+    Windows because the parser only accepted colons."""
+
+    def test_normalize_dash_separated_mac(self):
+        assert normalize_mac("aa-bb-cc-dd-ee-ff") == "aa:bb:cc:dd:ee:ff"
+
+    def test_normalize_dash_mac_zero_pads_and_lowers(self):
+        assert normalize_mac("A-F3-9A-A1-A9-8C") == "0a:f3:9a:a1:a9:8c"
+
+    def test_parse_windows_arp_line(self):
+        from scanner.host_discovery import parse_neighbor_line
+        line = "  192.168.1.1           aa-bb-cc-dd-ee-ff     dynamic"
+        nb = parse_neighbor_line(line, want_ip="192.168.1.1")
+        assert nb is not None and nb.mac == "aa:bb:cc:dd:ee:ff"
+
+    def test_windows_interface_header_is_not_a_mac(self):
+        from scanner.host_discovery import parse_neighbor_line
+        assert parse_neighbor_line("Interface: 192.168.1.5 --- 0x4") is None
+
+    def test_vendor_still_resolves_for_a_dash_mac(self):
+        # normalize first, then the OUI lookup works the same as colon form.
+        mac = normalize_mac("34-F3-9A-A1-A9-8C")
+        assert mac == "34:f3:9a:a1:a9:8c"
+        assert vendor_for_mac(mac) == vendor_for_mac("34:f3:9a:a1:a9:8c")

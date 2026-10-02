@@ -35,6 +35,11 @@ x-backend-env: &backend-env
   # true on the testing path so `install.sh <manager-ip>` auto-connects.
   PROBE_AUTO_ENROLL: ${PROBE_AUTO_ENROLL:-false}
   PROBE_AUTO_ENROLL_CIDRS: ${PROBE_AUTO_ENROLL_CIDRS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+  # Agent distribution: the signed release (scripts/agent-release.sh) is served
+  # from the read-only mount on the api service; the key verifies it.
+  AGENT_RELEASE_PUBLIC_KEY: ${AGENT_RELEASE_PUBLIC_KEY:-}
+  AGENT_RELEASE_REQUIRE_SIGNATURE: ${AGENT_RELEASE_REQUIRE_SIGNATURE:-false}
+  MANAGER_PUBLIC_URL: ${MANAGER_PUBLIC_URL:-}
   APP_ENV: ${APP_ENV:-development}
   AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -210,6 +215,9 @@ services:
       - "30"
     ports:
       - "${API_BIND:-0.0.0.0}:${API_PORT:-18080}:8000"
+    volumes:
+      # Agent releases published by scripts/agent-release.sh (read-only here).
+      - ${AGENT_RELEASE_HOST_DIR:-./agent-releases}:/var/lib/vedha/agent-releases:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

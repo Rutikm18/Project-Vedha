@@ -253,3 +253,82 @@ class TestIssuerIsWrittenOnEveryIdentityPath:
         t.clear_state()
         st = t.load_state()
         assert st["device_refresh_secret"] == "s" and st["identity_sk"] == "k"
+
+
+class TestAccessExpiryIsNotRevocation:
+    """Access expiry is set from Fleet and enforced by the manager (403 "…expired…").
+    The credential is intact and works again once the date is extended, so the
+    agent must wait and keep its identity — not exit "revoked, stopping for
+    administrator review" (a restart loop under Docker or a scheduled task)."""
+
+    def _refresh(self, tmp_path, status, text):
+        t = _transport(tmp_path, _STATE)
+        t._client.post.return_value = MagicMock(status_code=status, text=text)
+        return t.refresh_device_access_ex(b"k" * 32)
+
+    def test_expired_403_is_its_own_outcome(self, tmp_path):
+        from agent.transport import DEVICE_REFRESH_EXPIRED
+        body = '{"detail":"Agent access has expired. Ask your Vedha administrator to extend it in Fleet."}'
+        assert self._refresh(tmp_path, 403, body) == DEVICE_REFRESH_EXPIRED
+
+    def test_other_403_is_still_a_rejection(self, tmp_path):
+        assert self._refresh(tmp_path, 403, '{"detail":"Device is disabled"}') == DEVICE_REFRESH_REJECTED
+
+    def test_expired_wording_on_a_401_is_still_a_rejection(self, tmp_path):
+        """Only the manager's 403 means access expiry; a 401 never does."""
+        assert self._refresh(tmp_path, 401, '{"detail":"token expired"}') == DEVICE_REFRESH_REJECTED
+
+    def test_expired_is_not_success_for_the_bool_wrapper(self, tmp_path):
+        t = _transport(tmp_path, _STATE)
+        t._client.post.return_value = MagicMock(status_code=403, text="access has expired")
+        assert t.refresh_device_access(b"k" * 32) is False
+
+    def test_outcomes_are_four_distinct_values(self):
+        from agent.transport import DEVICE_REFRESH_EXPIRED
+        assert len({DEVICE_REFRESH_OK, DEVICE_REFRESH_REJECTED,
+                    DEVICE_REFRESH_UNAVAILABLE, DEVICE_REFRESH_EXPIRED}) == 4
+
+
+class TestPollingDuringAccessExpiry:
+    """Found by the live expiry run: the HTTP poll treated the manager's expiry 403
+    as a stale token, the polling loop then called clear_state() and re-enrolled —
+    destroying the identity of an agent that only needed its date extended."""
+
+    BODY = '{"detail":"Agent access has expired. Ask your Vedha administrator to extend it in Fleet."}'
+
+    def _polling_transport(self, tmp_path, responses):
+        t = _transport(tmp_path, {**_STATE, "token": "tok", "access_expires_at": 4102444800})
+        t._agent_token = "tok"
+        t._device_signing_private_key = b"k" * 32
+        t._client.get.side_effect = responses
+        t._client.post.return_value = MagicMock(status_code=403, text=self.BODY)
+        return t
+
+    def test_expiry_403_on_poll_raises_access_expired_not_a_stale_token(self, tmp_path):
+        from agent.transport import AccessExpiredError
+        t = self._polling_transport(tmp_path, [MagicMock(status_code=403, text=self.BODY)] * 2)
+        with pytest.raises(AccessExpiredError):
+            t.poll_jobs(1)
+        assert t.access_expired is True
+
+    def test_other_403_on_poll_is_still_a_stale_token(self, tmp_path):
+        from agent.transport import AccessExpiredError, TransportError
+        t = self._polling_transport(tmp_path, [MagicMock(status_code=403, text='{"detail":"nope"}')] * 2)
+        t._client.post.return_value = MagicMock(status_code=401, text="")
+        with pytest.raises(TransportError) as exc:
+            t.poll_jobs(1)
+        assert not isinstance(exc.value, AccessExpiredError)
+
+    def test_access_expired_error_is_a_transport_error_for_old_callers(self):
+        from agent.transport import AccessExpiredError, TransportError
+        assert issubclass(AccessExpiredError, TransportError)
+
+    def test_refresh_expiry_sets_the_flag_and_success_clears_it(self, tmp_path):
+        t = _transport(tmp_path, _STATE)
+        t._client.post.return_value = MagicMock(status_code=403, text=self.BODY)
+        assert t.refresh_device_access_ex(b"k" * 32) == "expired" and t.access_expired is True
+        t._client.post.return_value = MagicMock(
+            status_code=200, text="", json=lambda: {"access_token": "new", "access_expires_in_seconds": 600})
+        t._client.post.return_value.raise_for_status = lambda: None
+        assert t.refresh_device_access_ex(b"k" * 32) == DEVICE_REFRESH_OK
+        assert t.access_expired is False

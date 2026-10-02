@@ -36,11 +36,13 @@ Central docs map. All documentation now lives here — the repo root is clean.
 - [Client Prerequisites](deployment/CLIENT_PREREQUISITES.md) — what a client provides before an engagement
 
 ### Operations
+- [Agent distribution runbook](operations/AGENT_DISTRIBUTION.md) — sign + publish agent releases from the build machine, how Fleet → Add agent works, on-prem encrypted bundles
 - [Debugging the Agent](operations/DEBUGGING_THE_AGENT.md) — log verbosity, where logs/state are stored per platform, diagnostic subcommands, symptom→fix table, Windows agent
 - [Troubleshooting](operations/TROUBLESHOOTING.md) — scanner error codes and operator actions
 - [VA Runbook](operations/VA_RUNBOOK.md)
 
 ### Probe
+- [Installing the Vedha agent (customer guide)](probe/CUSTOMER_AGENT_INSTALL.md) — the supported path: Fleet → Add agent, one command, proxy/TLS options
 - [Agent Install & Run Guide (all OS)](probe/AGENT_INSTALL_GUIDE.md) — step-by-step install for Linux/macOS/Windows with commands
 - [Probe Runbook](probe/RUNBOOK.md)
 - [Step-by-Step Run Guide](probe/step-by-step-run.md) — network/firewall model + first scan

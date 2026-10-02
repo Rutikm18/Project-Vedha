@@ -193,7 +193,7 @@ class TestTenantWebSocketSelection:
         ws_b.send_json.assert_awaited_once()
 
 
-def _claim_fixture(*, capabilities=None, network_segments=None):
+def _claim_fixture(*, capabilities=None, network_segments=None, access_expires_at=None):
     tenant_id = uuid.uuid4()
     agent_id = uuid.uuid4()
     job_id = uuid.uuid4()
@@ -202,6 +202,7 @@ def _claim_fixture(*, capabilities=None, network_segments=None):
         tenant_id=tenant_id,
         capabilities=capabilities or ["discovery"],
         network_segments=network_segments or ["10.0.0.0/16"],
+        access_expires_at=access_expires_at,
     )
     job = SimpleNamespace(
         id=job_id,
@@ -219,6 +220,42 @@ def _claim_fixture(*, capabilities=None, network_segments=None):
 
 
 class TestAtomicWebSocketClaim:
+
+    @pytest.mark.asyncio
+    async def test_expired_agent_is_never_offered_new_work(self):
+        """Fleet-set access expiry: the push path claims nothing for an expired
+        agent, before the job is even looked up."""
+        from datetime import datetime, timezone
+        tenant_id, agent_id, job_id, agent, job, engagement = _claim_fixture(
+            access_expires_at=datetime(2020, 1, 1, tzinfo=timezone.utc))
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[MagicMock(scalar_one_or_none=lambda: agent)])
+        db.commit = AsyncMock()
+
+        claimed, reason, claim = await agent_ws._claim_pushed_job(
+            db, str(agent_id), str(tenant_id), job_id)
+
+        assert (claimed, reason, claim) == (False, "access_expired", None)
+        assert db.execute.await_count == 1          # stopped before the job query
+        db.commit.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_agent_with_a_future_expiry_still_claims(self):
+        from datetime import datetime, timedelta, timezone
+        tenant_id, agent_id, job_id, agent, job, engagement = _claim_fixture(
+            access_expires_at=datetime.now(timezone.utc) + timedelta(days=3))
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: agent),
+            MagicMock(one_or_none=lambda: (job, engagement)),
+            MagicMock(first=lambda: None),
+            MagicMock(first=lambda: (1, 1)),
+        ])
+        db.commit = AsyncMock()
+        db.flush = AsyncMock()
+        claimed, reason, _ = await agent_ws._claim_pushed_job(
+            db, str(agent_id), str(tenant_id), job_id)
+        assert claimed is True and reason == "claimed"
 
     @pytest.mark.asyncio
     async def test_claim_commits_before_confirmation(self):

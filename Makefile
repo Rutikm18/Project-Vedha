@@ -31,7 +31,7 @@ endif
 # it into the backend image via the VEDHA_VERSION build arg.
 export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
 
-.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed admin-show admin-reset shell venv test probe-build probe-run probe-pat seal seal-parity clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback
+.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed admin-show admin-reset shell venv test probe-build probe-run probe-pat seal seal-parity agent-keygen agent-release agent-publish agent-verify onprem-bundle clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback
 
 version: ## Print the current deployed version
 	@echo $(VEDHA_VERSION)
@@ -188,6 +188,34 @@ seal: ## Build the SEALED native-binary probe (no source/bytecode). ARGS="--host
 
 seal-parity: ## Local sealed-vs-plaintext manifest parity check (needs Docker; ~build time)
 	@bash scripts/seal_parity.sh
+
+# ── Agent release (served by the manager; never a public registry) ───────────
+# Build machine only: the private key never goes on the manager server.
+#   make agent-keygen                       once; prints AGENT_RELEASE_PUBLIC_KEY for .env
+#   make agent-release                      build + sign amd64 and arm64 from VERSION
+#   make agent-publish TO=user@host:/opt/Project-Vedha/manager/agent-releases
+AGENT_RELEASE_KEY ?= $(HOME)/.vedha/agent-release-key.pem
+AGENT_ARCH ?= amd64,arm64
+RELEASE_PY := $(shell test -x manager/backend/.venv/bin/python && echo manager/backend/.venv/bin/python || echo python3)
+
+agent-keygen: ## Create the agent release signing key (build machine only; prints the public key for .env)
+	@$(RELEASE_PY) scripts/agent_release.py keygen --out "$(AGENT_RELEASE_KEY)"
+
+agent-release: ## Build + sign the agent release from VERSION [AGENT_ARCH=amd64,arm64] [AGENT_RELEASE_KEY=...]
+	@$(RELEASE_PY) scripts/agent_release.py build --key "$(AGENT_RELEASE_KEY)" --arch "$(AGENT_ARCH)"
+
+agent-verify: ## Verify the built release: make agent-verify PUB=<AGENT_RELEASE_PUBLIC_KEY>
+	@$(RELEASE_PY) scripts/agent_release.py verify dist/agent-release --public-key "$(PUB)"
+
+agent-publish: ## Copy the built release to the manager: make agent-publish TO=user@host:/path (or a local dir)
+	@test -n "$(TO)" || { echo "TO is required, e.g. TO=ubuntu@1.2.3.4:/opt/Project-Vedha/manager/agent-releases (local dev: TO=manager/agent-releases)"; exit 2; }
+	@$(RELEASE_PY) scripts/agent_release.py publish dist/agent-release --to "$(TO)"
+
+# On request only: an encrypted, signed platform bundle for ONE on-prem customer.
+#   make onprem-bundle CUSTOMER="ACME Bank" RECIPIENT=age1...   (their `age-keygen` public key)
+onprem-bundle: ## On-prem customer bundle (encrypted to them, signed): make onprem-bundle CUSTOMER=... RECIPIENT=age1...
+	@test -n "$(CUSTOMER)" -a -n "$(RECIPIENT)" || { echo "CUSTOMER and RECIPIENT (the customer's age public key) are required"; exit 2; }
+	@$(RELEASE_PY) scripts/onprem_bundle.py build --customer "$(CUSTOMER)" --recipient "$(RECIPIENT)" --key "$(AGENT_RELEASE_KEY)" $(if $(wildcard dist/agent-release/CURRENT),--agent-release dist/agent-release,)
 
 # ── AWS / EC2 deploy targets ──────────────────────────────────────────────────
 # All use the PROBE-FREE manager stack. `make full` is the full-stack deploy;

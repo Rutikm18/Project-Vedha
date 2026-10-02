@@ -23,6 +23,7 @@ from pathlib import Path
 
 import pytest
 
+from agent import instance_lock as il
 from agent.instance_lock import (
     InstanceLockError,
     acquire_instance_lock,
@@ -157,3 +158,64 @@ class TestDegradesSafely:
             assert "REFUSED" in out.stdout, out.stdout
         finally:
             release_instance_lock(h)
+
+
+class TestWindowsPath:
+    """Windows has no fcntl; the lock must use msvcrt instead of silently
+    skipping (a skipped lock is how two agents shared one state.json). The OS
+    enforces exclusion across processes — here we prove the WIRING: acquire and
+    release drive msvcrt.locking, and a held byte refuses a second holder."""
+
+    class _FakeMsvcrt:
+        LK_NBLCK = 1
+        LK_UNLCK = 0
+
+        def __init__(self):
+            self.held = False
+            self.calls: list[tuple[int, int]] = []
+
+        def locking(self, fd, mode, nbytes):
+            self.calls.append((mode, nbytes))
+            if mode == self.LK_NBLCK:
+                if self.held:
+                    raise OSError("byte range already locked")
+                self.held = True
+            else:
+                self.held = False
+
+    def _use_windows(self, monkeypatch, fake):
+        monkeypatch.setattr(il, "fcntl", None)
+        monkeypatch.setattr(il, "msvcrt", fake)
+
+    def test_acquire_and_release_drive_msvcrt(self, monkeypatch, state):
+        fake = self._FakeMsvcrt()
+        self._use_windows(monkeypatch, fake)
+        handle = acquire_instance_lock(state)
+        assert handle is not None
+        assert (fake.LK_NBLCK, 1) in fake.calls
+        release_instance_lock(handle)
+        assert (fake.LK_UNLCK, 1) in fake.calls
+
+    def test_held_byte_refuses_a_second_holder(self, monkeypatch, state):
+        fake = self._FakeMsvcrt()          # one fake = one OS, shared across handles
+        self._use_windows(monkeypatch, fake)
+        first = acquire_instance_lock(state)
+        try:
+            with pytest.raises(InstanceLockError):
+                acquire_instance_lock(state)
+        finally:
+            release_instance_lock(first)
+
+    def test_release_frees_it_for_reacquire(self, monkeypatch, state):
+        fake = self._FakeMsvcrt()
+        self._use_windows(monkeypatch, fake)
+        release_instance_lock(acquire_instance_lock(state))
+        again = acquire_instance_lock(state)
+        assert again is not None
+        release_instance_lock(again)
+
+    def test_no_locking_mechanism_degrades_to_none(self, monkeypatch, state):
+        monkeypatch.setattr(il, "fcntl", None)
+        monkeypatch.setattr(il, "msvcrt", None)
+        assert not il.locking_available()
+        assert acquire_instance_lock(state) is None   # never block the scan

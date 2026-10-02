@@ -1,17 +1,22 @@
 <#
-  Build vedha-agent.exe from probe/agent/agent.py (the daemon entrypoint;
-  agent.py defaults argv to "run"). RUN THIS ON A WINDOWS MACHINE.
+  Build the Windows agent: the agent's own code, compiled with Nuitka into a folder
+  (no readable Python source or bytecode). RUN THIS ON A WINDOWS MACHINE (the CI
+  job .github/workflows/agent-windows-build.yml does).
+
+  What is compiled is the agent's import closure only (tools/agent_closure.py): the
+  agent, the scanners it uses and the workflow engine. Never scanner/findings.py
+  (the vulnerability judgement rules stay on the manager), the campaign runner,
+  accuracy gates, main_scripts/, cve/ or tests. The build fails if any of those
+  would be included, or if the output holds Python source/bytecode of ours.
 
   Usage (from probe\windows):
-    powershell -ExecutionPolicy Bypass -File build-agent-exe.ps1                 # PyInstaller (simplest)
-    powershell -ExecutionPolicy Bypass -File build-agent-exe.ps1 -Tool nuitka    # Nuitka (IP-sealed; needs a C compiler)
+    powershell -ExecutionPolicy Bypass -File build-agent-exe.ps1
 
-  Output: probe\windows\dist\vedha-agent.exe
-  Note: Nuitka also fixes the sealed-build dep gap by including impacket/ldap3/dns.
+  Output: probe\windows\dist\vedha-agent\vedha-agent.exe  (+ the libraries beside it)
+  Needs: Python 3.10-3.12 on PATH and a C compiler (Nuitka offers to fetch MinGW).
 #>
 [CmdletBinding()]
 param(
-  [ValidateSet('pyinstaller','nuitka')] [string]$Tool = 'pyinstaller',
   [string]$OutDir = "$PSScriptRoot\dist"
 )
 $ErrorActionPreference = 'Stop'
@@ -24,35 +29,55 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $venv = Join-Path $PSScriptRoot '.venv-win'
 if (-not (Test-Path (Join-Path $venv 'Scripts\python.exe'))) { python -m venv $venv }
 $py = Join-Path $venv 'Scripts\python.exe'
+& $py -m pip install --quiet --upgrade pip
+& $py -m pip install --quiet -r (Join-Path $probeRoot 'requirements-runtime.txt') nuitka
 
-& $py -m pip install --upgrade pip
-& $py -m pip install -r (Join-Path $probeRoot 'requirements-runtime.txt')
+# 1) Only the agent's closure goes to the compiler. --check fails on a blocked
+#    module or a dynamic import (which a compiler cannot follow).
+& $py tools\agent_closure.py --check
+if ($LASTEXITCODE -ne 0) { throw 'agent closure check failed' }
+$stage = Join-Path $env:TEMP 'vedha-agent-src'
+if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+& $py tools\agent_closure.py --export $stage
+if ($LASTEXITCODE -ne 0) { throw 'agent closure export failed' }
 
-if ($Tool -eq 'pyinstaller') {
-  & $py -m pip install pyinstaller
-  & $py -m PyInstaller --onefile --name vedha-agent --noconfirm `
-      --paths $probeRoot `
-      --collect-submodules scanner --collect-submodules workflow --collect-submodules agent `
-      --collect-all impacket --collect-all ldap3 --collect-all dns `
-      --distpath $OutDir --workpath (Join-Path $OutDir '_work') --specpath (Join-Path $OutDir '_spec') `
-      (Join-Path $probeRoot 'agent\agent.py')
-}
-else {
-  & $py -m pip install nuitka
-  & $py -m nuitka --onefile --standalone --assume-yes-for-downloads --follow-imports `
-      --include-package=scanner --include-package=workflow --include-package=agent `
-      --include-package=impacket --include-package=ldap3 --include-package=dns `
-      --include-package=cryptography --include-package=httpx --include-package=websockets `
+# 2) Compile to a standalone folder. Docstrings and asserts are stripped; the
+#    optional credential collectors (paramiko, winrm) are left out on purpose.
+$dist = Join-Path $OutDir 'vedha-agent'
+if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
+Push-Location $stage
+try {
+  & $py -m nuitka --standalone --assume-yes-for-downloads --follow-imports `
       --python-flag=no_docstrings --python-flag=no_asserts `
-      --output-dir=$OutDir --output-filename=vedha-agent.exe `
-      (Join-Path $probeRoot 'agent\agent.py')
+      --include-package=agent --include-package=scanner --include-package=workflow `
+      --include-package=impacket --include-package=ldap3 --include-package=dns `
+      --nofollow-import-to=paramiko --nofollow-import-to=winrm `
+      --nofollow-import-to=pytest --nofollow-import-to=unittest `
+      --windows-console-mode=force --company-name=Vedha --product-name='Vedha Agent' `
+      --file-description='Vedha network assessment agent' `
+      "--output-dir=$OutDir" --output-filename=vedha-agent.exe --remove-output `
+      agent\agent.py
+  if ($LASTEXITCODE -ne 0) { throw 'Nuitka build failed' }
+} finally {
+  Pop-Location
+  Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
+}
+Rename-Item (Join-Path $OutDir 'agent.dist') 'vedha-agent'
+
+# 3) Nothing readable of ours may ship.
+$leftover = Get-ChildItem $dist -Recurse -File -Include *.py, *.pyc |
+  Where-Object { $_.FullName.Substring($dist.Length + 1) -match '^(agent|scanner|workflow|main_scripts|cve|tests)\\' }
+if ($leftover) {
+  $leftover | ForEach-Object { Write-Warning "source/bytecode shipped: $($_.FullName)" }
+  throw 'build output contains Python source or bytecode of our packages'
 }
 
-$exe = Join-Path $OutDir 'vedha-agent.exe'
-if (Test-Path $exe) {
-  Write-Host ''
-  Write-Host "Built: $exe" -ForegroundColor Green
-  Write-Host 'Smoke test:  .\dist\vedha-agent.exe hostid   (should print a host id and exit)'
-} else {
-  Write-Error "Build finished but $exe was not produced. If a scanner is 'not found' at runtime, add it to --collect-submodules / --include-package."
-}
+# 4) Every module the agent can load lazily must be inside the compiled binary.
+$exe = Join-Path $dist 'vedha-agent.exe'
+if (-not (Test-Path $exe)) { throw "Build finished but $exe was not produced." }
+& $exe runtime-check
+if ($LASTEXITCODE -ne 0) { throw 'compiled runtime-check failed (a module was left out of the build)' }
+
+Write-Host ''
+Write-Host "Built: $exe" -ForegroundColor Green
+Write-Host 'Smoke test:  .\dist\vedha-agent\vedha-agent.exe hostid   (prints a host id and exits)'

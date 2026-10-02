@@ -1,14 +1,19 @@
 #!/usr/bin/env sh
 # Vedha probe installer — one command, no human credential on the client.
 #
-#   Supported enrollment flow:
-#     curl --proto '=https' --tlsv1.2 -fsS https://downloads.example/probe/install.sh \
-#       | sudo sh -s -- --manager https://manager.example.com
+#   Supported flow (Fleet → Add agent prints this with your token filled in):
+#     curl --proto '=https' --tlsv1.2 -fsSL https://api.example.com/agent/install.sh \
+#       | sudo sh -s -- --manager https://api.example.com --token vet_...
 #
 #   Inspect-first:
-#     curl -fsSL https://YOUR_HOST/install.sh -o install.sh
-#     less install.sh
-#     sudo sh install.sh --manager https://manager.example.com
+#     curl --proto '=https' --tlsv1.2 -fsSL -o vedha-install.sh https://api.example.com/agent/install.sh
+#     less vedha-install.sh
+#     sudo sh vedha-install.sh --manager https://api.example.com --token vet_...
+#
+#   The agent image comes from YOUR manager, never a public registry: the
+#   installer downloads the signed release manifest, verifies its Ed25519
+#   signature with the key embedded below, downloads the image for this CPU with
+#   the token, and refuses to load it unless its SHA-256 matches the manifest.
 set -eu
 
 # ── Native cross-OS brain path (Phase 7) ─────────────────────────────────────
@@ -203,6 +208,11 @@ if [ "$_MODE" = "local" ]; then
 fi
 
 # ==== DOCKER MODE (production; hardened container) — original installer below ====
+# Set by scripts/agent_release.py when this file is packaged into a signed agent
+# release; empty in the repository copy (development installs skip the check).
+VEDHA_RELEASE_SPKI=""
+VEDHA_RELEASE_VERSION=""
+_IMAGE_EXPLICIT="${PROBE_IMAGE:+yes}"
 IMAGE="${PROBE_IMAGE:-vedha-agent:local}"       # local tag or registry path
 NAME="${PROBE_CONTAINER:-vedha-agent}"
 STATE_VOL="${PROBE_STATE_VOLUME:-vedha-agent-state}"
@@ -213,13 +223,24 @@ PROBE_MAX_JOB_SECONDS="${PROBE_MAX_JOB_SECONDS:-7200}"
 PROBE_REGISTRATION_TIMEOUT="${PROBE_REGISTRATION_TIMEOUT:-60}"
 PROBE_ENROLL_TOKEN="${PROBE_ENROLL_TOKEN:-}"
 PROBE_ALLOW_INSECURE="${PROBE_ALLOW_INSECURE:-false}"
+PROBE_PROXY="${PROBE_PROXY:-}"
+PROBE_NO_PROXY="${PROBE_NO_PROXY:-}"
+PROBE_CA_BUNDLE_FILE="${PROBE_CA_BUNDLE_FILE:-}"
+PROBE_REQUIRE_SIGNATURE="${PROBE_REQUIRE_SIGNATURE:-false}"
 
 usage() {
-  say "Usage: $0 --manager https://manager.example.com [--enroll-token vet_...] [--insecure]"
-  say "  --enroll-token  Pre-authorized, Site-bound token → probe auto-enrolls (no user_code step)."
-  say "  --insecure      Allow an http:// manager (testing only; production requires https)."
-  say "  --uninstall     Remove the probe container (PROBE_PURGE=true also deletes its identity/license volume)."
-  say "Only the Manager endpoint is deployment-specific; Site policy comes from the token or Fleet UI."
+  say "Usage: $0 --manager https://api.example.com --token vet_... [options]"
+  say "  --token, --enroll-token  Install token from Fleet → Add agent: downloads the agent and"
+  say "                           enrols it with no approval step (single use, expires)."
+  say "  --name NAME              Agent host name shown in Fleet (default: this hostname)."
+  say "  --proxy URL              Outbound HTTP(S) proxy, e.g. http://proxy.corp:3128 — used by"
+  say "                           this installer and by the agent."
+  say "  --no-proxy LIST          Hosts that bypass the proxy (comma-separated)."
+  say "  --ca-bundle FILE         Extra CA certificates (PEM) for a TLS-inspecting proxy."
+  say "  --require-signature      Fail if the release signature cannot be checked on this host."
+  say "  --insecure               Allow an http:// manager (testing only; production requires https)."
+  say "  --uninstall              Remove the agent container (PROBE_PURGE=true also deletes its identity)."
+  say "Only the Manager endpoint is deployment-specific; scope comes from the token or Fleet."
 }
 
 while [ "$#" -gt 0 ]; do
@@ -229,10 +250,34 @@ while [ "$#" -gt 0 ]; do
       PLATFORM_URL=$2
       shift 2
       ;;
-    --enroll-token)
-      [ "$#" -ge 2 ] || { say "ERROR: --enroll-token requires a value."; usage; exit 2; }
+    --enroll-token|--token)
+      [ "$#" -ge 2 ] || { say "ERROR: $1 requires a value."; usage; exit 2; }
       PROBE_ENROLL_TOKEN=$2
       shift 2
+      ;;
+    --name)
+      [ "$#" -ge 2 ] || { say "ERROR: --name requires a value."; usage; exit 2; }
+      PROBE_NAME=$2
+      shift 2
+      ;;
+    --proxy)
+      [ "$#" -ge 2 ] || { say "ERROR: --proxy requires a value."; usage; exit 2; }
+      PROBE_PROXY=$2
+      shift 2
+      ;;
+    --no-proxy)
+      [ "$#" -ge 2 ] || { say "ERROR: --no-proxy requires a value."; usage; exit 2; }
+      PROBE_NO_PROXY=$2
+      shift 2
+      ;;
+    --ca-bundle)
+      [ "$#" -ge 2 ] || { say "ERROR: --ca-bundle requires a file."; usage; exit 2; }
+      PROBE_CA_BUNDLE_FILE=$2
+      shift 2
+      ;;
+    --require-signature)
+      PROBE_REQUIRE_SIGNATURE=true
+      shift
       ;;
     --insecure)
       PROBE_ALLOW_INSECURE=true
@@ -273,7 +318,15 @@ PLATFORM_URL="${PLATFORM_URL%/}"
 
 if [ "${PROBE_INSTALL_DRY_RUN:-false}" = "true" ]; then
   say "Dry-run preview (no Docker or connectivity checks were run)."
-  say "Image: $IMAGE"
+  if [ -n "$_IMAGE_EXPLICIT" ] || [ -n "${PROBE_IMAGE_TAR_URL:-}" ]; then
+    say "Image: $IMAGE"
+  elif [ -n "$PROBE_ENROLL_TOKEN" ]; then
+    say "Image: signed agent release from $PLATFORM_URL/agent (verified before loading)"
+  else
+    say "Image: $IMAGE if present locally, else the signed release from the manager (needs --token)"
+  fi
+  [ -n "$PROBE_PROXY" ] && say "Proxy: $PROBE_PROXY (installer and agent)"
+  [ -n "$PROBE_CA_BUNDLE_FILE" ] && say "Extra CA bundle: $PROBE_CA_BUNDLE_FILE"
   say "Container: $NAME"
   say "Manager: $PLATFORM_URL"
   if [ -n "$PROBE_ENROLL_TOKEN" ]; then
@@ -289,6 +342,17 @@ fi
 # --- preflight ----------------------------------------------------------------
 have docker || { say "Docker is required. Install Docker Desktop/Engine first: https://docs.docker.com/engine/install/"; exit 1; }
 docker info >/dev/null 2>&1 || { say "Docker is installed but its daemon isn't reachable. Start Docker (open Docker Desktop, or 'sudo systemctl start docker') and retry."; exit 1; }
+
+# The container restarts with Docker (--restart unless-stopped), but only if
+# Docker itself starts at boot — not the default on every distribution.
+if have systemctl && [ "$(systemctl is-enabled docker 2>/dev/null || true)" = "disabled" ]; then
+  if systemctl enable docker >/dev/null 2>&1; then
+    say "Enabled Docker at boot so the agent comes back after a reboot."
+  else
+    say "WARNING: Docker does not start at boot. Run 'systemctl enable docker', or the agent stays"
+    say "  offline after this host reboots."
+  fi
+fi
 
 LOCK_DIR="${TMPDIR:-/tmp}/vedha-agent-install.lock"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
@@ -334,10 +398,166 @@ load_image_from_url() {
   docker load -i "$tmp" >/dev/null
 }
 
+# ── Download from the manager's signed release (the production path) ─────────
+case "$(uname -m 2>/dev/null || echo unknown)" in
+  x86_64|amd64) HOST_ARCH=amd64 ;;
+  aarch64|arm64) HOST_ARCH=arm64 ;;
+  *) HOST_ARCH="$(uname -m 2>/dev/null || echo unknown)" ;;
+esac
+
+# Outbound proxy / private CA for this installer's own downloads. `sudo` drops the
+# caller's proxy variables, which is why they are flags; the same values are
+# written into the agent's config below so it uses them too.
+if [ -n "$PROBE_PROXY" ]; then
+  export HTTPS_PROXY="$PROBE_PROXY" HTTP_PROXY="$PROBE_PROXY" https_proxy="$PROBE_PROXY" http_proxy="$PROBE_PROXY"
+fi
+if [ -n "$PROBE_NO_PROXY" ]; then
+  export NO_PROXY="$PROBE_NO_PROXY" no_proxy="$PROBE_NO_PROXY"
+fi
+CURL_CA=""
+if [ -n "$PROBE_CA_BUNDLE_FILE" ]; then
+  [ -r "$PROBE_CA_BUNDLE_FILE" ] || { say "ERROR: --ca-bundle file '$PROBE_CA_BUNDLE_FILE' is not readable."; exit 2; }
+  grep -q 'BEGIN CERTIFICATE' "$PROBE_CA_BUNDLE_FILE" || { say "ERROR: --ca-bundle must be a PEM file with at least one CERTIFICATE."; exit 2; }
+  CURL_CA="$PROBE_CA_BUNDLE_FILE"
+fi
+
+# GET $1 into $2 (optionally with the header file $3); prints the HTTP status.
+http_get() {
+  set -- "$1" "$2" "${3:-}"
+  if [ -n "$3" ]; then
+    curl -sSL --connect-timeout 10 --retry 3 --retry-delay 2 ${CURL_CA:+--cacert "$CURL_CA"} \
+      -H "@$3" -o "$2" -w '%{http_code}' "$1" 2>"$STAGE_DIR/curl.err" || true
+  else
+    curl -sSL --connect-timeout 10 --retry 3 --retry-delay 2 ${CURL_CA:+--cacert "$CURL_CA"} \
+      -o "$2" -w '%{http_code}' "$1" 2>"$STAGE_DIR/curl.err" || true
+  fi
+}
+
+# One field of the image entry for an architecture in the signed manifest. The
+# release tool writes JSON with sorted keys and fixed indentation, and the
+# values are re-validated below, so a minimal awk reader is enough (no jq).
+manifest_image_field() {
+  awk -v arch="$2" -v key="$3" '
+    /"arch":/ { inblock = (index($0, "\"arch\": \"" arch "\"") > 0) }
+    inblock && index($0, "\"" key "\":") {
+      line = $0; sub(/^[^:]*: */, "", line); gsub(/[",]/, "", line); print line; exit
+    }
+    /^ *}/ { inblock = 0 }
+  ' "$1"
+}
+
+verify_manifest_signature() {
+  if [ -z "$VEDHA_RELEASE_SPKI" ]; then
+    if [ "$PROBE_REQUIRE_SIGNATURE" = "true" ]; then
+      say "ERROR: this installer has no release key embedded. Download it from your manager"
+      say "  (Fleet → Add agent) instead of using a copy from the source repository."
+      exit 1
+    fi
+    say "NOTE: development installer (no release key embedded) — skipping the signature check."
+    return 0
+  fi
+  _ossl="$(openssl version 2>/dev/null || true)"
+  case "$_ossl" in
+    "OpenSSL 3."*|"OpenSSL 4."*) ;;
+    *)
+      if [ "$PROBE_REQUIRE_SIGNATURE" = "true" ]; then
+        say "ERROR: OpenSSL 3 is needed to verify the release signature (found: ${_ossl:-none})."
+        exit 1
+      fi
+      say "WARNING: OpenSSL 3 not found (${_ossl:-none}); the release signature can't be checked on"
+      say "  this host. The image is still checked against the manifest's SHA-256 over HTTPS."
+      return 0
+      ;;
+  esac
+  printf -- '-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----\n' "$VEDHA_RELEASE_SPKI" > "$STAGE_DIR/release.pub"
+  tr -d '\n\r ' < "$STAGE_DIR/manifest.json.sig" > "$STAGE_DIR/manifest.sig.b64"
+  if ! openssl base64 -d -A -in "$STAGE_DIR/manifest.sig.b64" -out "$STAGE_DIR/manifest.sig.bin" 2>/dev/null \
+    || ! openssl pkeyutl -verify -pubin -inkey "$STAGE_DIR/release.pub" -rawin \
+         -in "$STAGE_DIR/manifest.json" -sigfile "$STAGE_DIR/manifest.sig.bin" >/dev/null 2>&1; then
+    say "ERROR: the agent release signature does NOT verify. Refusing to install."
+    say "  The release on $PLATFORM_URL was not signed by the key this installer trusts."
+    say "  Tell your Vedha contact; do not work around this."
+    exit 1
+  fi
+  say "Release signature verified."
+}
+
+load_image_from_manager() {
+  say "Fetching the agent release from $PLATFORM_URL ..."
+  _code="$(http_get "$PLATFORM_URL/agent/manifest.json" "$STAGE_DIR/manifest.json")"
+  case "$_code" in
+    200) ;;
+    503) say "ERROR: the manager has no agent release to hand out yet. Ask your Vedha administrator"
+         say "  to publish one (scripts/agent_release.py), then run this command again."; exit 1 ;;
+    000) say "ERROR: could not reach $PLATFORM_URL ($(tr -d '\n' < "$STAGE_DIR/curl.err" | cut -c1-160))."
+         say "  Check outbound HTTPS (443) to the manager, DNS, and any proxy (--proxy URL)."
+         say "  A TLS-inspecting proxy needs --ca-bundle FILE, or an inspection exemption for the manager."
+         exit 1 ;;
+    *)   say "ERROR: manifest download failed (HTTP $_code)."; exit 1 ;;
+  esac
+  if [ -n "$VEDHA_RELEASE_SPKI" ]; then
+    _code="$(http_get "$PLATFORM_URL/agent/manifest.json.sig" "$STAGE_DIR/manifest.json.sig")"
+    [ "$_code" = "200" ] || { say "ERROR: the release signature is missing on the manager (HTTP $_code). Refusing to install."; exit 1; }
+  fi
+  verify_manifest_signature
+
+  _ver="$(awk -F'"' '/^  "version":/ {print $4; exit}' "$STAGE_DIR/manifest.json")"
+  IMG_FILE="$(manifest_image_field "$STAGE_DIR/manifest.json" "$HOST_ARCH" file)"
+  IMG_SHA="$(manifest_image_field "$STAGE_DIR/manifest.json" "$HOST_ARCH" sha256)"
+  IMG_TAG="$(manifest_image_field "$STAGE_DIR/manifest.json" "$HOST_ARCH" tag)"
+  if [ -z "$IMG_FILE" ]; then
+    say "ERROR: agent release ${_ver:-?} has no image for this CPU ($HOST_ARCH)."
+    exit 1
+  fi
+  case "$IMG_FILE" in .*|*[!A-Za-z0-9._-]*) say "ERROR: malformed manifest (file name)."; exit 1 ;; esac
+  case "$IMG_TAG" in ""|*[!a-z0-9._/:-]*) say "ERROR: malformed manifest (image tag)."; exit 1 ;; esac
+  case "$IMG_SHA" in *[!0-9a-f]*) IMG_SHA="" ;; esac
+  [ "${#IMG_SHA}" -eq 64 ] || { say "ERROR: malformed manifest (checksum)."; exit 1; }
+  if [ -n "$VEDHA_RELEASE_VERSION" ] && [ "$VEDHA_RELEASE_VERSION" != "$_ver" ]; then
+    say "NOTE: installer is from release $VEDHA_RELEASE_VERSION; the manager now serves $_ver."
+  fi
+
+  if [ -z "$PROBE_ENROLL_TOKEN" ]; then
+    say "ERROR: downloading the agent needs an install token. In Fleet → Add agent, copy the"
+    say "  command — it includes --token vet_... — and run that instead."
+    exit 2
+  fi
+  # The token goes in a private header file, not on the command line (ps).
+  ( umask 077; printf 'Authorization: Bearer %s\n' "$PROBE_ENROLL_TOKEN" > "$STAGE_DIR/auth.hdr" )
+  say "Downloading agent ${_ver:-} for $HOST_ARCH ..."
+  _code="$(http_get "$PLATFORM_URL/agent/image/$HOST_ARCH" "$STAGE_DIR/$IMG_FILE" "$STAGE_DIR/auth.hdr")"
+  rm -f "$STAGE_DIR/auth.hdr"
+  case "$_code" in
+    200) ;;
+    401) say "ERROR: the install token was refused — it is expired, revoked or already used."
+         say "  Create a new install command in Fleet → Add agent."; exit 1 ;;
+    429) say "ERROR: too many downloads from this address; wait a minute and retry."; exit 1 ;;
+    *)   say "ERROR: agent download failed (HTTP $_code)."; exit 1 ;;
+  esac
+  _got="$( { sha256sum "$STAGE_DIR/$IMG_FILE" 2>/dev/null || shasum -a 256 "$STAGE_DIR/$IMG_FILE" 2>/dev/null; } | awk '{print $1}')"
+  if [ "$_got" != "$IMG_SHA" ]; then
+    say "ERROR: the downloaded agent does not match the release checksum. Refusing to load it."
+    say "  expected $IMG_SHA"
+    say "  got      ${_got:-none}"
+    exit 1
+  fi
+  say "Checksum verified. Loading the agent image ..."
+  docker load -i "$STAGE_DIR/$IMG_FILE" >/dev/null
+  rm -f "$STAGE_DIR/$IMG_FILE"
+  IMAGE="$IMG_TAG"
+}
+
 # Image source precedence:
-#   1. already-loaded local image,
-#   2. PROBE_IMAGE_TAR_URL hosted by the manager/operator machine,
-#   3. registry pull via docker pull.
+#   1. PROBE_IMAGE (explicit) — already loaded, PROBE_IMAGE_TAR_URL, or a registry pull,
+#   2. PROBE_IMAGE_TAR_URL hosted by the operator,
+#   3. the manager's signed release — the default whenever an install token is given,
+#   4. a locally built vedha-agent:local (development, no token).
+if [ -z "$_IMAGE_EXPLICIT" ] && [ -z "${PROBE_IMAGE_TAR_URL:-}" ]; then
+  if [ -n "$PROBE_ENROLL_TOKEN" ] || ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+    load_image_from_manager
+  fi
+fi
+
 if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
   if [ -n "${PROBE_IMAGE_TAR_URL:-}" ]; then
     load_image_from_url "$PROBE_IMAGE_TAR_URL"
@@ -371,29 +591,44 @@ if [ -n "$_img_arch" ] && [ "$_img_arch" != "$_host_arch" ]; then
   say "  emulation (slow) or fail to start. Prefer an image built for $_host_arch."
 fi
 
-# Keep the host-bound license identity stable when the bootstrap container is
-# recreated without its PAT. A locally administered MAC derived from the
-# container name is deterministic and does not collide with vendor OUIs.
-if [ -z "${PROBE_MAC_ADDRESS:-}" ]; then
-  PROBE_MAC_ADDRESS="$(docker run --rm --network none --read-only \
-    --cap-drop ALL --security-opt no-new-privileges:true --user 10001:10001 \
-    --entrypoint python "$IMAGE" -c \
-    'import hashlib,sys; d=hashlib.sha256(sys.argv[1].encode()).digest(); print("02:42:%02x:%02x:%02x:%02x" % tuple(d[:4]))' \
-    "$NAME")"
-fi
-if [ -z "${PROBE_HW_ID:-}" ]; then
-  PROBE_HW_ID="$(docker run --rm --read-only --cap-drop ALL \
-    --security-opt no-new-privileges:true --pids-limit 64 --user 10001:10001 \
-    --hostname "$NAME" --mac-address "$PROBE_MAC_ADDRESS" \
-    --entrypoint python "$IMAGE" -c \
-    'from agent.hw_bind import get_hw_id; print(get_hw_id())' 2>/dev/null || true)"
-  if [ -z "$PROBE_HW_ID" ]; then
-    say "ERROR: could not derive the probe hardware id."
-    say "  If your Docker is rootless or Docker Desktop, it may reject --mac-address,"
-    say "  which the host-license binding requires. Use a rootful Docker Engine, or set"
-    say "  PROBE_MAC_ADDRESS + PROBE_HW_ID explicitly for a MAC-independent enrollment."
-    exit 1
+# Host binding is a LICENSING control: it only exists for the licensed agent
+# (LICENSE_ENFORCED=true). It pins a deterministic container MAC and records the
+# hardware id derived from it. The standard agent skips it entirely — on hosts
+# where --mac-address is rejected or silently ignored (rootless Docker, Podman,
+# a Docker CLI older than its daemon) every container gets a random MAC, the id
+# changes, and the agent would refuse to start.
+if [ "$LICENSE_ENFORCED" = "true" ]; then
+  # A locally administered MAC derived from the container name is deterministic
+  # and does not collide with vendor OUIs.
+  if [ -z "${PROBE_MAC_ADDRESS:-}" ]; then
+    PROBE_MAC_ADDRESS="$(docker run --rm --network none --read-only \
+      --cap-drop ALL --security-opt no-new-privileges:true --user 10001:10001 \
+      --entrypoint python "$IMAGE" -c \
+      'import hashlib,sys; d=hashlib.sha256(sys.argv[1].encode()).digest(); print("02:42:%02x:%02x:%02x:%02x" % tuple(d[:4]))' \
+      "$NAME")"
   fi
+  if [ -z "${PROBE_HW_ID:-}" ]; then
+    # Prints the hardware id only when the requested MAC really took effect.
+    PROBE_HW_ID="$(docker run --rm --read-only --cap-drop ALL \
+      --security-opt no-new-privileges:true --pids-limit 64 --user 10001:10001 \
+      --hostname "$NAME" --mac-address "$PROBE_MAC_ADDRESS" \
+      --entrypoint python "$IMAGE" -c \
+      'import sys, uuid
+from agent.hw_bind import get_hw_id
+want = int(sys.argv[1].replace(":", ""), 16)
+raise SystemExit(print(get_hw_id()) if uuid.getnode() == want else 3)' \
+      "$PROBE_MAC_ADDRESS" 2>/dev/null || true)"
+    if [ -z "$PROBE_HW_ID" ]; then
+      say "ERROR: this Docker cannot pin the container MAC address that the licensed agent's"
+      say "  host binding needs (rootless Docker, Podman, Docker Desktop, or a Docker CLI older"
+      say "  than its daemon). Use a rootful Docker Engine with matching client and daemon, or"
+      say "  set PROBE_MAC_ADDRESS + PROBE_HW_ID explicitly."
+      exit 1
+    fi
+  fi
+else
+  PROBE_MAC_ADDRESS=""
+  PROBE_HW_ID=""
 fi
 
 # Images before the non-root hardening ran as root and may have left the named
@@ -468,12 +703,13 @@ if not 1 <= seconds <= 86400:
     raise SystemExit("PROBE_MAX_JOB_SECONDS must be 1..86400")
 if not 1 <= timeout <= 600:
     raise SystemExit("PROBE_REGISTRATION_TIMEOUT must be 1..600")
-if not re.fullmatch(r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", mac):
-    raise SystemExit("PROBE_MAC_ADDRESS must be a colon-separated MAC address")
-if int(mac[:2], 16) & 1:
-    raise SystemExit("PROBE_MAC_ADDRESS must be unicast")
-if not re.fullmatch(r"[0-9a-f]{32}", hwid):
-    raise SystemExit("PROBE_HW_ID must be a 32-character lowercase hex fingerprint")
+if licensing == "true" or mac or hwid:
+    if not re.fullmatch(r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", mac):
+        raise SystemExit("PROBE_MAC_ADDRESS must be a colon-separated MAC address")
+    if int(mac[:2], 16) & 1:
+        raise SystemExit("PROBE_MAC_ADDRESS must be unicast")
+    if not re.fullmatch(r"[0-9a-f]{32}", hwid):
+        raise SystemExit("PROBE_HW_ID must be a 32-character lowercase hex fingerprint")
 if not 1 <= len(name) <= 255 or "\n" in name or "\r" in name:
     raise SystemExit("PROBE_NAME must be a single line of 1..255 characters")
 parsed = urlparse(url)
@@ -535,11 +771,29 @@ store_license() {
 
 store_license
 
+# A private CA (TLS-inspecting proxy) lives in the agent's own state volume, not
+# a host bind mount — no SELinux relabelling, and it moves with the identity.
+store_ca_bundle() {
+  [ -n "$PROBE_CA_BUNDLE_FILE" ] || return 0
+  if ! docker run --rm -i \
+    --network none --read-only --cap-drop ALL \
+    --security-opt no-new-privileges:true --pids-limit 64 --user 10001:10001 \
+    -v "$STATE_VOL:/state" --entrypoint python "$IMAGE" -c \
+    'import os,sys; os.umask(0o022); open("/state/ca-bundle.pem","w",encoding="utf-8").write(sys.stdin.read())' \
+    < "$PROBE_CA_BUNDLE_FILE"
+  then
+    say "Could not store the CA bundle in the agent's state volume."
+    exit 1
+  fi
+}
+
+store_ca_bundle
+
 # --- preflight: reach the Manager before creating local runtime state ---------
 if [ "${SKIP_PREFLIGHT:-false}" != "true" ] && have curl; then
   ctls=""; [ "$VERIFY_TLS" = "false" ] && ctls="-k"
   say "Checking manager at $PLATFORM_URL ..."
-  if ! curl -fsS --connect-timeout 5 --max-time 15 $ctls \
+  if ! curl -fsS --connect-timeout 5 --max-time 15 $ctls ${CURL_CA:+--cacert "$CURL_CA"} \
     "$PLATFORM_URL/health" >/dev/null 2>&1; then
     say "WARNING: manager not reachable at $PLATFORM_URL/health right now."
     say "  - Check PLATFORM_URL, that the manager is up, and the security group/firewall allows this host on that port."
@@ -555,7 +809,7 @@ for config_value in \
   "$PLATFORM_URL" "$VERIFY_TLS" "$PROBE_NAME" "${PROBE_LOCATION:-}" \
   "$PROBE_NETWORK_SEGMENTS" "$PROBE_MAX_TARGETS" "$PROBE_MAX_JOB_SECONDS" \
   "$PROBE_REGISTRATION_TIMEOUT" "$PROBE_HW_ID" "${PROBE_LICENSE_PUBKEY:-}" \
-  "${PROBE_ENROLL_TOKEN:-}"
+  "${PROBE_ENROLL_TOKEN:-}" "$PROBE_PROXY" "$PROBE_NO_PROXY"
 do
   if printf '%s' "$config_value" | LC_ALL=C grep -q '[[:cntrl:]]'; then
     say "Probe configuration values must be single-line text."
@@ -580,11 +834,24 @@ write_env_file() {
     printf 'PROBE_NETWORK_SEGMENTS=%s\n' "$PROBE_NETWORK_SEGMENTS"
     printf 'PROBE_MAX_TARGETS=%s\n' "$PROBE_MAX_TARGETS"
     printf 'PROBE_MAX_JOB_SECONDS=%s\n' "$PROBE_MAX_JOB_SECONDS"
-    printf 'HW_BIND_FINGERPRINT=%s\n' "$PROBE_HW_ID"
+    if [ -n "$PROBE_HW_ID" ]; then
+      printf 'HW_BIND_FINGERPRINT=%s\n' "$PROBE_HW_ID"
+    fi
     if [ -n "$PROBE_ENROLL_TOKEN" ]; then
       # Pre-authorized, Site-bound enrollment token. Consumed once on first boot
       # to auto-approve; the durable identity is the device key + refresh secret.
       printf 'PROBE_ENROLL_TOKEN=%s\n' "$PROBE_ENROLL_TOKEN"
+    fi
+    if [ -n "$PROBE_PROXY" ]; then
+      # httpx and websockets both honour these; the manager is reached through it.
+      printf 'HTTPS_PROXY=%s\nHTTP_PROXY=%s\nhttps_proxy=%s\nhttp_proxy=%s\n' \
+        "$PROBE_PROXY" "$PROBE_PROXY" "$PROBE_PROXY" "$PROBE_PROXY"
+      # Scan targets are on the LAN: never send them through the proxy.
+      _np="localhost,127.0.0.1,::1${PROBE_NO_PROXY:+,$PROBE_NO_PROXY}"
+      printf 'NO_PROXY=%s\nno_proxy=%s\n' "$_np" "$_np"
+    fi
+    if [ -n "$PROBE_CA_BUNDLE_FILE" ]; then
+      printf 'PROBE_CA_BUNDLE=/var/lib/vedha-agent/ca-bundle.pem\n'
     fi
     printf 'LICENSE_ENFORCED=%s\n' "$LICENSE_ENFORCED"
     if [ "$LICENSE_ENFORCED" = "true" ]; then
@@ -598,13 +865,14 @@ write_env_file() {
 run_probe_container() {
   write_env_file
   docker run -d --name "$NAME" --hostname "$NAME" \
-    --mac-address "$PROBE_MAC_ADDRESS" --restart unless-stopped \
+    ${PROBE_MAC_ADDRESS:+--mac-address "$PROBE_MAC_ADDRESS"} --restart unless-stopped \
     --read-only \
     --tmpfs /tmp:size=64m,mode=1777 \
     --cap-drop ALL \
     --security-opt no-new-privileges:true \
     --pids-limit 256 \
     --init \
+    --log-driver json-file --log-opt max-size=10m --log-opt max-file=5 \
     --env-file "$ENV_FILE" \
     -v "$STATE_VOL:/var/lib/vedha-agent" \
     "$IMAGE" >/dev/null
@@ -641,8 +909,12 @@ if [ "$(docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null || true)" != 
 fi
 
 say ""
-say "OK: probe '$PROBE_NAME' is installed with no PAT or human credential."
-say "Approve the displayed code in Manager Fleet → Add Probe."
+say "OK: agent '$PROBE_NAME' is installed with no PAT or human credential."
+if [ -n "$PROBE_ENROLL_TOKEN" ]; then
+  say "It enrols itself with the install token and shows as connected in Fleet within a minute."
+else
+  say "Approve the code shown below in Fleet (portal: enter it under Add agent)."
+fi
 docker logs --tail 20 "$NAME" 2>&1 || true
 say ""
 say "Logs:    docker logs -f $NAME"
