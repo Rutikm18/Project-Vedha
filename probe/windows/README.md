@@ -74,7 +74,7 @@ State/identity/logs live under `C:\ProgramData\vedha-agent\`.
 | `README-CUSTOMER.txt` | short in-repo customer note |
 
 **Advanced (optional, for sealed distribution to untrusted customers):**
-`build-agent-exe.ps1` + `package-zip.ps1` build a single `vedha-agent.exe` and a
+`build-agent-exe.ps1` (Nuitka, agent code only, no readable source) + `package-zip.ps1` build a `vedha-agent\` folder with `vedha-agent.exe` and a
 ZIP (see the exe launchers `run.cmd` / `install.ps1`). Not needed for the git flow
 above.
 

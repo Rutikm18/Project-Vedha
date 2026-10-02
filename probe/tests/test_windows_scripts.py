@@ -48,3 +48,37 @@ def test_setup_ps1_is_labelled_lab_only_and_defender_exclusion_is_opt_in():
     # the process-wide exclusion only appears inside the opt-in branch
     idx = text.index("-ExclusionProcess 'python.exe'")
     assert "if ($DefenderExcludePython)" in text[:idx]
+
+
+# ── compiled Windows build: closure-only, folder layout, licence setting ─────
+
+def test_build_script_compiles_only_the_closure_and_checks_the_output():
+    text = _text("build-agent-exe.ps1")
+    assert "tools\\agent_closure.py --check" in text and "--export" in text
+    assert "--standalone" in text and "--onefile" not in text       # folder build
+    assert "no_docstrings" in text and "no_asserts" in text
+    assert "--nofollow-import-to=paramiko" in text and "--nofollow-import-to=winrm" in text
+    assert "runtime-check" in text                                   # compiled binary self-check
+    assert "pyinstaller" not in text.lower()                         # decompilable; removed
+
+
+def test_build_script_fails_when_source_or_bytecode_would_ship():
+    text = _text("build-agent-exe.ps1")
+    assert "*.py, *.pyc" in text and "main_scripts" in text
+    assert "build output contains Python source or bytecode" in text
+
+
+def test_launchers_use_the_folder_layout_and_turn_the_unsealed_licence_off():
+    assert "vedha-agent\\vedha-agent.exe" in _text("run.cmd")
+    assert 'set "LICENSE_ENFORCED=false"' in _text("run.cmd")
+    install = _text("install.ps1")
+    assert "$appDir" in install and "-Recurse" in install
+    assert 'set "LICENSE_ENFORCED=false"' in install
+    assert "$AgentDir" in _text("package-zip.ps1")
+
+
+def test_windows_ci_builds_checks_and_smoke_tests_on_a_windows_runner():
+    ci = (Path(__file__).resolve().parents[2] / ".github" / "workflows" / "agent-windows-build.yml").read_text()
+    assert "runs-on: windows-latest" in ci
+    for step in ("agent_closure.py --check", "build-agent-exe.ps1", "runtime-check", "findings", "package-zip.ps1"):
+        assert step in ci, step

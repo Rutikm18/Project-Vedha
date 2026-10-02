@@ -13,6 +13,17 @@
 #     --build-arg MTLS_KEY="$(cat path/to/mtls_key.pem)" \
 #     --build-arg MTLS_CA_CERT="$(cat path/to/ca_cert.pem)" .
 
+# ── Stage 0: select exactly the agent's code ─────────────────────────────────
+# The compiler is given the agent's import closure and nothing else — never
+# scanner/findings.py (the judgement rules, which live on the manager), the
+# campaign runner, accuracy gates, main_scripts/, cve/ or tests. --check fails
+# the build if the agent ever imports one of those or uses a dynamic import.
+FROM python:3.12-slim-bookworm AS select
+WORKDIR /src
+COPY . .
+RUN python tools/agent_closure.py --check \
+    && python tools/agent_closure.py --export /closure
+
 # ── Stage 1: compile ──────────────────────────────────────────────────────────
 # Pin to bookworm so the binary's glibc matches the bookworm runtime below.
 FROM python:3.12-slim-bookworm AS build
@@ -24,13 +35,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential patchelf ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python deps: Nuitka + all the probe's runtime deps.
-# websockets is new for Phase 2 (WebSocket push protocol).
-RUN pip install --no-cache-dir "nuitka[onefile]" httpx cryptography websockets
+# Install Python deps: Nuitka + ALL of the probe's runtime deps. The deep-branch
+# libraries (impacket, ldap3, dnspython) used to be missing here, so a sealed agent
+# silently lost the SMB null-session, LDAP anonymous-bind and DNS zone-transfer
+# checks (each branch raised "not installed" and degraded every assessment).
+# `vedha-agent runtime-check` now fails the build if any of them is absent.
+COPY requirements-runtime.txt ./
+RUN pip install --no-cache-dir "nuitka[onefile]" -r requirements-runtime.txt
 
-COPY scanner/  ./scanner/
-COPY workflow/ ./workflow/
-COPY agent/    ./agent/
+COPY --from=select /closure/ ./
 
 # ── Build args (embedded at compile time) ───────────────────────────────────
 ARG PROBE_LICENSE_PUBKEY=""
@@ -72,6 +85,8 @@ RUN python3 -m nuitka --onefile --standalone --output-dir=/out \
       --include-package=scanner --include-package=workflow --include-package=agent \
       --include-package=cryptography --include-package=httpx \
       --include-package=websockets \
+      --include-package=impacket --include-package=ldap3 --include-package=dns \
+      --nofollow-import-to=paramiko --nofollow-import-to=winrm \
       --remove-output --assume-yes-for-downloads \
       agent/agent.py
 

@@ -26,7 +26,10 @@ if (Get-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue) {
   Start-Sleep -Seconds 1
 }
 
-Copy-Item (Join-Path $PSScriptRoot 'vedha-agent.exe') (Join-Path $installDir 'vedha-agent.exe') -Force
+# The compiled agent is a folder (vedha-agent\vedha-agent.exe + its libraries).
+$appDir = Join-Path $installDir 'app'
+if (Test-Path $appDir) { Remove-Item $appDir -Recurse -Force }
+Copy-Item (Join-Path $PSScriptRoot 'vedha-agent') $appDir -Recurse -Force
 
 # Local scan ceiling (empty => the manager will not dispatch jobs).
 if (-not $Scope) {
@@ -42,12 +45,14 @@ $wrapper = @"
 @echo off
 set "PLATFORM_URL=$Manager"
 set "VERIFY_TLS=true"
+rem The compiled agent is not host-sealed: the manager controls access (install token, expiry, revoke).
+set "LICENSE_ENFORCED=false"
 set "PROBE_NAME=%COMPUTERNAME%-probe"
 set "PROBE_NETWORK_SEGMENTS=$Scope"
 set "STATE_FILE=$installDir\state.json"
 set "RESULT_SPOOL_DIR=$spoolDir"
 cd /d "$installDir"
-"$installDir\vedha-agent.exe" run >> "$logDir\agent.log" 2>&1
+"$appDir\vedha-agent.exe" run >> "$logDir\agent.log" 2>&1
 "@
 Set-Content -Path (Join-Path $installDir 'agent-service.cmd') -Value $wrapper -Encoding ASCII
 

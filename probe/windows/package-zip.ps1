@@ -11,18 +11,18 @@
 [CmdletBinding()]
 param(
   [Parameter(Mandatory = $true)][string]$Manager,
-  [string]$ExePath = "$PSScriptRoot\dist\vedha-agent.exe",
+  [string]$AgentDir = "$PSScriptRoot\dist\vedha-agent",
   [string]$OutZip  = "$PSScriptRoot\dist\vedha-probe-win.zip"
 )
 $ErrorActionPreference = 'Stop'
 
-if (-not (Test-Path $ExePath)) { throw "exe not found: $ExePath  (run build-agent-exe.ps1 first)" }
+if (-not (Test-Path (Join-Path $AgentDir 'vedha-agent.exe'))) { throw "compiled agent not found in $AgentDir  (run build-agent-exe.ps1 first)" }
 
 $stage = Join-Path $PSScriptRoot 'dist\_stage'
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 
-Copy-Item $ExePath                                   (Join-Path $stage 'vedha-agent.exe')
+Copy-Item $AgentDir                                  (Join-Path $stage 'vedha-agent') -Recurse
 Copy-Item (Join-Path $PSScriptRoot 'run.cmd')        $stage
 Copy-Item (Join-Path $PSScriptRoot 'install.ps1')    $stage
 Copy-Item (Join-Path $PSScriptRoot 'install.cmd')    $stage

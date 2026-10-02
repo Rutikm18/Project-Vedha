@@ -12,6 +12,7 @@ if "%PLATFORM_URL:~0,2%"=="__" (
   exit /b 1
 )
 set "VERIFY_TLS=true"
+set "LICENSE_ENFORCED=false"
 set "PROBE_NAME=%COMPUTERNAME%-probe"
 set "STATE_FILE=%ProgramData%\vedha-agent\state.json"
 set "RESULT_SPOOL_DIR=%ProgramData%\vedha-agent\spool"
@@ -28,5 +29,5 @@ echo(
 if "%PROBE_NETWORK_SEGMENTS%"=="" echo    WARNING: no local /24 detected - the probe will connect but get NO jobs.
 echo Starting vedha-agent (close this window to stop)...
 echo(
-"%~dp0vedha-agent.exe" run
+"%~dp0vedha-agent\vedha-agent.exe" run
 endlocal

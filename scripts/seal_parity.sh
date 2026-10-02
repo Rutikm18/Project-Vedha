@@ -44,6 +44,17 @@ if docker run --rm -e LICENSE_ENFORCED=false -e HW_BIND_FINGERPRINT= "$IMAGE" se
 fi
 echo "  ✓ licence gate ignores LICENSE_ENFORCED=false"
 
+# The compiled agent holds every module it can load lazily mid-scan (closure-only
+# build: a dropped module would only otherwise surface in a customer's scan).
+docker run --rm -e LICENSE_ENFORCED=false "$IMAGE" runtime-check
+echo "  ✓ compiled runtime-check passed"
+# And nothing readable ships: no Python source or bytecode anywhere in the image.
+LEFT="$(docker run --rm --entrypoint sh "$IMAGE" -c "find / \\( -path /proc -o -path /sys -o -path /usr/lib/python3 -o -path /usr/share \\) -prune -o \\( -name '*.py' -o -name '*.pyc' -o -name 'findings*' \\) -type f -print 2>/dev/null | head -5")"
+if [ -n "$LEFT" ]; then
+  echo "✗ readable source/bytecode shipped in the sealed image:"; echo "$LEFT"; exit 1
+fi
+echo "  ✓ no Python source, bytecode or findings module in the image"
+
 echo "→ 4/4  parity check (sealed MUST equal plaintext, semantically)"
 # Semantic JSON compare — robust to formatting, and it explicitly distinguishes
 # "sealed emitted non-JSON" (a broken/noisy binary) from "sealed diverged".

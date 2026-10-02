@@ -115,3 +115,18 @@ def test_runtime_check_imports_every_agent_module():
                             cwd=PROBE, capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "runtime-check OK" in result.stdout
+
+
+def test_both_dockerfiles_ship_only_the_closure_and_the_sealed_one_has_the_deep_libs():
+    plain = (PROBE / "Dockerfile").read_text()
+    sealed = (PROBE / "Dockerfile.sealed").read_text()
+    for name, text in (("Dockerfile", plain), ("Dockerfile.sealed", sealed)):
+        assert "tools/agent_closure.py --check" in text, name
+        assert "COPY --from=select /closure/" in text, name
+        assert "COPY scanner/" not in text, name          # never the whole folder
+    assert "runtime-check" in plain
+    # The sealed build once shipped without impacket/ldap3/dnspython, silently
+    # degrading the SMB / LDAP / DNS deep branches on every sealed agent.
+    assert "requirements-runtime.txt" in sealed
+    for pkg in ("impacket", "ldap3", "dns"):
+        assert f"--include-package={pkg}" in sealed
