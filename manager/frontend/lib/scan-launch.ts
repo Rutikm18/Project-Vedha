@@ -30,6 +30,29 @@ const JOB_TYPE_MAP: Record<string, string> = {
   uc_deep_port_sweep: "discovery",
 };
 
+/** The capability a Deep scan runs: every TCP port plus the full assessment. */
+export const DEEP_SCAN_UC = "uc_deep_port_sweep";
+
+/** The launcher body for a single-asset Deep scan, from either Scanner.
+ *  Portal: the manager pins the use case, preset and target and charges the
+ *  customer's plan, so the body only names the deep intent (`scan_mode`).
+ *  Operator: a plain enqueue of the deep use case on that one host — "aggressive"
+ *  is the manager's alias for the deep preset — and nothing is charged. */
+export function buildDeepScanLaunch(opts: {
+  engagementId: string;
+  ip: string;
+  probeId?: string;
+  audience: "portal" | "operator";
+}): ScanLaunchBody {
+  const body: ScanLaunchBody = {
+    engagement_id: opts.engagementId, use_case_id: DEEP_SCAN_UC, targets: [opts.ip],
+    intensity: "aggressive",
+  };
+  if (opts.probeId) body.preferred_agent_id = opts.probeId;
+  if (opts.audience === "portal") body.params = { scan_mode: "deep" };
+  return body;
+}
+
 /** Convert the UI launcher contract into the manager's canonical enqueue
  * contract. Both operator and portal transports call this exact function. */
 export function buildScanLaunchRequest(body: ScanLaunchBody) {
