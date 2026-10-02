@@ -11,7 +11,7 @@ Claude updates it at the end of every finished piece of work: a change-log row, 
 | --- | --- |
 | `origin/main` | `4c78573`. **Everything not yet on it is combined on `integrate/all-to-main`, tested, not yet pushed**: agent install, portal plan locks, report export fix, new logo, Technical Findings report, operator Deep scan, design system doc |
 | Production | [app.vedhasec.com](https://app.vedhasec.com) / [api.vedhasec.com](https://api.vedhasec.com) — **stopped for a redeploy on 1 Oct** (owner). Was healthy on 1.0.325 on 30 Sep |
-| Tests | 2,234 backend · 2,512 probe · 366 of 368 frontend (the 2 = missing `pdfkit`), on the integrated branch (3 Oct) |
+| Tests | On `integrate/all-to-main` (3 Oct): backend 2,276 passed, 8 skipped · frontend 375 of 377 (the 2 = missing `pdfkit`) · probe 2,512 (no probe change since the agent-install run) · lint 0 errors · one Alembic head (`0054`) |
 | AI providers | Anthropic: no API credit · OpenAI: key rejected on AWS · Gemini: works, but its key was not on the AWS server |
 | Unmerged branches | `integrate/all-to-main` (everything below, ready to publish) · `codex/customer-portal-engagement-parity` (not merged: 52 conflicts, only its remediation workspace is missing, see [the assessment](planning/2026-10-03-branch-merge-assessment.md)) · `probe-standalone` (never merge) |
 
