@@ -119,3 +119,50 @@ Testing:
 - Unit tests for the routes and for expiry.
 - `install.ps1` run with Pester on the Windows CI runner.
 - One real install on a Windows 10/11 or Server VM, which needs the owner or a Windows CI runner. The Mac can't run Windows.
+
+## Feasibility check: "send only the agent, keep the main code secure" (verified in code, 2 Oct)
+
+**Method:** a static walk of every import, including imports inside functions, starting from
+`agent/agent.py`.
+
+| Question | Answer |
+|---|---|
+| Does the agent need any manager, detection-engine, `main_scripts/` or `cve/` code? | **No.** The runtime needs 71 files: 23 in `agent/`, 38 in `scanner/` and 10 in `workflow/` |
+| Any dynamic imports (`import_module`) that a compiler could miss? | **None** today |
+| Secrets in the shipped code? | **None.** The only key is the vendor *public* licence key, read from settings |
+| What the agent folders hold that the runtime **never uses** | **30 files**, including `scanner/findings.py` (1,367 lines: the vulnerability *judgement* rules), `va_campaign.py`, `run_all.py` (runs `main_scripts`), the accuracy gates, `agent/setup.py` / `deps.py` / `cli.py` |
+| Third-party libraries | `httpx`, `websockets`, `cryptography`, `impacket`, `ldap3`, `dnspython`; plus `paramiko` / `winrm`, optional credential collectors kept out on purpose |
+
+So "ship only the agent" is feasible: the boundary already exists, because the agent collects
+facts and the manager draws conclusions.
+
+**But today's Linux Docker image ships the whole `scanner/` folder as plain source, including
+`findings.py`.** The fix is to ship the import closure only, never whole folders, on every
+platform.
+
+### What stays secret, and what doesn't
+
+- **Never leaves our servers:** the detection engine (posture rules, CVE / KEV / EPSS matching,
+  prioritisation), AI, reporting, the manager, `findings.py`, `main_scripts/`, `cve/`, tests.
+- **Ships, compiled:** the collection code. That is how to scan (probes, pacing, banner parsing),
+  which is unavoidable because it must run on the customer's machine.
+  - Compiling removes source, bytecode and docstrings.
+  - String constants (port lists, banner patterns) can still be read from the binary.
+  - Hiding those needs Nuitka's commercial data-protection plugin; that goes in the pipeline.
+
+### Additional failure points found in the code
+
+| # | Failure | Impact | Fix |
+|---|---|---|---|
+| C1 | Whole-package builds ship unused code (`findings.py`, campaign runner, accuracy gates) | Leaks the judgement logic, and dead code in the binary | Build from the import closure only; CI fails if a module outside the allow-list (`findings`, `run_all`, `va_campaign`, `accuracy*`, `main_scripts`, `cve`, tests) is in the output |
+| C2 | A future lazy or dynamic import is missed by the compiler | Compiled agent crashes mid-scan with `ModuleNotFoundError` | CI smoke-runs the compiled exe (`hostid`, `doctor`, one self-scan) |
+| C3 | **No single-instance lock on Windows** (`fcntl` is POSIX-only, so the lock is silently skipped) | `run.cmd` plus the boot task both run: two processes share `state.json`, and token rotation causes the known endless 403 loop | Use `msvcrt.locking` on Windows |
+| C4 | Neighbour / MAC lookup uses `ip neigh` / `arp -n`, which don't exist on Windows | No MAC or vendor in Windows device inventory | Parse `arp -a` on Windows |
+| C5 | IPv6 discovery has no Windows path; SYN and OS fingerprinting need raw sockets | Fewer results than a Linux agent | Label as "Windows: connect-scan only"; Linux VM for full depth |
+| C6 | The compiled exe defaults to licence **on**, with no licence issued | Agent stops at startup | Installer sets licence-off for the unsealed build (QW3) |
+| C7 | Credential collectors (`paramiko`, `winrm`) are absent by design | Must degrade quietly, not crash | Compiler excludes them explicitly; smoke test covers the import path |
+| C8 | Fixes need a new compiled build in the field | A bug stays until the customer reinstalls | Signed auto-update (pipeline); until then the installer re-run upgrades in place |
+
+**Quick wins updated:** QW1 now includes C1 + C2 (closure-only build, plus an allow-list check
+and a compiled smoke test) and applies the same closure rule to the Linux Docker image. QW3
+includes C3 (Windows instance lock) and C6. C4 is a small add to QW3.
