@@ -191,6 +191,24 @@ fi
 docker compose version >/dev/null 2>&1 || die "docker compose unavailable after install."
 log "docker compose $(docker compose version --short) ✓"
 
+# Docker Buildx plugin (BuildKit) — REQUIRED: the backend image build uses
+# additional build contexts, which the classic (non-BuildKit) builder cannot do.
+if ! docker buildx version >/dev/null 2>&1; then
+  log "installing Docker Buildx plugin..."
+  if ! { command -v apt-get >/dev/null && $PKG install docker-buildx-plugin >/dev/null 2>&1; } \
+     && ! { command -v apt-get >/dev/null && $PKG install docker-buildx >/dev/null 2>&1; }; then
+    case "$(uname -m)" in x86_64) BX_ARCH=amd64 ;; aarch64|arm64) BX_ARCH=arm64 ;; *) BX_ARCH=amd64 ;; esac
+    BX_VER=v0.19.3
+    mkdir -p /usr/local/lib/docker/cli-plugins
+    curl -fsSL \
+      "https://github.com/docker/buildx/releases/download/${BX_VER}/buildx-${BX_VER}.linux-${BX_ARCH}" \
+      -o /usr/local/lib/docker/cli-plugins/docker-buildx
+    chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+  fi
+fi
+docker buildx version >/dev/null 2>&1 || die "docker buildx unavailable after install (needed for the backend image build)."
+log "docker buildx ready ✓"
+
 # ── 5. Locate or sparse-clone the repo ───────────────────────────────────────
 step "Repository (sparse clone — manager + deploy only)"
 
@@ -363,6 +381,12 @@ else
   POSTGRES_PASSWORD="$(gen_secret)"
   log "generated new Postgres password ✓"
 fi
+
+# Neo4j password: Compose interpolates NEO4J_AUTH for the WHOLE file regardless of
+# the active profile, so a value must exist even when the graph is off. Generate
+# once and preserve (mirrors the other secrets).
+NEO4J_PASSWORD="${NEO4J_PASSWORD:-$(env_get NEO4J_PASSWORD)}"
+[ -n "$NEO4J_PASSWORD" ] || NEO4J_PASSWORD="$(gen_secret)"
 
 # Validate secret strength
 [ ${#JWT_SECRET} -ge 32 ]         || die "JWT_SECRET too short (< 32 chars)"
@@ -571,6 +595,7 @@ GROQ_API_KEY=${GROQ_API_KEY:-}
 CORS_ORIGINS=$UI_URL
 MANAGER_PUBLIC_URL=$API_URL
 NEO4J_ENABLED=$([ "$ENABLE_GRAPH" = "1" ] && echo true || echo false)
+NEO4J_PASSWORD=$NEO4J_PASSWORD
 VEDHA_RELEASE_ID=$RELEASE_ID
 VEDHA_BACKEND_IMAGE=vedha-backend:$RELEASE_ID
 VEDHA_FRONTEND_IMAGE=vedha-frontend:$RELEASE_ID

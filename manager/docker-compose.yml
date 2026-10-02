@@ -145,7 +145,7 @@ services:
     image: neo4j:5
     profiles: ["graph"]
     environment:
-      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set when graph profile is enabled}
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-vedha-neo4j}
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_dbms_security_procedures_unrestricted: apoc.*
     # SECURITY: these ports are intentionally NOT published to the host.
