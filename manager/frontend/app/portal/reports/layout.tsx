@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 // export without the module's print rules.
 import "../../../styles/report-finding.css";
 import "../../../styles/report-document.css";
+import "../../../styles/report-finding-elevated.css";
 
 export const metadata = {
   title: "Report · Vedha",
