@@ -3751,3 +3751,31 @@ button.intel-tag:focus-visible { outline: 2px solid var(--accent); outline-offse
   .posture-dial { justify-self: start; margin-left: 0; }
   .posture-scorecard__verdict > span:last-child { flex-basis: 100%; }
 }
+
+/* ── Settings: organisation policy forms ─────────────────────────────────── */
+.policy-card { display: grid; gap: 12px; margin-top: 14px; padding: 16px; border-radius: var(--radius-md); border: 0.5px solid var(--border-subtle); background: var(--bg-panel); }
+.policy-card h3 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.policy-field { display: grid; gap: 4px; }
+.policy-field small, .policy-note, .policy-muted { color: var(--text-muted); font-size: 11.5px; line-height: 1.5; }
+.policy-note { display: flex; gap: 6px; align-items: flex-start; margin: 0; }
+.policy-note svg { flex: 0 0 auto; margin-top: 2px; color: var(--sev-medium-color); }
+.policy-label { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
+.policy-card input:not([type="checkbox"]), .policy-card textarea, .policy-card select {
+  width: 100%; padding: 8px 10px; border-radius: 7px; border: 0.5px solid var(--border-subtle);
+  background: var(--bg-surface); color: var(--text-primary); font-size: 12.5px; font-family: inherit;
+}
+.policy-card textarea { font-family: var(--font-mono); resize: vertical; }
+.policy-card [aria-invalid="true"] { border-color: var(--sev-critical-color); }
+.policy-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.policy-check { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; }
+.policy-check input { margin-top: 3px; accent-color: var(--accent); }
+.policy-block { display: grid; gap: 6px; }
+.policy-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.policy-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 0.5px solid var(--border-subtle); font-size: 11.5px; font-weight: 600; color: var(--text-secondary); cursor: pointer; }
+.policy-chip[data-on="true"] { color: var(--accent); border-color: var(--border-accent); background: var(--accent-ghost); }
+.policy-chip input { accent-color: var(--accent); }
+.policy-window { display: grid; gap: 10px; margin: 0; padding: 12px; border-radius: 9px; border: 0.5px solid var(--border-subtle); background: var(--bg-surface); }
+.policy-window legend { padding: 0 6px; font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.policy-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.policy-ok { font-size: 11.5px; color: var(--nominal-color); }
+.policy-errors { flex-basis: 100%; margin: 0; padding-left: 18px; color: var(--sev-critical-color); font-size: 11.5px; line-height: 1.6; }

@@ -7,12 +7,13 @@ import {
   Activity, AlertCircle, Bell, Bot, CheckCircle2, Cloud,
   Copy, Database, ExternalLink, FileKey2, Globe2, KeyRound, LockKeyhole,
   Mail, MessageCircle, Monitor, Plus, RefreshCw, Server, Settings2,
-  Shield, ShieldCheck, SlidersHorizontal, Terminal, Trash2, TriangleAlert, Users, Wifi, X,
+  Radar, Shield, ShieldCheck, SlidersHorizontal, Terminal, Trash2, TriangleAlert, UserPlus, Users, Wifi, X,
   FileBadge2,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { PlanLicenceSection } from "../../components/portal/PlanLicenceSection";
+import { AuthPolicySection, CustomerDefaultsSection, ScanPolicySection } from "../../components/settings/PolicySections";
 import { fetchJson } from "../../lib/fetcher";
 import { copyText } from "../../lib/clipboard";
 import {
@@ -171,6 +172,8 @@ const NAV_SECTIONS = [
   { key: "probe-fleet",   label: "Probe Fleet",         icon: Monitor },
   { key: "ai",            label: "AI Runtime",          icon: Bot },
   { key: "access",        label: "Access & Security",   icon: ShieldCheck },
+  { key: "scanning",      label: "Scanning",            icon: Radar },
+  { key: "new-customers", label: "New customers",       icon: UserPlus },
   { key: "email",         label: "Email",               icon: Mail },
   { key: "slack",         label: "Slack",               icon: MessageCircle },
   { key: "jira",          label: "Jira",                icon: ExternalLink },
@@ -1062,7 +1065,9 @@ export function SettingsWorkspace({ surface = "manager" }: { surface?: SettingsW
           {section === "api-keys"      && <ApiKeysSection />}
           {section === "probe-fleet"   && <ProbeFleetSection surface={surface} />}
           {section === "ai"            && <AiRuntimeSection surface={surface} />}
-          {section === "access"        && <AccessSection status={deployment} />}
+          {section === "access"        && <><AccessSection status={deployment} /><AuthPolicySection /></>}
+          {section === "scanning"      && <div className="settings-panel animate-slide-in"><SectionTitle icon={Radar} title="Scanning" detail="When scans may run, and what is never scanned." /><ScanPolicySection /></div>}
+          {section === "new-customers" && <div className="settings-panel animate-slide-in"><SectionTitle icon={UserPlus} title="New customers" detail="What a newly added customer starts with." /><CustomerDefaultsSection /></div>}
           {(section === "email" || section === "slack" || section === "jira") && <IntegrationSection kind={section} />}
           {section === "sla"           && <SlaSection />}
           {section === "notifications" && <NotificationsSection />}
