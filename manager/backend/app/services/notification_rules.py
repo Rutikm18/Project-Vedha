@@ -42,11 +42,11 @@ class EventDef:
 EVENTS: tuple[EventDef, ...] = (
     EventDef("critical_finding", "Critical finding opened", "Immediate", ("email", "slack"), True, True),
     EventDef("high_finding", "High finding opened", "Near-real-time", ("slack",), True, True),
-    EventDef("sla_at_risk", "SLA enters at-risk state", "At threshold", ("email", "slack"), True, False),
-    EventDef("finding_status_changed", "Finding status changed", "Digest", ("email",), False, False),
+    EventDef("sla_at_risk", "SLA at risk or breached", "Checked every 15 minutes", ("email", "slack"), True, True),
+    EventDef("finding_status_changed", "Finding status changed", "As it happens", ("email",), False, True),
     EventDef("report_approved", "Report approved", "Immediate", ("email",), True, True),
     EventDef("probe_enrolled", "New probe enrolled", "Immediate", ("slack",), True, True),
-    EventDef("coverage_gap", "Detection coverage gap found", "Immediate", ("email", "slack"), False, False),
+    EventDef("coverage_gap", "Detection coverage gap found", "After each scan", ("email", "slack"), False, True),
 )
 _BY_KEY = {e.key: e for e in EVENTS}
 

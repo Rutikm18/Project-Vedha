@@ -62,9 +62,9 @@ def test_defaults_when_nothing_is_stored():
     assert next(r for r in rules if r["event"] == "finding_status_changed")["enabled"] is False
 
 
-def test_only_events_something_emits_are_marked_connected():
-    connected = {e.key for e in nr.EVENTS if e.connected}
-    assert connected == {"critical_finding", "high_finding", "report_approved", "probe_enrolled"}
+def test_every_event_in_the_catalogue_has_a_producer():
+    assert {e.key for e in nr.EVENTS if e.connected} == {e.key for e in nr.EVENTS}
+    assert len(nr.EVENTS) == 7
 
 
 # ── saving ───────────────────────────────────────────────────────────────────

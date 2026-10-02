@@ -17,6 +17,7 @@ from app.models.user import User
 from app.schemas.finding import FindingClosurePacket, FindingPatch
 from app.services import finding_events
 from app.services.audit import record_audit
+from app.services.notification_rules import notify_event_safe
 
 
 def _closure_event_detail(packet: FindingClosurePacket) -> dict[str, object]:
@@ -210,6 +211,17 @@ async def patch_finding(
                 "risk_to": float(finding.risk_score) if finding.risk_score is not None else None,
             },
         )
+
+    if status_changed:
+        # Never lets a notification problem fail the status change itself.
+        old = getattr(previous_status, "value", previous_status)
+        new = getattr(finding.status, "value", finding.status)
+        title = " ".join(str(finding.title).split())[:200]
+        await notify_event_safe(
+            db, tenant_id, "finding_status_changed",
+            f"Vedha: finding moved from {old} to {new}",
+            f"'{title}' ({getattr(finding.severity, 'value', finding.severity)}) changed status "
+            f"from {old} to {new}" + (f". Reason: {' '.join(str(action_reason).split())[:300]}" if action_reason else "."))
 
     record_audit(
         db,

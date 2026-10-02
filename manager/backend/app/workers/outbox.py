@@ -480,7 +480,8 @@ def main() -> None:
         # This background process runs two durable loops: the outbox consumer
         # (detection etc.) and the lease reaper (requeue jobs from dead probes).
         from app.workers.reaper import run_reaper
-        await asyncio.gather(run_worker(stop), run_reaper(stop))
+        from app.workers.sla_watch import run_sla_watch
+        await asyncio.gather(run_worker(stop), run_reaper(stop), run_sla_watch(stop))
 
     asyncio.run(_run())
 

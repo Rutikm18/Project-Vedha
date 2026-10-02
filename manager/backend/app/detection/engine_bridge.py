@@ -754,6 +754,39 @@ async def _notify_new_findings(db: AsyncSession, engagement_id: uuid.UUID, run_i
         logger.warning("detection_run.notify_failed", run_id=str(run_id), error=str(exc))
 
 
+async def _notify_coverage_gap(db: AsyncSession, engagement_id: uuid.UUID, ingest: dict | None) -> None:
+    """Tell the tenant when a scan's facts were partly or wholly rejected: the checks
+    for those facts never ran, so a quiet result is not a clean one. Same guarantees
+    as _notify_new_findings: a savepoint, and it never raises."""
+    try:
+        census = ingest if isinstance(ingest, dict) else {}
+        quarantined = int(census.get("quarantined") or 0)
+        if quarantined <= 0:
+            return
+        from app.models.engagement import Engagement
+        from app.services.notification_rules import notify_event_safe
+
+        submitted = int(census.get("submitted") or 0)
+        ingested = int(census.get("ingested") or 0)
+        reasons = census.get("reasons") if isinstance(census.get("reasons"), dict) else {}
+        async with db.begin_nested():
+            eng = (await db.execute(
+                select(Engagement.tenant_id, Engagement.name).where(Engagement.id == engagement_id)
+            )).one_or_none()
+            if eng is None:
+                return
+            tenant_id, name = eng
+            why = "; ".join(f"{str(k)[:80]} ({int(v)})" for k, v in list(reasons.items())[:3]) or "no reason recorded"
+            await notify_event_safe(
+                db, tenant_id, "coverage_gap",
+                f"Vedha: detection coverage gap in {name}",
+                f"A scan of '{name}' submitted {submitted} facts but {quarantined} could not be "
+                f"understood ({ingested} checked), so those hosts and services were not "
+                f"assessed. Top reasons: {why}.")
+    except Exception as exc:  # noqa: BLE001 — notification must not fail the run
+        logger.warning("detection_run.coverage_notify_failed", error=str(exc))
+
+
 async def create_findings_from_facts(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
     *, scan_result_id: uuid.UUID | None = None, job_id: uuid.UUID | None = None,
@@ -1003,6 +1036,7 @@ async def create_findings_from_facts(
         await db.flush()
         if created:
             await _notify_new_findings(db, engagement_id, run.id)
+        await _notify_coverage_gap(db, engagement_id, (run.stats or {}).get("ingest"))
         logger.info("detection_run.completed", run_id=str(run.id),
                     engagement_id=str(engagement_id), new=created,
                     reaffirmed=reaffirmed, resolved=resolved,
