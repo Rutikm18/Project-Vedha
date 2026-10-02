@@ -170,16 +170,22 @@ log "cpu: ${CPUS} cores → API_WORKERS=${API_WORKERS}"
 
 # ── 3. Package dependencies ───────────────────────────────────────────────────
 step "Installing system dependencies"
-command -v openssl >/dev/null || die "openssl is required"
 
 if   command -v dnf >/dev/null;     then PKG="dnf -y"
 elif command -v yum >/dev/null;     then PKG="yum -y"
 elif command -v apt-get >/dev/null; then PKG="apt-get -y"; export DEBIAN_FRONTEND=noninteractive; apt-get update -qq
 else die "no supported package manager (dnf/yum/apt-get)"; fi
 
-$PKG install git curl ca-certificates iproute2 jq >/dev/null 2>&1 || \
-  $PKG install git curl >/dev/null 2>&1 || true
-command -v jq >/dev/null 2>&1 || die "jq is required for secret-safe deployment verification"
+# Everything the installer itself needs: openssl (secret generation), git/curl/
+# ca-certificates (clone + downloads), iproute2 (port checks), jq (verification),
+# make (Makefile targets like `make tls`), util-linux (mkswap/swapon/fallocate for
+# the low-RAM swapfile). Docker + Compose + Buildx are installed in the next step.
+$PKG install git curl ca-certificates iproute2 jq make openssl util-linux >/dev/null 2>&1 || \
+  $PKG install git curl openssl make >/dev/null 2>&1 || true
+for _bin in openssl git curl jq; do
+  command -v "$_bin" >/dev/null 2>&1 || die "$_bin is required but could not be installed"
+done
+command -v make >/dev/null 2>&1 || warn "make unavailable — 'make' targets (e.g. make tls) will not work"
 log "dependencies installed ✓"
 
 # ── 4. Docker Engine ──────────────────────────────────────────────────────────
