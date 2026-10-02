@@ -9,10 +9,15 @@ Date: 2026-10-02 · Branch: `feat/agent-install` · Approach: [windows-agent-qui
 1 h / 24 h / 7 d), T17 (manager-enforced access expiry, migration 0053), T18 (Fleet expiry controls,
 portal read-only), T20 (retire risky Windows defaults), T21 (this doc, STATUS, memory).
 
-**In the pipeline, not started** (owner decision: quick wins only): T5, T6, T7, T8 (compiled Nuitka build,
-build checks, Windows build script, Windows CI job), T12, T13, T14, T15 (Windows release artifact,
-download route, PowerShell installer, Fleet OS switch), T19 (real install on a Windows VM).
-They need a Windows build runner and a Windows VM to prove, and the owner's answers on the CI runner and VM.
+**Also done (3 Oct):** T5–T8, the compiled build, with one gap. The closure-only compile is proven for
+the Linux sealed image (`scripts/seal_parity.sh`: compiled `runtime-check` loads 73 modules + 6 libraries, no
+source/bytecode/`findings` in the image, manifest parity). The Windows build script and its CI job
+(`agent-windows-build.yml`) are written and statically tested but have **not been run**: no Windows machine
+here, and the workflow only runs once pushed. Live expiry test also done (see STATUS).
+
+**In the pipeline, not started:** T12, T13, T14, T15 (Windows release artifact, token-gated download route,
+PowerShell installer, Fleet OS switch) and T19 (a real install on a Windows VM). They need the Windows build
+artifact from CI and a Windows VM, and the owner's answers on the CI runner and the VM.
 
 Rules for every task:
 
