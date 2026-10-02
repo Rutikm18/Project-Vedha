@@ -1,0 +1,527 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Activity, CheckCircle2, ChevronDown, Clock3, Cpu, Fingerprint, Laptop, Loader2,
+  MapPin, Network, RadioTower, RefreshCw, Server, ShieldCheck, XCircle,
+} from "lucide-react";
+import { PageShell } from "../../components/PageShell";
+import { PortalShell } from "../../components/portal/PortalShell";
+import { useToast } from "../../hooks/useToast";
+import { createFleetWorkspaceApi, type FleetWorkspaceSurface } from "../../lib/fleet-workspace-api";
+import { formatExact } from "../../components/portal/Timestamp";
+import AddAgent, { ADD_AGENT_STYLES } from "./AddAgent";
+import FleetJobs from "./FleetJobs";
+
+interface EnrollmentRequest {
+  request_id: string;
+  state: string;
+  hostname_hint: string | null;
+  platform: string;
+  architecture: string;
+  agent_version: string;
+  capabilities: string[];
+  fingerprint: string;
+  expires_at: string;
+}
+
+interface FleetResponse {
+  requests: EnrollmentRequest[];
+}
+
+// Map an enrollment state to a color + human word. Status is never conveyed by
+// color alone — the word (and an aria-label) always accompany the dot.
+function stateBadge(state: string): { color: string; label: string } {
+  const s = (state || "").toLowerCase();
+  if (s.includes("activ") || s.includes("approv") || s.includes("online")) {
+    return { color: "var(--nominal-color)", label: state || "active" };
+  }
+  if (s.includes("expire") || s.includes("revok") || s.includes("denied")) {
+    return { color: "var(--text-faint)", label: state || "expired" };
+  }
+  return { color: "var(--sev-medium-color)", label: state || "pending" };
+}
+
+// A registered, activated probe (backend GET /agents) — the live fleet view.
+interface Probe {
+  id: string;
+  name: string | null;
+  location: string | null;
+  status: string;              // online | busy | offline (persisted)
+  online: boolean;             // heartbeat-fresh AND status online/busy
+  capabilities: string[] | null;
+  current_job_id: string | null;
+  last_heartbeat: string | null;
+  agent_version: string | null;
+  access_expires_at: string | null;
+  access_expired: boolean;
+}
+
+// One scan job dispatched to a probe (backend GET /agents/{id}/job-history).
+interface ProbeJob {
+  job_id: string;
+  job_type: string;
+  status: string;          // pending | running | completed | failed
+  use_case_id: string | null;
+  host_count: number | null;
+  created_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+// Job status → color + icon. Never color-only; the status word always shows.
+function jobBadge(status: string): { color: string; Icon: typeof CheckCircle2; spin?: boolean } {
+  switch ((status || "").toLowerCase()) {
+    case "running":   return { color: "var(--accent)", Icon: Loader2, spin: true };
+    case "completed": return { color: "var(--nominal-color)", Icon: CheckCircle2 };
+    case "failed":
+    case "error":     return { color: "var(--sev-high-color)", Icon: XCircle };
+    default:          return { color: "var(--sev-medium-color)", Icon: Clock3 };  // pending/queued
+  }
+}
+
+// Live status is fused from `online` (heartbeat freshness) + `status` (what the
+// probe reported). Never color-only — the word + aria-label always accompany it.
+function agentStatus(a: Probe): { color: string; label: string } {
+  if (a.online && a.status === "busy") return { color: "var(--sev-medium-color)", label: "scanning" };
+  if (a.online) return { color: "var(--nominal-color)", label: "online" };
+  return { color: "var(--text-faint)", label: "offline" };
+}
+
+// Compact "time since" for the last heartbeat — how we surface probe health.
+function ago(iso: string | null): string {
+  if (!iso) return "never";
+  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+// ISO for now + `days` (null = clear). Module-level so the click handler isn't
+// flagged for calling Date.now() in the component body.
+function expiryIsoFromNow(days: number | null): string | null {
+  return days === null ? null : new Date(Date.now() + days * 86400_000).toISOString();
+}
+
+export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspaceSurface }) {
+  const toast = useToast();
+  const api = useMemo(() => createFleetWorkspaceApi(surface), [surface]);
+  const [data, setData] = useState<FleetResponse>({ requests: [] });
+  const [agents, setAgents] = useState<Probe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    user_code: "", probe_name: "", site_name: "", location: "",
+    authorized_cidrs: "", excluded_cidrs: "",
+  });
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [jobsByAgent, setJobsByAgent] = useState<Record<string, ProbeJob[]>>({});
+
+  const loadJobs = useCallback(async (agentId: string) => {
+    try {
+      const jobs = await api.agentJobs<ProbeJob[]>(agentId);
+      setJobsByAgent((m) => ({ ...m, [agentId]: jobs ?? [] }));
+    } catch { /* keep prior jobs on a transient failure */ }
+  }, [api]);
+
+  const toggleProbe = useCallback((agentId: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(agentId)) next.delete(agentId);
+      else { next.add(agentId); void loadJobs(agentId); }
+      return next;
+    });
+  }, [loadJobs]);
+
+  const load = useCallback(async () => {
+    try {
+      // Enrollment (onboarding queue) + live probes, in parallel. A probe-list
+      // failure must not blank the enrollment view, so it degrades to [].
+      const [next, probes] = await Promise.all([
+        api.enrollment<FleetResponse>(),
+        api.probes<Probe[]>().catch(() => [] as Probe[]),
+      ]);
+      setData(next);
+      setAgents(probes ?? []);
+      setSelected((current) => current && next.requests.some((row) => row.request_id === current)
+        ? current : next.requests[0]?.request_id ?? null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load Fleet");
+    } finally {
+      setLoading(false);
+    }
+  }, [api, toast]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch + 5s poll; setState happens after an await, not synchronously
+    void load();
+    const timer = window.setInterval(() => void load(), 5000);
+    return () => window.clearInterval(timer);
+  }, [load]);
+
+  // Refresh the job list for any expanded probe every 5s (running → completed).
+  useEffect(() => {
+    if (expanded.size === 0) return;
+    const t = window.setInterval(() => { expanded.forEach((id) => void loadJobs(id)); }, 5000);
+    return () => window.clearInterval(t);
+  }, [expanded, loadJobs]);
+
+  const request = data.requests.find((row) => row.request_id === selected) ?? null;
+  const capabilities = useMemo(() => request?.capabilities ?? [], [request]);
+  const onlineCount = useMemo(() => agents.filter((a) => a.online).length, [agents]);
+
+  // Operator: set the agent's access expiry to now + `days`, or null to clear it.
+  async function setExpiry(agentId: string, days: number | null) {
+    const iso = expiryIsoFromNow(days);
+    try {
+      await api.setAgentExpiry(agentId, iso);
+      toast.success(days === null ? "Expiry cleared" : `Access extended by ${days} days`);
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update expiry");
+    }
+  }
+
+  async function approve(event: React.FormEvent) {
+    event.preventDefault();
+    if (surface === "manager" && !request) return;
+    if (surface === "portal" && !form.user_code.trim()) {
+      toast.error("Enter the verification code shown by the vedha-agent installer");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      // One-click approve: name is optional (blank → auto vedha_agent_NN); the
+      // backend auto-fills capabilities + scope from what the vedha-agent reported.
+      await api.approve(request?.request_id ?? "", form.probe_name.trim() || null, form.user_code.trim());
+      toast.success(surface === "portal"
+        ? "vedha-agent approved and bound to this engagement"
+        : "Probe approved; waiting for key-bound activation");
+      setForm({ user_code: "", probe_name: "", site_name: "", location: "", authorized_cidrs: "", excluded_cidrs: "" });
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Approval failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const Shell = surface === "portal" ? PortalShell : PageShell;
+  return (
+    <Shell title="Fleet" subtitle="Enroll and govern vedha-agent devices">
+      <style>{STYLES + ADD_AGENT_STYLES}</style>
+      <div className="flt-page">
+
+        {/* ── All jobs across every probe (filter by probe + engagement) ── */}
+        <section className="flt-card">
+          <FleetJobs surface={surface} />
+        </section>
+
+        {/* ── Add an agent: install token + one command (served by this manager) ── */}
+        <AddAgent surface={surface} api={api} />
+
+        {/* ── Connected probes (live status) ── */}
+        <section className="flt-card flt-card-flush">
+          <header className="flt-list-head">
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Server size={15} color="var(--accent)" />
+              <strong className="flt-head-title">Connected vedha-agents</strong>
+              <span className="flt-count">{agents.length}</span>
+              {onlineCount > 0 && <span className="flt-online-pill">{onlineCount} online</span>}
+            </div>
+            <button className="flt-icon-btn" onClick={() => void load()} aria-label="Refresh connected vedha-agents">
+              <RefreshCw size={14} />
+            </button>
+          </header>
+
+          {loading && agents.length === 0 ? (
+            <div className="flt-empty"><Loader2 size={15} className="animate-spin" /> Loading vedha-agents…</div>
+          ) : agents.length === 0 ? (
+            <div className="flt-empty-block">
+              <Server size={22} color="var(--text-faint)" />
+              <div className="flt-empty-title">No vedha-agents connected yet</div>
+              <div className="flt-empty-hint">{surface === "portal" ? "Generate an install command above and run it on a Linux host in your network — the agent enrols itself with this engagement's scope." : "Generate an install command above, or approve a pending request below. Once a vedha-agent sends its first heartbeat it appears here with live status."}</div>
+            </div>
+          ) : (
+            <div className="flt-agents">
+              {agents.map((a) => {
+                const badge = agentStatus(a);
+                return (
+                  <div key={a.id} className="flt-agent">
+                    <button className="flt-agent-main flt-agent-toggle" onClick={() => toggleProbe(a.id)} aria-expanded={expanded.has(a.id)}>
+                      <span className="flt-agent-head">
+                        <ChevronDown size={13} className="flt-chev" data-open={expanded.has(a.id)} />
+                        <strong className="flt-agent-name">{a.name || "unnamed vedha-agent"}</strong>
+                      </span>
+                      <span className="flt-state" style={{ color: badge.color }} aria-label={`vedha-agent status: ${badge.label}`}>
+                        <span className="flt-dot" style={{ background: badge.color }} />
+                        {badge.label}
+                      </span>
+                    </button>
+                    <div className="flt-agent-meta">
+                      <span><Activity size={11} /> heartbeat {ago(a.last_heartbeat)}</span>
+                      <span><Cpu size={11} /> {a.capabilities?.length ?? 0} capabilities</span>
+                      {a.location && <span><MapPin size={11} /> {a.location}</span>}
+                      {a.agent_version && <span className="flt-mono">v{a.agent_version}</span>}
+                      <span style={{ color: a.access_expired ? "var(--sev-high-color)" : undefined }}>
+                        <Clock3 size={11} /> {a.access_expired
+                          ? "access expired"
+                          : a.access_expires_at
+                            ? `expires ${formatExact(a.access_expires_at)}`
+                            : "no expiry"}
+                      </span>
+                      {a.status === "busy" && a.current_job_id ? (
+                        <span className="flt-agent-job"><Loader2 size={11} className="animate-spin" /> job {a.current_job_id.slice(0, 8)}…</span>
+                      ) : a.online ? (
+                        <span className="flt-agent-idle">idle</span>
+                      ) : null}
+                    </div>
+                    {api.canSetExpiry && (
+                      <div className="flt-expiry-ctl">
+                        <span className="flt-expiry-label">Access expiry:</span>
+                        {[7, 30, 90].map((days) => (
+                          <button key={days} type="button" className="flt-expiry-btn"
+                            onClick={() => void setExpiry(a.id, days)}>+{days}d</button>
+                        ))}
+                        {(a.access_expires_at || a.access_expired) && (
+                          <button type="button" className="flt-expiry-btn" onClick={() => void setExpiry(a.id, null)}>
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {expanded.has(a.id) && (() => {
+                      const jobs = jobsByAgent[a.id];
+                      return (
+                        <div className="flt-jobs">
+                          {jobs === undefined ? (
+                            <div className="flt-jobs-empty">Loading jobs…</div>
+                          ) : jobs.length === 0 ? (
+                            <div className="flt-jobs-empty">No jobs dispatched to this vedha-agent yet.</div>
+                          ) : jobs.map((j) => {
+                            const jb = jobBadge(j.status);
+                            return (
+                              <div key={j.job_id} className="flt-job">
+                                <span className="flt-job-status" style={{ color: jb.color }}>
+                                  <jb.Icon size={11} className={jb.spin ? "animate-spin" : undefined} /> {j.status}
+                                </span>
+                                <span className="flt-job-name">{j.use_case_id ?? j.job_type}</span>
+                                {j.host_count != null && <span className="flt-job-hosts">{j.host_count} host{j.host_count === 1 ? "" : "s"}</span>}
+                                <span className="flt-job-time">{ago(j.completed_at ?? j.started_at ?? j.created_at)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* ── Pending + Approve ── */}
+        <div className="flt-grid">
+
+          {/* Pending requests */}
+          <section className="flt-card flt-card-flush">
+            <header className="flt-list-head">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <RadioTower size={15} color="var(--accent)" />
+                <strong className="flt-head-title">Pending requests</strong>
+                <span className="flt-count">{data.requests.length}</span>
+              </div>
+              <button className="flt-icon-btn" onClick={() => void load()} aria-label="Refresh pending vedha-agents">
+                <RefreshCw size={14} />
+              </button>
+            </header>
+
+            {loading ? (
+              <div className="flt-empty"><Loader2 size={15} className="animate-spin" /> Loading pending requests…</div>
+            ) : data.requests.length === 0 ? (
+              <div className="flt-empty-block">
+                <RadioTower size={22} color="var(--text-faint)" />
+                <div className="flt-empty-title">No devices waiting</div>
+                <div className="flt-empty-hint">{surface === "portal" ? "Pending devices are private until you enter their short-lived installer code in the approval panel." : "Run the install command on a host — its key fingerprint will appear here for approval."}</div>
+              </div>
+            ) : data.requests.map((row) => {
+              const badge = stateBadge(row.state);
+              const isSel = selected === row.request_id;
+              return (
+                <button
+                  key={row.request_id}
+                  className="flt-req"
+                  data-sel={isSel}
+                  onClick={() => { setSelected(row.request_id); setForm((v) => ({ ...v, probe_name: "" })); }}
+                >
+                  <div className="flt-req-top">
+                    <strong className="flt-req-name">{row.hostname_hint || "Unnamed device"}</strong>
+                    <span
+                      className="flt-state"
+                      aria-label={`Enrollment state: ${badge.label}`}
+                      style={{ color: badge.color }}
+                    >
+                      <span className="flt-dot" style={{ background: badge.color }} />
+                      {badge.label}
+                    </span>
+                  </div>
+                  <div className="flt-req-meta">
+                    <span><Laptop size={11} /> {row.platform} / {row.architecture} · agent {row.agent_version}</span>
+                    <span className="flt-mono"><Fingerprint size={11} /> {row.fingerprint.slice(0, 16)}…</span>
+                    <span className="flt-mono"><Clock3 size={11} /> expires {new Date(row.expires_at).toLocaleString()}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </section>
+
+          {/* Approve Site policy */}
+          <section className="flt-card">
+            <div className="flt-card-head">
+              <span className="flt-head-icon"><Network size={16} /></span>
+              <div>
+                <strong className="flt-head-title">{surface === "portal" ? "Or approve with an installer code" : "Approve Site policy"}</strong>
+                <div className="flt-head-sub">{surface === "portal" ? "The installer code identifies the device. Scope and exclusions come only from this engagement." : "One click to authorize — name auto-assigns and scope/capabilities fill in from the device. Tune later in Site settings."}</div>
+              </div>
+            </div>
+
+            {!request && surface === "manager" ? (
+              <div className="flt-empty-block">
+                <ShieldCheck size={22} color="var(--text-faint)" />
+                <div className="flt-empty-title">Select a pending request</div>
+                <div className="flt-empty-hint">Pick a device on the left to review and approve its Site policy.</div>
+              </div>
+            ) : (
+              <form onSubmit={approve} className="flt-form">
+                {surface === "portal" && (
+                  <label className="flt-field flt-full">
+                    <span className="flt-label">Installer verification code</span>
+                    <input
+                      className="flt-input"
+                      inputMode="text"
+                      autoComplete="one-time-code"
+                      placeholder="ABCD-EFGH"
+                      required
+                      maxLength={9}
+                      value={form.user_code}
+                      onChange={(event) => setForm({ ...form, user_code: event.target.value.toUpperCase() })}
+                      aria-describedby="portal-enrollment-code-hint"
+                    />
+                    <span id="portal-enrollment-code-hint" className="flt-hint">Shown once by the installer and valid for 15 minutes. It is never used as a long-lived credential.</span>
+                  </label>
+                )}
+                <label className="flt-field flt-full">
+                  <span className="flt-label">vedha-agent name <span className="flt-optional">(optional)</span></span>
+                  <input className="flt-input" placeholder="auto: vedha_agent_01" value={form.probe_name} onChange={(e) => setForm({ ...form, probe_name: e.target.value })} />
+                  <span className="flt-hint">Leave blank to auto-assign the next name. Capabilities and scope are taken from what the vedha-agent reported — adjust later in Site settings if needed.</span>
+                </label>
+                <div className="flt-caps">{surface === "portal" ? "Scope source: " : "Capabilities (auto): "}<strong>{surface === "portal" ? "assigned engagement" : capabilities.join(", ") || "none"}</strong></div>
+                <button disabled={submitting} className="flt-submit" type="submit">
+                  {submitting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />} {surface === "portal" ? "Approve and assign agent" : "Approve Site"}
+                </button>
+              </form>
+            )}
+          </section>
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+
+const STYLES = `
+.flt-page { padding: 18px; overflow-y: auto; height: 100%; display: grid; gap: 14px; }
+
+.flt-card { border: 0.5px solid var(--border-subtle); border-radius: 12px; background: var(--bg-panel); padding: 16px; }
+.flt-card-flush { padding: 0; overflow: hidden; }
+
+.flt-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.flt-head-icon { width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--accent-ghost); border: 0.5px solid var(--border-accent); color: var(--accent); }
+.flt-head-title { color: var(--text-primary); font-size: 13px; font-weight: 600; }
+.flt-head-sub { color: var(--text-muted); font-size: 11px; margin-top: 2px; line-height: 1.4; }
+
+.flt-cmds { display: grid; gap: 12px; }
+.flt-cmd { display: grid; gap: 6px; }
+.flt-cmd-label { color: var(--text-secondary); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.flt-install { display: flex; gap: 8px; align-items: stretch; }
+.flt-code { flex: 1; min-width: 0; padding: 11px; border-radius: 8px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); color: var(--accent); font: 11px var(--font-mono); overflow-x: auto; white-space: nowrap; }
+.flt-warn { margin: 8px 0 0; color: var(--sev-medium-color); font-size: 10.5px; line-height: 1.4; }
+
+.flt-icon-btn { width: 40px; height: 40px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); color: var(--text-secondary); cursor: pointer; transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease; }
+.flt-icon-btn:hover { color: var(--accent); border-color: var(--border-accent); background: var(--accent-ghost); }
+
+.flt-grid { display: grid; grid-template-columns: minmax(280px, .85fr) minmax(360px, 1.15fr); gap: 14px; align-items: start; }
+
+.flt-list-head { padding: 13px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid var(--border-subtle); }
+.flt-count { font: 700 10px var(--font-mono); color: var(--text-muted); background: var(--bg-surface); border: 0.5px solid var(--border-subtle); border-radius: 5px; padding: 1px 6px; }
+
+.flt-empty { padding: 20px; color: var(--text-muted); font-size: 12px; display: flex; align-items: center; gap: 8px; }
+.flt-empty-block { padding: 30px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.flt-empty-title { color: var(--text-secondary); font-size: 12.5px; font-weight: 600; }
+.flt-empty-hint { color: var(--text-muted); font-size: 11px; line-height: 1.5; max-width: 300px; }
+
+.flt-req { width: 100%; text-align: left; padding: 13px 14px; border: 0; border-bottom: 0.5px solid var(--border-subtle); border-left: 2px solid transparent; background: transparent; cursor: pointer; transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease; }
+.flt-req:hover { background: var(--bg-surface); }
+.flt-req[data-sel="true"] { background: var(--accent-ghost); border-left-color: var(--accent); }
+.flt-req-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.flt-req-name { color: var(--text-primary); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flt-state { display: inline-flex; align-items: center; gap: 5px; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0; }
+.flt-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.flt-req-meta { margin-top: 8px; display: grid; gap: 5px; color: var(--text-muted); font-size: 11px; }
+.flt-req-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.flt-mono { font-family: var(--font-mono); }
+
+.flt-online-pill { font: 700 9px var(--font-mono); color: var(--nominal-color); background: var(--bg-surface); border: 0.5px solid var(--border-subtle); border-radius: 5px; padding: 1px 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+.flt-agents { display: grid; }
+.flt-agent { padding: 12px 14px; border-bottom: 0.5px solid var(--border-subtle); }
+.flt-agent:last-child { border-bottom: 0; }
+.flt-agent-main { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.flt-agent-name { color: var(--text-primary); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flt-agent-meta { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--text-muted); font-size: 11px; }
+.flt-agent-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.flt-agent-job { color: var(--sev-medium-color); font-weight: 600; }
+.flt-agent-idle { color: var(--text-faint); }
+.flt-expiry-ctl { margin-top: 7px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.flt-expiry-label { color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; }
+.flt-expiry-btn { padding: 3px 9px; border-radius: 6px; border: 0.5px solid var(--border-subtle); background: var(--bg-surface); color: var(--text-secondary); font-size: 11px; cursor: pointer; }
+.flt-expiry-btn:hover { color: var(--accent); border-color: var(--border-accent); background: var(--accent-ghost); }
+.flt-agent-toggle { width: 100%; background: none; border: none; padding: 0; cursor: pointer; font: inherit; }
+.flt-agent-head { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.flt-chev { color: var(--text-faint); flex-shrink: 0; transition: transform 0.15s ease; }
+.flt-chev[data-open="true"] { transform: rotate(180deg); color: var(--text-muted); }
+.flt-agent-toggle:hover .flt-agent-name { color: var(--accent); }
+.flt-jobs { margin-top: 9px; display: grid; gap: 4px; padding-left: 20px; }
+.flt-jobs-empty { font-size: 11px; color: var(--text-faint); padding: 4px 0; }
+.flt-job { display: flex; align-items: center; gap: 10px; font-size: 11.5px; padding: 5px 8px; border-radius: 7px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); }
+.flt-job-status { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; text-transform: capitalize; flex-shrink: 0; min-width: 92px; }
+.flt-job-name { color: var(--text-secondary); font-family: var(--font-mono); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flt-job-hosts { color: var(--text-muted); flex-shrink: 0; }
+.flt-job-time { margin-left: auto; color: var(--text-faint); flex-shrink: 0; }
+
+.flt-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.flt-field { display: flex; flex-direction: column; gap: 6px; }
+.flt-full { grid-column: 1 / -1; }
+.flt-label { color: var(--text-secondary); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.flt-req-star { color: var(--sev-high-color, #e5484d); font-weight: 700; }
+.flt-optional { color: var(--text-faint); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.flt-hint { color: var(--text-muted); font-size: 10px; margin-top: 4px; line-height: 1.4; text-transform: none; letter-spacing: 0; }
+.flt-input { width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 0.5px solid var(--border-default); background: var(--bg-surface); color: var(--text-primary); font-size: 12.5px; outline: none; box-sizing: border-box; transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease; }
+.flt-input::placeholder { color: var(--text-faint); }
+.flt-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ghost); }
+.flt-caps { grid-column: 1 / -1; color: var(--text-muted); font-size: 11px; }
+.flt-caps strong { color: var(--text-secondary); font-weight: 600; }
+.flt-submit { grid-column: 1 / -1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--accent-contrast); background: linear-gradient(180deg, var(--accent-hover, var(--accent)), var(--accent)); box-shadow: 0 3px 16px var(--accent-glow); transition: transform var(--dur-fast) ease, box-shadow var(--dur-fast) ease, filter var(--dur-fast) ease; }
+.flt-submit:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }
+.flt-submit:active:not(:disabled) { transform: translateY(0); }
+.flt-submit:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+@media (max-width: 900px) {
+  .flt-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .flt-form { grid-template-columns: minmax(0, 1fr); }
+}
+`;

@@ -47,6 +47,20 @@ export interface FleetEngagementOption {
   scopeCidrs: string[];
 }
 
+export interface AgentExpiryResult {
+  id: string;
+  access_expires_at: string | null;
+  access_expired: boolean;
+}
+
+// Install-command lifetimes offered in Fleet (minutes); must match the backend's
+// INSTALL_TOKEN_LIFETIMES.
+export const INSTALL_LIFETIMES: { minutes: number; label: string }[] = [
+  { minutes: 60, label: "1 hour" },
+  { minutes: 24 * 60, label: "24 hours" },
+  { minutes: 7 * 24 * 60, label: "7 days" },
+];
+
 export function createFleetWorkspaceApi(surface: FleetWorkspaceSurface) {
   if (surface === "manager") {
     return {
@@ -68,15 +82,22 @@ export function createFleetWorkspaceApi(surface: FleetWorkspaceSurface) {
       installTokens: (engagementId?: string) => fetchJson<InstallToken[]>(
         `/api/fleet/enroll-tokens${engagementId ? `?engagement_id=${encodeURIComponent(engagementId)}` : ""}`,
       ),
-      createInstallToken: (engagementId: string | null, name: string) => {
+      createInstallToken: (engagementId: string | null, name: string, lifetimeMinutes: number) => {
         if (!engagementId) throw new Error("Choose the engagement this agent will scan for");
         return fetchJson<InstallToken>("/api/fleet/enroll-tokens", {
-          method: "POST", body: JSON.stringify({ engagement_id: engagementId, name }),
+          method: "POST",
+          body: JSON.stringify({ engagement_id: engagementId, name, expires_in_minutes: lifetimeMinutes }),
         });
       },
       revokeInstallToken: (id: string) => fetchJson<null>(
         `/api/fleet/enroll-tokens/${encodeURIComponent(id)}`, { method: "DELETE" },
       ),
+      // Set/extend/clear an agent's access expiry (operator only). null clears it.
+      setAgentExpiry: (agentId: string, accessExpiresAt: string | null) => fetchJson<AgentExpiryResult>(
+        `/api/fleet/agents/${encodeURIComponent(agentId)}/access-expiry`,
+        { method: "PATCH", body: JSON.stringify({ access_expires_at: accessExpiresAt }) },
+      ),
+      canSetExpiry: true,
     };
   }
   return {
@@ -101,12 +122,20 @@ export function createFleetWorkspaceApi(surface: FleetWorkspaceSurface) {
       void _engagementId;
       return portalApi<InstallToken[]>("/workspace/fleet/enroll-tokens");
     },
-    createInstallToken: (_engagementId: string | null, name: string) => {
+    createInstallToken: (_engagementId: string | null, name: string, lifetimeMinutes: number) => {
       void _engagementId;
-      return portalApi<InstallToken>("/workspace/fleet/enroll-tokens", { method: "POST", body: { name } });
+      return portalApi<InstallToken>("/workspace/fleet/enroll-tokens", {
+        method: "POST", body: { name, lifetime_minutes: lifetimeMinutes },
+      });
     },
     revokeInstallToken: (id: string) => portalApi<null>(
       `/workspace/fleet/enroll-tokens/${encodeURIComponent(id)}`, { method: "DELETE" },
     ),
+    // Customers can't change expiry — only the operator sets it.
+    setAgentExpiry: (_agentId: string, _accessExpiresAt: string | null): Promise<AgentExpiryResult> => {
+      void _agentId; void _accessExpiresAt;
+      return Promise.reject(new Error("Agent access expiry is managed by your Vedha operator"));
+    },
+    canSetExpiry: false,
   };
 }

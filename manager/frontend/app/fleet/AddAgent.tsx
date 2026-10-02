@@ -16,6 +16,7 @@ import {
 import { formatExact } from "../../components/portal/Timestamp";
 import { useToast } from "../../hooks/useToast";
 import { copyText } from "../../lib/clipboard";
+import { INSTALL_LIFETIMES } from "../../lib/fleet-workspace-api";
 import type {
   AgentInstallInfo, FleetEngagementOption, FleetWorkspaceSurface, InstallToken,
   createFleetWorkspaceApi,
@@ -53,6 +54,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
   const [engagements, setEngagements] = useState<FleetEngagementOption[]>([]);
   const [engagementId, setEngagementId] = useState("");
   const [name, setName] = useState("");
+  const [lifetime, setLifetime] = useState(24 * 60);
   const [tokens, setTokens] = useState<InstallToken[]>([]);
   const [created, setCreated] = useState<InstallToken | null>(null);
   const [busy, setBusy] = useState(false);
@@ -110,7 +112,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
     setBusy(true);
     setError(null);
     try {
-      const token = await api.createInstallToken(surface === "manager" ? engagementId || null : null, name.trim());
+      const token = await api.createInstallToken(surface === "manager" ? engagementId || null : null, name.trim(), lifetime);
       setCreated(token);
       setShowInspect(false);
       toast.success("Install command ready — it works once and expires in 24 hours");
@@ -217,6 +219,19 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+        </label>
+        <label className="flt-field">
+          <span className="flt-label">Command valid for</span>
+          <select
+            className="flt-input"
+            value={lifetime}
+            onChange={(e) => setLifetime(Number(e.target.value))}
+          >
+            {INSTALL_LIFETIMES.map((l) => (
+              <option key={l.minutes} value={l.minutes}>{l.label}</option>
+            ))}
+          </select>
+          <span className="flt-hint">How long the command works before it expires. It is single-use either way.</span>
         </label>
         <button className="flt-submit aa-submit" type="submit" disabled={!canGenerate || busy}>
           {busy ? <Loader2 size={15} className="animate-spin" /> : <KeyRound size={15} />} Generate install command

@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 import { GET as listTokens, POST as createToken } from "../app/api/fleet/enroll-tokens/route";
 import { DELETE as revokeToken } from "../app/api/fleet/enroll-tokens/[id]/route";
 import { GET as releaseGet } from "../app/api/fleet/release/route";
+import { PATCH as setExpiry } from "../app/api/fleet/agents/[id]/access-expiry/route";
 import { managerHost } from "../app/fleet/AddAgent";
 
 const originalFetch = globalThis.fetch;
@@ -36,14 +37,48 @@ describe("Fleet → Add agent BFF", () => {
     const seen = stubBackend({ id: "t1", token: "vet_x", commands: { one_line: "curl …" } }, 201);
     const res = await createToken(new NextRequest("http://localhost/api/fleet/enroll-tokens", {
       method: "POST", headers: auth,
-      body: JSON.stringify({ engagement_id: "eng-1", name: "  ", expires_in_minutes: 999999, max_uses: 50 }),
+      body: JSON.stringify({ engagement_id: "eng-1", name: "  ", expires_in_minutes: 10080 }),
     }));
     assert.equal(res.status, 201);
     assert.match(seen[0].url, /\/probe-enrollment\/enroll-tokens$/);
     assert.equal(seen[0].method, "POST");
     assert.equal(seen[0].auth, "Bearer operator-token");
-    // the browser cannot stretch the lifetime or make it multi-use
-    assert.deepEqual(seen[0].body, { name: "vedha-agent", engagement_id: "eng-1", expires_in_minutes: 1440 });
+    // the chosen lifetime is forwarded; the backend validates it against the preset set
+    assert.deepEqual(seen[0].body, { name: "vedha-agent", engagement_id: "eng-1", expires_in_minutes: 10080 });
+  });
+
+  test("create defaults the lifetime to 24 h when none is given", async () => {
+    const seen = stubBackend({ id: "t2" }, 201);
+    await createToken(new NextRequest("http://localhost/api/fleet/enroll-tokens", {
+      method: "POST", headers: auth, body: JSON.stringify({ engagement_id: "eng-1", name: "edge" }),
+    }));
+    assert.equal(seen[0].body.expires_in_minutes, 1440);
+  });
+
+  test("set access expiry maps to the backend PATCH", async () => {
+    const seen = stubBackend({ id: "a1", access_expires_at: "2026-11-01T00:00:00Z", access_expired: false });
+    const when = "2026-11-01T00:00:00Z";
+    const res = await setExpiry(
+      new NextRequest("http://localhost/api/fleet/agents/a1/access-expiry", {
+        method: "PATCH", headers: auth, body: JSON.stringify({ access_expires_at: when }),
+      }),
+      { params: Promise.resolve({ id: "a1" }) },
+    );
+    assert.equal(res.status, 200);
+    assert.equal(seen[0].method, "PATCH");
+    assert.match(seen[0].url, /\/agents\/a1\/access-expiry$/);
+    assert.deepEqual(seen[0].body, { access_expires_at: when });
+  });
+
+  test("clear access expiry forwards null", async () => {
+    const seen = stubBackend({ id: "a1", access_expires_at: null, access_expired: false });
+    await setExpiry(
+      new NextRequest("http://localhost/api/fleet/agents/a1/access-expiry", {
+        method: "PATCH", headers: auth, body: JSON.stringify({ access_expires_at: null }),
+      }),
+      { params: Promise.resolve({ id: "a1" }) },
+    );
+    assert.deepEqual(seen[0].body, { access_expires_at: null });
   });
 
   test("list passes the engagement filter through", async () => {
@@ -82,17 +117,17 @@ describe("Fleet → Add agent BFF", () => {
 
 describe("Fleet install UI", () => {
   test("the placeholder download domain is gone", () => {
-    for (const file of ["app/fleet/page.tsx", "app/fleet/AddAgent.tsx", "app/api/fleet/enrollment/route.ts"]) {
+    for (const file of ["app/fleet/FleetWorkspace.tsx", "app/fleet/AddAgent.tsx", "app/api/fleet/enrollment/route.ts"]) {
       const source = readFileSync(join(process.cwd(), file), "utf8");
       assert.doesNotMatch(source, /downloads\.vedha\.example|manager\.example\.com/, file);
     }
-    const page = readFileSync(join(process.cwd(), "app/fleet/page.tsx"), "utf8");
+    const page = readFileSync(join(process.cwd(), "app/fleet/FleetWorkspace.tsx"), "utf8");
     assert.match(page, /<AddAgent surface=\{surface\} api=\{api\} \/>/);
   });
 
   test("the portal never chooses an engagement for its token", () => {
     const adapter = readFileSync(join(process.cwd(), "lib/fleet-workspace-api.ts"), "utf8");
-    assert.match(adapter, /portalApi<InstallToken>\("\/workspace\/fleet\/enroll-tokens", \{ method: "POST", body: \{ name \} \}\)/);
+    assert.match(adapter, /portalApi<InstallToken>\("\/workspace\/fleet\/enroll-tokens", \{\s*method: "POST", body: \{ name, lifetime_minutes: lifetimeMinutes \}/);
   });
 
   test("managerHost shows the host the agent dials", () => {

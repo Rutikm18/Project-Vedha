@@ -12,7 +12,7 @@ test("customer Fleet renders the manager Fleet workspace", () => {
 
 test("customer Fleet approval is engagement-bound and code-gated", () => {
   const adapter = readFileSync(join(process.cwd(), "lib/fleet-workspace-api.ts"), "utf8");
-  const workspace = readFileSync(join(process.cwd(), "app/fleet/page.tsx"), "utf8");
+  const workspace = readFileSync(join(process.cwd(), "app/fleet/FleetWorkspace.tsx"), "utf8");
   assert.match(adapter, /workspace\/fleet\/enrollment\/approve/);
   assert.match(adapter, /user_code/);
   assert.match(workspace, /verification code shown by the vedha-agent installer/);

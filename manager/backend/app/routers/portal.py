@@ -21,6 +21,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel, Field, field_validator
 
+from app import agent_access
 from app.routers.probe_enrollment import ENGAGEMENT_TOKEN_TTL_MINUTES, INSTALL_TOKEN_LIFETIMES
 from sqlalchemy import func, select
 
@@ -1564,6 +1565,9 @@ async def portal_agents(user: ClientUser, db: DB):
         "network_segments": list(agent.network_segments or []),
         "current_job_id": str(agent.current_job_id) if agent.current_job_id else None,
         "online": online,
+        # Read-only for the customer: the operator sets expiry; the customer sees it.
+        "access_expires_at": agent.access_expires_at.isoformat() if agent.access_expires_at else None,
+        "access_expired": agent_access.is_expired(agent.access_expires_at, now),
     }]
 
 

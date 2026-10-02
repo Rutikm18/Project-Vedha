@@ -26,7 +26,8 @@ export const POST = withBackend(async (req, { token }) => {
     body: {
       name: typeof body?.name === "string" && body.name.trim() ? body.name.trim() : "vedha-agent",
       engagement_id: body?.engagement_id,
-      expires_in_minutes: 24 * 60,
+      // The backend validates this against the allowed preset set.
+      expires_in_minutes: typeof body?.expires_in_minutes === "number" ? body.expires_in_minutes : 24 * 60,
     },
   });
   return NextResponse.json(created, { status: 201 });
