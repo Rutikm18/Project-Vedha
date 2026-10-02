@@ -1,6 +1,6 @@
 # Vedha Project Status
 
-As of **2026-10-01** (refreshed after `b6a3b60`). This is the single place for what is done, what is open, and what needs the owner.
+As of **2026-10-03** (refreshed after `72d6bea` on `feat/portal-plan-locks`). This is the single place for what is done, what is open, and what needs the owner.
 Claude updates it at the end of every finished piece of work: a change-log row, then the sections above it.
 
 ## At a glance
@@ -11,15 +11,17 @@ Claude updates it at the end of every finished piece of work: a change-log row, 
 | --- | --- |
 | `origin/main` | `b6a3b60`, VERSION 1.0.330 (1 Oct 2026) |
 | Production | [app.vedhasec.com](https://app.vedhasec.com) / [api.vedhasec.com](https://api.vedhasec.com) — **stopped for a redeploy on 1 Oct** (owner). Was healthy on 1.0.325 on 30 Sep |
-| Tests | 1,965 backend tests passing at the last full run (28 Sep) |
+| Tests | 2,181 backend tests passing, 8 skipped (2 Oct, full run). Frontend 346 of 348 (the 2 failures are the missing `pdfkit` package) |
 | AI providers | Anthropic: no API credit · OpenAI: key rejected on AWS · Gemini: works, but its key was not on the AWS server |
+| Waiting for your push | `feat/portal-plan-locks`, 9 commits on top of `origin/main` `4c78573`: report export fix, portal plan locks, operator Deep scan, this status doc. See *Needs you* |
 | Unmerged branches | `codex/customer-portal-engagement-parity` (report document ported; remediation workspace still not) · `probe-standalone` (never merge) |
 
-The three things that matter most right now:
+The things that matter most right now:
 
-1. Finish the production redeploy; attach an Elastic IP so the DNS record (`13.127.147.205`) stays valid across restarts.
-2. Fix the AWS `.env` (Gemini key, OpenAI key, blank `LLM_PROVIDER`), then `make full`. This restores AI Brain and report generation.
-3. Agent install in client environments (P0-3) — the next roadmap item not yet started.
+1. Push `feat/portal-plan-locks` to `main` and redeploy. It fixes the production report export and adds the POC plan locks.
+2. Finish the production redeploy; attach an Elastic IP so the DNS record (`13.127.147.205`) stays valid across restarts.
+3. Fix the AWS `.env` (Gemini key, OpenAI key, blank `LLM_PROVIDER`), then `make full`. This restores AI Brain and report generation.
+4. Agent install in client environments (P0-3) — the next roadmap item not yet started.
 
 ## Done
 
@@ -65,10 +67,23 @@ Priority order from the [next-8 workstreams plan](planning/2026-09-29-next-8-wor
 | P2-1 | Website content | Not started | S | Platform choice needed |
 | P2-2 | Platform walkthrough + feature videos | Not started | M | After P1, so recordings show the final UI |
 
+### Done on a branch, waiting for push
+
+| Item | Area | Status | Notes |
+| --- | --- | --- | --- |
+| Report export did nothing in production | Reports | Done (branch) | The Export menu opened inside a page-header box that hides overflow, so nothing showed. It now opens in a layer above the page, closes on Escape, an outside click or scroll, and fits a phone screen. Reproduced in the production image, checked on desktop and mobile, and a PDF download verified. `c4161aa` |
+| Portal plan locks (POC vs licensed) | Portal | Done (branch) | In each customer's Plan panel, the operator can lock finding severities and features at any time, on POC or licensed plans. A new POC starts with Critical and High locked. The lockable features are AI assistant, Reports, Remediation & fix bundles and Compliance briefs. Locked findings never leave the server: one database-level guard filters every customer query. The portal shows them as "N locked findings · Available on a licensed plan". Locked features show a lock panel. Written reports are withheld while any severity is locked. Migration `0052`. [Design](superpowers/specs/2026-10-02-portal-plan-locks-design.md). `35581b4`–`72d6bea` |
+| Settings page redesign: research and design | Settings | Doc done; build not started | Draws on GitHub, Vercel, Datadog, Stripe, Tenable, Rapid7, Snyk, Salesforce and Checkmarx. Proposes a new structure and gives every field its meaning, default, owner, effect and backend status. Found 4 defects in today's page (listed below). [Design](superpowers/specs/2026-10-03-settings-page-design.md) |
+
 ### Other open items
 
 | Item | Area | Status | Why it is open · next step |
 | --- | --- | --- | --- |
+| Settings: Notifications "Save" stores nothing | Settings | Not started | It waits 600 ms and says "saved", but the rules reset on reload. Persist them or remove the button (defect D1 in the settings design) |
+| Settings: API keys always read + write, never expire | Settings | Not started | The model has scopes and an expiry, but the UI ignores both (defect D2) |
+| Settings: AI Runtime shows the old provider cards | Settings | Not started | Replace with live fallback-chain status (defect D3) |
+| Plan-lock known gaps (your choice) | Portal | Deferred | Raw scan evidence is not locked, so service banners could hint at a locked finding. Posture and analytics scores use only the findings the customer can see. Both are recorded in the plan-locks design |
+| Plan locks: new screens not checked in a browser yet | Portal / UI | Not started | Logic is covered by tests (backend 47, frontend 6) and the server is the gate. The Plan panel's *Portal access* section and the portal lock panels still need a visual check after deploy |
 | Port the Codex branch's remediation workspace | Remediation | Not started | The report document and scan provenance were ported on 1 Oct. Still missing: `app/ai/remediation_workspace.py`, its context service and `RemediationWorkspaceDialog.tsx`. |
 | Backend container runs as root | Security | Not started | No `USER` in `manager/backend/Dockerfile`. Add a non-root user. |
 | `/docs`, `/redoc`, `/openapi.json` public in production | Security | Not started | Always enabled in `manager/backend/app/main.py`. Disable when `APP_ENV=production`. |
@@ -87,6 +102,15 @@ Priority order from the [next-8 workstreams plan](planning/2026-09-29-next-8-wor
 
 These need your accounts, your server or your decision.
 
+- [ ] Push the branch to `main` (the safety hook blocks me from pushing). It is a fast-forward of `origin/main` `4c78573`:
+  `git push origin feat/portal-plan-locks:main`
+  Then reset your local `main` to it: `git checkout main && git reset --hard origin/main`. Local `main` has an older duplicate of the probe TLS commit
+- [ ] After deploying, run the migrations (`0052` adds the plan-lock columns). Existing customers keep full access until you lock something
+- [ ] Clean up my test leftovers:
+  - containers `vedha-export-before`, `vedha-export-after`, `vedha-export-ui-before`, `vedha-export-ui-after`, `vedha-locks-pg`
+  - images `vedha-frontend:exporttest`, `:exportfix`, `:menufix`
+  - worktrees `.claude/worktrees/export-fix` and `.claude/worktrees/plan-locks`
+  - the merged branches `fix/report-export`, `feat/operator-deep-scan`, `docs/status-refresh`
 - [ ] Production redeploy (in progress, owner). Attach an Elastic IP so `13.127.147.205` in DNS survives restarts
 - [ ] On the AWS server (`/opt/Project-Vedha`): `git pull`, then in `.env` set `LLM_PROVIDER=` (blank) and add `GEMINI_API_KEY=<key>`
 - [ ] Fix `OPENAI_API_KEY` on AWS: the server's key is rejected (it appears to be missing the `sk-` prefix). Use the full `sk-proj-…` key or leave it blank
@@ -107,6 +131,9 @@ One row per finished piece of work, newest first.
 
 | Date | Change | Ref |
 | --- | --- | --- |
+| 2026-10-03 | Settings page research and design doc (no code): a new structure, each field's meaning, default, owner and effect, and 4 defects found in today's page | `docs/superpowers/specs/2026-10-03-settings-page-design.md` |
+| 2026-10-03 | Portal plan locks done: severity and feature locks per customer, a central server guard, teaser rows and lock panels in the portal. 2,181 backend tests pass; frontend 346 of 348 (missing `pdfkit`) | `35581b4`–`72d6bea` |
+| 2026-10-02 | Report export fixed: the page header clipped the menu, which now opens above the page. Verified in the production image on desktop and mobile | `c4161aa` |
 | 2026-10-01 | Operator Deep scan (P1-1) done: same one-asset card as the portal, never charged to the customer; checked live in the browser; 2,139 backend tests pass; frontend 337 of 339 (the 2 failures are the missing `pdfkit` / `@playwright/test` packages) | `feat/operator-deep-scan` |
 | 2026-10-01 | Refreshed after `b6a3b60`: reporting and responsive dashboard moved to Done; production stopped for a redeploy (owner); security review marked done (owner) | — |
 | 2026-10-01 | Status moved into the repo as `docs/STATUS.md`; added the production URLs and version (1.0.325) and the next-8 workstreams roadmap | — |
