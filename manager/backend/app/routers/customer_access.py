@@ -30,7 +30,8 @@ from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
 from app.models.agent import Agent
 from app.models.customer_entitlement import (
-    PLAN_LICENSED, PLAN_POC, SCAN_MODES, CustomerEntitlement,
+    DEFAULT_POC_LOCKED_SEVERITIES, LOCKABLE_FEATURES, LOCKABLE_SEVERITIES, PLAN_LICENSED,
+    PLAN_POC, SCAN_MODES, CustomerEntitlement,
 )
 from app.models.engagement import Engagement
 from app.models.enums import ScanJobStatus, ScanJobType, UserRole
@@ -118,6 +119,10 @@ class EntitlementConfig(BaseModel):
     deep_quota: int | None = Field(default=0, ge=0, le=100_000)
     deep_repeat_policy: Literal["distinct", "repeat"] = "distinct"
     notes: str | None = Field(default=None, max_length=2000)
+    # Portal locks. None = leave as they are (a new POC starts with Critical +
+    # High locked, anything else with nothing locked); a list replaces them.
+    locked_severities: list[Literal["critical", "high", "medium", "low", "info"]] | None = None
+    locked_features: list[Literal["ai_assistant", "compliance", "remediation", "reports"]] | None = None
 
     @model_validator(mode="after")
     def _window(self):
@@ -270,8 +275,25 @@ def apply_entitlement_config(row: CustomerEntitlement, body: EntitlementConfig,
         setattr(row, f"{mode}_quota", getattr(body, f"{mode}_quota"))
     row.deep_repeat_policy = body.deep_repeat_policy
     row.notes = body.notes
+    _apply_locks(row, body)
     if body.plan_type == PLAN_LICENSED and not row.license_key:
         row.license_key = entitlements.generate_license_key()
+
+
+def _apply_locks(row: CustomerEntitlement, body: EntitlementConfig) -> None:
+    """Locks are never taken away or added implicitly on an existing plan: an
+    omitted list keeps the current one. A brand-new row (attributes still None
+    before its first flush) gets the plan type's defaults."""
+    if body.locked_severities is not None:
+        chosen = set(body.locked_severities)
+        row.locked_severities = [s for s in LOCKABLE_SEVERITIES if s in chosen]
+    elif row.locked_severities is None:
+        row.locked_severities = list(DEFAULT_POC_LOCKED_SEVERITIES) if body.plan_type == PLAN_POC else []
+    if body.locked_features is not None:
+        chosen = set(body.locked_features)
+        row.locked_features = [f for f in LOCKABLE_FEATURES if f in chosen]
+    elif row.locked_features is None:
+        row.locked_features = []
 
 
 def _admin_view(row: CustomerEntitlement | None) -> EntitlementAdminOut:
@@ -426,7 +448,9 @@ async def put_entitlement(
                 "expires_at": r.expires_at and r.expires_at.isoformat(),
                 "scan_quota": r.scan_quota,
                 **{f"{m}_quota": getattr(r, f"{m}_quota") for m in SCAN_MODES},
-                "deep_repeat_policy": r.deep_repeat_policy}
+                "deep_repeat_policy": r.deep_repeat_policy,
+                "locked_severities": list(r.locked_severities or []),
+                "locked_features": list(r.locked_features or [])}
     before = None if created else _snapshot(row)
     apply_entitlement_config(row, body, now=datetime.now(timezone.utc))
     row.updated_by = current_user.user_id
