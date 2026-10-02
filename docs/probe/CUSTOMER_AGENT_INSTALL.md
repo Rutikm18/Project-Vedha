@@ -27,9 +27,11 @@ curl --proto '=https' --tlsv1.2 -fsSL https://api.vedhasec.com/agent/install.sh 
   | sudo sh -s -- --manager https://api.vedhasec.com --token vet_…
 ```
 
-The token in it works **once** and **expires after 24 hours**. Anyone holding it
-can add an agent to your engagement until then, so share it only with the
-person doing the install. You can revoke it in the same panel.
+The token in it works **once** and expires after the time you pick under
+**Command valid for** (1 hour, 24 hours or 7 days). Anyone holding it can add an
+agent to your engagement until then, so share it only with the person doing the
+install, and choose the shortest lifetime that works. You can revoke it in the
+same panel.
 
 Prefer to read the installer first? Use **"Prefer to read the installer
 first?"** in the panel: download `vedha-install.sh`, read it, then run it.
@@ -78,6 +80,17 @@ your local network never goes through the proxy.
 | Status | the portal's Fleet page (heartbeat, current job) |
 | Remove | `sudo sh vedha-install.sh --uninstall` (add `PROBE_PURGE=true` to delete its identity) |
 
+## Access dates
+
+Your Vedha team can give an installed agent an **access expiry** (for example the
+end of a proof of concept). Fleet shows it as "expires <date>", or "access expired"
+once it has passed.
+
+- A scan already running at that moment finishes; no new scan starts.
+- The agent does not remove itself or lose its identity. It waits, and **resumes by
+  itself within about 5 minutes after your Vedha team extends the date**.
+- You do not need to reinstall anything.
+
 ## What the agent sends, and what it doesn't
 
 - It sends **scan facts** about the in-scope systems (open ports, service
@@ -96,3 +109,4 @@ your local network never goes through the proxy.
 | "unable to get local issuer certificate" | A TLS-inspecting proxy — exempt the manager or use `--ca-bundle` |
 | "release signature does NOT verify" | Stop and contact Vedha; do not work around it |
 | The agent shows a pairing code | Enter it in Fleet → "Or approve with an installer code" |
+| Fleet shows "access expired" | The access date passed. Ask your Vedha team to extend it; no reinstall |

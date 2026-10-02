@@ -1,6 +1,6 @@
 # P0-3 · Installing the Vedha agent in a client environment — approach
 
-Date: 2026-10-01 · Status: **Phase 1 built on `feat/agent-install` (2 Oct) — see §10**
+Date: 2026-10-01 · Status: **Phase 1 + Windows-first quick wins built and tested (2–3 Oct) — see §10 and §11**
 Roadmap item: P0-3 in [`2026-09-29-next-8-workstreams-plan.md`](2026-09-29-next-8-workstreams-plan.md)
 
 ## 1. Summary
@@ -275,3 +275,26 @@ missing packages.
 | Reachability test, clock / DNS preflight (F8–F10) | Faster diagnosis | Add to the installer and the Fleet panel |
 | Version, upgrade, support bundle, duplicates (F12, F15, F17, G9) | Phase 2 "supportable" | As planned in §7 |
 | Virtual appliance | No-Docker customers | Phase 3 |
+
+
+## 11. Follow-up (3 Oct 2026): code boundary, expiry, compiled build
+
+Details and task list: [agent-code-fixes plan](2026-10-02-agent-code-fixes-plan.md) and the
+[Windows quick-wins note](2026-10-02-windows-agent-quick-wins.md).
+
+| Area | What now exists | Evidence |
+|---|---|---|
+| **Only the agent's code ships** | `probe/tools/agent_closure.py` computes the agent's 73-module import closure and fails on a blocked module (`findings`, campaign runner, accuracy gates, `main_scripts`, `cve`, tests) or a dynamic import. Both Dockerfiles copy only the closure; `vedha-agent runtime-check` gates every build | A full local deep scan ran inside the closure-only image; sealed image: compiled `runtime-check` OK, no source / bytecode / `findings`, manifest parity |
+| **Defect found in the sealed build** | It shipped without `impacket`, `ldap3`, `dnspython`, silently losing the SMB null-session, LDAP anonymous-bind and DNS zone-transfer checks | Caught by `runtime-check`; fixed in `Dockerfile.sealed` |
+| **Install-command lifetime** | 1 h / 24 h / 7 d, chosen in Fleet (operator and portal); Site tokens stay ≤ 24 h | Live API: presets accepted with the right expiry, others 422 |
+| **Access expiry** (migration 0053) | Set / extended / cleared from Fleet, enforced only by the manager on HTTP **and** WebSocket; a running scan finishes; the agent waits and keeps its identity | Live run on a real agent: expire → offline, agent waits (0 restarts, no re-enrolment) → extend → resumes in ~3 min |
+| **Windows fixes** | Single-instance lock via `msvcrt`; MAC lookup via `arp -a`; legacy scripts no longer default to the old IP or exclude `python.exe` from Defender; compiled-build script, packaging and CI job written | Unit tests; **the Windows build itself has not been run** |
+
+Two bugs the live test caught that unit tests did not: expiry was not enforced on the
+WebSocket, and an expired agent read the manager's 403 as a stale token, cleared its identity
+and re-enrolled (three agent code paths).
+
+**Still in the pipeline** (needs a Windows runner/VM and owner answers): token-gated Windows
+download route and release artifact, PowerShell installer, Fleet OS switch, a real install on a
+Windows VM, licence issued at enrolment for the sealed agent, Podman/RHEL, an amd64 live test,
+signed auto-update, version/upgrade/support bundle, virtual appliance.

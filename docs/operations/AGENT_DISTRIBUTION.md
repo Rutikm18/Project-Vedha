@@ -78,8 +78,9 @@ curl --proto '=https' --tlsv1.2 -fsSL https://api.vedhasec.com/agent/install.sh 
   | sudo sh -s -- --manager https://api.vedhasec.com --token vet_…
 ```
 
-- The token is **single-use, valid 24 h, bound to one engagement**, and at most
-  5 unused ones can exist per engagement. It is stored only as a hash.
+- The token is **single-use, bound to one engagement**, and valid for the lifetime
+  chosen in the panel: **1 hour, 24 hours (default) or 7 days**. At most 5 unused
+  ones can exist per engagement. It is stored only as a hash.
 - It downloads the image (`/agent/image/{arch}` refuses anything without a live
   token) and auto-approves enrolment; the agent's Site is built from the
   engagement's scope **at enrolment time** and the agent is assigned to the
@@ -88,6 +89,45 @@ curl --proto '=https' --tlsv1.2 -fsSL https://api.vedhasec.com/agent/install.sh 
 - The panel flips from "waiting for install" to "agent enrolled" by itself.
   Revoke an unused command there.
 - Customer-facing instructions: [`probe/CUSTOMER_AGENT_INSTALL.md`](../probe/CUSTOMER_AGENT_INSTALL.md).
+
+## Agent access expiry (set from Fleet)
+
+Every connected agent in Fleet shows **no expiry / expires `<date>` / access expired**.
+Operators set it with **Extend +7 / +30 / +90 days** or **Clear** (API:
+`PATCH /agents/{id}/access-expiry`, audited as `agent.access_expiry.set`). The
+customer sees the date read-only in the portal.
+
+- **Enforced only on the manager**, so a changed host clock or a patched binary
+  cannot get around it. Past the date the manager refuses the agent's heartbeats,
+  job polls, token refreshes and WebSocket connection, and hands it no new jobs.
+- A scan **already running** at expiry finishes and may still upload its results;
+  the agent is then disconnected on its next idle heartbeat.
+- The agent does **not** stop or re-enrol. It keeps its identity, logs "access has
+  expired", and re-checks every 5 minutes (`PROBE_EXPIRED_RETRY_SECS`, 30–3600).
+  **Extend the date and it resumes by itself** within that window; no reinstall.
+- Expiry is separate from the install command's lifetime: the command lifetime
+  limits how long a *new install* can start; access expiry limits how long an
+  *installed agent* may work.
+
+## What ships to the customer (code boundary)
+
+The agent contains **only its own code**: the 73 modules in its import closure
+(`probe/tools/agent_closure.py`). The vulnerability judgement rules
+(`scanner/findings.py`), the campaign runner, accuracy gates, `main_scripts/`,
+`cve/` and tests never leave the repository, and detection stays on the manager.
+
+- CI and every image build run `agent_closure.py --check`: a blocked module or a
+  dynamic import (which a compiler cannot follow) fails the build.
+- `vedha-agent runtime-check` imports every module and library the agent can load
+  at run time. The standard image build runs it; the **sealed** (compiled) build
+  is checked by `make seal-parity`, which also fails if any Python source,
+  bytecode or `findings` module is in the image.
+- Compiled agents carry no source, bytecode or docstrings. String constants (port
+  lists, banner patterns) are still readable with tools; hiding those needs
+  Nuitka's commercial tier (pipeline).
+- The Windows compiled build (`probe/windows/build-agent-exe.ps1`, CI job
+  `agent-windows-build.yml`) uses the same closure-only recipe. **It has not been
+  run yet** — it runs on a Windows runner once the branch is pushed.
 
 ## On-prem customers (on request only)
 
@@ -124,4 +164,6 @@ Keep `ledger.jsonl`: if a bundle turns up somewhere else, its `bundle_id` (in
 | Installer: "install token was refused" | Expired (24 h), used, or revoked | Generate a new command |
 | Installer: "could not reach" / TLS errors | Egress, DNS, proxy, TLS inspection | `--proxy http://proxy:3128`, `--ca-bundle corp-ca.pem`, or exempt the manager from inspection |
 | Agent online but scans blocked mid-way | Customer IPS/NAC | Allow-list the agent IP; see the checklist in the panel |
+| Fleet shows "access expired" | The date set in Fleet passed | Extend it in Fleet; the agent resumes within 5 minutes |
+| Agent log: "access has expired … Waiting" | Same | Same. Nothing to reinstall |
 | Agent shows pairing code although a token was used | The engagement already had an agent or lost its scope when the agent enrolled (fallback by design) | Approve the code in Fleet, or fix the engagement and reinstall |
