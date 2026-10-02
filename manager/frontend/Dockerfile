@@ -29,6 +29,11 @@ ENV NODE_ENV=production
 ARG VEDHA_VERSION=dev
 ENV NEXT_PUBLIC_APP_VERSION=$VEDHA_VERSION
 
+# Raise the V8 heap ceiling so the production type-check does not OOM on small
+# hosts (Node auto-sizes a tiny heap on low-RAM boxes). Backed by the host swap
+# the installer provisions when RAM < 4GB.
+ENV NODE_OPTIONS="--max-old-space-size=3072"
+
 RUN npm run build
 
 # ── Stage 3: minimal production runner ───────────────────────────────────────

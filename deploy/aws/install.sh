@@ -120,6 +120,24 @@ if [ "$MEM_GB" -lt "$MIN_RAM_GB" ]; then
 fi
 log "RAM: ${MEM_GB}GB ✓"
 
+# Low-memory hosts: the Next.js production build (type-check) needs ~2-3GB and
+# OOMs on a small box. Provision a 4G swapfile so the build survives. Idempotent:
+# skipped when physical RAM is ample or swap is already present.
+SWAP_KB=$(awk '/SwapTotal/{print $2}' /proc/meminfo 2>/dev/null || echo 0)
+if [ "$MEM_GB" -lt 4 ] && [ "${SWAP_KB:-0}" -lt 3000000 ] \
+   && ! swapon --show=NAME --noheadings 2>/dev/null | grep -q '/swapfile'; then
+  log "low memory — provisioning 4G swap for the build..."
+  [ -e /swapfile ] || fallocate -l 4G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=4096 status=none
+  chmod 600 /swapfile
+  mkswap /swapfile >/dev/null 2>&1 || true
+  if swapon /swapfile 2>/dev/null; then
+    log "swap enabled (4G) ✓"
+    grep -q '^/swapfile ' /etc/fstab 2>/dev/null || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  else
+    warn "could not enable swap — the build may OOM on a small instance"
+  fi
+fi
+
 # Port conflicts — Caddy needs 80+443 free. A rerun may find Vedha's own
 # Compose-managed Caddy listening; that is safe because Compose recreates it.
 port_owned_by_vedha_caddy() {
@@ -615,6 +633,11 @@ COMPOSE_PROFILES_ARGS=(--profile ui)
 step "Building and launching stack"
 log "profiles: ${COMPOSE_PROFILES_ARGS[*]}"
 log "workers: $API_WORKERS  AI: automatic chain${LLM_PROVIDER:+ (pinned first: $LLM_PROVIDER)}"
+
+# Build services sequentially. migrate/api/worker all produce the same
+# vedha-backend image; the parallel bake builder races to export that shared tag
+# ("image already exists"). Disabling bake serialises the exports.
+export COMPOSE_BAKE=false
 
 RELEASE_STATE="$APP_DIR/.release-current"
 PREVIOUS_BACKEND_IMAGE=""
