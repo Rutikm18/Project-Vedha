@@ -10,6 +10,11 @@
 COMPOSE := docker compose
 MANAGER_COMPOSE := docker compose --env-file .env -f manager/docker-compose.yml
 
+# Admin-credential ops act on the RUNNING server deploy. `--project-directory .`
+# makes the Compose project name the repo-dir basename (e.g. /opt/vedha -> `vedha`),
+# matching what deploy/aws/install.sh created, so `run` joins the live stack.
+ADMIN_COMPOSE := docker compose --project-directory . --env-file .env -f manager/docker-compose.yml
+
 # Once `make tls` has run, the HTTPS proxy (deploy/tls/) replaces the plain-HTTP
 # port-80 edge: every deploy target picks the overlay up automatically.
 TLS_OVERLAY := $(wildcard deploy/tls/docker-compose.tls.yml)
@@ -26,7 +31,7 @@ endif
 # it into the backend image via the VEDHA_VERSION build arg.
 export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
 
-.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat seal seal-parity clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback
+.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed admin-show admin-reset shell venv test probe-build probe-run probe-pat seal seal-parity clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback
 
 version: ## Print the current deployed version
 	@echo $(VEDHA_VERSION)
@@ -133,6 +138,26 @@ migrate: ## Re-run database migrations
 
 seed: ## Re-run the admin seeder
 	$(COMPOSE) run --rm migrate python scripts/seed_admin.py
+
+admin-show: ## Print the deployed admin login (email + password) from .env
+	@test -f .env || { echo "ERROR: .env not found — run from the repo root (e.g. cd /opt/vedha)"; exit 1; }
+	@email=$$(grep -m1 '^SEED_ADMIN_EMAIL=' .env | cut -d= -f2-); \
+	 pw=$$(grep -m1 '^SEED_ADMIN_PASSWORD=' .env | cut -d= -f2-); \
+	 echo "Admin email    : $${email:-admin@vedha.io}"; \
+	 echo "Admin password : $${pw:-<not in .env — check SSM, or run: make admin-reset>}"
+
+admin-reset: ## Rotate the deployed admin password. Optional PASSWORD=... EMAIL=... (auto-generates a strong one if PASSWORD unset)
+	@test -f .env || { echo "ERROR: .env not found — run from the repo root (e.g. cd /opt/vedha)"; exit 1; }
+	@email="$(EMAIL)"; [ -n "$$email" ] || email=$$(grep -m1 '^SEED_ADMIN_EMAIL=' .env | cut -d= -f2-); email=$${email:-admin@vedha.io}; \
+	 pw="$(PASSWORD)"; [ -n "$$pw" ] || pw="$$(openssl rand -base64 18 | tr -d '\n/+=')Aa1!"; \
+	 echo "→ Rotating admin password for $$email on the running deploy stack..."; \
+	 $(ADMIN_COMPOSE) run --rm -e SEED_ADMIN_FORCE_RESET=true -e SEED_ADMIN_EMAIL="$$email" -e SEED_ADMIN_PASSWORD="$$pw" migrate python scripts/seed_admin.py || { echo "ERROR: seeder failed — is the stack up?  ($(ADMIN_COMPOSE) ps)"; exit 1; }; \
+	 awk -v e="$$email" -v p="$$pw" 'BEGIN{de=0;dp=0} /^SEED_ADMIN_EMAIL=/{print "SEED_ADMIN_EMAIL=" e; de=1; next} /^SEED_ADMIN_PASSWORD=/{print "SEED_ADMIN_PASSWORD=" p; dp=1; next} {print} END{if(!de)print "SEED_ADMIN_EMAIL=" e; if(!dp)print "SEED_ADMIN_PASSWORD=" p}' .env > .env.admin.tmp && mv .env.admin.tmp .env && chmod 600 .env; \
+	 echo ""; \
+	 echo "✓ Admin password rotated and saved to .env"; \
+	 echo "   Email    : $$email"; \
+	 echo "   Password : $$pw"; \
+	 echo "   Log in at your dashboard URL (you can also change it later in Settings)."
 
 sync-vuln-snapshots: ## Refresh pinned vuln intel (OSV + full EPSS + CISA KEV + NVD/CPE). Rebuild after.
 	cd manager/detection_engine && python3 update_snapshot.py all && python3 build_nvd_cpe_snapshot.py
