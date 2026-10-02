@@ -269,6 +269,13 @@ node_modules/
 Do **not** run Ollama on AWS — it requires a GPU instance and costs ~$700/mo.
 Use OpenAI / Anthropic / OpenRouter instead.
 
+> **Minimum 4 GB RAM — the free tier (t3.micro, 1 GB) will NOT work.** The Next.js
+> production build type-checks in a child process that OOMs below ~4 GB. `install.sh`
+> auto-provisions 4 GB swap when RAM < 4 GB, but a 1 GB box still can't finish the
+> build (and can't comfortably run the stack). Use **≥ 4 GB** — `t3.medium` (4 GB)
+> minimum, `t3.large` (8 GB) recommended. A non-AWS 8 GB VPS (Hetzner / Hostinger /
+> DigitalOcean) runs the same `install.sh` and is often far cheaper.
+
 ---
 
 ## 3. Secrets: `.env` or SSM (SSM is optional)
@@ -626,6 +633,15 @@ After deploy:
 | Probe can't register | Wrong PLATFORM_URL | Probe logs | Must be `https://api.<domain>`, not `:18080` |
 | CORS 403 on API | CORS_ORIGINS mismatch | Browser devtools | Set CORS_ORIGINS=https://app.<domain> |
 | 18080 accessible from internet | SG misconfigured | `curl http://<ip>:18080/health` | Add SG inbound deny rule; now also bound to 127.0.0.1 |
+| `NEO4J_PASSWORD … is missing a value` | Compose interpolates the whole file incl. `neo4j` regardless of active profile | compose error at build | **Auto-fixed** — `install.sh` generates `NEO4J_PASSWORD`; compose defaults it |
+| `classic builder doesn't support additional contexts` | Buildx not installed; backend image uses BuildKit additional contexts | build error | **Auto-fixed** — `install.sh` installs `docker-buildx` |
+| `JavaScript heap out of memory` at "Running TypeScript" | Box < 4 GB; Node auto-sizes a tiny heap for the Next.js build | build log | **Partly auto** — `install.sh` adds 4 GB swap + raises the Node heap; still needs a **≥ 4 GB box** (see §2) |
+| `image "vedha-backend:…" already exists` | `migrate`/`api`/`worker` share one image tag; parallel BuildKit races the containerd store | build error | **Auto-fixed** — `install.sh` builds the backend once (via `api`), then `up --no-build` |
+| `openssl` / `make` not found | Package not pre-installed | install error | **Auto-fixed** — `install.sh` installs `make openssl util-linux` in the dependency step |
+
+> The five rows above are now handled automatically by `install.sh` on a fresh box —
+> kept here for reference. The only one still needing operator action is the memory
+> one: use a **≥ 4 GB** instance (see §2 Sizing).
 
 ---
 
