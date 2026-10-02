@@ -230,7 +230,9 @@ onprem-bundle: ## On-prem customer bundle (encrypted to them, signed): make onpr
 AWS_COMPOSE := $(MANAGER_COMPOSE)
 
 gen-env: ## Auto-generate .env with real random secrets (safe to re-run — skips existing values)
-	@bash scripts/gen-env.sh
+	@if [ -f scripts/gen-env.sh ]; then bash scripts/gen-env.sh; \
+	 elif [ -f .env ]; then echo "gen-env: scripts/gen-env.sh missing but .env exists — skipping"; \
+	 else echo "ERROR: scripts/gen-env.sh not found and no .env present. Run: git checkout HEAD -- scripts/gen-env.sh"; exit 1; fi
 
 aws-up: gen-env ## AWS: build + start the API/probe plane behind the port-80 edge ingress (no dashboard)
 	$(AWS_COMPOSE) build api
