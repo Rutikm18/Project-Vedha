@@ -1,6 +1,6 @@
 # Portal plan locks — design
 
-Date: 2026-10-02 · Status: proposed (awaiting owner approval)
+Date: 2026-10-02 · Status: approved 2026-10-02; implemented on `feat/portal-plan-locks`
 
 ## What the owner asked for
 
@@ -25,8 +25,8 @@ One migration (`0052`) adds both as JSONB columns defaulting to `[]`. The operat
 The portal has about 20 routes that return finding data, and the workspace routes reuse the operator's handlers. Patching each one invites a leak. Instead:
 
 1. `require_client` (every portal request already passes through it) loads the customer's locks and sets a request-scoped context value.
-2. A SQLAlchemy `do_orm_execute` hook adds `severity NOT IN locked` to every query that **loads finding rows or sensitive finding columns** while that context value is set. Delegated operator handlers, fix bundles, the AI assistant's context and data-driven reports all inherit it.
-3. Aggregate queries that read only counts by severity stay unfiltered, so the customer still sees how many Critical and High findings exist.
+2. A SQLAlchemy `do_orm_execute` hook adds `severity NOT IN locked` to **every** ORM query that touches the findings table while that context value is set: whole rows, single columns, counts, subqueries and joins. Delegated operator handlers, fix bundles, the AI assistant's context and data-driven reports all inherit it.
+3. Counts are filtered too. (The first draft let count-only queries through, but a subquery can carry finding text past a "count-only" check, so every query is filtered.) The customer learns how many Critical and High findings exist only from the teaser endpoint below, which reads counts with the guard explicitly lifted.
 4. A dedicated `GET /portal/findings/locked` returns only `{severity: count}` for the locked findings, which feeds the teaser rows.
 5. A direct request for a locked finding (detail, events, remediation, compliance brief, status change) returns **403 "This finding is available on a licensed plan."**
 
