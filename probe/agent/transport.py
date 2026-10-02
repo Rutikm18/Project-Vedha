@@ -223,6 +223,8 @@ class Transport:
         # TLS trust chain: a custom CA bundle (the manager's private PKI) takes
         # precedence over the bool; verify_tls=False disables verification (dev
         # only — the manager cert isn't checked, so only use on trusted links).
+        self._verify_tls: bool = verify_tls
+        self._ca_bundle: str | None = ca_bundle
         verify: bool | str = ca_bundle if ca_bundle else verify_tls
         # mTLS: present a client certificate so the manager can authenticate the
         # probe at the TLS layer (cert+key files, or a single combined PEM).
@@ -1022,8 +1024,30 @@ class Transport:
             if int(websockets.__version__.split(".", 1)[0]) < 14
             else {"additional_headers": self.auth_header}
         )
+        # Build an SSL context using the same CA bundle as httpx/certifi so the
+        # WebSocket handshake trusts the same certs as REST calls. Without this,
+        # websockets creates a bare ssl.SSLContext that skips the system keychain
+        # on macOS, causing CERTIFICATE_VERIFY_FAILED even though the cert is valid.
+        ssl_ctx: "ssl.SSLContext | bool"
+        if self.ws_url.startswith("wss://"):
+            import ssl as _ssl
+            ssl_ctx = _ssl.create_default_context()
+            try:
+                import certifi as _certifi
+                ssl_ctx.load_verify_locations(_certifi.where())
+            except ImportError:
+                pass  # fall back to the default CA store
+            if self._ca_bundle:
+                ssl_ctx.load_verify_locations(self._ca_bundle)
+            if not self._verify_tls:
+                ssl_ctx.check_hostname = False
+                ssl_ctx.verify_mode = _ssl.CERT_NONE
+        else:
+            ssl_ctx = False  # ws:// — no TLS
+
         ws = await websockets.connect(
             self.ws_url,
+            ssl=ssl_ctx,
             open_timeout=15.0,
             close_timeout=5.0,
             ping_interval=30,      # built-in keep-alive
