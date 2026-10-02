@@ -1,6 +1,6 @@
 # Vedha Project Status
 
-As of **2026-10-03** (all unmerged work combined on `integrate/all-to-main`, awaiting your push). This is the single place for what is done, what is open, and what needs the owner.
+As of **2026-10-03**. The integration branch has landed on `main`; the security, notification, API-key and AI-runtime work below is on `claude/adoring-maxwell-uz71b2`, awaiting merge. This is the single place for what is done, what is open, and what needs the owner.
 Claude updates it at the end of every finished piece of work: a change-log row, then the sections above it.
 
 ## At a glance
@@ -9,18 +9,18 @@ Claude updates it at the end of every finished piece of work: a change-log row, 
 
 | Area | State |
 | --- | --- |
-| `origin/main` | `4c78573`. **Everything not yet on it is combined on `integrate/all-to-main`, tested, not yet pushed**: agent install, portal plan locks, report export fix, new logo, Technical Findings report, operator Deep scan, design system doc |
+| `origin/main` | `46623ae`. The integration branch landed: agent install, portal plan locks, report export fix, new logo, Technical Findings report, operator Deep scan, design system doc. **Not yet on it:** the 6 commits on `claude/adoring-maxwell-uz71b2` (see *Done, waiting for merge*) |
 | Production | [app.vedhasec.com](https://app.vedhasec.com) / [api.vedhasec.com](https://api.vedhasec.com) — **stopped for a redeploy on 1 Oct** (owner). Was healthy on 1.0.325 on 30 Sep |
-| Tests | On `integrate/all-to-main` (3 Oct): backend 2,276 passed, 8 skipped · frontend 375 of 377 (the 2 = missing `pdfkit`) · probe 2,512 (no probe change since the agent-install run) · lint 0 errors · one Alembic head (`0054`) |
+| Tests | On `claude/adoring-maxwell-uz71b2` (3 Oct): backend 2,305 passed, 9 skipped · frontend 436 of 436 · probe 2,512 (not re-run, no probe change) · lint 0 errors · one Alembic head (`0055`) |
 | AI providers | Anthropic: no API credit · OpenAI: key rejected on AWS · Gemini: works, but its key was not on the AWS server |
-| Unmerged branches | `integrate/all-to-main` (everything below, ready to publish) · `codex/customer-portal-engagement-parity` (not merged: 52 conflicts, only its remediation workspace is missing, see [the assessment](planning/2026-10-03-branch-merge-assessment.md)) · `probe-standalone` (never merge) |
+| Unmerged branches | `claude/adoring-maxwell-uz71b2` (ready to merge) · `codex/customer-portal-engagement-parity` (not merged: 52 conflicts, only its remediation workspace is missing, see [the assessment](planning/2026-10-03-branch-merge-assessment.md)) · `probe-standalone` (never merge) |
 
 The things that matter most right now:
 
-1. Push `integrate/all-to-main` to `main` and redeploy. It fixes the production report export and brings agent install, plan locks and the new logo.
+1. Merge `claude/adoring-maxwell-uz71b2` into `main`, then redeploy. `main` already has the report-export fix, agent install, plan locks and the new logo; the branch adds the security hardening, working API keys, real notification rules and the live AI chain in Settings.
 2. Finish the production redeploy; attach an Elastic IP so the DNS record (`13.127.147.205`) stays valid across restarts.
 3. Fix the AWS `.env` (Gemini key, OpenAI key, blank `LLM_PROVIDER`), then `make full`. This restores AI Brain and report generation.
-4. Agent install in client environments (P0-3) is done and documented. To go live: publish the integration branch, create the release key, publish a release, and get `vedhasec.com` categorised by web filters (see *Needs you*).
+4. Agent install in client environments (P0-3) is done and documented. To go live: create the release key, publish a release, and get `vedhasec.com` categorised by web filters (see *Needs you*).
 
 ## Done
 
@@ -28,6 +28,9 @@ Merged and pushed to `origin/main`, newest first.
 
 | Shipped | Area | What | Ref |
 | --- | --- | --- | --- |
+| 3 Oct 2026 | Agent | Agent install in client environments (P0-3): the manager serves a signed agent, Fleet → Add agent issues single-use install tokens, access expiry is set from Fleet and enforced, on-prem bundles are encrypted (migrations 0052, 0053) | `46623ae` |
+| 3 Oct 2026 | Portal | Plan locks: per customer, lock finding severities and portal features (POC vs licensed); one server-side guard; teaser rows and lock panels (migration 0054) | `46623ae` |
+| 3 Oct 2026 | Reports / Brand | Report export fixed (the menu was clipped by the page header); Technical Findings report; new logo and favicon; design system doc | `46623ae` |
 | 1 Oct 2026 | Scanner | Operator Scanner gets the single-asset Deep scan card (every TCP port on one IP); never charged to the customer's Deep allowance | `feat/operator-deep-scan` |
 | 1 Oct 2026 | Reports | Complete customer security reporting: canonical report document, scan provenance (ported from the Codex branch, migrations renumbered to 0050 / 0051, no model picker) | `82492a7`, `b6a3b60` |
 | 30 Sep 2026 | UI | Responsive dashboard and canonical reporting | `f70f392` |
@@ -60,41 +63,37 @@ Priority order from the [next-8 workstreams plan](planning/2026-09-29-next-8-wor
 | --- | --- | --- | --- | --- |
 | P0-1 | Security review + software testing | Done | L | Done per owner (1 Oct); P0 hardening bundle `security/p0-fixes` + master test plan on `main`. The hardening items below are still present in the code |
 | P0-2 | Fix the AI integration | Blocked on you | S–M | Code done on `main`; server `.env` + API credit needed (see *Needs you*) |
-| P0-3 | Agent install in client environments | Done | M | Built, tested and documented: the manager serves a signed agent containing only the agent's own code; Fleet → Add agent issues a single-use install token (1 h / 24 h / 7 d); access expiry is set from Fleet and enforced by the manager; on-prem customers get encrypted bundles. Docs: [operator runbook](operations/AGENT_DISTRIBUTION.md), [customer guide](probe/CUSTOMER_AGENT_INSTALL.md), [approach §10–11](planning/2026-10-01-agent-install-approach.md). On `integrate/agent-install-to-main`, awaiting publish |
+| P0-3 | Agent install in client environments | Done | M | Built, tested and documented: the manager serves a signed agent containing only the agent's own code; Fleet → Add agent issues a single-use install token (1 h / 24 h / 7 d); access expiry is set from Fleet and enforced by the manager; on-prem customers get encrypted bundles. Docs: [operator runbook](operations/AGENT_DISTRIBUTION.md), [customer guide](probe/CUSTOMER_AGENT_INSTALL.md), [approach §10–11](planning/2026-10-01-agent-install-approach.md). On `main` (`46623ae`) |
 | P0-3b | Agent install, next phase | Not started | M | Pipeline, needs a Windows runner/VM: Windows download route + PowerShell installer + Fleet OS switch, a real Windows install, licence at enrolment for the sealed agent, Podman/RHEL, an amd64 live test, auto-update, support bundle ([plan](planning/2026-10-02-agent-code-fixes-plan.md)) |
 | P1-1 | Deep scan (all 65,535 ports, one host) in the operator Scanner | Done | S | Card on the operator Scanner; the ≤3-host Deep Port Sweep stays in the catalog (hidden while `SHOW_EXTENDED_USE_CASES = false`) |
 | P1-2 | Mobile-friendly UI + dashboard polish | Done | L | Done per owner (3 Oct); responsive dashboard landed in `f70f392`, layout overlaps fixed on `origin/main` |
 | P2-1 | Website content | Not started | S | Platform choice needed |
 | P2-2 | Platform walkthrough + feature videos | Not started | M | After P1, so recordings show the final UI |
 
-### Done on `integrate/all-to-main`, waiting for push
+### Done, waiting for merge (`claude/adoring-maxwell-uz71b2`)
 
 | Item | Area | Notes |
 | --- | --- | --- |
-| Agent install (P0-3) | Agent | See the roadmap row above and the change log. Migrations `0052`, `0053` |
-| Report export did nothing in production | Reports | The Export menu opened inside a page-header box that hides overflow, so nothing showed. It now opens in a layer above the page, closes on Escape, an outside click or scroll, and fits a phone screen. Reproduced in the production image; checked on desktop and mobile; PDF download verified |
-| Portal plan locks (POC vs licensed) | Portal | Per customer, at any time, on POC or licensed plans, the operator locks finding severities (a new POC starts with Critical + High locked) and features (AI assistant, Reports, Remediation & fix bundles, Compliance briefs). Locked findings never leave the server: one database-level guard filters every customer query. The portal shows them as "N locked findings · Available on a licensed plan"; locked features show a lock panel; written reports are withheld while any severity is locked. Migration **`0054`** (renumbered from `0052` to follow agent install). [Design](superpowers/specs/2026-10-02-portal-plan-locks-design.md) |
-| New logo and favicon | Brand | The new mark replaces the shield in the sidebar and on both login pages; the stacked logo heads the customer portal login. Favicon as SVG (follows light/dark), ICO and Apple touch icon. Brand files in `manager/frontend/public/brand/` |
-| Technical Findings report, boardroom reporting spec, operator Deep scan, design system doc | Reports / Scanner / Design | Merged from their branches and local `main` |
-| Settings page redesign: research and design | Settings | Doc only; build not started. Draws on GitHub, Vercel, Datadog, Stripe, Tenable, Rapid7, Snyk, Salesforce and Checkmarx; gives every field its meaning, default, owner, effect and backend status; found 4 defects in today's page (below). [Design](superpowers/specs/2026-10-03-settings-page-design.md) |
+| Backend hardening | Security | API docs (`/docs`, `/redoc`, `/openapi.json`) are off when `APP_ENV=production`; one limiter (30 per minute per IP) covers every AI-spending route; the API image runs as a non-root user (uid 10001). Checked live: `/docs` is 404 in production mode and the 31st AI call returns 429. **The image build itself was not run (no Docker daemon in the session).** |
+| Script Content-Security-Policy | Security | A fresh nonce per request with `strict-dynamic` and no `unsafe-inline`; the root layout stamps its inline theme script. Checked in Chromium on a production build: no violations on the login, portal and operator pages, forms still work, injected inline script and event handlers are blocked. |
+| Legacy OTP login removed | Security | The old email-code endpoints and stores minted tokens nothing accepts, returned the code in the response when no mail key was set, and fell back to a default secret. Gone, together with the JWT secret the compose files passed to the frontend container for it. The CLI now signs in with email and password and swaps that session for a 30-day revocable token (`api:read`, `api:write`; it cannot mint tokens); `vedha logout` revokes it. Checked live end to end. |
+| API keys fixed | Settings | Creating a key from Settings **never worked**: the proxy called a backend path that does not exist, double-encoded the body, and the page sent scopes the backend rejects. Fixed, with a read-only / read and write / probe picker (default read-only), a 7 / 30 / 90 / 365-day expiry (default 90), and Revoked / Expired / No expiry / Unused markers. (Settings defect D2.) |
+| Operator console gate | Portal | A customer account typing its login on the operator sign-in now gets a clear message and a link to the portal sign-in, no session is left behind, and refresh never turns a customer token into an operator session. Checked live and in the browser. |
+| Notification rules | Settings | Rules were never stored and nothing sent those alerts (only the test button queued a message). Now stored per organisation (migration **`0055`**), editable in Settings (“saved” only after the server confirms), and real for four events: Critical and High findings opened by a scan, report approved, new probe enrolled. Checked live: a queued event went through the outbox worker to a Slack-style webhook, and a broken email channel did not block it. (Settings defect D1.) |
+| AI runtime shows the live chain | Settings | Replaces the four static provider cards with the real fallback chain: order, tier, state (ready / cooling / blocked), spend against the cap and what to fix. Shared with AI Brain. Customers do not see spend or server setting names. (Settings defect D3.) |
+| Browser checks done | UI | AI Brain chain panel, sidebar logo, the Plan panel's Portal access section, and the customer portal under locks (locked findings appear only as “2 locked findings · Available on a licensed plan”, no locked title leaks, the Reports lock panel shows). |
 
 ### Other open items
 
 | Item | Area | Status | Why it is open · next step |
 | --- | --- | --- | --- |
-| Settings: Notifications "Save" stores nothing | Settings | Not started | It waits 600 ms and says "saved", but the rules reset on reload. Persist them or remove the button (defect D1 in the settings design) |
-| Settings: API keys always read + write, never expire | Settings | Not started | The model has scopes and an expiry, but the UI ignores both (defect D2) |
-| Settings: AI Runtime shows the old provider cards | Settings | Not started | Replace with live fallback-chain status (defect D3) |
-| Plan-lock known gaps (your choice) | Portal | Deferred | Raw scan evidence is not locked, so service banners could hint at a locked finding. Posture and analytics scores use only the findings the customer can see |
-| Plan locks and sidebar logo not checked in a browser | Portal / UI | Not started | Covered by tests and the server is the gate; the Plan panel's *Portal access* section, the portal lock panels and the sidebar logo need a signed-in visual check after deploy |
+| Plan-lock known gaps (your choice) | Portal | Deferred | Raw scan evidence is not locked, so service banners could hint at a locked finding. Posture and analytics scores use only the findings the customer can see. Seen in the browser on 3 Oct: with 2 Critical and 1 High locked, the dashboard says “No critical or high findings open”, the Findings tiles show 0 Critical and 0 High and say “Counts cover every open finding in scope”, while the list below shows “2 locked findings”. Consider wording that counts locked findings |
+| Settings redesign, remaining steps | Settings | Not started | D1–D3 are built. Still to do, in the order of the [design doc §7](superpowers/specs/2026-10-03-settings-page-design.md): split Your account from Organisation, authentication policy (defect D4: Access & Security is a status board with nothing to change), scanning defaults and blackouts, new-customer defaults, database-backed server settings |
+| Notification events not connected yet | Notifications | Not started | SLA at risk, finding status changed and detection coverage gap have no producer, so Settings marks them “Not connected yet”. The cadence labels (Digest, Near-real-time, At threshold) are descriptions only: every connected event is sent as it happens. Rules are per organisation; the per-user override in the design is not built |
+| Non-root backend image not built or run | Security | Not started | No Docker daemon in the session. After the redeploy confirm the `api` and `migrate` containers start and `docker compose exec api id` shows uid 10001. If the agent-release folder is unreadable inside the container, run `chmod -R a+rX manager/agent-releases` |
+| Content-Security-Policy over HTTPS in production | Security | Not started | Checked on a local production build over HTTP. After the deploy open the login page and one operator page with the browser console open and confirm there are no CSP errors |
+| Unused packages `resend` and `tweetnacl` | Frontend | Not started | Nothing imports them: `resend` was only used by the removed OTP route, and `tweetnacl` has no importer. Run `npm uninstall resend tweetnacl` in `manager/frontend`; left alone because regenerating the lockfile on another machine rewrote unrelated lines |
 | Port the Codex branch's remediation workspace | Remediation | Not started | The report document and scan provenance were ported on 1 Oct. Still missing: `app/ai/remediation_workspace.py`, its context service and `RemediationWorkspaceDialog.tsx`. |
-| Backend container runs as root | Security | Not started | No `USER` in `manager/backend/Dockerfile`. Add a non-root user. |
-| `/docs`, `/redoc`, `/openapi.json` public in production | Security | Not started | Always enabled in `manager/backend/app/main.py`. Disable when `APP_ENV=production`. |
-| No `script-src` Content-Security-Policy | Security | Not started | No CSP header found in frontend or deploy config. |
-| AI routes have no rate limit | Security | Not started | `/ai/*` can be called without limit, which spends API credit. Reuse the login rate limiter. |
-| Legacy OTP auth still in `manager/frontend/lib/auth-store.ts` | Security | Not started | In-memory OTP store left over from old auth. Confirm unused, then remove. |
-| Operator console has no role gate *(from notes)* | Portal | Not started | A portal customer can reach the operator login and gets a confusing refusal. |
-| AI Brain chain panel not checked in a browser | AI / UI | Not started | Type check and lint pass; visual check still to do. |
 | Frontend packages `pdfkit` and `@playwright/test` missing from the installed `node_modules` | Frontend | Blocked on you | Declared by the 30 Sep / 1 Oct reporting and responsive commits but not installed: `tests/report-export*.test.ts` fail and `tsc` reports 3 errors until `npm install` runs in `manager/frontend`. |
 | Batch lane for reports (about 50% cheaper) | AI | Deferred | Makes report generation an hours-long async job — a product decision. |
 | Node CLI calls Anthropic directly | AI | Deferred | `manager/frontend/cli` bypasses the manager's gateway and fallback. Operator-local, not on the customer data path. |
@@ -115,9 +114,11 @@ These need your accounts, your server or your decision.
 - [ ] Add Anthropic API credit at console.anthropic.com so Claude answers first (Claude Pro/Max subscriptions do not include API access)
 - [ ] Run `npm install` in `manager/frontend` (adds `pdfkit` and `@playwright/test`, which the reporting work needs). Other sessions share that `node_modules`, so I left it to you
 - [ ] Optional: add a free `GROQ_API_KEY` as a second free fallback, and set `AI_DAILY_CAP_USD` (e.g. `anthropic=20,openai=10`)
+- [ ] After the redeploy, set up Email and Slack under Settings (the new notification rules only reach channels that are set up), then press the integration's test button. `AUTH_SECRET` is no longer read by the frontend; it can be removed from the AWS `.env` (harmless if left)
+- [ ] Command-line users: `vedha login` now asks for email and password instead of emailing a code, and stores a 30-day token that `vedha logout` revokes
 - [ ] **Today:** submit `vedhasec.com` for web-filter categorisation (Palo Alto, Zscaler, Fortinet, Cisco Talos, Broadcom, Check Point). Domains under about 32 days old are commonly blocked as "newly registered", which would stop customer agents reaching the manager
-- [ ] Land everything on `main`. Claude can't publish (safety hook), so run `git push origin integrate/all-to-main:main`. It is a fast-forward of `origin/main` `4c78573`. Then, in the primary checkout, commit or set aside its uncommitted changes and pull. Local `main` is a strict subset of the integration branch
-- [ ] After deploying, the migrations run `0052` and `0053` (agent install) and `0054` (plan locks). Existing customers keep full access until you lock something
+- [ ] Merge `claude/adoring-maxwell-uz71b2` into `main` (6 commits, a fast-forward of `origin/main` `46623ae`): open a pull request, or run `git push origin claude/adoring-maxwell-uz71b2:main`. Then redeploy. In your primary checkout, commit or set aside uncommitted changes and pull
+- [ ] After deploying, the migrations run `0052` and `0053` (agent install), `0054` (plan locks) and `0055` (notification rules). Existing customers keep full access until you lock something, and every organisation starts with the default notification rules
 - [ ] Clean up the plan-locks / export test leftovers: containers `vedha-export-before`, `vedha-export-after`, `vedha-export-ui-before`, `vedha-export-ui-after`, `vedha-locks-pg`; images `vedha-frontend:exporttest`, `:exportfix`, `:menufix`; and, once pushed, the merged branches and worktrees listed in the change log row for 2026-10-03 (merge all)
 - [ ] On your build machine, run `make agent-keygen`. Keep `~/.vedha/agent-release-key.pem` off the server and back it up offline. Put the printed `AGENT_RELEASE_PUBLIC_KEY=…` in the AWS `.env`
 - [ ] Once the merge is deployed (it runs migration 0052): `make agent-release`, then `make agent-publish TO=ubuntu@<server>:/opt/Project-Vedha/manager/agent-releases`. Fleet → Add agent then shows the release ([runbook](operations/AGENT_DISTRIBUTION.md))
@@ -132,6 +133,12 @@ One row per finished piece of work, newest first.
 
 | Date | Change | Ref |
 | --- | --- | --- |
+| 2026-10-03 | Settings defects D1–D3 closed. **Notifications:** rules are stored per organisation (migration 0055) and honoured by a new dispatcher; real producers for Critical/High findings opened by a scan, report approved and new probe enrolled; unconnected events are labelled in Settings. Verified on Postgres 16: migration up/down/up, API round trip, the detection hook's query, and delivery through the outbox worker to a webhook (a failing email channel did not block Slack). **API keys:** creation had never worked (wrong backend path, double-encoded body, invalid scopes); fixed, with scope presets, expiry and Revoked / Expired / No expiry / Unused markers. **AI runtime:** live fallback chain instead of four static cards. Checked in Chromium against the real API. Unit tests found a logging bug in the new code (structlog reserves `event`) before it shipped | `6ff5847`, `6da6ef6` |
+| 2026-10-03 | Operator console gate: a portal customer typing their account on the operator sign-in gets a clear message and a link, no session is left behind, and refresh cannot upgrade a customer token. Checked live (customer → 403 and no cookies; admin unaffected; portal gate unchanged) and in the browser | `960d4ad` |
+| 2026-10-03 | Legacy OTP login removed (endpoints, stores, default signing secret, and the JWT secret the compose files gave the frontend). CLI sign-in is now email and password, exchanged for a 30-day revocable token. Verified live: wrong password, rate limit, token works, token cannot mint tokens, logout revokes it (401 afterwards) | `1b2bb21` |
+| 2026-10-03 | Script Content-Security-Policy: nonce and `strict-dynamic`, no `unsafe-inline`. Checked in Chromium on a production build: no violations on five pages, forms hydrate, injected inline script and event handlers blocked | `53b1bc8` |
+| 2026-10-03 | Backend hardening: API docs off in production, one 30-per-minute limiter on every AI-spending route, non-root API image. Verified live (production-mode `/docs` is 404; the 31st call is 429 with Retry-After). Image build not run (no Docker daemon) | `a094646` |
+| 2026-10-03 | Browser checks: AI Brain chain panel, sidebar logo, Plan panel's Portal access, and the customer portal under locks all render and behave as designed. Environment for the checks: local Postgres 16 and Redis, the real API and a production-style frontend, Chromium via Playwright. Noted the 0-count wording gap in the plan-lock row above | — |
 | 2026-10-03 | Merged all unmerged work onto `integrate/all-to-main` (from `integrate/agent-install-to-main` + `feat/portal-plan-locks` + local `main`'s design-system doc). Conflicts: `VERSION` (kept the highest), `docs/STATUS.md` (combined by hand), and migration id `0052`, which both branches used: plan locks renumbered to `0054`, one Alembic head. Not merged: the Codex branch (see the assessment) and `probe-standalone` (never). Branches now fully contained and safe to delete after the push: `feat/portal-plan-locks`, `fix/report-export`, `feat/operator-deep-scan`, `docs/status-refresh`, `integrate/agent-install-to-main`, `feat/agent-install`, `docs/agent-install-approach`, `feat/technical-finding-report`, `feat/reporting-boardroom-redesign` | `integrate/all-to-main` |
 | 2026-10-03 | New logo and favicon: shared `VedhaMark` / `VedhaLogoStacked` components, favicon SVG + ICO + Apple icon, brand files in `public/brand/`; both login pages checked in the browser | `1ab403d` |
 | 2026-10-03 | Settings page research and design doc (no code): a new structure, each field's meaning, default, owner and effect, and 4 defects found in today's page | `docs/superpowers/specs/2026-10-03-settings-page-design.md` |
