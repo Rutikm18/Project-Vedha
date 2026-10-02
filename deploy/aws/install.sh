@@ -485,8 +485,10 @@ $UI_HOST {
     encode gzip
     reverse_proxy frontend:3000 {
         header_up X-Real-IP {remote_host}
-        health_path /
-        health_interval 30s
+        # No active health check: the Next.js app redirects GET / (307 -> /login),
+        # which Caddy would read as unhealthy and 503 the only upstream with
+        # "no upstreams available". Passive health (dial failure) is enough for a
+        # single upstream. The API block below keeps its check (/health returns 200).
     }
     # Security headers
     header {
