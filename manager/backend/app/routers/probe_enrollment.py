@@ -23,6 +23,7 @@ from app.auth.rbac import require_role
 from app.config import get_settings
 from app.dependencies import AuthUser, DB, RedisConn
 from app.models.agent import Agent, AgentStatus
+from app.agent_access import EXPIRED_MESSAGE, is_expired
 from app.models.audit_log import AuditLog
 from app.models.engagement import Engagement
 from app.models.probe_enrollment import AgentCredential, ProbeEnrollmentRequest, ProbeEnrollmentToken
@@ -60,6 +61,11 @@ def _derive_refresh_secret(request_id: uuid.UUID, device_secret: str) -> str:
 
 # ── Pre-authorized, Site-bound enrollment tokens ────────────────────────────
 ENROLL_TOKEN_PREFIX = "vet_"
+
+# Engagement install-command lifetimes offered in Fleet: 1 h, 24 h, 7 days.
+ENGAGEMENT_TOKEN_TTL_MINUTES = 24 * 60
+INSTALL_TOKEN_LIFETIMES = (60, 24 * 60, 7 * 24 * 60)
+MAX_LIVE_ENGAGEMENT_TOKENS = 5
 
 
 def generate_enroll_token() -> tuple[str, str, str]:
@@ -141,15 +147,20 @@ class EnrollTokenCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     site_id: uuid.UUID | None = None
     engagement_id: uuid.UUID | None = None
-    expires_in_minutes: int = Field(default=60, ge=5, le=1440)
+    expires_in_minutes: int = Field(default=ENGAGEMENT_TOKEN_TTL_MINUTES, ge=5, le=10080)
     max_uses: int = Field(default=1, ge=1, le=1000)
 
     @model_validator(mode="after")
     def exactly_one_target(self):
         if (self.site_id is None) == (self.engagement_id is None):
             raise ValueError("provide exactly one of site_id or engagement_id")
-        if self.engagement_id is not None and self.max_uses != 1:
-            raise ValueError("an engagement token installs exactly one agent (max_uses must be 1)")
+        if self.engagement_id is not None:
+            if self.max_uses != 1:
+                raise ValueError("an engagement token installs exactly one agent (max_uses must be 1)")
+            if self.expires_in_minutes not in INSTALL_TOKEN_LIFETIMES:
+                raise ValueError(f"expires_in_minutes must be one of {sorted(INSTALL_TOKEN_LIFETIMES)}")
+        elif self.expires_in_minutes > 1440:
+            raise ValueError("a Site token may live at most 1440 minutes (24 h)")
         return self
 
 
@@ -327,8 +338,8 @@ async def _provision_agent_for_site(
 # the agent that enrols with it gets a Site built from that engagement's scope
 # and is assigned to the engagement. Same outcome as approving a device code in
 # the portal, minus the code — so both paths share these helpers.
-MAX_LIVE_ENGAGEMENT_TOKENS = 5
-ENGAGEMENT_TOKEN_TTL_MINUTES = 24 * 60
+# (MAX_LIVE_ENGAGEMENT_TOKENS, ENGAGEMENT_TOKEN_TTL_MINUTES and
+# INSTALL_TOKEN_LIFETIMES are defined near the top, before EnrollTokenCreate.)
 
 
 def engagement_site(engagement: Engagement, tenant_id: uuid.UUID, request_row: ProbeEnrollmentRequest) -> ProbeSite:
@@ -925,6 +936,10 @@ async def refresh_device_token(body: TokenRefresh, request: Request, db: DB, red
     agent = (await db.execute(select(Agent).where(Agent.id == body.agent_id))).scalar_one_or_none()
     if agent is None or agent.lifecycle_status != "active" or agent.credential_generation != body.generation:
         raise HTTPException(401, "Device is disabled, revoked, or on a newer credential generation")
+    # Access expiry (set in Fleet): refuse to mint a fresh access token past it, so
+    # an expired agent cannot keep working even though its refresh secret is valid.
+    if is_expired(agent.access_expires_at, now):
+        raise HTTPException(403, EXPIRED_MESSAGE)
     # A single last_nonce column only prevents immediate replay (A,A), not
     # non-consecutive replay (A,B,A). Redis tracks every accepted nonce for the
     # access/refresh window and fails closed if replay protection is unavailable.

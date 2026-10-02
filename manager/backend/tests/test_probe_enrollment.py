@@ -114,10 +114,10 @@ def test_enroll_token_create_defaults_and_bounds() -> None:
     import uuid
 
     body = EnrollTokenCreate(name="dmz-probe", site_id=uuid.uuid4())
-    assert body.max_uses == 1 and body.expires_in_minutes == 60  # single-use, short TTL
+    assert body.max_uses == 1 and body.expires_in_minutes == 24 * 60  # single-use, 24 h default
 
     with pytest.raises(ValueError):
-        EnrollTokenCreate(name="x", site_id=uuid.uuid4(), expires_in_minutes=5000)  # > 24h
+        EnrollTokenCreate(name="x", site_id=uuid.uuid4(), expires_in_minutes=5000)  # Site token > 24h
     with pytest.raises(ValueError):
         EnrollTokenCreate(name="x", site_id=uuid.uuid4(), max_uses=0)
 

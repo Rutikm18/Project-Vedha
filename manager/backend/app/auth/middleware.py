@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import json
 import re
 import uuid
 
@@ -7,6 +8,7 @@ from fastapi import Request, Response
 from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.agent_access import EXPIRED_MESSAGE, is_expired, path_allows_after_expiry
 from app.auth.jwt import PORTAL_AUDIENCE, decode_token
 from app.auth.pat import TOKEN_PREFIX, hash_pat_token, pat_scope_allows
 from app.database import AsyncSessionLocal
@@ -217,6 +219,15 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
                 return Response(
                     content='{"detail":"Device credential revoked, disabled, or stale"}',
                     status_code=401,
+                    media_type="application/json",
+                )
+            # Access expiry set from Fleet. An in-flight scan may still upload its
+            # finished hosts (result/chunk routes); every other device route is
+            # refused so no new work starts.
+            if is_expired(agent.access_expires_at) and not path_allows_after_expiry(path):
+                return Response(
+                    content=f'{{"detail":{json.dumps(EXPIRED_MESSAGE)}}}',
+                    status_code=403,
                     media_type="application/json",
                 )
 

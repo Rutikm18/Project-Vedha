@@ -56,3 +56,10 @@ class Agent(Base, TimestampMixin):
     agent_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     installer_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     build_digest: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Access expiry set from Fleet (migration 0053). NULL = no expiry. Enforced by
+    # the manager: past this instant the agent is refused heartbeats, job polls and
+    # token refreshes (in-flight result/chunk uploads are still accepted so a scan
+    # running at expiry isn't lost). Extending the date restores access with no
+    # reinstall — nothing on the agent host enforces it, so a changed clock or a
+    # patched binary can't get around it.
+    access_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

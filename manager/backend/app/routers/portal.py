@@ -19,7 +19,9 @@ from datetime import datetime, timezone
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, UploadFile, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.routers.probe_enrollment import ENGAGEMENT_TOKEN_TTL_MINUTES, INSTALL_TOKEN_LIFETIMES
 from sqlalchemy import func, select
 
 from app.auth.portal_scope import ClientUser, assert_client, client_scoped
@@ -1311,10 +1313,19 @@ async def portal_workspace_fleet_approve(
 
 
 class PortalInstallTokenCreate(BaseModel):
-    """Fleet → Add agent. The browser picks only a label; the engagement, scope,
-    lifetime (24 h) and single use are fixed server-side."""
+    """Fleet → Add agent. The browser picks a label and how long the command
+    stays valid (1 h / 24 h / 7 days); the engagement, scope and single use are
+    fixed server-side."""
 
     name: str | None = Field(default=None, max_length=120)
+    lifetime_minutes: int = Field(default=ENGAGEMENT_TOKEN_TTL_MINUTES)
+
+    @field_validator("lifetime_minutes")
+    @classmethod
+    def _allowed_lifetime(cls, value: int) -> int:
+        if value not in INSTALL_TOKEN_LIFETIMES:
+            raise ValueError(f"lifetime_minutes must be one of {sorted(INSTALL_TOKEN_LIFETIMES)}")
+        return value
 
 
 @router.get("/workspace/fleet/install",
@@ -1363,6 +1374,7 @@ async def portal_workspace_fleet_create_token(
         name=(body.name or "").strip() or "vedha-agent",
         created_by=str(user.user_id),
         now=now,
+        expires_in_minutes=body.lifetime_minutes,
     )
     manager_url, _ = manager_url_for(request)
     out = {**token_out(token, now), "token": raw, "commands": install_commands(manager_url, raw)}
