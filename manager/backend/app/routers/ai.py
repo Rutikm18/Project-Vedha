@@ -20,14 +20,20 @@ from app.utils.db import get_or_404
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
+# Operator roles only. Customers (role "client") have their own grounded assistant
+# in the portal; letting them reach the generic model would bypass that grounding.
+# The auth middleware's path allowlist already keeps them out; this is the second lock.
+_OPERATOR = require_role(["admin", "manager", "tester", "analyst", "auditor"])
+
+
 @router.get("/status", response_model=AiStatusResponse, summary="Manager AI providers and selectable models")
-async def ai_status(current_user: AuthUser):
+async def ai_status(current_user: Annotated[AuthUser, _OPERATOR]):
     del current_user
     return await ManagerLlmService().status()
 
 
 @router.post("/generate", dependencies=[Depends(ai_rate_limit)], response_model=AiGenerateResponse, summary="Generate grounded defensive guidance")
-async def ai_generate(request: AiGenerateRequest, current_user: AuthUser, db: DB):
+async def ai_generate(request: AiGenerateRequest, current_user: Annotated[AuthUser, _OPERATOR], db: DB):
     brief = None
     if request.engagement_id is not None:
         # Tenant-scoped: another tenant's engagement id is a 404, never a brief.
