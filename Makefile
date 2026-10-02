@@ -31,7 +31,7 @@ endif
 # it into the backend image via the VEDHA_VERSION build arg.
 export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
 
-.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed admin-show admin-reset shell venv test probe-build probe-run probe-pat seal seal-parity agent-keygen agent-release agent-publish agent-verify onprem-bundle clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback
+.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed admin-show admin-reset shell venv test probe-build probe-run probe-pat seal seal-parity agent-keygen agent-release agent-publish agent-verify onprem-bundle clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback prod-diagnose
 
 version: ## Print the current deployed version
 	@echo $(VEDHA_VERSION)
@@ -247,6 +247,9 @@ aws-ps: ## Show AWS stack container status
 
 aws-down: ## Stop the AWS stack incl. edge + any stray probe (keeps volumes / data)
 	$(DEPLOY_COMPOSE) --profile edge --profile ui down --remove-orphans
+
+prod-diagnose: ## Diagnose + auto-heal common prod issues (missing Caddy, stale health check, port 443)
+	@chmod +x scripts/prod-diagnose.sh && bash scripts/prod-diagnose.sh
 
 # ── HTTPS (Let's Encrypt via Caddy) ───────────────────────────────────────────
 # One command on the server:  make tls DOMAIN=vedha.example.com EMAIL=you@example.com
