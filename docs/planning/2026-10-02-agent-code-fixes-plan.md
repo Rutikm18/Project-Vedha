@@ -2,6 +2,18 @@
 
 Date: 2026-10-02 · Branch: `feat/agent-install` · Approach: [windows-agent-quick-wins](2026-10-02-windows-agent-quick-wins.md)
 
+## Status (2 Oct 2026)
+
+**Quick wins done** (committed on `feat/agent-install`): T1, T2, T3, T4 (agent ships only its closure,
+`runtime-check`), T9 (Windows instance lock), T10 (Windows MAC lookup), T16 (install-command lifetime
+1 h / 24 h / 7 d), T17 (manager-enforced access expiry, migration 0053), T18 (Fleet expiry controls,
+portal read-only), T20 (retire risky Windows defaults), T21 (this doc, STATUS, memory).
+
+**In the pipeline, not started** (owner decision: quick wins only): T5, T6, T7, T8 (compiled Nuitka build,
+build checks, Windows build script, Windows CI job), T12, T13, T14, T15 (Windows release artifact,
+download route, PowerShell installer, Fleet OS switch), T19 (real install on a Windows VM).
+They need a Windows build runner and a Windows VM to prove, and the owner's answers on the CI runner and VM.
+
 Rules for every task:
 
 - One small change, with a test that would fail without it, committed on its own.
