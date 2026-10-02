@@ -89,3 +89,29 @@ def test_cli_check_exit_codes(tmp_path, capsys):
     root = _fake_repo(tmp_path, "import scanner.findings\n")
     assert closure_tool.main(["--check", "--root", str(root)]) == 1
     assert "scanner.findings" in capsys.readouterr().err
+
+
+def test_generated_module_list_matches_the_closure():
+    """agent/_closure.py drives `runtime-check`; regenerate it with
+    `python tools/agent_closure.py --write-module` when imports change."""
+    from agent._closure import MODULES
+    assert list(MODULES) == closure_tool.compute().modules
+
+
+def test_verified_names_pragma_allows_only_the_marked_line(tmp_path):
+    root = _fake_repo(tmp_path, (
+        "import importlib\n"
+        "importlib.import_module('agent.util')  # agent-closure: verified-names\n"
+        "importlib.import_module('agent.' + 'x')\n"
+    ))
+    problems = closure_tool.check(closure_tool.compute(root))
+    assert len(problems) == 1 and "agent.agent:3" in problems[0]
+
+
+def test_runtime_check_imports_every_agent_module():
+    import subprocess
+    import sys as _sys
+    result = subprocess.run([_sys.executable, "-m", "agent.agent", "runtime-check"],
+                            cwd=PROBE, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "runtime-check OK" in result.stdout

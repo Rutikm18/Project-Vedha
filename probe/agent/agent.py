@@ -2100,6 +2100,29 @@ if __name__ == "__main__":
                 say("  Self-test FAILED — see above for details.")
                 sys.exit(1)
             say("Self-test passed.")
+        elif arg == "runtime-check":
+            # Build gate for the compiled / closure-only agent: import every
+            # module of ours it may load (lazily, mid-scan) plus its third-party
+            # libraries. A module the compiler or the image dropped fails HERE,
+            # at build time, instead of as ModuleNotFoundError in a customer scan.
+            # No network, no licence, no host state.
+            import importlib
+            from agent._closure import MODULES
+            failed = []
+            for name in MODULES:
+                try:
+                    importlib.import_module(name)  # agent-closure: verified-names
+                except Exception as exc:  # noqa: BLE001 — report every broken module
+                    failed.append(f"{name}: {type(exc).__name__}: {exc}")
+            for lib in ("httpx", "websockets", "cryptography", "impacket", "ldap3", "dns.resolver"):
+                try:
+                    importlib.import_module(lib)  # agent-closure: verified-names
+                except Exception as exc:  # noqa: BLE001
+                    failed.append(f"{lib}: {type(exc).__name__}: {exc}")
+            if failed:
+                print("runtime-check FAILED:\n  " + "\n  ".join(failed))
+                sys.exit(1)
+            print(f"runtime-check OK: {len(MODULES)} agent modules and 6 libraries load")
         elif arg == "manifest":
             # Deterministic capability surface — printed as raw JSON (no logging
             # prefix) so CI can diff the SEALED binary against the plaintext build.
