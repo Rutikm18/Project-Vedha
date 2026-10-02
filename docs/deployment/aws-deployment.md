@@ -271,20 +271,69 @@ Use OpenAI / Anthropic / OpenRouter instead.
 
 ---
 
-## 3. Store secrets in SSM (do this first)
+## 3. Secrets: `.env` or SSM (SSM is optional)
+
+`install.sh` resolves every secret in this order — **the first value found wins:**
+
+> **exported env var → SSM `$SSM_PREFIX/<NAME>` (default `/vedha`) → existing `.env` → auto-generated**
+
+So the infra secrets are **optional** — if you don't supply them the installer
+generates strong values and preserves them across re-runs:
+
+| Secret | If you don't set it |
+|--------|---------------------|
+| `JWT_SECRET` | auto-generated, then preserved forever |
+| `POSTGRES_PASSWORD` | auto-generated (never rotated once the data volume exists) |
+| `SEED_ADMIN_PASSWORD` | auto-generated (printed at the end of the install) |
+| `PROBE_POLICY_SIGNING_KEY` | auto-generated |
+
+The **only value you must supply for AI features** is at least one cloud LLM key:
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`, or
+`OPENROUTER_API_KEY`. Any keys present join the automatic premium-first fallback
+chain (`anthropic → openai → gemini → groq → openrouter`); with no key the stack
+still runs, AI features just stay inert.
+
+### Option A — `.env` file (simplest; no AWS IAM needed)
+
+After the clone (§4 step 2), create `/opt/vedha/.env` with just your key(s) plus any
+overrides — the installer fills in the rest and keeps your values on re-run:
 
 ```bash
-gen() { openssl rand -base64 48 | tr -d '\n'; }
+sudo tee /opt/vedha/.env >/dev/null <<'EOF'
+# at least one AI key (set as many as you like — they form the fallback chain)
+ANTHROPIC_API_KEY=sk-ant-...
+# OPENAI_API_KEY=sk-...
+# OPENROUTER_API_KEY=sk-or-...
 
+# optional
+DOMAIN=vedha.example.com
+ADMIN_EMAIL=admin@example.com
+# ENABLE_GRAPH=1            # also start the Neo4j attack-path graph
+# SEED_ADMIN_PASSWORD=...   # else auto-generated and printed at the end
+EOF
+sudo chmod 600 /opt/vedha/.env
+```
+
+Or skip the file and just `export` the key for one run (see §4 step 3).
+
+### Option B — AWS SSM Parameter Store (optional; best for fleets / no secrets on disk)
+
+If the instance has an IAM role, `install.sh` auto-pulls `$SSM_PREFIX/<NAME>`
+(default prefix `/vedha`). Add `SSM_REQUIRED=1` to fail the install if core secrets
+are missing.
+
+```bash
+# only the AI key is needed; the rest are optional (else auto-generated)
+aws ssm put-parameter --name /vedha/ANTHROPIC_API_KEY   --type SecureString --value "sk-ant-..."
+aws ssm put-parameter --name /vedha/DOMAIN              --type String       --value "vedha.example.com"
+# optional explicit overrides:
+gen() { openssl rand -base64 48 | tr -d '\n'; }
 aws ssm put-parameter --name /vedha/JWT_SECRET          --type SecureString --value "$(gen)"
 aws ssm put-parameter --name /vedha/POSTGRES_PASSWORD   --type SecureString --value "$(gen)"
 aws ssm put-parameter --name /vedha/SEED_ADMIN_PASSWORD --type SecureString --value "$(gen)Aa1!"
-aws ssm put-parameter --name /vedha/OPENAI_API_KEY      --type SecureString --value "sk-..."
-aws ssm put-parameter --name /vedha/DOMAIN              --type String       --value "vedha.example.com"
-aws ssm put-parameter --name /vedha/ADMIN_EMAIL         --type String       --value "admin@example.com"
 ```
 
-Give the EC2 instance an IAM role with:
+Give the EC2 instance an IAM role with `ssm:GetParameter*` + `kms:Decrypt` on `/vedha/*`:
 ```json
 {
   "Version": "2012-10-17",
@@ -302,45 +351,126 @@ Give the EC2 instance an IAM role with:
 
 ---
 
-## 4. Deploy (EC2 user-data — fully unattended)
+## 4. Install — step by step
+
+> **Repo:** `https://github.com/Rutikm18/Project-Vedha.git`
+> `install.sh` deploys an **immutable, pinned release by default** — pass
+> `RELEASE_REF=<tag-or-commit>` for production, or `ALLOW_UNPINNED_RELEASE=1` to
+> deploy the current branch tip (lab/quick). It refuses to run if the checkout has
+> local tracked changes.
+
+**1 — Launch & open ports.** Start the instance (§2), set the security-group
+inbound rules for your TLS mode (§5), then SSH in.
+
+**2 — Sparse-clone only `manager/` + `deploy/`** (the probe source never lands here):
 
 ```bash
-#!/usr/bin/env bash
-export REPO_URL=https://github.com/<org>/vedha.git
-export DOMAIN=vedha.example.com
-# SSM secrets pulled automatically by install.sh when IAM role is attached
-bash <(curl -fsSL "https://raw.githubusercontent.com/<org>/vedha/main/deploy/aws/install.sh")
-```
-
-**Or manually (SSH in):**
-
-```bash
-# Sparse clone — probe source never touches this host
+sudo mkdir -p /opt/vedha && sudo chown "$USER" /opt/vedha
 git clone --filter=blob:none --no-checkout --depth 1 \
-  https://github.com/<org>/vedha.git /opt/vedha
+  https://github.com/Rutikm18/Project-Vedha.git /opt/vedha
 cd /opt/vedha
 git sparse-checkout init --cone
 git sparse-checkout set manager deploy
 git checkout
+```
 
-sudo DOMAIN=vedha.example.com bash deploy/aws/install.sh
+**3 — Provide your AI key** (§3) — a `.env` file, SSM, or just export it for this run:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...        # or OPENAI_API_KEY=sk-...
+```
+
+**4 — Run the installer** (`-E` keeps your exported vars under `sudo`):
+
+*Mode A — domain + Let's Encrypt (HTTPS, recommended):*
+```bash
+sudo -E DOMAIN=vedha.example.com ALLOW_UNPINNED_RELEASE=1 bash deploy/aws/install.sh
+# production: swap ALLOW_UNPINNED_RELEASE=1 for RELEASE_REF=<tag-or-commit>
+```
+
+*Mode B — bare IP + self-signed (quick, no domain):*
+```bash
+sudo -E ALLOW_UNPINNED_RELEASE=1 bash deploy/aws/install.sh
+#  UI  → https://<public-ip>         (open 443)
+#  API → https://<public-ip>:8443    (open 8443)   ← see §5
+```
+
+**5 — Verify** and grab the admin password printed at the end of the run:
+```bash
+bash /opt/vedha/deploy/aws/verify.sh --mode full
+```
+
+### Fully unattended (EC2 user-data)
+
+The installer does its own sparse clone when `REPO_URL` is set:
+
+```bash
+#!/usr/bin/env bash
+export REPO_URL=https://github.com/Rutikm18/Project-Vedha.git
+export DOMAIN=vedha.example.com
+export ALLOW_UNPINNED_RELEASE=1          # or RELEASE_REF=<tag-or-commit> for prod
+# AI key: put it in SSM (/vedha/ANTHROPIC_API_KEY, auto-pulled via IAM role) or export here
+curl -fsSL "https://raw.githubusercontent.com/Rutikm18/Project-Vedha/main/deploy/aws/install.sh" | sudo -E bash
 ```
 
 ---
 
-## 5. Networking
+## 5. Networking — ports to open
 
-**Security group — open only:**
+The host exposes **only Caddy**. Every backend service (FastAPI, Next.js,
+PostgreSQL, Redis, Neo4j, Ollama) stays on the internal Docker network or is bound
+to `127.0.0.1` — none of them are reachable from the internet directly. **Which
+public ports you open depends on how TLS is terminated**, and there are two modes.
 
-| Port | Source | Why |
-|------|--------|-----|
-| 22 (SSH) | your admin IP `/32` | maintenance only |
-| 80 (HTTP) | `0.0.0.0/0` | ACME challenge + HTTPS redirect |
-| 443 (HTTPS) | `0.0.0.0/0` (or operator IPs) | UI + API |
+### Mode A — domain + Let's Encrypt (`make tls` / `./setup-https.sh`) — recommended
 
-**Never open:** 5432, 6379, 3000, 8000, 18080, 7474, 7687
+Caddy serves the UI (`app.<domain>`) and the API (`api.<domain>`) **both on 443**,
+routed by hostname, and uses **port 80** for the ACME certificate challenge.
 
-**Elastic IP + DNS:**
+| Port | Proto | Source | Why |
+|------|-------|--------|-----|
+| 22 | TCP | your admin IP `/32` | SSH maintenance only |
+| 80 | TCP | `0.0.0.0/0` | Let's Encrypt ACME challenge + HTTP→HTTPS redirect |
+| 443 | TCP | `0.0.0.0/0` (or operator IPs) | UI **and** API (split by hostname) |
+
+### Mode B — bare IP + self-signed (`install.sh` default, no domain)
+
+With no domain, Caddy uses `tls internal` (self-signed) and serves the UI on **443**
+but the **API on a separate port — 8443** (`API_URL=https://<ip>:8443`). **You must
+open 8443**, or the dashboard loads while every API call fails.
+
+| Port | Proto | Source | Why |
+|------|-------|--------|-----|
+| 22 | TCP | your admin IP `/32` | SSH maintenance only |
+| 443 | TCP | `0.0.0.0/0` (or operator IPs) | UI dashboard — `https://<ip>` |
+| **8443** | TCP | `0.0.0.0/0` (or operator IPs) | **API — `https://<ip>:8443` — REQUIRED** |
+| 80 | TCP | optional | HTTP→HTTPS redirect only (no ACME in self-signed mode) |
+
+### Never expose (internal only — `127.0.0.1` or the compose network)
+
+| Port | Service | | Port | Service |
+|------|---------|-|------|---------|
+| 8000 | FastAPI (via Caddy only) | | 5432 | PostgreSQL |
+| 3000 | Next.js (via Caddy only) | | 6379 | Redis |
+| 18080 | API local-tooling bind (`127.0.0.1`) | | 7474 / 7687 | Neo4j HTTP / Bolt |
+| 11434 | Ollama (if the `ollama` profile is on) | | | |
+
+### Outbound (egress) the host needs
+
+| Port | Destination | Why |
+|------|-------------|-----|
+| 443 | `api.openai.com` / `api.anthropic.com` / `openrouter.ai` / etc. | cloud LLM calls |
+| 443 | GitHub + container registries | clone/pull during install & redeploy |
+| 80 + 443 | `*.letsencrypt.org` | certificate issuance (Mode A only) |
+| 53 | DNS resolver | name resolution |
+
+### Probe connectivity (runs on the CLIENT / target network — no inbound)
+
+The probe dials **out** to the manager API and needs **no inbound port**. On the
+client network, allow **egress** to the manager host on **443** (Mode A) or **8443**
+(Mode B) — the HTTPS API and the WebSocket control channel ride the same port.
+
+**Elastic IP + DNS** (Mode A):
 
 ```bash
 aws ec2 allocate-address --domain vpc
@@ -400,12 +530,13 @@ inbound port needed on the probe host. On the probe host:
 ```bash
 # Clone ONLY the probe slice (mirror of how manager-only is cloned for AWS)
 git clone --filter=blob:none --no-checkout --depth 1 \
-  https://github.com/<org>/vedha.git /opt/vedha-probe
+  https://github.com/Rutikm18/Project-Vedha.git /opt/vedha-probe
 cd /opt/vedha-probe
 git sparse-checkout init --cone
 git sparse-checkout set probe
 git checkout
 
+# Mode A (domain): https://api.<domain>   |   Mode B (bare IP): https://<ip>:8443
 export PLATFORM_URL=https://api.vedha.example.com
 export OPERATOR_EMAIL=admin@vedha.io
 export OPERATOR_PASSWORD=<password>
@@ -460,7 +591,7 @@ Run before every production deployment:
 ```
 □  SSM secrets set for JWT_SECRET, POSTGRES_PASSWORD, SEED_ADMIN_PASSWORD, OPENAI_API_KEY
 □  EC2 IAM role has ssm:GetParameter* + kms:Decrypt on /vedha/*
-□  Security group: only 80, 443, 22 (your /32) open — 18080/3000/5432/6379/7474/7687 CLOSED
+□  Security group matches §5 for your TLS mode — Mode A (domain): 22/80/443 · Mode B (bare IP): 22/443/8443. Internal ports CLOSED: 8000/3000/18080/5432/6379/7474/7687/11434
 □  Elastic IP allocated and associated with instance
 □  DNS A records for app.<domain> and api.<domain> pointing to Elastic IP
 □  IMDSv2 enforced: aws ec2 modify-instance-metadata-options --http-tokens required
@@ -507,5 +638,5 @@ After deploy:
 | API horizontal scale | **ECS Fargate** behind **ALB** — same images, no code change |
 | Secrets rotation | **Secrets Manager** (auto-rotation) instead of SSM SecureString |
 
-_Last updated: 2026-08-02. Architecture: sparse-clone single EC2 + Compose + Caddy._
+_Last updated: 2026-10-02. Architecture: sparse-clone single EC2 + Compose + Caddy._
 _Owner: platform. See [`../README.md`](../README.md) for the docs map._
