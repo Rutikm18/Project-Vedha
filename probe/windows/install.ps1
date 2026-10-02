@@ -5,10 +5,11 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$Manager = 'http://13.127.147.205:18080',
+  [string]$Manager = '__VEDHA_MANAGER_URL__',
   [string]$Scope   = ''    # CIDR; empty = auto-detect this host's /24
 )
 $ErrorActionPreference = 'Stop'
+if ($Manager -like '__*') { Write-Error 'No manager address. Re-create the package with package-zip.ps1 -Manager https://api.your-domain.com, or pass -Manager.'; exit 1 }
 
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) { Write-Error 'Administrator required. Right-click install.cmd -> Run as administrator.'; exit 1 }

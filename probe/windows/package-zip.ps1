@@ -10,7 +10,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$Manager = 'http://13.127.147.205:18080',
+  [Parameter(Mandatory = $true)][string]$Manager,
   [string]$ExePath = "$PSScriptRoot\dist\vedha-agent.exe",
   [string]$OutZip  = "$PSScriptRoot\dist\vedha-probe-win.zip"
 )
@@ -33,7 +33,7 @@ Copy-Item (Join-Path $PSScriptRoot 'README-CUSTOMER.txt') (Join-Path $stage 'REA
 # Bake the chosen manager URL into the staged launchers.
 foreach ($f in @('run.cmd','install.ps1')) {
   $p = Join-Path $stage $f
-  (Get-Content $p) -replace 'http://13\.127\.147\.205:18080', $Manager | Set-Content $p
+  (Get-Content $p) -replace '__VEDHA_MANAGER_URL__', $Manager | Set-Content $p
 }
 
 if (Test-Path $OutZip) { Remove-Item $OutZip -Force }

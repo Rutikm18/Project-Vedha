@@ -5,7 +5,12 @@ rem Close the window to stop. For a permanent install, use install.cmd instead.
 setlocal
 cd /d "%~dp0"
 
-set "PLATFORM_URL=http://13.127.147.205:18080"
+set "PLATFORM_URL=__VEDHA_MANAGER_URL__"
+if "%PLATFORM_URL:~0,2%"=="__" (
+  echo ERROR: this package has no manager address. Re-create it with package-zip.ps1 -Manager https://api.your-domain.com
+  pause
+  exit /b 1
+)
 set "VERIFY_TLS=true"
 set "PROBE_NAME=%COMPUTERNAME%-probe"
 set "STATE_FILE=%ProgramData%\vedha-agent\state.json"
