@@ -20,6 +20,7 @@ import * as llm                          from '../llm';
 import {
   requireAuth, loadSession, saveSession,
   apiFetch, serverUrl, clearSession,
+  loginWithPassword, LoginError, revokeSessionToken,
 }                                        from '../auth';
 
 // ── ANSI shortcuts ──────────────────────────────────────────────────
@@ -130,51 +131,23 @@ async function ensureAuthenticated(): Promise<void> {
     process.exit(1);
   }
 
-  ln(`  ${A.dim}Requesting magic code…${A.reset}`);
-  const reqRes = await fetch(`${server}/api/auth/request`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ email }),
-  }).catch(() => null);
+  const password = await askSecret('Password');
+  if (!password) { ln(`  ${A.red}No password entered.${A.reset}`); process.exit(1); }
 
-  if (!reqRes?.ok) {
-    ln(`  ${A.red}Could not reach the server.${A.reset}`);
-    ln(`  ${A.dim}Is it running? Try: ./run.sh start${A.reset}`);
+  ln(`  ${A.dim}Signing in…${A.reset}`);
+  let session;
+  try {
+    session = await loginWithPassword(server, email, password);
+  } catch (e) {
+    ln(`  ${A.red}${e instanceof LoginError ? e.message : 'Authentication failed'}${A.reset}`);
+    if (e instanceof LoginError && e.unreachable) {
+      ln(`  ${A.dim}Is it running? Try: ./run.sh start${A.reset}`);
+    }
     process.exit(1);
   }
+  saveSession(session);
 
-  const reqData = await reqRes.json() as { dev?: boolean; otp?: string };
-  if (reqData.dev && reqData.otp) {
-    ln(`  ${A.yellow}[DEV]${A.reset} OTP: ${A.green}${reqData.otp}${A.reset}`);
-  } else {
-    ln(`  ${A.dim}Check ${email} for a 6-digit code.${A.reset}`);
-  }
-
-  const otp = await askSecret('Enter code');
-  if (!otp) { ln(`  ${A.red}No code entered.${A.reset}`); process.exit(1); }
-
-  const verRes = await fetch(`${server}/api/auth/verify`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ email, otp }),
-  }).catch(() => null);
-
-  const verData = await verRes?.json().catch(() => null) as
-    { token?: string; role?: string; error?: string } | null;
-
-  if (!verRes?.ok || !verData?.token) {
-    ln(`  ${A.red}${verData?.error ?? 'Authentication failed'}${A.reset}`);
-    process.exit(1);
-  }
-
-  saveSession({
-    email,
-    token:   verData.token,
-    role:    verData.role ?? 'operator',
-    savedAt: new Date().toISOString(),
-  });
-
-  ln(`  ${A.green}✓${A.reset} Authenticated as ${A.bold}${email}${A.reset}${verData.role === 'admin' ? ` ${A.cyan}[admin]${A.reset}` : ''}`);
+  ln(`  ${A.green}✓${A.reset} Authenticated as ${A.bold}${session.email}${A.reset}${session.role === 'admin' ? ` ${A.cyan}[admin]${A.reset}` : ''}`);
   ln();
 }
 
@@ -2070,11 +2043,14 @@ async function mainMenu(): Promise<void> {
         case 'engagement': await wizardEngagement(); break;
         case 'status':     await wizardStatus();     break;
         case 'admin':      await wizardAdmin();      break;
-        case 'logout':
+        case 'logout': {
+          const current = loadSession();
+          if (current) await revokeSessionToken(current);
           clearSession();
           ln(`  ${A.green}✓${A.reset} Logged out.`);
           await ensureAuthenticated();
           break;
+        }
         case 'exit':
           ln(`  ${A.dim}Goodbye.${A.reset}`);
           return;

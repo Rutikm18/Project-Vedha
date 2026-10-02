@@ -10,6 +10,8 @@ export interface Session {
   token:     string;
   role:      string;
   savedAt:   string;
+  /** Id of the personal access token in `token`, so logout can revoke it. */
+  patId?:    string;
 }
 
 export function loadSession(): Session | null {
@@ -56,4 +58,97 @@ export async function apiFetch(
       ...(opts?.headers ?? {}),
     },
   });
+}
+
+// ── Password login ───────────────────────────────────────────────────────────
+// The CLI signs in like the dashboard (email + password through the BFF), then
+// swaps the short-lived browser session for a personal access token: revocable,
+// 30 days, and unable to mint further tokens. Only the token is stored.
+
+export class LoginError extends Error {
+  constructor(message: string, readonly unreachable = false) { super(message); }
+}
+
+const CLI_TOKEN_DAYS = 30;
+
+/** Value of a cookie set by a response, or null. */
+export function setCookieValue(setCookies: string[], name: string): string | null {
+  for (const line of setCookies) {
+    const first = line.split(';', 1)[0].trim();
+    if (first.startsWith(`${name}=`)) {
+      const raw = first.slice(name.length + 1);
+      try { return decodeURIComponent(raw); } catch { return raw; }
+    }
+  }
+  return null;
+}
+
+export async function loginWithPassword(
+  server: string,
+  email: string,
+  password: string,
+): Promise<Session> {
+  const json = { 'Content-Type': 'application/json' };
+
+  const res = await fetch(`${server}/api/auth/login`, {
+    method: 'POST', headers: json, body: JSON.stringify({ email, password }),
+  }).catch(() => null);
+  if (!res) throw new LoginError(`Could not reach the VEDHA server at ${server}.`, true);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { error?: string; code?: string };
+    throw new LoginError(
+      body.code === 'invalid_credentials' ? 'Invalid email or password.'
+      : body.code === 'rate_limited'      ? 'Too many attempts. Wait a minute and try again.'
+      : body.error ?? `Login failed (HTTP ${res.status}).`,
+    );
+  }
+
+  const cookies = res.headers.getSetCookie();
+  const access  = setCookieValue(cookies, 'vedha_token');
+  const refresh = setCookieValue(cookies, 'vedha_refresh_token');
+  if (!access) throw new LoginError('The server did not start a session.');
+
+  const patRes = await fetch(`${server}/api/auth/pats`, {
+    method: 'POST',
+    headers: { ...json, Authorization: `Bearer ${access}` },
+    body: JSON.stringify({
+      name: `vedha-cli (${os.hostname()})`,
+      scopes: ['api:read', 'api:write'],
+      expires_in_days: CLI_TOKEN_DAYS,
+    }),
+  }).catch(() => null);
+
+  // The browser-style refresh token is not needed once we hold a PAT: revoke it
+  // so no unused credential outlives the login.
+  if (refresh) {
+    await fetch(`${server}/api/auth/login`, {
+      method: 'DELETE', headers: { Cookie: `vedha_refresh_token=${encodeURIComponent(refresh)}` },
+    }).catch(() => null);
+  }
+
+  if (!patRes?.ok) {
+    throw new LoginError('Signed in, but the server would not issue a CLI token.');
+  }
+  const pat = await patRes.json() as { id: string; token: string };
+
+  const meRes = await fetch(`${server}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${pat.token}` },
+  }).catch(() => null);
+  const me = meRes?.ok ? await meRes.json() as { email?: string; role?: string } : {};
+
+  return {
+    email:   me.email ?? email,
+    token:   pat.token,
+    role:    me.role ?? 'operator',
+    savedAt: new Date().toISOString(),
+    patId:   pat.id,
+  };
+}
+
+/** Best-effort server-side revocation of the CLI token (logout). */
+export async function revokeSessionToken(session: Session, server: string = serverUrl()): Promise<void> {
+  if (!session.patId) return;
+  await fetch(`${server}/api/auth/pats/${encodeURIComponent(session.patId)}`, {
+    method: 'DELETE', headers: { Authorization: `Bearer ${session.token}` },
+  }).catch(() => null);
 }

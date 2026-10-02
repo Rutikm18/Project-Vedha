@@ -1,6 +1,6 @@
 import { Command }                    from 'commander';
 import * as readline                  from 'readline';
-import { saveSession, serverUrl, loadSession } from '../auth';
+import { saveSession, serverUrl, loadSession, loginWithPassword, LoginError } from '../auth';
 
 function prompt(question: string): Promise<string> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -16,7 +16,7 @@ function promptSilent(question: string): Promise<string> {
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     process.stdout.write(question);
-    // Disable echo for OTP entry
+    // Disable echo while typing
     (process.stdin as NodeJS.ReadStream).setRawMode?.(true);
     let input = '';
     process.stdin.resume();
@@ -45,7 +45,7 @@ function promptSilent(question: string): Promise<string> {
 
 export function buildLoginCommand(): Command {
   return new Command('login')
-    .description('Authenticate with VEDHA via email magic code')
+    .description('Sign in to VEDHA with your email and password')
     .action(async () => {
       const existing = loadSession();
       if (existing) {
@@ -62,59 +62,22 @@ export function buildLoginCommand(): Command {
         process.stderr.write('\x1b[1;31m[ERR]\x1b[0m Invalid email\n');
         process.exit(1);
       }
-
-      process.stdout.write('\x1b[2mRequesting code…\x1b[0m\n');
-
-      let res = await fetch(`${server}/api/auth/request`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email }),
-      }).catch(() => null);
-
-      if (!res?.ok) {
-        process.stderr.write('\x1b[1;31m[ERR]\x1b[0m Could not reach the VEDHA server.\n');
-        process.stderr.write(`Server: ${server}\n`);
+      const password = await promptSilent('Password: ');
+      if (!password) {
+        process.stderr.write('\x1b[1;31m[ERR]\x1b[0m No password entered\n');
         process.exit(1);
       }
 
-      const requestData = await res.json() as { dev?: boolean; otp?: string };
-
-      if (requestData.dev && requestData.otp) {
-        process.stdout.write(`\n\x1b[33m[DEV MODE]\x1b[0m OTP: \x1b[1;32m${requestData.otp}\x1b[0m\n\n`);
-      } else {
-        process.stdout.write(`\nCode sent to \x1b[1m${email}\x1b[0m — check your inbox.\n\n`);
-      }
-
-      const otp = await promptSilent('Enter code: ');
-      if (!otp) {
-        process.stderr.write('\x1b[1;31m[ERR]\x1b[0m No code entered\n');
+      process.stdout.write('\x1b[2mSigning in…\x1b[0m\n');
+      try {
+        const session = await loginWithPassword(server, email, password);
+        saveSession(session);
+        process.stdout.write(`\n\x1b[1;32m✓\x1b[0m Authenticated as \x1b[1m${session.email}\x1b[0m`);
+        process.stdout.write(session.role === 'admin' ? ' \x1b[36m[admin]\x1b[0m' : '');
+        process.stdout.write('\n');
+      } catch (e) {
+        process.stderr.write(`\x1b[1;31m[ERR]\x1b[0m ${e instanceof LoginError ? e.message : 'Authentication failed'}\n`);
         process.exit(1);
       }
-
-      process.stdout.write('\x1b[2mVerifying…\x1b[0m\n');
-
-      res = await fetch(`${server}/api/auth/verify`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email, otp }),
-      }).catch(() => null);
-
-      const verifyData = await res?.json() as { token?: string; role?: string; error?: string } | undefined;
-
-      if (!res?.ok || !verifyData?.token) {
-        process.stderr.write(`\x1b[1;31m[ERR]\x1b[0m ${verifyData?.error ?? 'Authentication failed'}\n`);
-        process.exit(1);
-      }
-
-      saveSession({
-        email,
-        token:   verifyData.token,
-        role:    verifyData.role ?? 'operator',
-        savedAt: new Date().toISOString(),
-      });
-
-      process.stdout.write(`\n\x1b[1;32m✓\x1b[0m Authenticated as \x1b[1m${email}\x1b[0m`);
-      process.stdout.write(verifyData.role === 'admin' ? ' \x1b[36m[admin]\x1b[0m' : '');
-      process.stdout.write('\n');
     });
 }
