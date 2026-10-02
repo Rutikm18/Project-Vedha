@@ -14,6 +14,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Boxes, ChevronDown, Download, RefreshCw, Server, Sparkles, Wrench } from "lucide-react";
 import { PageShell } from "../PageShell";
 import { PortalShell } from "../portal/PortalShell";
+import { PlanLockPanel } from "../portal/PlanLock";
+import { isFeatureLocked } from "../../lib/entitlements";
+import { usePortalEntitlement } from "../../lib/portal-client";
 import { DataState, EmptyState, SkeletonRows } from "../states/DataState";
 import { createReportsWorkspaceApi } from "../../lib/reports-workspace-api";
 import {
@@ -139,6 +142,20 @@ function BundleCard({
 }
 
 export function RemediationWorkspace({ surface = "manager" }: { surface?: RemediationSurface }) {
+  // A customer's plan can lock Remediation & fix bundles; the server answers 403
+  // either way, this just explains it instead of showing an error.
+  const plan = usePortalEntitlement(surface === "portal");
+  if (surface === "portal" && isFeatureLocked(plan.data, "remediation")) {
+    return (
+      <PortalShell title="Remediation" subtitle="Fix bundles, owners' checklists and due dates">
+        <PlanLockPanel feature="remediation" />
+      </PortalShell>
+    );
+  }
+  return <RemediationWorkspaceBody surface={surface} />;
+}
+
+function RemediationWorkspaceBody({ surface }: { surface: RemediationSurface }) {
   const params = useSearchParams();
   const api = useMemo(() => createRemediationApi(surface), [surface]);
   const reports = useMemo(() => createReportsWorkspaceApi(surface), [surface]);

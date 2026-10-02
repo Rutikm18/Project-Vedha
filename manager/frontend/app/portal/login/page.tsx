@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Loader2, Eye, EyeOff, Zap } from "lucide-react";
+import { Loader2, Eye, EyeOff, Zap } from "lucide-react";
+import { VedhaLogoStacked } from "../../../components/brand/VedhaMark";
 
 /* /portal/login#e=<email>&p=<password> — the fragment never reaches a server,
    and it is erased from the address bar and history on first read. */
@@ -104,14 +105,10 @@ export default function PortalLoginPage() {
       <div className="panel" style={{ width: "100%", maxWidth: 380, padding: 32 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center",
           gap: 8, marginBottom: 24 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 10,
-            background: "var(--accent-ghost)", border: "var(--hairline) solid var(--border-accent)",
-            display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Shield style={{ width: 24, height: 24, color: "var(--accent)" }} />
-          </div>
+          <span style={{ color: "var(--accent)", display: "flex" }}><VedhaLogoStacked height={72} /></span>
           <h1 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600,
             color: "var(--text-primary)", margin: 0, letterSpacing: 1 }}>
-            Vedha User Portal
+            User Portal
           </h1>
           <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
             Sign in to view your engagement

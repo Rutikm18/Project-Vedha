@@ -8,6 +8,54 @@ export type DeepRepeatPolicy = "distinct" | "repeat";
 
 export const SCAN_MODES: ScanMode[] = ["stealth", "normal", "aggressive", "deep"];
 
+/* ── Portal plan locks (enforced server-side: app/services/portal_locks.py) ── */
+
+export type LockSeverity = "critical" | "high" | "medium" | "low" | "info";
+export type LockFeature = "ai_assistant" | "reports" | "remediation" | "compliance";
+
+export const LOCKABLE_SEVERITIES: LockSeverity[] = ["critical", "high", "medium", "low", "info"];
+
+/** The portal features a plan can lock, with the operator's description and the
+ *  sentence the customer sees. Messages mirror FEATURE_MESSAGES on the server. */
+/** Matches portal_locks.WRITTEN_REPORTS_MESSAGE: approved written reports are free
+ *  text and can't be redacted per finding, so they wait for a licensed plan. */
+export const WRITTEN_REPORTS_NOTICE =
+  "Full written reports are available on a licensed plan. The report views above cover " +
+  "the findings included in your plan.";
+
+export const LOCK_FEATURES: Array<{ id: LockFeature; label: string; description: string; lockedMessage: string }> = [
+  { id: "ai_assistant", label: "AI assistant", description: "Chat about findings, risk and fixes.",
+    lockedMessage: "The AI assistant is available on a licensed plan." },
+  { id: "reports", label: "Reports", description: "Report views, written reports and AI report generation.",
+    lockedMessage: "Reports are available on a licensed plan." },
+  { id: "remediation", label: "Remediation & fix bundles", description: "Fix steps, bundles and the tracker export.",
+    lockedMessage: "Remediation plans and fix bundles are available on a licensed plan." },
+  { id: "compliance", label: "Compliance briefs", description: "Regulatory obligations and compliance briefs per finding.",
+    lockedMessage: "Compliance briefs are available on a licensed plan." },
+];
+
+export function isFeatureLocked(
+  e: Pick<Partial<Entitlement>, "locked_features"> | null | undefined, feature: LockFeature,
+): boolean {
+  return Boolean(e?.locked_features?.includes(feature));
+}
+
+/** GET /api/portal/findings/locked — counts only, never finding content. */
+export interface LockedTeaser {
+  locked_severities: LockSeverity[];
+  counts: Partial<Record<LockSeverity, number>>;
+  total: number;
+  message?: string;
+}
+
+/** One teaser row per locked severity that actually holds findings, in severity order. */
+export function teaserRows(t: LockedTeaser | null | undefined): Array<{ severity: LockSeverity; count: number }> {
+  if (!t) return [];
+  return LOCKABLE_SEVERITIES
+    .filter((s) => (t.counts[s] ?? 0) > 0)
+    .map((s) => ({ severity: s, count: t.counts[s] as number }));
+}
+
 /** One scan type's allowance. quota null = unlimited; enabled false = not in the plan. */
 export interface ModeAllowance {
   enabled: boolean;
@@ -41,6 +89,12 @@ export interface Entitlement {
   modes: Record<ScanMode, ModeAllowance>;
   deep_repeat_policy: DeepRepeatPolicy;
   deep_scanned_targets: string[];
+  /** Severities shown to the customer only as locked teaser rows. */
+  locked_severities?: LockSeverity[];
+  /** Portal features that answer "available on a licensed plan". */
+  locked_features?: LockFeature[];
+  /** Written (free-text) reports are withheld while any severity is locked. */
+  written_reports_withheld?: boolean;
 }
 
 export interface EntitlementAdmin extends Entitlement {
@@ -61,6 +115,8 @@ export interface EntitlementConfig {
   deep_quota?: number | null;
   deep_repeat_policy?: DeepRepeatPolicy;
   notes?: string | null;
+  locked_severities?: LockSeverity[];
+  locked_features?: LockFeature[];
 }
 
 export const PLAN_LABEL: Record<PlanType, string> = { poc: "POC", licensed: "Licensed" };

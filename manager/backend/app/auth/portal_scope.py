@@ -113,5 +113,53 @@ def scoped_engagement(
     return resolve_scope(user, engagement_id)
 
 
-ClientUser = Annotated[CurrentUser, Depends(require_client)]
+async def require_client_with_locks(
+    user: Annotated[CurrentUser, Depends(require_client)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> CurrentUser:
+    """require_client, then switch on the customer's plan locks for the rest of
+    this request (app/services/portal_locks.py): locked severities vanish from
+    every finding query and locked features answer 403."""
+    from app.models.customer_entitlement import CustomerEntitlement
+    from app.services import portal_locks
+
+    row = (await db.execute(
+        select(CustomerEntitlement.locked_severities, CustomerEntitlement.locked_features)
+        .where(CustomerEntitlement.engagement_id == assert_client(user))
+    )).first()
+    portal_locks.activate(row[0] if row else (), row[1] if row else ())
+    return user
+
+
+ClientUser = Annotated[CurrentUser, Depends(require_client_with_locks)]
+
+
+# ── Plan-lock gates (attach with dependencies=[Depends(...)]) ─────────────────
+
+async def finding_lock_gate(
+    finding_id: uuid.UUID,
+    user: Annotated[CurrentUser, Depends(require_client_with_locks)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    from app.services import portal_locks
+    await portal_locks.ensure_finding_unlocked(db, finding_id, assert_client(user))
+
+
+def _feature_gate(feature: str):
+    async def gate(_: Annotated[CurrentUser, Depends(require_client_with_locks)]) -> None:
+        from app.services import portal_locks
+        portal_locks.ensure_feature_unlocked(feature)
+    gate.__name__ = f"{feature}_gate"
+    return gate
+
+
+ai_assistant_gate = _feature_gate("ai_assistant")
+remediation_gate = _feature_gate("remediation")
+compliance_gate = _feature_gate("compliance")
+reports_gate = _feature_gate("reports")
+
+
+async def written_reports_gate(_: Annotated[CurrentUser, Depends(require_client_with_locks)]) -> None:
+    from app.services import portal_locks
+    portal_locks.ensure_written_reports_available()
 ScopedEngagement = Annotated[uuid.UUID, Depends(scoped_engagement)]

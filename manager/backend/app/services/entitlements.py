@@ -70,6 +70,12 @@ class EntitlementView:
     modes: dict[str, ModeView] = field(default_factory=dict)
     deep_repeat_policy: str = DEEP_DISTINCT
     deep_scanned_targets: list[str] = field(default_factory=list)
+    # Portal locks: severities shown only as teaser rows, features that answer
+    # "available on a licensed plan". Written (free-text) reports cannot be
+    # redacted per finding, so they are withheld while any severity is locked.
+    locked_severities: list[str] = field(default_factory=list)
+    locked_features: list[str] = field(default_factory=list)
+    written_reports_withheld: bool = False
 
 
 def _plan_label(plan_type: str | None) -> str:
@@ -149,7 +155,10 @@ def evaluate(row, *, now: datetime | None = None) -> EntitlementView:
         license_key=row.license_key if row.plan_type == PLAN_LICENSED else None,
         modes=modes,
         deep_repeat_policy=getattr(row, "deep_repeat_policy", None) or DEEP_DISTINCT,
-        deep_scanned_targets=list(getattr(row, "deep_scanned_targets", None) or []))
+        deep_scanned_targets=list(getattr(row, "deep_scanned_targets", None) or []),
+        locked_severities=list(getattr(row, "locked_severities", None) or []),
+        locked_features=list(getattr(row, "locked_features", None) or []),
+        written_reports_withheld=bool(getattr(row, "locked_severities", None)))
 
 
 def view_dict(view: EntitlementView) -> dict:

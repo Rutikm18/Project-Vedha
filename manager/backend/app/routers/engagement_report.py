@@ -12,11 +12,11 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 
 from app.ai.engagement_report import generate_engagement_report
-from app.auth.portal_scope import ClientUser, assert_client
+from app.auth.portal_scope import ClientUser, assert_client, reports_gate
 from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
 from app.models.engagement import Engagement
@@ -58,7 +58,7 @@ async def generate_operator_report(engagement_id: uuid.UUID, db: DB,
     return await _generate(db, eng, current_user)
 
 
-@router.post("/portal/ai-report/engagement",
+@router.post("/portal/ai-report/engagement", dependencies=[Depends(reports_gate)],
              summary="Generate the AI report for your engagement (portal)")
 async def generate_portal_report(user: ClientUser, db: DB):
     eng = (await db.execute(

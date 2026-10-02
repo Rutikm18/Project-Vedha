@@ -59,6 +59,9 @@ import type { FindingGroup, FindingGroupKind, FindingGroupPage } from "../../lib
 import { DataState, SkeletonRows, EmptyState } from "../../components/states/DataState";
 import { FindingRemediation } from "../../components/remediation/FindingRemediation";
 import { FindingObligations } from "../../components/intel/FindingObligations";
+import { LockedFindingsTeaser, PlanLockPanel } from "../../components/portal/PlanLock";
+import { isFeatureLocked } from "../../lib/entitlements";
+import { usePortalEntitlement } from "../../lib/portal-client";
 import { presentEvidence, type EvidenceArtifact } from "../../lib/evidence-presentation";
 import { copyText } from "../../lib/clipboard";
 import {
@@ -1549,6 +1552,10 @@ function FindingDetail({
   surface: FindingsWorkspaceSurface;
   onFilterIp: (ip: string) => void;
 }) {
+  // Portal: a plan can lock compliance briefs (the server refuses them too).
+  const portalPlan = usePortalEntitlement(surface === "portal");
+  const complianceLocked = surface === "portal" && isFeatureLocked(portalPlan.data, "compliance");
+  const remediationLocked = surface === "portal" && isFeatureLocked(portalPlan.data, "remediation");
   const [tab, setTab] = useState<DetailTab>("overview");
   const [pendingAction, setPendingAction] = useState<FindingStatus | null>(null);
   const [actionReason, setActionReason] = useState("");
@@ -1812,7 +1819,8 @@ function FindingDetail({
         )}
         {tab === "intel" && <IntelPanel finding={f} />}
         {tab === "evidence" && <EvidenceView finding={f} />}
-        {tab === "remediation" && (
+        {tab === "remediation" && remediationLocked && <PlanLockPanel feature="remediation" />}
+        {tab === "remediation" && !remediationLocked && (
           <FindingRemediation
             findingId={f.id}
             engagementId={f.engagementId ?? null}
@@ -1823,12 +1831,14 @@ function FindingDetail({
               .filter((n): n is string => Boolean(n))}
           />
         )}
-        {tab === "compliance" && (
+        {tab === "compliance" && (complianceLocked ? (
+          <PlanLockPanel feature="compliance" />
+        ) : (
           <>
             <FindingObligations findingId={f.id} api={api} surface={surface} />
             <CompliancePanel compliance={f.compliance} />
           </>
-        )}
+        ))}
         {tab === "history" && <HistoryTimeline findingId={f.id} now={now} api={api} surface={surface} />}
       </div>
     </div>
@@ -4051,6 +4061,9 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
               This filter matches more findings than can be grouped at once; groups cover the first {groupsQuery.data.findingTotal.toLocaleString()}. Narrow the filters for exact counts.
             </p>
           )}
+
+          {/* Portal: findings the customer's plan locks — counts only, never details. */}
+          {surface === "portal" && <LockedFindingsTeaser />}
 
           {queueView === "grouped" ? (
           <div className="findings-list" data-refreshing={groupsQuery.isFetching && !groupsQuery.isLoading ? "true" : undefined}>

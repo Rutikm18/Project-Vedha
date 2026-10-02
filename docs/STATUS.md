@@ -1,6 +1,6 @@
 # Vedha Project Status
 
-As of **2026-10-03** (agent install integrated with `origin/main` on `integrate/agent-install-to-main`, awaiting your push). This is the single place for what is done, what is open, and what needs the owner.
+As of **2026-10-03** (all unmerged work combined on `integrate/all-to-main`, awaiting your push). This is the single place for what is done, what is open, and what needs the owner.
 Claude updates it at the end of every finished piece of work: a change-log row, then the sections above it.
 
 ## At a glance
@@ -9,17 +9,18 @@ Claude updates it at the end of every finished piece of work: a change-log row, 
 
 | Area | State |
 | --- | --- |
-| `origin/main` | deploy / install fixes from other sessions are on it; **agent install is on `integrate/agent-install-to-main`, tested, not yet pushed** (VERSION 1.0.358) |
+| `origin/main` | `4c78573`. **Everything not yet on it is combined on `integrate/all-to-main`, tested, not yet pushed**: agent install, portal plan locks, report export fix, new logo, Technical Findings report, operator Deep scan, design system doc |
 | Production | [app.vedhasec.com](https://app.vedhasec.com) / [api.vedhasec.com](https://api.vedhasec.com) — **stopped for a redeploy on 1 Oct** (owner). Was healthy on 1.0.325 on 30 Sep |
 | Tests | 2,234 backend · 2,512 probe · 366 of 368 frontend (the 2 = missing `pdfkit`), on the integrated branch (3 Oct) |
 | AI providers | Anthropic: no API credit · OpenAI: key rejected on AWS · Gemini: works, but its key was not on the AWS server |
-| Unmerged branches | `integrate/agent-install-to-main` (agent install + `origin/main` + local `main` + the technical-report and boardroom-spec branches; ready to publish) · `codex/customer-portal-engagement-parity` (not merged: 52 conflicts, only its remediation workspace is missing, see [the assessment](planning/2026-10-03-branch-merge-assessment.md)) · `probe-standalone` (never merge) |
+| Unmerged branches | `integrate/all-to-main` (everything below, ready to publish) · `codex/customer-portal-engagement-parity` (not merged: 52 conflicts, only its remediation workspace is missing, see [the assessment](planning/2026-10-03-branch-merge-assessment.md)) · `probe-standalone` (never merge) |
 
-The three things that matter most right now:
+The things that matter most right now:
 
-1. Finish the production redeploy; attach an Elastic IP so the DNS record (`13.127.147.205`) stays valid across restarts.
-2. Fix the AWS `.env` (Gemini key, OpenAI key, blank `LLM_PROVIDER`), then `make full`. This restores AI Brain and report generation.
-3. Agent install in client environments (P0-3) is done and documented. To go live: publish the integration branch, create the release key, publish a release, and get `vedhasec.com` categorised by web filters (see *Needs you*).
+1. Push `integrate/all-to-main` to `main` and redeploy. It fixes the production report export and brings agent install, plan locks and the new logo.
+2. Finish the production redeploy; attach an Elastic IP so the DNS record (`13.127.147.205`) stays valid across restarts.
+3. Fix the AWS `.env` (Gemini key, OpenAI key, blank `LLM_PROVIDER`), then `make full`. This restores AI Brain and report generation.
+4. Agent install in client environments (P0-3) is done and documented. To go live: publish the integration branch, create the release key, publish a release, and get `vedhasec.com` categorised by web filters (see *Needs you*).
 
 ## Done
 
@@ -66,10 +67,26 @@ Priority order from the [next-8 workstreams plan](planning/2026-09-29-next-8-wor
 | P2-1 | Website content | Not started | S | Platform choice needed |
 | P2-2 | Platform walkthrough + feature videos | Not started | M | After P1, so recordings show the final UI |
 
+### Done on `integrate/all-to-main`, waiting for push
+
+| Item | Area | Notes |
+| --- | --- | --- |
+| Agent install (P0-3) | Agent | See the roadmap row above and the change log. Migrations `0052`, `0053` |
+| Report export did nothing in production | Reports | The Export menu opened inside a page-header box that hides overflow, so nothing showed. It now opens in a layer above the page, closes on Escape, an outside click or scroll, and fits a phone screen. Reproduced in the production image; checked on desktop and mobile; PDF download verified |
+| Portal plan locks (POC vs licensed) | Portal | Per customer, at any time, on POC or licensed plans, the operator locks finding severities (a new POC starts with Critical + High locked) and features (AI assistant, Reports, Remediation & fix bundles, Compliance briefs). Locked findings never leave the server: one database-level guard filters every customer query. The portal shows them as "N locked findings · Available on a licensed plan"; locked features show a lock panel; written reports are withheld while any severity is locked. Migration **`0054`** (renumbered from `0052` to follow agent install). [Design](superpowers/specs/2026-10-02-portal-plan-locks-design.md) |
+| New logo and favicon | Brand | The new mark replaces the shield in the sidebar and on both login pages; the stacked logo heads the customer portal login. Favicon as SVG (follows light/dark), ICO and Apple touch icon. Brand files in `manager/frontend/public/brand/` |
+| Technical Findings report, boardroom reporting spec, operator Deep scan, design system doc | Reports / Scanner / Design | Merged from their branches and local `main` |
+| Settings page redesign: research and design | Settings | Doc only; build not started. Draws on GitHub, Vercel, Datadog, Stripe, Tenable, Rapid7, Snyk, Salesforce and Checkmarx; gives every field its meaning, default, owner, effect and backend status; found 4 defects in today's page (below). [Design](superpowers/specs/2026-10-03-settings-page-design.md) |
+
 ### Other open items
 
 | Item | Area | Status | Why it is open · next step |
 | --- | --- | --- | --- |
+| Settings: Notifications "Save" stores nothing | Settings | Not started | It waits 600 ms and says "saved", but the rules reset on reload. Persist them or remove the button (defect D1 in the settings design) |
+| Settings: API keys always read + write, never expire | Settings | Not started | The model has scopes and an expiry, but the UI ignores both (defect D2) |
+| Settings: AI Runtime shows the old provider cards | Settings | Not started | Replace with live fallback-chain status (defect D3) |
+| Plan-lock known gaps (your choice) | Portal | Deferred | Raw scan evidence is not locked, so service banners could hint at a locked finding. Posture and analytics scores use only the findings the customer can see |
+| Plan locks and sidebar logo not checked in a browser | Portal / UI | Not started | Covered by tests and the server is the gate; the Plan panel's *Portal access* section, the portal lock panels and the sidebar logo need a signed-in visual check after deploy |
 | Port the Codex branch's remediation workspace | Remediation | Not started | The report document and scan provenance were ported on 1 Oct. Still missing: `app/ai/remediation_workspace.py`, its context service and `RemediationWorkspaceDialog.tsx`. |
 | Backend container runs as root | Security | Not started | No `USER` in `manager/backend/Dockerfile`. Add a non-root user. |
 | `/docs`, `/redoc`, `/openapi.json` public in production | Security | Not started | Always enabled in `manager/backend/app/main.py`. Disable when `APP_ENV=production`. |
@@ -99,7 +116,9 @@ These need your accounts, your server or your decision.
 - [ ] Run `npm install` in `manager/frontend` (adds `pdfkit` and `@playwright/test`, which the reporting work needs). Other sessions share that `node_modules`, so I left it to you
 - [ ] Optional: add a free `GROQ_API_KEY` as a second free fallback, and set `AI_DAILY_CAP_USD` (e.g. `anthropic=20,openai=10`)
 - [ ] **Today:** submit `vedhasec.com` for web-filter categorisation (Palo Alto, Zscaler, Fortinet, Cisco Talos, Broadcom, Check Point). Domains under about 32 days old are commonly blocked as "newly registered", which would stop customer agents reaching the manager
-- [ ] Land the agent install on `main`. Claude can't publish (safety hook) and the primary checkout has uncommitted changes, so run: `git push origin integrate/agent-install-to-main:main`, then pull in the primary checkout once it is clean
+- [ ] Land everything on `main`. Claude can't publish (safety hook), so run `git push origin integrate/all-to-main:main`. It is a fast-forward of `origin/main` `4c78573`. Then, in the primary checkout, commit or set aside its uncommitted changes and pull. Local `main` is a strict subset of the integration branch
+- [ ] After deploying, the migrations run `0052` and `0053` (agent install) and `0054` (plan locks). Existing customers keep full access until you lock something
+- [ ] Clean up the plan-locks / export test leftovers: containers `vedha-export-before`, `vedha-export-after`, `vedha-export-ui-before`, `vedha-export-ui-after`, `vedha-locks-pg`; images `vedha-frontend:exporttest`, `:exportfix`, `:menufix`; and, once pushed, the merged branches and worktrees listed in the change log row for 2026-10-03 (merge all)
 - [ ] On your build machine, run `make agent-keygen`. Keep `~/.vedha/agent-release-key.pem` off the server and back it up offline. Put the printed `AGENT_RELEASE_PUBLIC_KEY=…` in the AWS `.env`
 - [ ] Once the merge is deployed (it runs migration 0052): `make agent-release`, then `make agent-publish TO=ubuntu@<server>:/opt/Project-Vedha/manager/agent-releases`. Fleet → Add agent then shows the release ([runbook](operations/AGENT_DISTRIBUTION.md))
 - [ ] Remove the agent-install test leftovers on your Mac (Claude's safety hook blocks container removal): the `vedha-agentinst` compose project, the containers `vedha-agent-e2e`, `-e2e2`, `-e2e3`, `-round0`, `-round1`, `-round2` and their `-state` volumes, and the images `vedha-e2e-customer-host:local`, `vedha-e2e-vendor-host:local`, `vedha-backend:9.9.9`, `vedha-frontend:9.9.9`, `vedha-backend:agentinst`
@@ -113,6 +132,11 @@ One row per finished piece of work, newest first.
 
 | Date | Change | Ref |
 | --- | --- | --- |
+| 2026-10-03 | Merged all unmerged work onto `integrate/all-to-main` (from `integrate/agent-install-to-main` + `feat/portal-plan-locks` + local `main`'s design-system doc). Conflicts: `VERSION` (kept the highest), `docs/STATUS.md` (combined by hand), and migration id `0052`, which both branches used: plan locks renumbered to `0054`, one Alembic head. Not merged: the Codex branch (see the assessment) and `probe-standalone` (never). Branches now fully contained and safe to delete after the push: `feat/portal-plan-locks`, `fix/report-export`, `feat/operator-deep-scan`, `docs/status-refresh`, `integrate/agent-install-to-main`, `feat/agent-install`, `docs/agent-install-approach`, `feat/technical-finding-report`, `feat/reporting-boardroom-redesign` | `integrate/all-to-main` |
+| 2026-10-03 | New logo and favicon: shared `VedhaMark` / `VedhaLogoStacked` components, favicon SVG + ICO + Apple icon, brand files in `public/brand/`; both login pages checked in the browser | `1ab403d` |
+| 2026-10-03 | Settings page research and design doc (no code): a new structure, each field's meaning, default, owner and effect, and 4 defects found in today's page | `docs/superpowers/specs/2026-10-03-settings-page-design.md` |
+| 2026-10-03 | Portal plan locks: severity and feature locks per customer, a central server guard, teaser rows and lock panels in the portal | `35581b4`–`72d6bea` |
+| 2026-10-02 | Report export fixed: the page header clipped the menu, which now opens above the page. Verified in the production image on desktop and mobile | `c4161aa` |
 | 2026-10-02 | Agent install Phase 1 (P0-3) built on `feat/agent-install` and proven end to end on an isolated stack. The manager serves a signed agent release: installer and manifest are public, the image needs a live install token. Install tokens are engagement-bound and single-use (migration 0052). Fleet → Add agent works for the operator and the portal. The installer verifies signature and checksum and gains `--proxy` / `--ca-bundle`. On-prem bundles are encrypted to the customer's key. The live test found and fixed 4 bugs: an agent start failure from hardware binding, an enrolment commit race that burnt tokens, the loader's file count, and an old `cryptography` version | `feat/agent-install` |
 | 2026-10-03 | P0-3 closed and integrated: `feat/agent-install` + local `main` merged onto `origin/main` on `integrate/agent-install-to-main` (conflicts: VERSION, Makefile, and the WebSocket TLS fix that two sessions had written separately, now one helper with certifi, CA bundle, verify-off and mTLS). Docs finished (runbook: expiry, code boundary; customer guide: lifetimes, access dates; approach §11). P1-2 marked done per owner. Also merged the self-contained `feat/technical-finding-report` (standalone Technical Findings report) and `feat/reporting-boardroom-redesign` (spec + plan). Integrated tests: backend 2,234, probe 2,512, frontend 366 of 368 (`pdfkit`). The Codex branch was assessed, not merged (52 conflicts, already ported in part; [assessment](planning/2026-10-03-branch-merge-assessment.md)) | `integrate/agent-install-to-main` |
 | 2026-10-02 | Windows-first agent quick wins on `feat/agent-install`: customers' agent now ships only its own 73 modules (the Linux image no longer carries `scanner/findings.py`, the judgement rules; `vedha-agent runtime-check` gates the build); Windows single-instance lock and MAC lookup fixed; agent access expiry set from Fleet and enforced by the manager (migration 0053; in-flight uploads still land); install-command lifetime picker (1 h / 24 h / 7 d); legacy Windows scripts no longer default to the old test IP or exclude `python.exe` from Defender. Backend 2,232, probe 2,497, frontend fleet 13 tests pass. The compiled Windows build, signed installer and Windows VM test are in the pipeline ([plan](planning/2026-10-02-agent-code-fixes-plan.md)) | `feat/agent-install` |

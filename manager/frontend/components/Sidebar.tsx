@@ -7,6 +7,7 @@ import {
   Shield, Brain, AlertTriangle, FileText,
   Terminal, Briefcase, Settings, RadioTower, Users, X, Radar, Wrench,
 } from "lucide-react";
+import { VedhaMark } from "./brand/VedhaMark";
 
 // Resolved at build time from the repo-root VERSION file (see next.config.mjs).
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
@@ -180,7 +181,7 @@ export function Sidebar({ open, onClose, surface = "manager" }: SidebarProps) {
               e.currentTarget.style.transform = "scale(1)";
             }}
           >
-            <Shield size={15} color="var(--accent)" strokeWidth={2} />
+            <span style={{ color: "var(--accent)", display: "flex" }}><VedhaMark size={18} title="Vedha" /></span>
           </div>
           <div>
             <div style={{

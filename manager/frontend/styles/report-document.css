@@ -6,14 +6,11 @@
   gap: 8px;
   min-width: 0;
 }
-.cr-export-menu { position: relative; }
-.cr-export-menu > summary {
+.cr-export-trigger {
   min-height: 38px;
-  list-style: none;
   user-select: none;
 }
-.cr-export-menu > summary::-webkit-details-marker { display: none; }
-.cr-export-menu > summary[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.cr-export-trigger[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 .cr-export-popover {
   position: absolute;
   top: calc(100% + 8px);

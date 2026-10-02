@@ -25,7 +25,11 @@ from app import agent_access
 from app.routers.probe_enrollment import ENGAGEMENT_TOKEN_TTL_MINUTES, INSTALL_TOKEN_LIFETIMES
 from sqlalchemy import func, select
 
-from app.auth.portal_scope import ClientUser, assert_client, client_scoped
+from app.auth.portal_scope import (
+    ClientUser, ai_assistant_gate, assert_client, client_scoped, compliance_gate,
+    finding_lock_gate, remediation_gate, written_reports_gate,
+)
+from app.services import portal_locks
 from app.dependencies import DB, RedisConn
 from app.models.agent import Agent, AgentStatus
 from app.models.asset import Asset
@@ -168,7 +172,15 @@ async def portal_findings(
     return [ClientFindingOut.model_validate(r) for r in rows]
 
 
-@router.get("/findings/{finding_id}", response_model=ClientFindingOut,
+@router.get("/findings/locked",
+            summary="Findings your plan keeps locked: counts per severity only")
+async def portal_locked_findings(user: ClientUser, db: DB):
+    """Teaser rows for the findings list. Only severity counts ever leave the
+    server for a locked finding — never a title, host, evidence or fix."""
+    return await portal_locks.locked_teaser(db, assert_client(user))
+
+
+@router.get("/findings/{finding_id}", dependencies=[Depends(finding_lock_gate)], response_model=ClientFindingOut,
             summary="A single finding (scoped)")
 async def portal_finding(finding_id: uuid.UUID, user: ClientUser, db: DB):
     r = (await db.execute(
@@ -180,7 +192,7 @@ async def portal_finding(finding_id: uuid.UUID, user: ClientUser, db: DB):
     return ClientFindingOut.model_validate(r)
 
 
-@router.get("/findings/{finding_id}/events", response_model=FindingTimeline,
+@router.get("/findings/{finding_id}/events", dependencies=[Depends(finding_lock_gate)], response_model=FindingTimeline,
             summary="Finding lifecycle timeline for the assigned engagement")
 async def portal_finding_timeline(finding_id: uuid.UUID, user: ClientUser, db: DB):
     finding = await finding_workflow.get_finding_for_action(
@@ -196,7 +208,7 @@ async def portal_finding_timeline(finding_id: uuid.UUID, user: ClientUser, db: D
     )
 
 
-@router.patch("/findings/{finding_id}", response_model=FindingOut,
+@router.patch("/findings/{finding_id}", dependencies=[Depends(finding_lock_gate)], response_model=FindingOut,
               summary="Apply the shared finding workflow in the assigned engagement")
 async def patch_portal_finding(
     finding_id: uuid.UUID,
@@ -221,7 +233,7 @@ async def patch_portal_finding(
     )
 
 
-@router.post("/findings/{finding_id}/reopen", response_model=FindingOut,
+@router.post("/findings/{finding_id}/reopen", dependencies=[Depends(finding_lock_gate)], response_model=FindingOut,
              summary="Reopen a remediated finding in the assigned engagement")
 async def reopen_portal_finding(
     finding_id: uuid.UUID,
@@ -245,7 +257,7 @@ async def reopen_portal_finding(
     )
 
 
-@router.get("/findings/{finding_id}/remediation",
+@router.get("/findings/{finding_id}/remediation", dependencies=[Depends(finding_lock_gate), Depends(remediation_gate)],
             summary="Structured remediation plan (KB always; AI only once reviewed)")
 async def portal_finding_remediation(
     finding_id: uuid.UUID, user: ClientUser, db: DB,
@@ -296,7 +308,7 @@ async def _client_engagement(user, db) -> Engagement:
     return eng
 
 
-@router.get("/remediation/bundles", summary="Fix bundles for your engagement (by fix or by host)")
+@router.get("/remediation/bundles", dependencies=[Depends(remediation_gate)], summary="Fix bundles for your engagement (by fix or by host)")
 async def portal_remediation_bundles(user: ClientUser, db: DB,
                                      view: str = Query(default="fix", pattern="^(fix|host)$")):
     """The same deterministic bundles the operator sees (KB content only — AI
@@ -306,7 +318,7 @@ async def portal_remediation_bundles(user: ClientUser, db: DB,
     return remediation_service.view_payload(data["bundles"], view, data["sla_source"])
 
 
-@router.get("/remediation/export", summary="Download your remediation tracker (XLSX or CSV zip)")
+@router.get("/remediation/export", dependencies=[Depends(remediation_gate)], summary="Download your remediation tracker (XLSX or CSV zip)")
 async def portal_remediation_export(user: ClientUser, db: DB,
                                     format: str = Query(default="xlsx", pattern="^(xlsx|csv)$"),
                                     sheet: str | None = Query(default=None, pattern="^(findings|by_fix|by_host)$"),
@@ -321,7 +333,7 @@ async def portal_remediation_export(user: ClientUser, db: DB,
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
-@router.get("/remediation/bundles/{fix_key}", summary="One fix bundle in your engagement")
+@router.get("/remediation/bundles/{fix_key}", dependencies=[Depends(remediation_gate)], summary="One fix bundle in your engagement")
 async def portal_remediation_bundle(fix_key: str, user: ClientUser, db: DB):
     eng = await _client_engagement(user, db)
     data = await remediation_service.engagement_bundles(db, eng, user.tenant_id)
@@ -435,7 +447,7 @@ async def portal_trends(user: ClientUser, db: DB):
     )
 
 
-@router.get("/reports", response_model=list[ClientReportOut],
+@router.get("/reports", dependencies=[Depends(written_reports_gate)], response_model=list[ClientReportOut],
             summary="Approved reports for the customer's engagement")
 async def portal_reports(user: ClientUser, db: DB):
     rows = (await db.execute(
@@ -446,7 +458,7 @@ async def portal_reports(user: ClientUser, db: DB):
     return [ClientReportOut.model_validate(r) for r in rows]
 
 
-@router.get("/reports/{report_id}", response_model=ClientReportContent,
+@router.get("/reports/{report_id}", dependencies=[Depends(written_reports_gate)], response_model=ClientReportContent,
             summary="Download an approved report")
 async def portal_report(report_id: uuid.UUID, user: ClientUser, db: DB):
     # An unapproved / out-of-scope report is filtered out → 404, so a customer
@@ -650,7 +662,7 @@ def _assistant_finding_view(f: Finding) -> dict:
     }
 
 
-@router.post("/assistant/chat", response_model=ClientAssistantReply,
+@router.post("/assistant/chat", dependencies=[Depends(ai_assistant_gate)], response_model=ClientAssistantReply,
              summary="Ask about your own assessment (security topics only)")
 async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: DB):
     eng_id = assert_client(user)
@@ -903,7 +915,7 @@ async def portal_workspace_finding_compare(
         db=db, current_user=user, a=a, b=b, engagement_id=assert_client(user))
 
 
-@router.get("/workspace/findings/{finding_id}", response_model=FindingOut,
+@router.get("/workspace/findings/{finding_id}", dependencies=[Depends(finding_lock_gate)], response_model=FindingOut,
             summary="Manager-parity finding detail for the assigned engagement")
 async def portal_workspace_finding_detail(finding_id: uuid.UUID, user: ClientUser, db: DB):
     finding = await finding_workflow.get_finding_for_action(
@@ -916,7 +928,7 @@ async def portal_workspace_finding_detail(finding_id: uuid.UUID, user: ClientUse
     return await _finding_detail_out(db, finding)
 
 
-@router.get("/workspace/findings/{finding_id}/obligations",
+@router.get("/workspace/findings/{finding_id}/obligations", dependencies=[Depends(finding_lock_gate), Depends(compliance_gate)],
             summary="Regional obligations for a finding in the assigned engagement")
 async def portal_finding_obligations(finding_id: uuid.UUID, user: ClientUser, db: DB):
     from app.services.compliance_brief import finding_compliance_view
@@ -924,7 +936,7 @@ async def portal_finding_obligations(finding_id: uuid.UUID, user: ClientUser, db
     return await finding_compliance_view(db, finding, eng)
 
 
-@router.post("/workspace/findings/{finding_id}/compliance-brief",
+@router.post("/workspace/findings/{finding_id}/compliance-brief", dependencies=[Depends(finding_lock_gate), Depends(compliance_gate)],
              summary="Sector-expert compliance impact brief (AI-generated, unverified)")
 async def portal_finding_compliance_brief(finding_id: uuid.UUID, user: ClientUser, db: DB):
     from app.services.compliance_brief import generate_compliance_brief

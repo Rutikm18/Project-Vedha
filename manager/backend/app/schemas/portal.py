@@ -81,6 +81,12 @@ class EntitlementOut(BaseModel):
     # "repeat" = the same asset may be deep-scanned again.
     deep_repeat_policy: Literal["distinct", "repeat"] = "distinct"
     deep_scanned_targets: list[str] = []
+    # Portal locks (see app/services/portal_locks.py). A locked severity's
+    # findings appear only as teaser rows; a locked feature answers "available on
+    # a licensed plan". Written reports are withheld while any severity is locked.
+    locked_severities: list[Literal["critical", "high", "medium", "low", "info"]] = []
+    locked_features: list[Literal["ai_assistant", "compliance", "remediation", "reports"]] = []
+    written_reports_withheld: bool = False
 
 
 class ClientPostureOut(BaseModel):

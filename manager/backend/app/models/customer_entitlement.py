@@ -36,6 +36,12 @@ SCAN_MODES = ("stealth", "normal", "aggressive", "deep")
 DEEP_DISTINCT = "distinct"
 DEEP_REPEAT = "repeat"
 
+# Portal locks. Severities in display order; features alphabetical.
+LOCKABLE_SEVERITIES = ("critical", "high", "medium", "low", "info")
+LOCKABLE_FEATURES = ("ai_assistant", "compliance", "remediation", "reports")
+# A new POC customer starts with these locked; licensed plans with none.
+DEFAULT_POC_LOCKED_SEVERITIES = ("critical", "high")
+
 
 class CustomerEntitlement(Base, TimestampMixin):
     __tablename__ = "customer_entitlements"
@@ -79,6 +85,11 @@ class CustomerEntitlement(Base, TimestampMixin):
                                                     server_default=DEEP_DISTINCT)
     deep_scanned_targets: Mapped[list[str]] = mapped_column(JSONB, nullable=False,
                                                            server_default="[]")
+    # Portal locks (any plan type, changeable at any time by the operator).
+    # A locked severity's findings appear to the customer only as teaser rows;
+    # a locked feature answers "available on a licensed plan".
+    locked_severities: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    locked_features: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
     # Issued the first time the plan becomes "licensed"; shown to the customer.
     license_key: Mapped[str | None] = mapped_column(String(32), nullable=True, unique=True)
     notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
