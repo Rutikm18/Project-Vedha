@@ -287,3 +287,48 @@ class TestAccessExpiryIsNotRevocation:
         from agent.transport import DEVICE_REFRESH_EXPIRED
         assert len({DEVICE_REFRESH_OK, DEVICE_REFRESH_REJECTED,
                     DEVICE_REFRESH_UNAVAILABLE, DEVICE_REFRESH_EXPIRED}) == 4
+
+
+class TestPollingDuringAccessExpiry:
+    """Found by the live expiry run: the HTTP poll treated the manager's expiry 403
+    as a stale token, the polling loop then called clear_state() and re-enrolled —
+    destroying the identity of an agent that only needed its date extended."""
+
+    BODY = '{"detail":"Agent access has expired. Ask your Vedha administrator to extend it in Fleet."}'
+
+    def _polling_transport(self, tmp_path, responses):
+        t = _transport(tmp_path, {**_STATE, "token": "tok", "access_expires_at": 4102444800})
+        t._agent_token = "tok"
+        t._device_signing_private_key = b"k" * 32
+        t._client.get.side_effect = responses
+        t._client.post.return_value = MagicMock(status_code=403, text=self.BODY)
+        return t
+
+    def test_expiry_403_on_poll_raises_access_expired_not_a_stale_token(self, tmp_path):
+        from agent.transport import AccessExpiredError
+        t = self._polling_transport(tmp_path, [MagicMock(status_code=403, text=self.BODY)] * 2)
+        with pytest.raises(AccessExpiredError):
+            t.poll_jobs(1)
+        assert t.access_expired is True
+
+    def test_other_403_on_poll_is_still_a_stale_token(self, tmp_path):
+        from agent.transport import AccessExpiredError, TransportError
+        t = self._polling_transport(tmp_path, [MagicMock(status_code=403, text='{"detail":"nope"}')] * 2)
+        t._client.post.return_value = MagicMock(status_code=401, text="")
+        with pytest.raises(TransportError) as exc:
+            t.poll_jobs(1)
+        assert not isinstance(exc.value, AccessExpiredError)
+
+    def test_access_expired_error_is_a_transport_error_for_old_callers(self):
+        from agent.transport import AccessExpiredError, TransportError
+        assert issubclass(AccessExpiredError, TransportError)
+
+    def test_refresh_expiry_sets_the_flag_and_success_clears_it(self, tmp_path):
+        t = _transport(tmp_path, _STATE)
+        t._client.post.return_value = MagicMock(status_code=403, text=self.BODY)
+        assert t.refresh_device_access_ex(b"k" * 32) == "expired" and t.access_expired is True
+        t._client.post.return_value = MagicMock(
+            status_code=200, text="", json=lambda: {"access_token": "new", "access_expires_in_seconds": 600})
+        t._client.post.return_value.raise_for_status = lambda: None
+        assert t.refresh_device_access_ex(b"k" * 32) == DEVICE_REFRESH_OK
+        assert t.access_expired is False

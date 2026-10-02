@@ -79,6 +79,13 @@ class TransportError(Exception):
     """Raised when a transport operation fails permanently (not retryable)."""
 
 
+class AccessExpiredError(TransportError):
+    """The manager refused because this agent's ACCESS EXPIRY (set in Fleet) has
+    passed. Not a stale or revoked credential: the identity is intact and works
+    again when an administrator extends the date, so callers must WAIT and retry —
+    never clear state or re-enrol."""
+
+
 class DeviceAlreadyEnrolledError(TransportError):
     """The probe's device signing key is already registered as an agent on the
     manager (create_enrollment_request → HTTP 409).
@@ -133,6 +140,14 @@ DEVICE_REFRESH_UNAVAILABLE = "unavailable"
 #     again the moment an administrator extends the date, so the agent must keep
 #     its identity and wait, not stop or re-enrol.
 DEVICE_REFRESH_EXPIRED = "expired"
+
+# What the manager says when an agent's Fleet-set access expiry has passed (its
+# 403 body). Matched as a phrase so an ordinary "token expired" never counts.
+ACCESS_EXPIRED_PHRASE = "access has expired"
+
+
+def is_access_expired_response(status_code: int, text: str) -> bool:
+    return status_code == 403 and ACCESS_EXPIRED_PHRASE in (text or "").lower()
 
 
 def manager_fingerprint(platform_url: str) -> str:
@@ -267,6 +282,7 @@ class Transport:
             cert = client_cert
 
         self._ws_ssl = _websocket_ssl_context(self._base_url, verify, cert)
+        self._last_refresh_outcome: str | None = None
 
         self._client = httpx.Client(
             base_url=platform_url.rstrip("/"),
@@ -555,7 +571,17 @@ class Transport:
         """Backwards-compatible bool wrapper over `refresh_device_access_ex`."""
         return self.refresh_device_access_ex(signing_private_key) == DEVICE_REFRESH_OK
 
+    @property
+    def access_expired(self) -> bool:
+        """True when the most recent token refresh was refused for access expiry."""
+        return self._last_refresh_outcome == DEVICE_REFRESH_EXPIRED
+
     def refresh_device_access_ex(self, signing_private_key: bytes) -> str:
+        outcome = self._refresh_device_access_impl(signing_private_key)
+        self._last_refresh_outcome = outcome
+        return outcome
+
+    def _refresh_device_access_impl(self, signing_private_key: bytes) -> str:
         """Refresh the short-lived device access token, reporting WHY it failed.
 
         Returns DEVICE_REFRESH_OK / _REJECTED / _UNAVAILABLE. The caller needs
@@ -587,7 +613,7 @@ class Transport:
                     "signature": signature,
                 },
             )
-            if response.status_code == 403 and "expired" in response.text.lower():
+            if is_access_expired_response(response.status_code, response.text):
                 return DEVICE_REFRESH_EXPIRED        # access expiry, not revocation
             if response.status_code in (401, 403, 409):
                 return DEVICE_REFRESH_REJECTED       # authoritative "no"
@@ -780,12 +806,17 @@ class Transport:
             job_id, engagement_id, job_type, status, params
         """
         if not self.ensure_device_access():
+            if self.access_expired:
+                raise AccessExpiredError("Agent access has expired (set in Fleet).")
             raise TransportError("Device credential refresh rejected during job poll.")
         r = self._client.get(
             f"/agents/{self._agent_id}/jobs",
             headers=self.auth_header,
             params={"limit": limit},
         )
+        if is_access_expired_response(r.status_code, r.text):
+            self._last_refresh_outcome = DEVICE_REFRESH_EXPIRED
+            raise AccessExpiredError("Agent access has expired (set in Fleet).")
         if r.status_code in (401, 403):
             # The token was time-valid (ensure_device_access above was happy) but
             # the manager REJECTED it — a stale credential generation, revoked
@@ -798,6 +829,9 @@ class Transport:
                     headers=self.auth_header,
                     params={"limit": limit},
                 )
+            if is_access_expired_response(r.status_code, r.text):
+                self._last_refresh_outcome = DEVICE_REFRESH_EXPIRED
+                raise AccessExpiredError("Agent access has expired (set in Fleet).")
             if r.status_code in (401, 403):
                 raise TransportError("Token rejected during job poll — re-register needed.")
         r.raise_for_status()

@@ -45,6 +45,7 @@ from agent.instance_lock import (
 )
 from agent.transport import (
     DEVICE_REFRESH_OK,
+    AccessExpiredError,
     DEVICE_REFRESH_EXPIRED,
     DEVICE_REFRESH_REJECTED,
     DEVICE_REFRESH_UNAVAILABLE,
@@ -667,6 +668,14 @@ def main() -> None:
 
             poll_fail_streak = 0  # a clean pass clears the outage counter
 
+        except AccessExpiredError:
+            # Access expiry set in Fleet: wait, keep the identity (no clear_state,
+            # no re-enrolment) and resume by itself once the date is extended.
+            wait = _bounded_env_int("PROBE_EXPIRED_RETRY_SECS", 300, 30, 3600)
+            say("This agent's access has expired (set in Fleet). Waiting — it resumes "
+                f"by itself once extended. Re-checking in {wait // 60 or 1} min.", 1)
+            time.sleep(wait)
+            continue
         except TransportError:
             say("Token rejected — re-registering...")
             transport.clear_state()
@@ -1118,6 +1127,15 @@ async def _ws_connection_loop(
                         transport.ensure_device_access, force=True)
                 except Exception as rexc:  # noqa: BLE001
                     _dbg(f"forced device-access refresh raised: {rexc!r}")
+                if transport.access_expired:
+                    # Fleet-set access expiry, not a dead credential: stay in the
+                    # loop, keep the identity, and retry slowly.
+                    wait = _bounded_env_int("PROBE_EXPIRED_RETRY_SECS", 300, 30, 3600)
+                    say("This agent's access has expired (set in Fleet). Waiting — it "
+                        f"resumes by itself once extended. Re-checking in {wait // 60 or 1} min.", 1)
+                    auth_failures = 0
+                    await asyncio.sleep(wait)
+                    continue
                 if not refreshed or auth_failures >= WS_AUTH_FAIL_LIMIT:
                     say("WebSocket auth keeps failing — the device credential looks "
                         "stale; falling back to re-registration.", 1)
