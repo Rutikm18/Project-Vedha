@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import require_role
 from app.ratelimit import ai_rate_limit
+from app.services.notification_rules import notify_event_safe
 from app.dependencies import DB, AuthUser
 from app.models.asset import Asset
 from app.models.attack_path import AttackPath
@@ -140,7 +141,7 @@ async def approve_report(
     db: DB,
     current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
 ):
-    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    engagement = await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     rows = await _pending_outputs(db, engagement_id, body.output_ids)
     if not rows:
         raise HTTPException(404, "No pending sections to approve")
@@ -150,6 +151,10 @@ async def approve_report(
         r.reviewed_at = datetime.now(timezone.utc)
     await db.flush()
     logger.info("ai.report.approved", engagement=str(engagement_id), count=len(rows))
+    await notify_event_safe(
+        db, current_user.tenant_id, "report_approved",
+        f"Vedha: report approved for {engagement.name}",
+        f"{len(rows)} report section(s) were approved for the engagement '{engagement.name}'.")
     return {"approved": len(rows), "ids": [str(r.id) for r in rows]}
 
 

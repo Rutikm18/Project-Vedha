@@ -712,6 +712,46 @@ async def _record_run_membership(db: AsyncSession, run: DetectionRun) -> None:
             run_id=run.id, finding_id=fid, outcome=RUN_FINDING_RESOLVED))
 
 
+async def _notify_new_findings(db: AsyncSession, engagement_id: uuid.UUID, run_id: uuid.UUID) -> None:
+    """Tell the tenant about the Critical / High findings this run opened (one
+    message per severity, per run), if their notification rules say so. Never
+    raises: a notification must not fail a detection run."""
+    try:
+        from app.models.engagement import Engagement
+        from app.services.notification_rules import notify_event_safe
+
+        opened = (await db.execute(
+            select(Finding.severity, Finding.title).where(
+                Finding.initial_detection_run_id == run_id,
+                Finding.severity.in_([FindingSeverity.critical, FindingSeverity.high]),
+            )
+        )).all()
+        if not opened:
+            return
+        eng = (await db.execute(
+            select(Engagement.tenant_id, Engagement.name).where(Engagement.id == engagement_id)
+        )).one_or_none()
+        if eng is None:
+            return
+        tenant_id, name = eng
+        for severity, label, event in (
+            (FindingSeverity.critical, "Critical", "critical_finding"),
+            (FindingSeverity.high, "High", "high_finding"),
+        ):
+            titles = [t for s, t in opened if s == severity]
+            if not titles:
+                continue
+            shown = "\n".join(f"- {t}" for t in titles[:5])
+            more = f"\n…and {len(titles) - 5} more" if len(titles) > 5 else ""
+            await notify_event_safe(
+                db, tenant_id, event,
+                f"Vedha: {len(titles)} new {label} finding{'s' if len(titles) != 1 else ''} in {name}",
+                f"A scan of '{name}' opened {len(titles)} {label} finding{'s' if len(titles) != 1 else ''}:\n"
+                f"{shown}{more}")
+    except Exception as exc:  # noqa: BLE001 — notification must not fail the run
+        logger.warning("detection_run.notify_failed", run_id=str(run_id), error=str(exc))
+
+
 async def create_findings_from_facts(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
     *, scan_result_id: uuid.UUID | None = None, job_id: uuid.UUID | None = None,
@@ -959,6 +999,8 @@ async def create_findings_from_facts(
         run.findings_reaffirmed = reaffirmed
         run.findings_current = int(current or 0)
         await db.flush()
+        if created:
+            await _notify_new_findings(db, engagement_id, run.id)
         logger.info("detection_run.completed", run_id=str(run.id),
                     engagement_id=str(engagement_id), new=created,
                     reaffirmed=reaffirmed, resolved=resolved,

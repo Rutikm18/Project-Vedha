@@ -226,7 +226,8 @@ async def _handle_notify(event: Event) -> None:
         return
     async with AsyncSessionLocal() as db:
         n = await notify_tenant(db, uuid.UUID(tenant_id),
-                                p.get("subject", "Vedha notification"), p.get("body", ""))
+                                p.get("subject", "Vedha notification"), p.get("body", ""),
+                                channels=p.get("channels"))
         await db.commit()
     logger.info("outbox.notify.done", tenant_id=tenant_id, sent=n)
 
