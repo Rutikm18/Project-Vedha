@@ -5,6 +5,12 @@
  */
 import { NextResponse } from "next/server";
 import { backend, BackendError, cookieFrom, forwardedFor } from "../../../../lib/backend";
+import { isClientToken } from "../../../../lib/token-role";
+
+const PORTAL_ACCOUNT = {
+  error: "This is a customer portal account. Sign in at the customer portal instead.",
+  code: "portal_account",
+} as const;
 
 const secureCookie = process.env.AUTH_COOKIE_SECURE === "true"
   || (process.env.AUTH_COOKIE_SECURE !== "false" && process.env.NODE_ENV === "production");
@@ -47,6 +53,13 @@ export async function POST(req: Request) {
       body: { email, password },
       headers: forwardedFor(req),
     });
+    // A customer would only meet a console that refuses every call. Turn them
+    // away here, and revoke the session just opened so nothing is left behind.
+    if (isClientToken(d.access_token)) {
+      await backend("/auth/logout", { method: "POST", body: { refresh_token: d.refresh_token } })
+        .catch(() => {});
+      return NextResponse.json(PORTAL_ACCOUNT, { status: 403 });
+    }
     const res = NextResponse.json({ ok: true, email });
     setSessionCookies(res, d.access_token, d.refresh_token);
     return res;
@@ -82,6 +95,11 @@ export async function PUT(req: Request) {
       "/auth/refresh",
       { method: "POST", body: { refresh_token: refreshToken } },
     );
+    // The refresh door is operator-only too: never turn a customer's token into
+    // an operator session.
+    if (isClientToken(d.access_token)) {
+      return NextResponse.json(PORTAL_ACCOUNT, { status: 403 });
+    }
     const response = NextResponse.json({ ok: true });
     setSessionCookies(response, d.access_token, d.refresh_token);
     return response;

@@ -12,8 +12,8 @@
  * sign into the portal is rejected (they would see nothing anyway, but fail fast).
  */
 import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 import { backend, BackendError, cookieFrom, forwardedFor } from "../../../../lib/backend";
+import { isClientToken } from "../../../../lib/token-role";
 
 const secureCookie =
   process.env.AUTH_COOKIE_SECURE === "true" ||
@@ -43,12 +43,6 @@ function setPortalCookies(
     path: REFRESH_PATH,
     maxAge: 7 * 24 * 60 * 60,
   });
-}
-
-/** True only if the token's role claim is exactly "client". */
-function isClientToken(accessToken: string): boolean {
-  const claims = jwt.decode(accessToken) as { role?: string } | null;
-  return !!claims && claims.role === "client";
 }
 
 export async function POST(req: Request) {

@@ -27,6 +27,8 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A customer typed their portal account here: point them at their own sign-in.
+  const [portalAccount, setPortalAccount] = useState(false);
   // TESTING ONLY: seeded credentials for autofill (null in production — the
   // /api/auth/dev-hint endpoint 404s unless DEV_LOGIN_HINT=1 and APP_ENV!=production).
   const [devHint, setDevHint] = useState<{ email: string; password: string } | null>(null);
@@ -80,6 +82,7 @@ function LoginForm() {
 
     setLoading(true);
     setError(null);
+    setPortalAccount(false);
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -104,6 +107,10 @@ function LoginForm() {
           }
           case "backend_unavailable":
             setError("Sign-in is temporarily unavailable. Please try again shortly.");
+            break;
+          case "portal_account":
+            setPortalAccount(true);
+            setError("This is a customer portal account, so it can't sign in to the operator console.");
             break;
           default:
             setError(data.error || "Sign-in is temporarily unavailable.");
@@ -245,7 +252,17 @@ function LoginForm() {
           {error && (
             <div className="login-error" role="alert" aria-live="polite">
               <LockKeyhole size={16} />
-              <span>{error}</span>
+              <span>
+                {error}
+                {portalAccount && (
+                  <>
+                    {" "}
+                    <a href="/portal/login" style={{ fontWeight: 600, textDecoration: "underline" }}>
+                      Go to the customer portal sign-in
+                    </a>
+                  </>
+                )}
+              </span>
             </div>
           )}
 
