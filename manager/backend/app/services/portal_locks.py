@@ -18,28 +18,96 @@ for the teaser rows and to tell "locked" apart from "not found".
 """
 from __future__ import annotations
 
+import uuid
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-from sqlalchemy import event
+from fastapi import HTTPException, status
+from sqlalchemy import event, func, select
 from sqlalchemy.orm import ORMExecuteState, Session, with_loader_criteria
 
+from app.models.customer_entitlement import LOCKABLE_SEVERITIES
 from app.models.finding import Finding
 
 LOCKED_MESSAGE = "This finding is available on a licensed plan."
+TEASER_MESSAGE = "Available on a licensed plan."
+WRITTEN_REPORTS_MESSAGE = (
+    "Full written reports are available on a licensed plan. The report views below cover "
+    "the findings included in your plan.")
+FEATURE_MESSAGES = {
+    "ai_assistant": "The AI assistant is available on a licensed plan.",
+    "reports": "Reports are available on a licensed plan.",
+    "remediation": "Remediation plans and fix bundles are available on a licensed plan.",
+    "compliance": "Compliance briefs are available on a licensed plan.",
+}
 
 _LOCKED: ContextVar[frozenset[str] | None] = ContextVar("vedha_portal_locked_severities", default=None)
+_FEATURES: ContextVar[frozenset[str] | None] = ContextVar("vedha_portal_locked_features", default=None)
 
 
-def activate(locked_severities: Iterable[str]) -> None:
-    """Start hiding these severities for the rest of the current request."""
+def activate(locked_severities: Iterable[str], locked_features: Iterable[str] = ()) -> None:
+    """Apply a customer's plan locks for the rest of the current request."""
     locked = frozenset(str(s).lower() for s in locked_severities or ())
+    features = frozenset(str(f).lower() for f in locked_features or ())
     _LOCKED.set(locked or None)
+    _FEATURES.set(features or None)
 
 
 def current() -> frozenset[str]:
     return _LOCKED.get() or frozenset()
+
+
+def feature_locked(feature: str) -> bool:
+    return feature in (_FEATURES.get() or frozenset())
+
+
+def ensure_feature_unlocked(feature: str) -> None:
+    if feature_locked(feature):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, FEATURE_MESSAGES[feature])
+
+
+def ensure_written_reports_available() -> None:
+    """Written reports are free text and can't be redacted per finding, so they
+    are withheld while any severity is locked (and when Reports is locked)."""
+    ensure_feature_unlocked("reports")
+    if current():
+        raise HTTPException(status.HTTP_403_FORBIDDEN, WRITTEN_REPORTS_MESSAGE)
+
+
+async def ensure_finding_unlocked(db, finding_id: uuid.UUID, engagement_id: uuid.UUID) -> None:
+    """403 for a finding the customer's plan locks. A missing finding passes, so
+    the route's own 404 still applies — locked and missing stay distinguishable
+    only where the customer is entitled to know (their own engagement)."""
+    locked = current()
+    if not locked:
+        return
+    with lifted():
+        severity = (await db.execute(
+            select(Finding.severity).where(Finding.id == finding_id,
+                                           Finding.engagement_id == engagement_id)
+        )).scalar_one_or_none()
+    if str(getattr(severity, "value", severity)) in locked:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, LOCKED_MESSAGE)
+
+
+async def locked_teaser(db, engagement_id: uuid.UUID) -> dict:
+    """How many findings each locked severity holds — the only facts about a
+    locked finding a customer may see."""
+    locked = current()
+    ordered = [s for s in LOCKABLE_SEVERITIES if s in locked]
+    if not locked:
+        return {"locked_severities": [], "counts": {}, "total": 0, "message": TEASER_MESSAGE}
+    with lifted():
+        rows = (await db.execute(
+            select(Finding.severity, func.count())
+            .where(Finding.engagement_id == engagement_id, Finding.severity.in_(ordered))
+            .group_by(Finding.severity)
+        )).all()
+    found = {str(getattr(sev, "value", sev)): int(n) for sev, n in rows}
+    counts = {s: found[s] for s in ordered if found.get(s)}
+    return {"locked_severities": ordered, "counts": counts, "total": sum(counts.values()),
+            "message": TEASER_MESSAGE}
 
 
 @contextmanager
