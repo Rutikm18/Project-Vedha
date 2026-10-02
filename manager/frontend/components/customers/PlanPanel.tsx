@@ -9,12 +9,13 @@
 
 import { useEffect, useState } from "react";
 import {
-  CalendarClock, Clipboard, Crosshair, FlaskConical, Loader2, Plus, RotateCcw, ShieldCheck,
+  CalendarClock, Clipboard, Crosshair, FlaskConical, Loader2, Lock, Plus, RotateCcw, ShieldCheck,
 } from "lucide-react";
 import {
   type DeepRepeatPolicy, type Entitlement, type EntitlementAdmin, type EntitlementConfig,
-  type PlanType, type ScanMode,
-  MODE_META, PLAN_LABEL, SCAN_MODES, STATE_LABEL, dateInputValue, daysText, fmtDate,
+  type LockFeature, type LockSeverity, type PlanType, type ScanMode,
+  LOCK_FEATURES, LOCKABLE_SEVERITIES, MODE_META, PLAN_LABEL, SCAN_MODES, STATE_LABEL,
+  dateInputValue, daysText, fmtDate,
   friendlyError, isoFromDateInput, modeShort, stateColor,
 } from "../../lib/entitlements";
 
@@ -29,6 +30,19 @@ export interface PlanDraft {
   totalCap: number | null; // null = no overall cap
   deepPolicy: DeepRepeatPolicy;
   notes: string;
+  /** Portal locks: severities shown only as teaser rows, features that answer
+   *  "available on a licensed plan". Enforced server-side. */
+  lockedSeverities: LockSeverity[];
+  lockedFeatures: LockFeature[];
+}
+
+/** A new POC starts with Critical + High locked; a new licence with nothing. */
+function defaultLocks(plan: PlanType): LockSeverity[] {
+  return plan === "poc" ? ["critical", "high"] : [];
+}
+
+function inOrder<T extends string>(chosen: T[], order: readonly T[]): T[] {
+  return order.filter((v) => chosen.includes(v));
 }
 
 const POC_PRESETS = [7, 14, 30];
@@ -45,6 +59,7 @@ export function defaultDraft(): PlanDraft {
       deep:       { allowance: "off",       quota: 1 },
     },
     totalCap: null, deepPolicy: "distinct", notes: "",
+    lockedSeverities: defaultLocks("poc"), lockedFeatures: [],
   };
 }
 
@@ -71,6 +86,8 @@ export function draftFrom(e: EntitlementAdmin | null): PlanDraft {
     end: e.plan_type === "licensed" ? dateInputValue(e.expires_at) : "",
     modes, totalCap: e.scan_quota ?? null, deepPolicy: e.deep_repeat_policy ?? "distinct",
     notes: e.notes ?? "",
+    // An existing customer keeps exactly the locks it has — never re-locked by default.
+    lockedSeverities: e.locked_severities ?? [], lockedFeatures: e.locked_features ?? [],
   };
 }
 
@@ -109,6 +126,8 @@ export function configFromDraft(d: PlanDraft): EntitlementConfig {
     deep_quota: q("deep"),
     deep_repeat_policy: d.deepPolicy,
     notes: d.notes.trim() || null,
+    locked_severities: inOrder(d.lockedSeverities, LOCKABLE_SEVERITIES),
+    locked_features: inOrder(d.lockedFeatures, LOCK_FEATURES.map((f) => f.id)),
   };
 }
 
@@ -220,7 +239,10 @@ export function PlanFields({ draft, onChange, compact = false, usage, onTopUp, b
         <div className="pln-seg" role="radiogroup" aria-label="Plan type">
           {(["poc", "licensed"] as PlanType[]).map((p) => (
             <button key={p} type="button" role="radio" aria-checked={draft.plan === p}
-              className="pln-seg-btn" data-on={draft.plan === p} onClick={() => set({ plan: p })}>
+              className="pln-seg-btn" data-on={draft.plan === p}
+              // A customer without a saved plan takes that plan type's default
+              // locks; an existing customer's locks never change silently.
+              onClick={() => set(usage ? { plan: p } : { plan: p, lockedSeverities: defaultLocks(p) })}>
               {p === "poc" ? <FlaskConical size={13} /> : <ShieldCheck size={13} />}
               {p === "poc" ? "POC (trial)" : "Full use (licence)"}
             </button>
@@ -257,6 +279,8 @@ export function PlanFields({ draft, onChange, compact = false, usage, onTopUp, b
 
       <AllowanceTable draft={draft} onChange={onChange} usage={usage} onTopUp={onTopUp} busy={busy} />
 
+      <PortalAccess draft={draft} onChange={onChange} />
+
       {!compact && (
         <label className="pln-field pln-span">
           <span className="pln-label">Notes <span className="pln-opt">(internal)</span></span>
@@ -264,6 +288,51 @@ export function PlanFields({ draft, onChange, compact = false, usage, onTopUp, b
             value={draft.notes} onChange={(e) => set({ notes: e.target.value })} />
         </label>
       )}
+    </div>
+  );
+}
+
+const SEVERITY_LABEL: Record<LockSeverity, string> = {
+  critical: "Critical", high: "High", medium: "Medium", low: "Low", info: "Info",
+};
+
+/** What the customer can open in the portal. Locked severities appear only as
+ *  "available on a licensed plan" teaser rows; locked features show a lock
+ *  panel. Takes effect on the customer's next request; change it at any time. */
+function PortalAccess({ draft, onChange }: { draft: PlanDraft; onChange: (d: PlanDraft) => void }) {
+  const toggle = <T extends string>(list: T[], value: T): T[] =>
+    list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+  return (
+    <div className="pln-field pln-span pln-access">
+      <span className="pln-label">Portal access</span>
+      <p className="pln-access-hint">
+        Locked findings show only their severity and a lock; their details never reach the customer.
+        Changes apply on the customer&apos;s next page load.
+      </p>
+      <div className="pln-access-group" role="group" aria-label="Locked finding severities">
+        <span className="pln-access-title"><Lock size={12} aria-hidden /> Lock findings of severity</span>
+        <div className="pln-row pln-wrap">
+          {LOCKABLE_SEVERITIES.map((sev) => (
+            <label key={sev} className="pln-chip pln-lock-chip" data-on={draft.lockedSeverities.includes(sev)}>
+              <input type="checkbox" checked={draft.lockedSeverities.includes(sev)}
+                onChange={() => onChange({ ...draft, lockedSeverities: toggle(draft.lockedSeverities, sev) })} />
+              {SEVERITY_LABEL[sev]}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="pln-access-group" role="group" aria-label="Locked portal features">
+        <span className="pln-access-title"><Lock size={12} aria-hidden /> Lock features</span>
+        <div className="pln-access-features">
+          {LOCK_FEATURES.map((f) => (
+            <label key={f.id} className="pln-feature" data-on={draft.lockedFeatures.includes(f.id)}>
+              <input type="checkbox" checked={draft.lockedFeatures.includes(f.id)}
+                onChange={() => onChange({ ...draft, lockedFeatures: toggle(draft.lockedFeatures, f.id) })} />
+              <span><strong>{f.label}</strong><small>{f.description}</small></span>
+            </label>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -402,6 +471,18 @@ export const PLAN_STYLES = `
 .pln-num { width: 76px; font-family: var(--font-mono); }
 .pln-date { max-width: 220px; }
 .pln-row { display: flex; align-items: center; gap: 6px; min-height: 40px; }
+.pln-wrap { flex-wrap: wrap; }
+.pln-access { gap: 10px; }
+.pln-access-hint { margin: 0; color: var(--text-muted); font-size: 11.5px; line-height: 1.5; max-width: 620px; }
+.pln-access-group { display: grid; gap: 6px; }
+.pln-access-title { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 11.5px; font-weight: 600; }
+.pln-lock-chip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.pln-lock-chip input, .pln-feature input { accent-color: var(--sev-high-color); }
+.pln-access-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.pln-feature { display: flex; align-items: flex-start; gap: 9px; padding: 9px 11px; border-radius: 9px; border: 0.5px solid var(--border-subtle); background: var(--bg-panel); cursor: pointer; }
+.pln-feature[data-on="true"] { border-color: color-mix(in srgb, var(--sev-high-color) 45%, var(--border-subtle)); }
+.pln-feature strong { display: block; color: var(--text-primary); font-size: 12px; }
+.pln-feature small { display: block; margin-top: 2px; color: var(--text-muted); font-size: 11px; line-height: 1.4; }
 .pln-unit { color: var(--text-muted); font-size: 11px; }
 .pln-faint { color: var(--text-faint); }
 .pln-seg { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 3px; border-radius: 10px; background: var(--bg-panel); border: 0.5px solid var(--border-subtle); width: fit-content; }

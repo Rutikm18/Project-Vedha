@@ -13,6 +13,9 @@ import {
   type AIBrainWorkspaceSurface,
 } from "../../lib/aibrain-workspace-api";
 import { FactCard } from "../../components/assistant/FactCard";
+import { PlanLockPanel } from "../../components/portal/PlanLock";
+import { isFeatureLocked } from "../../lib/entitlements";
+import { usePortalEntitlement } from "../../lib/portal-client";
 import { AssistantText } from "../../components/assistant/AssistantText";
 import type { FactCardVM } from "../../lib/assistant";
 import { newId } from "../../lib/uuid";
@@ -206,6 +209,9 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
   const selectedPrivacy = nextUp ? (nextUp.tier === "local" ? "local" : "cloud") : status?.privacy;
 
   const Shell = surface === "portal" ? PortalShell : PageShell;
+  // Portal: the customer's plan can lock the assistant (the server refuses too).
+  const portalPlan = usePortalEntitlement(surface === "portal");
+  const aiLocked = surface === "portal" && isFeatureLocked(portalPlan.data, "ai_assistant");
 
   return (
     <Shell
@@ -224,6 +230,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
         },
       ]}
     >
+      {aiLocked ? <PlanLockPanel feature="ai_assistant" /> : (
       <div className="brain-layout">
         <section className="brain-main">
           <header className="brain-context-bar">
@@ -393,6 +400,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
           </section>
         </aside>
       </div>
+      )}
     </Shell>
   );
 }

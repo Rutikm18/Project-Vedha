@@ -7,10 +7,12 @@ import {
   Printer, ExternalLink, CheckCircle, AlertTriangle, Clock, X,
 } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
+import { LockedFindingsTeaser, PlanLockNotice, PlanLockPanel } from "../../../components/portal/PlanLock";
+import { WRITTEN_REPORTS_NOTICE, isFeatureLocked } from "../../../lib/entitlements";
 import { Timestamp } from "../../../components/portal/Timestamp";
 import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
 import {
-  portalApi, usePortalEngagement, SEVERITY_VAR, GRADE_VAR,
+  portalApi, usePortalEngagement, usePortalEntitlement, SEVERITY_VAR, GRADE_VAR,
   type PortalSummary, type PortalTrends, type PortalFinding, type PortalReport,
 } from "../../../lib/portal-client";
 
@@ -742,7 +744,13 @@ export function PortalReportsWorkspace() {
   const summary = useQuery({ queryKey: ["portal", "summary"],  queryFn: () => portalApi<PortalSummary>("/summary") });
   const trends  = useQuery({ queryKey: ["portal", "trends"],   queryFn: () => portalApi<PortalTrends>("/trends") });
   const findings= useQuery({ queryKey: ["portal", "findings"], queryFn: () => portalApi<PortalFinding[]>("/findings") });
-  const reports = useQuery({ queryKey: ["portal", "reports"],  queryFn: () => portalApi<PortalReport[]>("/reports") });
+  // Plan locks: Reports can be locked outright, and written (free-text) reports
+  // are withheld while any finding severity is locked — the server refuses both.
+  const plan = usePortalEntitlement();
+  const reportsLocked = isFeatureLocked(plan.data, "reports");
+  const writtenWithheld = Boolean(plan.data?.written_reports_withheld);
+  const reports = useQuery({ queryKey: ["portal", "reports"],  queryFn: () => portalApi<PortalReport[]>("/reports"),
+                             enabled: Boolean(plan.data) && !reportsLocked && !writtenWithheld });
 
   async function viewDoc(id: string, el: HTMLElement) {
     triggerRef.current = el;
@@ -754,6 +762,14 @@ export function PortalReportsWorkspace() {
   const coreLoading = eng.isLoading || summary.isLoading || trends.isLoading || findings.isLoading;
   const coreError   = eng.error || summary.error || trends.error || findings.error;
   const liveReportReady = !coreLoading && !coreError && Boolean(eng.data && summary.data && trends.data);
+
+  if (reportsLocked) {
+    return (
+      <PortalShell title="Reports" subtitle={eng.data?.name ?? "Assessment deliverables"}>
+        <PlanLockPanel feature="reports" />
+      </PortalShell>
+    );
+  }
 
   return (
     <PortalShell
@@ -798,7 +814,10 @@ export function PortalReportsWorkspace() {
       </div>
 
       {/* Documents tab — separate data source */}
-      {tab === "documents" && (
+      {tab === "documents" && writtenWithheld && (
+        <div className="no-print"><PlanLockNotice>{WRITTEN_REPORTS_NOTICE}</PlanLockNotice></div>
+      )}
+      {tab === "documents" && !writtenWithheld && (
         <div className="no-print">
           <DataState
             loading={reports.isLoading} error={reports.error}
@@ -816,6 +835,7 @@ export function PortalReportsWorkspace() {
 
       {/* Keep both live sections mounted so print/PDF is never limited to the active tab. */}
       <div className="portal-report-live" data-screen-active={tab !== "documents"}>
+        <LockedFindingsTeaser />
         <DataState
           loading={coreLoading} error={coreError}
           isEmpty={!eng.data || !summary.data || !trends.data}
