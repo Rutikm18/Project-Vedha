@@ -128,6 +128,11 @@ HEARTBEAT_LEASE_REVOKED = "lease_revoked"
 DEVICE_REFRESH_OK = "ok"
 DEVICE_REFRESH_REJECTED = "rejected"
 DEVICE_REFRESH_UNAVAILABLE = "unavailable"
+#   * EXPIRED     - the manager refused because the agent's ACCESS EXPIRY (set in
+#     Fleet) has passed. Not a revocation: the credential is intact and works
+#     again the moment an administrator extends the date, so the agent must keep
+#     its identity and wait, not stop or re-enrol.
+DEVICE_REFRESH_EXPIRED = "expired"
 
 
 def manager_fingerprint(platform_url: str) -> str:
@@ -582,6 +587,8 @@ class Transport:
                     "signature": signature,
                 },
             )
+            if response.status_code == 403 and "expired" in response.text.lower():
+                return DEVICE_REFRESH_EXPIRED        # access expiry, not revocation
             if response.status_code in (401, 403, 409):
                 return DEVICE_REFRESH_REJECTED       # authoritative "no"
             if response.status_code >= 500:

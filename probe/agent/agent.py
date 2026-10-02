@@ -45,6 +45,7 @@ from agent.instance_lock import (
 )
 from agent.transport import (
     DEVICE_REFRESH_OK,
+    DEVICE_REFRESH_EXPIRED,
     DEVICE_REFRESH_REJECTED,
     DEVICE_REFRESH_UNAVAILABLE,
     HEARTBEAT_LEASE_REVOKED,
@@ -1084,6 +1085,12 @@ async def _ws_connection_loop(
                     say(f"WebSocket displaced: {msg.get('message', '?')}")
                     break
 
+                elif msg_type == "access_expired":
+                    # The manager closes the socket right after this; the reconnect
+                    # path then waits (PROBE_EXPIRED_RETRY_SECS) instead of looping.
+                    say(f"Access expired: {msg.get('message', 'extend it in Fleet')}")
+                    break
+
         except websockets.exceptions.ConnectionClosed as exc:
             close_code = exc.rcvd.code if exc.rcvd is not None else None
             say(f"WebSocket closed (code={close_code}) — reconnecting in {backoff:.0f}s...")
@@ -1865,6 +1872,18 @@ def _obtain_identity(
                 outcome = transport.refresh_device_access_ex(signing_sk)
                 if outcome == DEVICE_REFRESH_OK:
                     say("Refreshed short-lived device access token.", 1)
+                    continue
+
+                if outcome == DEVICE_REFRESH_EXPIRED:
+                    # Access expiry set in Fleet. The credential is fine; the
+                    # manager will accept it again as soon as an administrator
+                    # extends the date. Keep the identity, stay quiet, retry slowly
+                    # — never stop (a restart loop) or re-enrol (a stray request).
+                    wait = _bounded_env_int("PROBE_EXPIRED_RETRY_SECS", 300, 30, 3600)
+                    say("This agent's access has expired (set in Fleet). Waiting — it "
+                        f"resumes by itself once an administrator extends it. "
+                        f"Re-checking in {wait // 60 or 1} min.", 1)
+                    time.sleep(wait)
                     continue
 
                 # WHOSE credential is this? Device credentials are issued BY a

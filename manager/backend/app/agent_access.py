@@ -22,6 +22,8 @@ _RESULT_UPLOAD_PATHS = (
 )
 
 EXPIRED_MESSAGE = "Agent access has expired. Ask your Vedha administrator to extend it in Fleet."
+# WebSocket close reasons are limited to 123 bytes.
+EXPIRED_REASON = "Agent access expired"
 
 
 def is_expired(access_expires_at: datetime | None, now: datetime | None = None) -> bool:

@@ -253,3 +253,37 @@ class TestIssuerIsWrittenOnEveryIdentityPath:
         t.clear_state()
         st = t.load_state()
         assert st["device_refresh_secret"] == "s" and st["identity_sk"] == "k"
+
+
+class TestAccessExpiryIsNotRevocation:
+    """Access expiry is set from Fleet and enforced by the manager (403 "…expired…").
+    The credential is intact and works again once the date is extended, so the
+    agent must wait and keep its identity — not exit "revoked, stopping for
+    administrator review" (a restart loop under Docker or a scheduled task)."""
+
+    def _refresh(self, tmp_path, status, text):
+        t = _transport(tmp_path, _STATE)
+        t._client.post.return_value = MagicMock(status_code=status, text=text)
+        return t.refresh_device_access_ex(b"k" * 32)
+
+    def test_expired_403_is_its_own_outcome(self, tmp_path):
+        from agent.transport import DEVICE_REFRESH_EXPIRED
+        body = '{"detail":"Agent access has expired. Ask your Vedha administrator to extend it in Fleet."}'
+        assert self._refresh(tmp_path, 403, body) == DEVICE_REFRESH_EXPIRED
+
+    def test_other_403_is_still_a_rejection(self, tmp_path):
+        assert self._refresh(tmp_path, 403, '{"detail":"Device is disabled"}') == DEVICE_REFRESH_REJECTED
+
+    def test_expired_wording_on_a_401_is_still_a_rejection(self, tmp_path):
+        """Only the manager's 403 means access expiry; a 401 never does."""
+        assert self._refresh(tmp_path, 401, '{"detail":"token expired"}') == DEVICE_REFRESH_REJECTED
+
+    def test_expired_is_not_success_for_the_bool_wrapper(self, tmp_path):
+        t = _transport(tmp_path, _STATE)
+        t._client.post.return_value = MagicMock(status_code=403, text="access has expired")
+        assert t.refresh_device_access(b"k" * 32) is False
+
+    def test_outcomes_are_four_distinct_values(self):
+        from agent.transport import DEVICE_REFRESH_EXPIRED
+        assert len({DEVICE_REFRESH_OK, DEVICE_REFRESH_REJECTED,
+                    DEVICE_REFRESH_UNAVAILABLE, DEVICE_REFRESH_EXPIRED}) == 4

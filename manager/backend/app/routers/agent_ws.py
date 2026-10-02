@@ -26,6 +26,7 @@ import structlog
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
+from app import agent_access
 from app.auth.jwt import decode_token
 from app.database import AsyncSessionLocal
 from app.models.agent import Agent, AgentStatus
@@ -69,6 +70,9 @@ async def _claim_pushed_job(
     )).scalar_one_or_none()
     if agent is None:
         return False, "not_eligible", None
+    # No NEW work for an agent whose access has expired (Fleet-set expiry).
+    if agent_access.is_expired(agent.access_expires_at):
+        return False, "access_expired", None
 
     row = (await db.execute(
         select(ScanJob, Engagement)
@@ -191,6 +195,13 @@ async def agent_websocket_endpoint(websocket: WebSocket):
             await websocket.close(code=4003, reason="Device credential revoked, disabled, or stale")
             return
 
+        # Access expiry set from Fleet. The HTTP middleware never sees WebSocket
+        # connections, so enforce it here too: an expired agent may not connect.
+        if agent_access.is_expired(agent.access_expires_at):
+            logger.warning("agent.ws.access_expired", agent_id=agent_id)
+            await websocket.close(code=4003, reason=agent_access.EXPIRED_REASON)
+            return
+
         # Accept the connection
         await websocket.accept()
         await agent_ws_manager.register(agent_id, tenant_id, websocket)
@@ -226,6 +237,19 @@ async def agent_websocket_endpoint(websocket: WebSocket):
                     ag = (await db.execute(
                         select(Agent).where(Agent.id == agent_id)
                     )).scalar_one_or_none()
+                    if ag and agent_access.is_expired(ag.access_expires_at) and not current_job:
+                        # Expired and idle: tell the agent why and drop the link.
+                        # A job already running keeps its connection (and may still
+                        # upload its results); the next idle heartbeat closes it.
+                        ag.status = AgentStatus.offline
+                        ag.current_job_id = None
+                        await db.commit()
+                        await websocket.send_json({
+                            "type": "access_expired",
+                            "message": agent_access.EXPIRED_MESSAGE,
+                        })
+                        await websocket.close(code=4003, reason=agent_access.EXPIRED_REASON)
+                        break
                     if ag:
                         ag.last_heartbeat = datetime.now(timezone.utc)
                         try:
