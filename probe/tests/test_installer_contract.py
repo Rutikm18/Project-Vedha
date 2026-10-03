@@ -116,3 +116,76 @@ def test_repo_installer_carries_empty_release_markers() -> None:
     source = INSTALLER.read_text(encoding="utf-8")
     assert source.count('\nVEDHA_RELEASE_SPKI=""\n') == 1
     assert source.count('\nVEDHA_RELEASE_VERSION=""\n') == 1
+
+
+# ── client distribution hardening ────────────────────────────────────────────
+
+import base64
+import hashlib
+import importlib.util
+import sys
+
+REPO = Path(__file__).resolve().parents[2]
+
+
+def _release_tool():
+    spec = importlib.util.spec_from_file_location("agent_release", REPO / "scripts" / "agent_release.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["agent_release"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _signed_installer(tmp_path: Path) -> tuple[Path, str]:
+    """The installer as a release ships it: a fresh key embedded."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from cryptography.hazmat.primitives import serialization
+
+    tool = _release_tool()
+    raw = Ed25519PrivateKey.generate().public_key().public_bytes(
+        serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    raw_b64 = base64.b64encode(raw).decode()
+    out = tmp_path / "install.sh"
+    tool.embed_installer(INSTALLER, out, spki_b64=tool.spki_b64_from_raw(raw_b64), version="9.9.9")
+    return out, tool.key_id(raw_b64)
+
+
+def test_token_can_come_from_a_file(tmp_path: Path) -> None:
+    token = tmp_path / "token.txt"
+    token.write_text("vet_abc123\n")
+    result = _dry_run("--manager", "https://m.example.com", "--token-file", str(token))
+    assert result.returncode == 0, result.stdout
+    assert "signed agent release" in result.stdout
+    assert "vet_abc123" not in result.stdout
+
+
+def test_empty_or_missing_token_file_is_refused(tmp_path: Path) -> None:
+    empty = tmp_path / "empty.txt"
+    empty.write_text("\n")
+    assert _dry_run("--manager", "https://m.example.com", "--token-file", str(empty)).returncode == 2
+    assert _dry_run("--manager", "https://m.example.com", "--token-file", str(tmp_path / "nope")).returncode == 2
+
+
+def test_signed_installer_shows_the_key_id_the_release_tool_computes(tmp_path: Path) -> None:
+    installer, expected = _signed_installer(tmp_path)
+    env = {**os.environ, "PROBE_INSTALL_DRY_RUN": "true"}
+    result = subprocess.run(
+        ["sh", str(installer), "--manager", "https://m.example.com", "--token", "vet_x"],
+        env=env, text=True, capture_output=True, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert f"Release signing key: {expected} (signature required)" in result.stdout
+
+
+def test_signed_installer_cannot_be_told_to_skip_the_signature() -> None:
+    source = INSTALLER.read_text(encoding="utf-8")
+    # The embedded key forces the requirement after the environment is read.
+    assert 'if [ -n "$VEDHA_RELEASE_SPKI" ]; then PROBE_REQUIRE_SIGNATURE=true; fi' in source
+
+
+def test_upgrade_recreates_the_container_but_keeps_the_identity_volume() -> None:
+    source = INSTALLER.read_text(encoding="utf-8")
+    block = source[source.index('existing_image="$(docker inspect'):]
+    block = block[: block.index("fi\nelse")]
+    assert 'docker rm -f "$NAME"' in block and "run_probe_container" in block
+    assert "docker volume rm" not in block
