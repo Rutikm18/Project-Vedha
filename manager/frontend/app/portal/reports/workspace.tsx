@@ -174,10 +174,57 @@ function PriorityItem({ index, text, tone }: { index: number; text: string; tone
   );
 }
 
+// ── Issues: one issue recorded on many assets reads once ─────────────────────
+
+interface PortalIssue {
+  key: string;
+  title: string;
+  severity: string;
+  /** Instances, open first, then by risk. */
+  items: PortalFinding[];
+  lead: PortalFinding;
+  open: number;
+}
+
+const isOpenFinding = (f: PortalFinding) => f.status === "open" || f.status === "confirmed";
+
+/** Group findings that share severity and title, most severe and riskiest first. */
+function groupIssues(findings: PortalFinding[]): PortalIssue[] {
+  const map = new Map<string, PortalFinding[]>();
+  for (const f of findings) {
+    const key = `${f.severity}|${f.title.trim().toLowerCase()}`;
+    const list = map.get(key);
+    if (list) list.push(f);
+    else map.set(key, [f]);
+  }
+  const risk = (f: PortalFinding) => f.risk_score ?? -1;
+  return [...map.entries()]
+    .map(([key, list]) => {
+      const items = [...list].sort((a, b) => Number(isOpenFinding(b)) - Number(isOpenFinding(a)) || risk(b) - risk(a));
+      return { key, title: items[0]!.title, severity: items[0]!.severity, items, lead: items[0]!, open: items.filter(isOpenFinding).length };
+    })
+    .sort((a, b) =>
+      (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9)
+      || Number(b.open > 0) - Number(a.open > 0)
+      || Math.max(...b.items.map(risk)) - Math.max(...a.items.map(risk))
+      || b.items.length - a.items.length
+      || a.title.localeCompare(b.title));
+}
+
+/** "3 open · 2 remediated", or the single status. */
+function issueStatus(issue: PortalIssue): string {
+  if (issue.items.length === 1) return issue.lead.status;
+  const counts = new Map<string, number>();
+  for (const f of issue.items) counts.set(f.status, (counts.get(f.status) ?? 0) + 1);
+  return [...counts.entries()].map(([status, n]) => `${n} ${status}`).join(" · ");
+}
+
 // ── Findings table (executive + findings tab) ─────────────────────────────────
 
 function FindingsTable({ findings, max }: { findings: PortalFinding[]; max?: number }) {
-  const list = max !== undefined ? findings.slice(0, max) : findings;
+  const issues = groupIssues(findings);
+  const list = max !== undefined ? issues.slice(0, max) : issues;
+  const repeated = list.some((i) => i.items.length > 1);
   if (!list.length) {
     return (
       <div style={{ padding: "24px 0", textAlign: "center", color: "var(--text-muted)",
@@ -191,7 +238,7 @@ function FindingsTable({ findings, max }: { findings: PortalFinding[]; max?: num
       <table className="responsive-table" style={{ width: "100%", minWidth: 500, borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "var(--bg-panel)" }}>
-            {["Severity", "Finding", "CVSS", "Risk", "Status"].map((h, i) => (
+            {["Severity", "Finding", ...(repeated ? ["Found"] : []), "CVSS", "Risk", "Status"].map((h, i) => (
               <th key={h} style={{
                 padding: "9px 12px", textAlign: i >= 2 ? "right" : "left",
                 fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em",
@@ -204,8 +251,12 @@ function FindingsTable({ findings, max }: { findings: PortalFinding[]; max?: num
           </tr>
         </thead>
         <tbody>
-          {list.map((f) => (
-            <tr key={f.id} data-card-row style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+          {list.map((issue) => {
+            const f = issue.lead;
+            const cvss = [...new Set(issue.items.map((x) => x.cvss_score).filter((v) => v !== null))];
+            const risk = Math.max(...issue.items.map((x) => x.risk_score ?? -1));
+            return (
+            <tr key={issue.key} data-card-row style={{ borderBottom: "1px solid var(--border-subtle)" }}>
               <td data-label="Severity" style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>
                 <SevChip severity={f.severity} />
               </td>
@@ -222,20 +273,28 @@ function FindingsTable({ findings, max }: { findings: PortalFinding[]; max?: num
                   </div>
                 )}
               </td>
+              {repeated && (
+                <td data-label="Found" style={{ padding: "11px 12px", textAlign: "right",
+                  fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}
+                  title={`Recorded ${issue.items.length} time${issue.items.length === 1 ? "" : "s"}`}>
+                  ×{issue.items.length}
+                </td>
+              )}
               <td data-label="CVSS" style={{ padding: "11px 12px", textAlign: "right",
                 fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-secondary)" }}>
-                {f.cvss_score ?? "—"}
+                {cvss.length === 0 ? "—" : cvss.length === 1 ? cvss[0] : "varies"}
               </td>
               <td data-label="Risk" style={{ padding: "11px 12px", textAlign: "right",
                 fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-secondary)" }}>
-                {f.risk_score ?? "—"}
+                {risk >= 0 ? risk : "—"}
               </td>
               <td data-label="Status" style={{ padding: "11px 12px", textAlign: "right",
                 fontSize: 11, textTransform: "capitalize", color: "var(--text-muted)" }}>
-                {f.status}
+                {issueStatus(issue)}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -257,10 +316,14 @@ function FieldLabel({ children, color }: { children: React.ReactNode; color?: st
 /** A professional, self-contained finding record: identification, evidence,
  *  provenance (time + source), and the recommended action. Numbered so a reader
  *  can cite "F-03" the way a real assessment report is cross-referenced. */
-function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
+function FindingCard({ issue, index }: { issue: PortalIssue; index: number }) {
+  const f = issue.lead;
+  const many = issue.items.length > 1;
   const sevColor = SEVERITY_VAR[f.severity] ?? SEVERITY_VAR.info;
   const ref = `F-${String(index + 1).padStart(2, "0")}`;
   const cves = f.cve_ids ?? [];
+  const firstSeen = issue.items.map((x) => x.first_seen).filter((d): d is string => Boolean(d)).sort()[0] ?? f.first_seen;
+  const risk = Math.max(...issue.items.map((x) => x.risk_score ?? -1));
 
   return (
     <article style={{
@@ -286,6 +349,11 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
               {ref}
             </span>
             <SevChip severity={f.severity} />
+            {many && (
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: sevColor }}>
+                Recorded {issue.items.length} times · {issue.open} open
+              </span>
+            )}
             {cves.map((cve) => (
               <a key={cve} href={`https://nvd.nist.gov/vuln/detail/${cve}`}
                 target="_blank" rel="noopener noreferrer"
@@ -315,8 +383,8 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
       }}>
         {[
           { label: "CVSS", value: f.cvss_score ?? "—", color: f.cvss_score !== null ? sevColor : "var(--text-muted)" },
-          { label: "Risk score", value: f.risk_score ?? "—", color: f.risk_score !== null ? sevColor : "var(--text-muted)" },
-          { label: "Status", value: f.status, color: "var(--text-secondary)" },
+          { label: many ? "Highest risk" : "Risk score", value: risk >= 0 ? risk : "—", color: risk >= 0 ? sevColor : "var(--text-muted)" },
+          { label: "Status", value: issueStatus(issue), color: "var(--text-secondary)" },
         ].map((item, i) => (
           <div key={item.label} style={{
             flex: 1, padding: "10px 16px",
@@ -351,7 +419,7 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
           <div>
             <FieldLabel>Identified</FieldLabel>
             <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-secondary)" }}>
-              <Timestamp value={f.first_seen} variant="exact" />
+              <Timestamp value={firstSeen} variant="exact" />
             </div>
           </div>
           <div>
@@ -378,10 +446,10 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
             </div>
           </div>
           <div>
-            <FieldLabel>Current status</FieldLabel>
+            <FieldLabel>{many ? "Occurrences" : "Current status"}</FieldLabel>
             <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-secondary)",
-              textTransform: "capitalize" }}>
-              {f.status}
+              textTransform: many ? "none" : "capitalize" }}>
+              {many ? `${issue.items.length} recorded · ${issueStatus(issue)}` : f.status}
             </div>
           </div>
         </div>
@@ -523,7 +591,7 @@ function ExecutiveTab({ summary, trends, findings, someLocked }: {
       {/* Top findings */}
       <SectionBlock
         eyebrow="Top exposures" title="Highest-risk open findings"
-        aside={topFindings.length > 10 ? `Showing 10 of ${topFindings.length}` : undefined}
+        aside={groupIssues(topFindings).length > 10 ? `Showing 10 of ${groupIssues(topFindings).length} issues` : undefined}
       >
         <FindingsTable findings={topFindings} max={10} />
       </SectionBlock>
@@ -548,6 +616,7 @@ function FindingsTab({ findings }: { findings: PortalFinding[] }) {
     );
   }
 
+  const issues = groupIssues(sorted);
   // Count by severity for the register summary line.
   const bySev = SEVS.map((s) => ({ s, n: sorted.filter((f) => f.severity === s).length }))
     .filter((x) => x.n > 0);
@@ -556,15 +625,16 @@ function FindingsTab({ findings }: { findings: PortalFinding[] }) {
     <SectionBlock
       eyebrow="Technical detail"
       title="Detailed findings register"
-      aside={`${sorted.length} finding${sorted.length === 1 ? "" : "s"}`}
+      aside={`${sorted.length} finding${sorted.length === 1 ? "" : "s"}${issues.length < sorted.length ? ` · ${issues.length} issues` : ""}`}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Register summary: what's inside, ordered highest-risk first */}
         <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 14,
           paddingBottom: 12, borderBottom: "1px solid var(--border-subtle)" }}>
           <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-            Every recorded finding, ordered by risk. Each entry carries its evidence, time of
-            identification, source and recommended action.
+            Every recorded finding, most severe first. An issue recorded on several assets is
+            listed once. Each entry carries its evidence, time of identification, source and
+            recommended action.
           </span>
           <div style={{ display: "flex", gap: 12, marginLeft: "auto", flexWrap: "wrap" }}>
             {bySev.map(({ s, n }) => (
@@ -578,7 +648,7 @@ function FindingsTab({ findings }: { findings: PortalFinding[] }) {
           </div>
         </div>
 
-        {sorted.map((f, i) => <FindingCard key={f.id} f={f} index={i} />)}
+        {issues.map((issue, i) => <FindingCard key={issue.key} issue={issue} index={i} />)}
       </div>
     </SectionBlock>
   );
