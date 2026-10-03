@@ -561,6 +561,87 @@ class TestMatchCandidate:
         assert findings[0].state == FindingState.suspected
         assert findings[0].match_basis == "range"
 
+    def test_bounded_match_beats_open_ended_for_same_cve(self):
+        # The same CVE has both an open-ended Debian range (matches all) and a
+        # bounded range that includes the version. The bounded (real version
+        # signal) must win: one suspected finding, not a potential duplicate.
+        records = {"vsftpd": [
+            {"id": "DEBIAN-CVE-2021-3618", "upstream": ["CVE-2021-3618"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "0"}]}]}]},
+            {"id": "OSV-B", "upstream": ["CVE-2021-3618"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "2.0"}, {"fixed": "4.0"}]}]}]},
+        ]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="3.0.3", lookup_key="vsftpd", product="vsftpd")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 1
+        assert findings[0].cve_id == "CVE-2021-3618"
+        assert findings[0].state == FindingState.suspected
+        assert findings[0].match_basis == "range"
+
+    def test_nvd_upstream_bound_suppresses_open_ended(self):
+        # Open-ended Debian record says "all versions", but the upstream NVD/CPE
+        # companion bounds the CVE to < 2.0 — the banner version 3.0.3 is past the
+        # fix, so the host is NOT vulnerable and the CVE is suppressed entirely.
+        records = {"vsftpd": [
+            {"id": "DEBIAN-CVE-2020-9999", "upstream": ["CVE-2020-9999"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "0"}]}]}]},
+            {"id": "CVE-2020-9999",
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "NVD/CPE"},
+                           "ranges": [{"type": "SEMVER",
+                                       "events": [{"introduced": "0"}, {"fixed": "2.0"}]}]}]},
+        ]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="3.0.3", lookup_key="vsftpd", product="vsftpd")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert findings == []
+
+    def test_nvd_upstream_bound_keeps_vulnerable_version(self):
+        # Same shape, but the banner version is BELOW the upstream fix → it really
+        # is vulnerable → a bounded suspected finding, not suppressed.
+        records = {"vsftpd": [
+            {"id": "DEBIAN-CVE-2020-9999", "upstream": ["CVE-2020-9999"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "0"}]}]}]},
+            {"id": "CVE-2020-9999",
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "NVD/CPE"},
+                           "ranges": [{"type": "SEMVER",
+                                       "events": [{"introduced": "0"}, {"fixed": "2.0"}]}]}]},
+        ]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="1.5", lookup_key="vsftpd", product="vsftpd")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 1
+        assert findings[0].state == FindingState.suspected
+        assert findings[0].match_basis == "range"
+
+    def test_authoritative_open_ended_not_suppressed_by_nvd(self):
+        # An NVD bound that would suppress an inferred finding must NOT suppress an
+        # authoritative (dpkg) one — the distro's "no fix released" verdict wins.
+        records = {"vsftpd": [
+            {"id": "DEBIAN-CVE-2020-9999", "upstream": ["CVE-2020-9999"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "0"}]}]}]},
+            {"id": "CVE-2020-9999",
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "NVD/CPE"},
+                           "ranges": [{"type": "SEMVER",
+                                       "events": [{"introduced": "0"}, {"fixed": "2.0"}]}]}]},
+        ]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="3:3.0.3-13", lookup_key="vsftpd", product="vsftpd",
+                        source_confidence=SourceConfidence.authoritative)
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 1
+        assert findings[0].state == FindingState.confirmed
+
     def test_no_match_returns_empty(self):
         records = {"nginx": [{
             "id": "OSV-3", "upstream": ["CVE-2023-0003"],
