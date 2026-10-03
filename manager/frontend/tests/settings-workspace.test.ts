@@ -12,5 +12,6 @@ test("customer Settings renders the manager Settings workspace", () => {
 
 test("portal Settings exposes only engagement-scoped shared sections", () => {
   const source = readFileSync(join(process.cwd(), "app/settings/page.tsx"), "utf8");
-  assert.match(source, /\["workspace", "probe-fleet", "ai", "audit-log"\]/);
+  // "account" is the customer's own sign-in security, not tenant configuration.
+  assert.match(source, /\["workspace", "account", "probe-fleet", "ai", "audit-log"\]/);
 });

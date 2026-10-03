@@ -138,6 +138,24 @@ export function AuthPolicySection() {
         Anyone else outside these networks sees “invalid credentials” rather than a hint that the password was right.
         The list is checked at sign-in and each time a session refreshes.
       </p>
+      <div className="policy-block">
+        <span className="policy-label">Two-step sign-in</span>
+        <label className="policy-check">
+          <input type="checkbox" checked={policy.mfa_required_for_operators ?? false}
+            onChange={(e) => edit({ ...policy, mfa_required_for_operators: e.target.checked })} />
+          <span>Require for operators (admins, managers, analysts, testers)</span>
+        </label>
+        <label className="policy-check">
+          <input type="checkbox" checked={policy.mfa_required_for_customers ?? false}
+            onChange={(e) => edit({ ...policy, mfa_required_for_customers: e.target.checked })} />
+          <span>Require for customer portal users</span>
+        </label>
+        <p className="policy-note">
+          Nobody is locked out: anyone without an authenticator app is walked through setting one up at their
+          next sign-in. Sessions already open continue until they end. Someone who loses their phone can use a
+          recovery code, or an administrator can reset their two-step sign-in from Team.
+        </p>
+      </div>
       <div className="policy-grid">
         <Field label="Operator session limit (hours)" hint="Sign in again after this long, however active. Empty = no limit.">
           <input inputMode="numeric" value={hours.op} aria-invalid={invalidHours(hours.op)}

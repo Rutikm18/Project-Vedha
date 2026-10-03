@@ -2,8 +2,8 @@ import uuid
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -27,6 +27,13 @@ class User(Base, TimestampMixin):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="userrole"), nullable=False)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # TOTP MFA (migration 0058). The secret is encrypted at rest (see auth/mfa.py);
+    # recovery codes are stored only as keyed hashes; the last accepted step stops
+    # a code being used twice.
+    mfa_secret_enc: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    mfa_last_step: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    mfa_enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    mfa_recovery_hashes: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]", default=list)
     # Added migration 0016: soft-disable without deleting the record.
     # All existing rows get server_default=True — no data loss.
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")

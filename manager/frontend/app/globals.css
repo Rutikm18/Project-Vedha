@@ -1196,6 +1196,59 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   .login-mobile-brand { display: flex; }
 }
 
+/* ─── Two-step sign-in (components/auth/MfaStep.tsx) ─── */
+.mfa-step.compact .login-form-heading { margin-bottom: 18px; }
+.mfa-step.compact .login-form-heading h2 { font-size: 20px; }
+.mfa-step.compact .login-form-icon { width: 38px; height: 38px; margin-bottom: 12px; }
+.mfa-step.compact .mfa-setup { flex-direction: column; align-items: stretch; }
+.mfa-step.compact .mfa-qr { margin: 0 auto; }
+.mfa-code-input { font: 600 20px var(--font-mono) !important; letter-spacing: .18em; text-align: center; }
+.mfa-setup {
+  display: flex; gap: 16px; align-items: center; margin-bottom: 20px; padding: 14px;
+  border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-surface);
+}
+.mfa-qr {
+  flex: 0 0 148px; width: 148px; height: 148px; padding: 6px; border-radius: 8px; background: #fff;
+}
+.mfa-qr svg { width: 100%; height: 100%; display: block; }
+.mfa-setup-text { display: grid; gap: 6px; min-width: 0; font-size: 12px; color: var(--text-secondary); }
+.mfa-setup-text strong { color: var(--text-primary); font-size: 12.5px; }
+.mfa-setup-text small { color: var(--text-muted); font-size: 11.5px; line-height: 1.45; }
+.mfa-key {
+  display: block; padding: 6px 8px; border-radius: 6px; background: var(--bg-panel);
+  border: 1px solid var(--border-subtle); color: var(--text-primary);
+  font: 600 12px var(--font-mono); letter-spacing: .06em; overflow-wrap: anywhere; user-select: all;
+}
+.mfa-loading { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 12px; }
+.mfa-links { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.mfa-links button {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 0; border: 0; background: none;
+  cursor: pointer; color: var(--accent); font: 600 12px var(--font-body);
+}
+.mfa-links button:hover { text-decoration: underline; }
+.mfa-recovery-list {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 14px; margin: 0 0 14px; padding: 14px 16px; list-style: none;
+  border: 1px solid var(--border-default); border-radius: 10px; background: var(--bg-surface);
+  color: var(--text-muted); font-size: 11px;
+}
+.mfa-recovery-list code { color: var(--text-primary); font: 600 13px var(--font-mono); letter-spacing: .04em; }
+.mfa-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.mfa-secondary {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 8px;
+  border: 1px solid var(--border-default); background: var(--bg-panel); color: var(--text-primary);
+  cursor: pointer; font: 600 12px var(--font-body);
+}
+.mfa-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.mfa-confirm { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; }
+.mfa-confirm input { width: 16px; height: 16px; accent-color: var(--accent); }
+.mfa-step .login-submit { width: 100%; }
+.mfa-step .login-submit:disabled { cursor: not-allowed; }
+@media (max-width: 480px) {
+  .mfa-setup { flex-direction: column; align-items: stretch; }
+  .mfa-qr { margin: 0 auto; }
+  .mfa-recovery-list { grid-template-columns: 1fr; }
+}
+
 /* ─── Engagement workspace ─── */
 .engagement-workspace { width: min(100%, 1440px); margin: 0 auto; }
 .engagement-actions { display: flex; align-items: center; gap: 8px; }
@@ -3751,6 +3804,36 @@ button.intel-tag:focus-visible { outline: 2px solid var(--accent); outline-offse
   .posture-dial { justify-self: start; margin-left: 0; }
   .posture-scorecard__verdict > span:last-child { flex-basis: 100%; }
 }
+
+/* ── Settings: account security (components/settings/AccountSecuritySection.tsx) ── */
+.mfa-status-card {
+  display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 14px 16px;
+  border-radius: var(--radius-md); border: 0.5px solid var(--border-subtle); background: var(--bg-panel);
+}
+.mfa-status-card > div { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.mfa-status-card strong { font-size: 13px; color: var(--text-primary); }
+.mfa-status-card small { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
+.mfa-status-icon {
+  width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border-radius: 9px;
+  color: var(--sev-medium-color); background: color-mix(in srgb, var(--sev-medium-color) 12%, transparent);
+}
+.mfa-status-card[data-on="true"] .mfa-status-icon {
+  color: var(--nominal-color); background: color-mix(in srgb, var(--nominal-color) 12%, transparent);
+}
+.mfa-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.mfa-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.mfa-actions .policy-muted { font-size: 11.5px; }
+.mfa-panel {
+  display: grid; gap: 12px; margin-top: 14px; padding: 16px; max-width: 560px;
+  border-radius: var(--radius-md); border: 0.5px solid var(--border-subtle); background: var(--bg-panel);
+}
+.mfa-panel h3 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.mfa-panel .mfa-setup, .mfa-panel .mfa-recovery-list, .mfa-panel .mfa-row { margin-bottom: 0; }
+.mfa-panel .mfa-actions { margin-top: 0; }
+.mfa-panel .mfa-code-input { font-size: 16px !important; height: 40px; max-width: 260px; }
+.mfa-field { display: grid; gap: 5px; max-width: 320px; }
+.mfa-field > span { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
+.settings-feedback-msg svg { vertical-align: -2px; }
 
 /* ── Settings: organisation policy forms ─────────────────────────────────── */
 .policy-card { display: grid; gap: 12px; margin-top: 14px; padding: 16px; border-radius: var(--radius-md); border: 0.5px solid var(--border-subtle); background: var(--bg-panel); }

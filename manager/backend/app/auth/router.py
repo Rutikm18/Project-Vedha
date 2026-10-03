@@ -44,10 +44,22 @@ from app.ratelimit import (
     clear_login_failures,
     client_ip,
     login_rate_limit,
+    mfa_rate_limit,
     record_login_failure,
 )
+from app.auth import mfa as mfa_lib
+from app.auth import totp
+from app.services.audit import record_audit
 from app.schemas.auth import (
     LoginRequest,
+    LoginResponse,
+    MfaCodeRequest,
+    MfaDisableRequest,
+    MfaEnableRequest,
+    MfaEnabledResponse,
+    MfaSetupResponse,
+    MfaStatusResponse,
+    MfaTokenRequest,
     PersonalAccessTokenCreate,
     PersonalAccessTokenCreated,
     PersonalAccessTokenOut,
@@ -163,7 +175,8 @@ async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
 
 @router.post(
     "/login",
-    response_model=TokenResponse,
+    response_model=LoginResponse,
+    response_model_exclude_none=True,
     summary="Obtain JWT access + refresh tokens",
     dependencies=[Depends(login_rate_limit)],
 )
@@ -228,9 +241,36 @@ async def login(
 
     # Portal scoping + audience separation. Computed BEFORE the token try below so
     # a misconfigured client login surfaces as 403 rather than being masked as 401.
-    extra_claims = access_claims_for(user)
+    access_claims_for(user)
 
-    # ── Success path ──────────────────────────────────────────────────────
+    # Two-step sign-in. The password was right, but no session is issued until a
+    # code is: the client gets a short-lived challenge for /auth/mfa/*.
+    # A legacy row flagged on without a stored secret could never pass the code
+    # step, so it is treated as not enrolled rather than locked out.
+    if _has_mfa(user):
+        token, _ = mfa_lib.create_challenge(str(user.id), str(user.tenant_id), mfa_lib.PURPOSE_VERIFY)
+        bound.info("auth.login.mfa_challenge", user_id=str(user.id))
+        return LoginResponse(mfa_required=True, mfa_token=token)
+    if org_settings.mfa_required(auth_policy, role=user.role.value):
+        token, _ = mfa_lib.create_challenge(str(user.id), str(user.tenant_id), mfa_lib.PURPOSE_ENROLL)
+        bound.info("auth.login.mfa_enrollment_required", user_id=str(user.id))
+        return LoginResponse(mfa_enrollment_required=True, mfa_token=token)
+
+    tokens = await _issue_session(user, redis, bound)
+    latency = round((time.monotonic() - t0) * 1000, 1)
+    bound.info(
+        "auth.login.success",
+        user_id=str(user.id),
+        tenant_id=str(user.tenant_id),
+        role=user.role.value,
+        latency_ms=latency,
+    )
+    return tokens
+
+
+async def _issue_session(user: User, redis, bound) -> LoginResponse:
+    """Mint and register a session for a user who has passed every check."""
+    extra_claims = access_claims_for(user)
     try:
         access = create_access_token(
             subject=str(user.id),
@@ -243,13 +283,7 @@ async def login(
             tenant_id=str(user.tenant_id),
         )
     except Exception as exc:
-        latency = round((time.monotonic() - t0) * 1000, 1)
-        bound.error(
-            "auth.login.failed",
-            reason_code=JWTFailureError.reason_code,
-            error=str(exc),
-            latency_ms=latency,
-        )
+        bound.error("auth.login.failed", reason_code=JWTFailureError.reason_code, error=str(exc))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=_GENERIC_401,
@@ -266,17 +300,8 @@ async def login(
             detail="Session store unavailable",
         ) from None
 
-    await clear_login_failures(redis, body.email)
-
-    latency = round((time.monotonic() - t0) * 1000, 1)
-    bound.info(
-        "auth.login.success",
-        user_id=str(user.id),
-        tenant_id=str(user.tenant_id),
-        role=user.role.value,
-        latency_ms=latency,
-    )
-    return TokenResponse(access_token=access, refresh_token=refresh)
+    await clear_login_failures(redis, user.email)
+    return LoginResponse(access_token=access, refresh_token=refresh)
 
 
 @router.get("/me", summary="Current user from the access token (for the dashboard)")
@@ -498,3 +523,259 @@ async def revoke_personal_access_token(
         await db.flush()
     logger.info("auth.pat.revoked", user_id=str(current_user.user_id), pat_id=str(row.id))
     return {"ok": True, "id": str(row.id), "revoked_at": row.revoked_at.isoformat()}
+
+
+# ── Two-step sign-in (TOTP) ───────────────────────────────────────────────────
+#
+# Sign-in with MFA:      POST /auth/login → {mfa_required, mfa_token}
+#                        POST /auth/mfa/verify {mfa_token, code} → session
+# Required, not set up:  POST /auth/login → {mfa_enrollment_required, mfa_token}
+#                        POST /auth/mfa/enroll/setup {mfa_token} → secret + QR URI
+#                        POST /auth/mfa/enroll/enable {mfa_token, code} → recovery codes + session
+# Signed in:             GET /auth/mfa/status, POST /auth/mfa/setup, /enable, /disable,
+#                        /recovery-codes; admins: POST /auth/mfa/reset/{user_id}
+
+_BAD_CODE = "Invalid or expired code"
+
+
+def _has_mfa(user: User) -> bool:
+    return bool(user.mfa_enabled and user.mfa_secret_enc)
+
+
+def _bad_code() -> HTTPException:
+    return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_BAD_CODE)
+
+
+async def _user_by_id(db: AsyncSession, user_id) -> User | None:
+    return (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+
+
+async def _challenge_user(body_token: str, purpose: str, request: Request, db: AsyncSession, redis) -> tuple[User, dict]:
+    """The user behind a usable challenge token, re-checked like a fresh sign-in."""
+    claims = mfa_lib.decode_challenge(body_token)
+    if claims is None or claims["purpose"] != purpose or not await mfa_lib.challenge_usable(redis, claims["jti"]):
+        raise _bad_code()
+    user = await _user_by_id(db, uuid.UUID(claims["sub"]))
+    if user is None or str(user.tenant_id) != claims.get("tenant_id"):
+        raise _bad_code()
+    try:
+        await _assert_account_usable(user, db)
+    except AuthenticationError:
+        raise _bad_code() from None
+    from app.services import org_settings
+    policy = await org_settings.get_section(db, user.tenant_id, "auth")
+    if not org_settings.sign_in_allowed(policy, role=user.role.value, address=client_ip(request)):
+        raise _bad_code()
+    return user, claims
+
+
+def _check_code(user: User, code: str) -> tuple[str, int | None, list[str] | None]:
+    """("totp", step, None) or ("recovery", None, remaining) for a correct code,
+    ("bad", None, None) otherwise."""
+    if mfa_lib.looks_like_recovery_code(code):
+        remaining = mfa_lib.consume_recovery_code(list(user.mfa_recovery_hashes or []), code)
+        return ("recovery", None, remaining) if remaining is not None else ("bad", None, None)
+    secret = mfa_lib.decrypt_secret(user.mfa_secret_enc)
+    if not secret:
+        return ("bad", None, None)
+    step = totp.verify(secret, code, last_step=user.mfa_last_step)
+    return ("totp", step, None) if step is not None else ("bad", None, None)
+
+
+@router.post(
+    "/mfa/verify",
+    response_model=LoginResponse,
+    response_model_exclude_none=True,
+    summary="Finish a two-step sign-in with an app code or a recovery code",
+    dependencies=[Depends(mfa_rate_limit)],
+)
+async def mfa_verify(body: MfaCodeRequest, request: Request, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
+    user, claims = await _challenge_user(body.mfa_token, mfa_lib.PURPOSE_VERIFY, request, db, redis)
+    bound = logger.bind(user_id=str(user.id), ip=client_ip(request))
+    await check_login_failures(redis, user.email)
+    if not _has_mfa(user):
+        raise _bad_code()
+    kind, step, remaining = _check_code(user, body.code)
+    if kind == "bad":
+        await mfa_lib.record_challenge_failure(redis, claims["jti"])
+        await record_login_failure(redis, user.email)
+        bound.warning("auth.mfa.verify_failed")
+        raise _bad_code()
+
+    await mfa_lib.spend_challenge(redis, claims["jti"])
+    if kind == "totp":
+        user.mfa_last_step = step
+    else:
+        user.mfa_recovery_hashes = remaining
+        record_audit(db, actor_id=user.id, action="auth.mfa.recovery_code_used", resource_type="user",
+                     resource_id=str(user.id), detail={"remaining": len(remaining or [])}, ip=client_ip(request))
+    await db.flush()
+    tokens = await _issue_session(user, redis, bound)
+    bound.info("auth.login.success", method=f"password+{kind}")
+    return tokens
+
+
+async def _start_setup(user: User, redis) -> MfaSetupResponse:
+    secret = totp.generate_secret()
+    await redis.set(mfa_lib.pending_secret_key(str(user.id)), mfa_lib.encrypt_secret(secret), ex=mfa_lib.PENDING_SECRET_SECONDS)
+    return MfaSetupResponse(secret=secret, otpauth_uri=totp.provisioning_uri(secret, user.email), account=user.email)
+
+
+async def _finish_setup(user: User, code: str, redis, db: AsyncSession, request: Request) -> list[str]:
+    """Turn MFA on once the user proves their app has the pending secret."""
+    pending = mfa_lib.decrypt_secret(await redis.get(mfa_lib.pending_secret_key(str(user.id))))
+    if not pending:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Setup expired — start again to get a new code")
+    step = totp.verify(pending, code)
+    if step is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="That code does not match. Check the time on your phone and try again.")
+    codes, hashes = mfa_lib.new_recovery_codes()
+    user.mfa_secret_enc = mfa_lib.encrypt_secret(pending)
+    user.mfa_last_step = step
+    user.mfa_recovery_hashes = hashes
+    user.mfa_enabled = True
+    user.mfa_enabled_at = datetime.now(timezone.utc)
+    await redis.delete(mfa_lib.pending_secret_key(str(user.id)))
+    record_audit(db, actor_id=user.id, action="auth.mfa.enabled", resource_type="user",
+                 resource_id=str(user.id), ip=client_ip(request))
+    await db.flush()
+    return codes
+
+
+@router.post("/mfa/enroll/setup", response_model=MfaSetupResponse,
+             summary="Start the enrolment an organisation requires at sign-in",
+             dependencies=[Depends(mfa_rate_limit)])
+async def mfa_enroll_setup(body: MfaTokenRequest, request: Request, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
+    user, _ = await _challenge_user(body.mfa_token, mfa_lib.PURPOSE_ENROLL, request, db, redis)
+    # Set up meanwhile (another tab): never replace an existing authenticator here.
+    if _has_mfa(user):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Two-step sign-in is already on — sign in again")
+    return await _start_setup(user, redis)
+
+
+@router.post("/mfa/enroll/enable", response_model=MfaEnabledResponse, response_model_exclude_none=True,
+             summary="Finish required enrolment: turns MFA on and signs in",
+             dependencies=[Depends(mfa_rate_limit)])
+async def mfa_enroll_enable(body: MfaCodeRequest, request: Request, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
+    user, claims = await _challenge_user(body.mfa_token, mfa_lib.PURPOSE_ENROLL, request, db, redis)
+    if _has_mfa(user):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Two-step sign-in is already on — sign in again")
+    try:
+        codes = await _finish_setup(user, body.code, redis, db, request)
+    except HTTPException:
+        await mfa_lib.record_challenge_failure(redis, claims["jti"])
+        raise
+    await mfa_lib.spend_challenge(redis, claims["jti"])
+    tokens = await _issue_session(user, redis, logger.bind(user_id=str(user.id)))
+    return MfaEnabledResponse(**tokens.model_dump(), recovery_codes=codes)
+
+
+async def _signed_in_user(current_user, db: AsyncSession) -> User:
+    if current_user.auth_type != "jwt":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Manage two-step sign-in from a signed-in session, not an API token")
+    user = await _user_by_id(db, current_user.user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+
+@router.get("/mfa/status", response_model=MfaStatusResponse, summary="Two-step sign-in status for the signed-in user")
+async def mfa_status(current_user: AuthUser, db: AsyncSession = Depends(get_db)):
+    user = await _signed_in_user(current_user, db)
+    from app.services import org_settings
+    policy = await org_settings.get_section(db, user.tenant_id, "auth")
+    return MfaStatusResponse(
+        enabled=_has_mfa(user),
+        enabled_at=user.mfa_enabled_at if _has_mfa(user) else None,
+        recovery_codes_left=len(user.mfa_recovery_hashes or []) if _has_mfa(user) else 0,
+        required_by_policy=org_settings.mfa_required(policy, role=user.role.value),
+    )
+
+
+@router.post("/mfa/setup", response_model=MfaSetupResponse, summary="Start setting up an authenticator app")
+async def mfa_setup(current_user: AuthUser, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
+    user = await _signed_in_user(current_user, db)
+    if _has_mfa(user):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Two-step sign-in is already on")
+    return await _start_setup(user, redis)
+
+
+@router.post("/mfa/enable", response_model=MfaEnabledResponse, response_model_exclude_none=True,
+             summary="Confirm the app code and turn two-step sign-in on")
+async def mfa_enable(body: MfaEnableRequest, request: Request, current_user: AuthUser,
+                     db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
+    user = await _signed_in_user(current_user, db)
+    if _has_mfa(user):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Two-step sign-in is already on")
+    codes = await _finish_setup(user, body.code, redis, db, request)
+    return MfaEnabledResponse(recovery_codes=codes)
+
+
+@router.post("/mfa/disable", summary="Turn two-step sign-in off (password and a code required)")
+async def mfa_disable(body: MfaDisableRequest, request: Request, current_user: AuthUser,
+                      db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
+    user = await _signed_in_user(current_user, db)
+    from app.services import org_settings
+    policy = await org_settings.get_section(db, user.tenant_id, "auth")
+    if org_settings.mfa_required(policy, role=user.role.value):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Your organisation requires two-step sign-in")
+    if not _has_mfa(user):
+        return {"enabled": False}
+    await check_login_failures(redis, user.email)
+    password_ok = await asyncio.to_thread(_pwd.verify, body.password, user.hashed_password)
+    kind, _, _ = _check_code(user, body.code)
+    if not password_ok or kind == "bad":
+        await record_login_failure(redis, user.email)
+        # 400, not 401: the session is fine, and clients read 401 as "signed out".
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password or code is incorrect")
+    user.mfa_enabled = False
+    user.mfa_secret_enc = None
+    user.mfa_last_step = None
+    user.mfa_recovery_hashes = []
+    user.mfa_enabled_at = None
+    record_audit(db, actor_id=user.id, action="auth.mfa.disabled", resource_type="user",
+                 resource_id=str(user.id), ip=client_ip(request))
+    await db.flush()
+    return {"enabled": False}
+
+
+@router.post("/mfa/recovery-codes", response_model=MfaEnabledResponse, response_model_exclude_none=True,
+             summary="Replace all recovery codes (an app code is required)")
+async def mfa_new_recovery_codes(body: MfaEnableRequest, request: Request, current_user: AuthUser,
+                                 db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
+    user = await _signed_in_user(current_user, db)
+    if not _has_mfa(user):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Two-step sign-in is off")
+    secret = mfa_lib.decrypt_secret(user.mfa_secret_enc)
+    step = totp.verify(secret, body.code, last_step=user.mfa_last_step) if secret else None
+    if step is None:
+        await record_login_failure(redis, user.email)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="That code does not match")
+    codes, hashes = mfa_lib.new_recovery_codes()
+    user.mfa_last_step = step
+    user.mfa_recovery_hashes = hashes
+    record_audit(db, actor_id=user.id, action="auth.mfa.recovery_codes_replaced", resource_type="user",
+                 resource_id=str(user.id), ip=client_ip(request))
+    await db.flush()
+    return MfaEnabledResponse(recovery_codes=codes)
+
+
+@router.post("/mfa/reset/{user_id}", summary="Admin: clear a user's two-step sign-in (lost phone)")
+async def mfa_reset(user_id: uuid.UUID, request: Request,
+                    current_user: Annotated[AuthUser, require_role(["admin"])],
+                    db: AsyncSession = Depends(get_db)):
+    user = await _user_by_id(db, user_id)
+    # Hidden across tenants: never reveal whether another tenant's user exists.
+    if user is None or user.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.id == current_user.user_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Turn your own two-step sign-in off from Settings")
+    user.mfa_enabled = False
+    user.mfa_secret_enc = None
+    user.mfa_last_step = None
+    user.mfa_recovery_hashes = []
+    user.mfa_enabled_at = None
+    record_audit(db, actor_id=current_user.user_id, action="auth.mfa.reset_by_admin", resource_type="user",
+                 resource_id=str(user.id), detail={"email": user.email}, ip=client_ip(request))
+    await db.flush()
+    return {"user_id": str(user.id), "mfa_enabled": False}

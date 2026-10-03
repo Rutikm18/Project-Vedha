@@ -72,6 +72,8 @@ class ClientUserOut(BaseModel):
     engagement_id: uuid.UUID
     portal_slug: str | None = None    # the customer's stable handle / future subdomain
     temp_password: str | None = None  # returned ONCE on create/reset
+    # Two-step sign-in is set up (an admin can reset it: POST /auth/mfa/reset/{id}).
+    mfa_enabled: bool = False
 
 
 class AssignAgentBody(BaseModel):
@@ -395,6 +397,7 @@ async def provision_client_user(
     logger.info("client_user.provisioned", engagement_id=str(engagement_id),
                 user_id=str(user.id), portal_slug=slug, by=str(current_user.user_id))
     return ClientUserOut(id=user.id, email=user.email, is_active=user.is_active,
+                         mfa_enabled=bool(user.mfa_enabled and user.mfa_secret_enc),
                          engagement_id=engagement_id, portal_slug=slug, temp_password=temp)
 
 
@@ -410,6 +413,7 @@ async def get_client_user(
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No customer login provisioned")
     return ClientUserOut(id=user.id, email=user.email, is_active=user.is_active,
+                         mfa_enabled=bool(user.mfa_enabled and user.mfa_secret_enc),
                          engagement_id=engagement_id, portal_slug=user.portal_slug)
 
 
@@ -437,6 +441,7 @@ async def patch_client_user(
                  detail={"reset_password": body.reset_password, "is_active": body.is_active})
     await db.flush()
     return ClientUserOut(id=user.id, email=user.email, is_active=user.is_active,
+                         mfa_enabled=bool(user.mfa_enabled and user.mfa_secret_enc),
                          engagement_id=engagement_id, portal_slug=user.portal_slug,
                          temp_password=temp)
 

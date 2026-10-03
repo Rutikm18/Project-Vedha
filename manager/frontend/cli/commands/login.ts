@@ -70,7 +70,7 @@ export function buildLoginCommand(): Command {
 
       process.stdout.write('\x1b[2mSigning in…\x1b[0m\n');
       try {
-        const session = await loginWithPassword(server, email, password);
+        const session = await loginWithPassword(server, email, password, () => prompt('Authenticator code (or recovery code): '));
         saveSession(session);
         process.stdout.write(`\n\x1b[1;32m✓\x1b[0m Authenticated as \x1b[1m${session.email}\x1b[0m`);
         process.stdout.write(session.role === 'admin' ? ' \x1b[36m[admin]\x1b[0m' : '');
