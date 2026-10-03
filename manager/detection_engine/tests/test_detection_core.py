@@ -356,77 +356,96 @@ class TestVersionInRanges:
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "1.0"}, {"fixed": "2.0"}
         ]}]
-        matched, desc = _version_in_ranges("1.5", ranges)
+        matched, desc, kind = _version_in_ranges("1.5", ranges)
         assert matched is True
         assert "1.0" in desc and "2.0" in desc
+        assert kind == "bounded"
 
     def test_version_before_introduced(self):
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "2.0"}, {"fixed": "3.0"}
         ]}]
-        matched, _ = _version_in_ranges("1.0", ranges)
+        matched, _, kind = _version_in_ranges("1.0", ranges)
         assert matched is False
+        assert kind is None
 
     def test_version_at_fixed(self):
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "1.0"}, {"fixed": "2.0"}
         ]}]
-        matched, _ = _version_in_ranges("2.0", ranges)
+        matched, _, _ = _version_in_ranges("2.0", ranges)
         assert matched is False
 
     def test_last_affected(self):
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "1.0"}, {"last_affected": "2.0"}
         ]}]
-        matched, desc = _version_in_ranges("2.0", ranges)
+        matched, desc, kind = _version_in_ranges("2.0", ranges)
         assert matched is True
         assert "2.0" in desc
+        assert kind == "capped"
 
     def test_unbounded_introduced(self):
+        # OSV convention: still vulnerable from `introduced` onward — the match
+        # stands, but it is tagged "open" (no upper bound) so the caller can
+        # demote an inferred-source match (gap #4 false-positive fix).
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "1.0"}
         ]}]
-        matched, desc = _version_in_ranges("99.0", ranges)
+        matched, desc, kind = _version_in_ranges("99.0", ranges)
         assert matched is True
         assert "unbounded" in desc
+        assert kind == "open"
+
+    def test_unbounded_introduced_zero_matches_everything(self):
+        # The exact snapshot shape behind the reported FPs (openssh/vsftpd):
+        # `introduced:"0"` with no fixed matches literally every version.
+        ranges = [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}]
+        matched, _, kind = _version_in_ranges("3.0.3", ranges)
+        assert matched is True
+        assert kind == "open"
 
     def test_ignores_unknown_type(self):
         ranges = [{"type": "GIT", "events": [
             {"introduced": "1.0"}, {"fixed": "2.0"}
         ]}]
-        matched, _ = _version_in_ranges("1.5", ranges)
+        matched, _, _ = _version_in_ranges("1.5", ranges)
         assert matched is False
 
     def test_semver_type_included(self):
         ranges = [{"type": "SEMVER", "events": [
             {"introduced": "1.0.0"}, {"fixed": "2.0.0"}
         ]}]
-        matched, _ = _version_in_ranges("1.5.0", ranges)
+        matched, _, kind = _version_in_ranges("1.5.0", ranges)
         assert matched is True
+        assert kind == "bounded"
 
     def test_no_match_returns_false_none(self):
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "5.0"}, {"fixed": "6.0"}
         ]}]
-        matched, desc = _version_in_ranges("1.0", ranges)
+        matched, desc, kind = _version_in_ranges("1.0", ranges)
         assert matched is False
         assert desc is None
+        assert kind is None
 
     def test_empty_ranges(self):
-        matched, desc = _version_in_ranges("1.0", [])
+        matched, desc, kind = _version_in_ranges("1.0", [])
         assert matched is False
         assert desc is None
+        assert kind is None
 
     def test_regression_sequence(self):
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "1.0"}, {"fixed": "2.0"},
             {"introduced": "3.0"}, {"fixed": "4.0"},
         ]}]
-        matched, _ = _version_in_ranges("1.5", ranges)
+        matched, _, kind = _version_in_ranges("1.5", ranges)
         assert matched is True
-        matched2, _ = _version_in_ranges("2.5", ranges)
+        assert kind == "bounded"
+        matched2, _, _ = _version_in_ranges("2.5", ranges)
         assert matched2 is False
-        matched3, _ = _version_in_ranges("3.5", ranges)
+        matched3, _, _ = _version_in_ranges("3.5", ranges)
         assert matched3 is True
 
 
@@ -487,6 +506,60 @@ class TestMatchCandidate:
         c = _candidate(version="1.5", lookup_key="nginx", product="nginx")
         findings = match_candidate("10.0.0.1", c, db)
         assert any("backport-possible" in n for n in findings[0].notes)
+
+    def test_inferred_open_ended_demoted_to_potential(self):
+        # gap #4: an open-ended `[introduced:"0"]` range matches every version.
+        # From an inferred (banner) source it must NOT be a suspected version
+        # match — it is demoted to `potential` under the `range-open` basis.
+        records = {"openssh": [{
+            "id": "DEBIAN-CVE-2007-2243", "upstream": ["CVE-2007-2243"],
+            "affected": [{"package": {"name": "openssh"}, "ranges": [
+                {"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}
+            ]}]
+        }]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="9.5", lookup_key="openssh")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 1
+        f = findings[0]
+        assert f.state == FindingState.potential
+        assert f.match_basis == "range-open"
+        assert any("open-ended range" in n for n in f.notes)
+        assert f.fixed_version is None
+
+    def test_authoritative_open_ended_stays_confirmed(self):
+        # The same open-ended range from a credentialed (dpkg) source is a real
+        # "no fix released yet" fact — it keeps its confirmed state, only annotated.
+        records = {"openssh": [{
+            "id": "DEBIAN-CVE-2007-2243", "upstream": ["CVE-2007-2243"],
+            "affected": [{"package": {"name": "openssh"}, "ranges": [
+                {"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}
+            ]}]
+        }]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="1:9.2p1-2", lookup_key="openssh",
+                        source_confidence=SourceConfidence.authoritative)
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 1
+        f = findings[0]
+        assert f.state == FindingState.confirmed
+        assert f.match_basis == "range"
+        assert any("no fixed release" in n for n in f.notes)
+
+    def test_inferred_bounded_stays_suspected_range(self):
+        # A bounded match from an inferred source is still a real version signal —
+        # it stays `suspected` under the normal `range` basis (not demoted).
+        records = {"nginx": [{
+            "id": "OSV-9", "upstream": ["CVE-2023-0009"],
+            "affected": [{"package": {"name": "nginx"}, "ranges": [
+                {"type": "ECOSYSTEM", "events": [{"introduced": "1.0"}, {"fixed": "2.0"}]}
+            ]}]
+        }]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="1.5", lookup_key="nginx", product="nginx")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert findings[0].state == FindingState.suspected
+        assert findings[0].match_basis == "range"
 
     def test_no_match_returns_empty(self):
         records = {"nginx": [{

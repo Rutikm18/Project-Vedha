@@ -41,8 +41,22 @@ def _safe_compare(a: str, b: str) -> int | None:
     return dpkg_compare(a, b)
 
 
-def _version_in_ranges(version: str, ranges: list[dict]) -> tuple[bool, str | None]:
-    """Returns (matched, matched_interval_desc) — the latter for evidence_reason.
+def _version_in_ranges(
+    version: str, ranges: list[dict]
+) -> tuple[bool, str | None, str | None]:
+    """Returns (matched, matched_interval_desc, range_kind).
+
+    `range_kind` records how *specific* the matched interval is — the axis the
+    false-positive fix (gap #4) turns on:
+        "bounded"  [introduced, fixed)        — a real upper version bound
+        "capped"   [introduced, last_affected]— a known greatest-affected bound
+        "open"     [introduced, unbounded)    — NO upper bound; matches every
+                                                version from `introduced` onward
+    and is None when nothing matched. An open interval carries no version
+    discrimination (an `introduced:"0"` open range matches literally every
+    version), so the caller must treat an inferred-source open match as
+    product-presence, not a version-range vulnerability — see match_candidate.
+
     A range boundary this version's epoch can't be safely compared against
     is treated as "cannot determine" (skipped), never as a coincidental
     match or non-match — see _safe_compare.
@@ -59,22 +73,24 @@ def _version_in_ranges(version: str, ranges: list[dict]) -> tuple[bool, str | No
                 if introduced is not None:
                     lo, hi = _safe_compare(introduced, version), _safe_compare(version, ev["fixed"])
                     if lo is not None and hi is not None and lo <= 0 and hi < 0:
-                        return True, f"[{introduced}, {ev['fixed']})"
+                        return True, f"[{introduced}, {ev['fixed']})", "bounded"
                 introduced = None
             elif "last_affected" in ev:
                 if introduced is not None:
                     lo = _safe_compare(introduced, version)
                     hi = _safe_compare(version, ev["last_affected"])
                     if lo is not None and hi is not None and lo <= 0 and hi <= 0:
-                        return True, f"[{introduced}, {ev['last_affected']}]"
+                        return True, f"[{introduced}, {ev['last_affected']}]", "capped"
                 introduced = None
         # Sequence ended with an open lower bound and no closing event —
-        # OSV convention: still vulnerable from `introduced` onward.
+        # OSV convention: still vulnerable from `introduced` onward. The match
+        # stands (so an authoritative dpkg finding for an unfixed package is not
+        # lost), but it is tagged "open" so an inferred match can be demoted.
         if introduced is not None:
             lo = _safe_compare(introduced, version)
             if lo is not None and lo <= 0:
-                return True, f"[{introduced}, unbounded)"
-    return False, None
+                return True, f"[{introduced}, unbounded)", "open"
+    return False, None, None
 
 
 def _fixed_bound(interval: str | None) -> str | None:
@@ -121,9 +137,10 @@ def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[
         for aff in rec.get("affected", []):
             if aff.get("package", {}).get("name") != candidate.lookup_key:
                 continue
-            matched, interval = _version_in_ranges(version, aff.get("ranges", []))
+            matched, interval, range_kind = _version_in_ranges(version, aff.get("ranges", []))
             if not matched:
                 continue
+            open_ended = range_kind == "open"
 
             for cve_id in cve_ids:
                 # Confirmed requires authoritative evidence, not just a range
@@ -135,14 +152,28 @@ def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[
                 # — those are different axes (product/version identification
                 # certainty vs. observation-method authoritativeness).
                 is_authoritative = candidate.source_confidence == SourceConfidence.authoritative
-                state = FindingState.confirmed if is_authoritative else FindingState.suspected
+                # Gap #4: an open-ended range (no fixed/last_affected) has no upper
+                # version bound, so it matches EVERY version of the product. From an
+                # inferred source (a banner) that is product-presence, not evidence
+                # that *this* version is vulnerable — emit it as `potential` under a
+                # distinct `range-open` basis so it never sits in the suspected queue
+                # beside real bounded matches. An authoritative (credentialed) source
+                # against the distro ecosystem is different: an open range there is a
+                # genuine "no fix released yet for this package" fact, so it keeps its
+                # confirmed state (only annotated).
+                if open_ended and not is_authoritative:
+                    state = FindingState.potential
+                    basis = "range-open"
+                else:
+                    state = FindingState.confirmed if is_authoritative else FindingState.suspected
+                    basis = "range"
                 fid = make_finding_id(asset_ip, cve_id, candidate.cpe23())
                 findings.append(Finding(
                     finding_id=fid,
                     asset_ip=asset_ip,
                     cpe=candidate.cpe23(),
                     cve_id=cve_id,
-                    match_basis="range",
+                    match_basis=basis,
                     state=state,
                     source_confidence=(SourceConfidence.authoritative if is_authoritative
                                        else SourceConfidence.inferred),
@@ -154,6 +185,10 @@ def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[
                     ai_assisted=candidate.ai_assisted,
                     notes=[f"{candidate.basis} | matched range {interval}"]
                           + (["version-inferred, backport-possible"] if not is_authoritative else [])
+                          + (["open-ended range (no fixed release) — product-presence only, "
+                              "version not discriminated"] if open_ended and not is_authoritative else [])
+                          + (["distro lists no fixed release for this package (open-ended range)"]
+                             if open_ended and is_authoritative else [])
                           + (["AI-assisted normalization — extra scrutiny advised"] if candidate.ai_assisted else []),
                 ))
     return findings
