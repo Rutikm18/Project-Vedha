@@ -162,12 +162,32 @@ _UNTESTABLE = object()
 _CLIENT_SIDE_SSL_REASONS = {"NO_PROTOCOLS_AVAILABLE", "UNSUPPORTED_PROTOCOL"}
 
 
-def _try_version(host: str, port: int, version, timeout: float):
+def _default_connect(host: str, port: int, timeout: float):
+    """The ordinary TCP connect used for a plain TLS port."""
+    return socket.create_connection((host, port), timeout=timeout)
+
+
+# A `connect` hook is `(host, port, timeout) -> connected socket positioned where
+# the server expects a TLS ClientHello`. The default is a plain TCP connect; a
+# caller can inject one that first drives a protocol prelude (e.g. RDP's X.224
+# negotiation, STARTTLS) so this module's version/cipher/cert logic can measure
+# the TLS behind that protocol with zero duplication. The hook must return a
+# socket usable as a context manager; this module owns closing it.
+Connect = "Callable[[str, int, float], socket.socket]"
+
+
+def _try_version(host: str, port: int, version, timeout: float, connect=None):
     """Attempt a handshake forcing one protocol version.
 
     Returns a cipher dict when the server accepted the version, ``None`` when the
     server refused it, and ``_UNTESTABLE`` when this probe could not offer it at
     all (so nothing may be concluded about the server).
+
+    `connect` (optional): a `(host, port, timeout) -> connected socket` hook used
+    in place of a plain TCP connect, so a caller can measure TLS tunnelled inside
+    another protocol (e.g. RDP). A connect that fails/raises is treated as the
+    server refusing the version (``None``), never as ``_UNTESTABLE`` — the latter
+    is reserved for the scanning host's own TLS policy.
     """
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
@@ -186,7 +206,7 @@ def _try_version(host: str, port: int, version, timeout: float):
     except ssl.SSLError:
         pass                    # build without legacy suites; the pin still holds
     try:
-        with socket.create_connection((host, port), timeout=timeout) as sock:
+        with (connect or _default_connect)(host, port, timeout) as sock:
             with ctx.wrap_socket(sock, server_hostname=_sni(host)) as ssock:
                 return {"cipher": ssock.cipher(), "version": ssock.version()}
     except ssl.SSLError as exc:
@@ -200,12 +220,12 @@ def _try_version(host: str, port: int, version, timeout: float):
         return None
 
 
-def _get_cert_der(host: str, port: int, timeout: float) -> bytes | None:
+def _get_cert_der(host: str, port: int, timeout: float, connect=None) -> bytes | None:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     try:
-        with socket.create_connection((host, port), timeout=timeout) as sock:
+        with (connect or _default_connect)(host, port, timeout) as sock:
             with ctx.wrap_socket(sock, server_hostname=_sni(host)) as ssock:
                 return ssock.getpeercert(binary_form=True)
     except Exception:
@@ -271,7 +291,7 @@ def _parse_cert_der(der: bytes | None) -> dict:
     }
 
 
-def _scan_tls_sync(host: str, port: int, timeout: float) -> dict | None:
+def _scan_tls_sync(host: str, port: int, timeout: float, connect=None) -> dict | None:
     accepted: list[str] = []
     not_tested: list[str] = []
     cipher_by_ver: dict[str, str] = {}
@@ -279,7 +299,7 @@ def _scan_tls_sync(host: str, port: int, timeout: float) -> dict | None:
         if ver is None:
             not_tested.append(label)     # protocol absent from this Python build
             continue
-        res = _try_version(host, port, ver, timeout)
+        res = _try_version(host, port, ver, timeout, connect=connect)
         if res is _UNTESTABLE:
             not_tested.append(label)
             continue
@@ -299,7 +319,7 @@ def _scan_tls_sync(host: str, port: int, timeout: float) -> dict | None:
         posture.setdefault("findings", []).append(
             "not tested by this probe (local TLS policy): " + ", ".join(not_tested))
 
-    der = _get_cert_der(host, port, timeout)
+    der = _get_cert_der(host, port, timeout, connect=connect)
     return {
         "accepted_versions": accepted,
         "versions_not_tested": not_tested,
