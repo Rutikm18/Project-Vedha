@@ -959,6 +959,29 @@ class TestVerify:
         result = verify(f)
         assert result.state == FindingState.potential  # 50 - 20 = 30 < 40
 
+    def test_open_ended_range_penalty(self):
+        # gap #4: a range-open finding (open-ended match) is penalized so its
+        # confidence reflects that it carries no version discrimination.
+        f = _finding(state=FindingState.potential,
+                     source_confidence=SourceConfidence.inferred,
+                     match_basis="range-open",
+                     notes=["open-ended range (no fixed release) — product-presence only"],
+                     evidence_refs=["a:1"])
+        result = verify(f)
+        assert result.checks.get("open_ended_range") is True
+        assert result.confidence == 25  # 50 base - 25 open-ended
+        assert result.state == FindingState.potential
+
+    def test_bounded_range_not_penalized_as_open(self):
+        # A normal bounded `range` finding must NOT get the open-ended penalty.
+        f = _finding(state=FindingState.suspected,
+                     source_confidence=SourceConfidence.inferred,
+                     match_basis="range",
+                     notes=["banner | matched range [1.0, 2.0)"],
+                     evidence_refs=["a:1", "b:2"])
+        result = verify(f)
+        assert "open_ended_range" not in result.checks
+
     def test_confirmed_never_downgraded(self):
         f = _finding(state=FindingState.confirmed,
                      source_confidence=SourceConfidence.authoritative)
@@ -1342,3 +1365,56 @@ class TestAggregate:
         f2 = _finding(finding_id=fid, cve_id="CVE-1")
         report = aggregate([[f1, f2]])
         assert report.findings[0].appearances == 1  # counted once per run
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# gap #4 regression — version→CVE false positives (matcher + verifier together)
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestGap4VersionCveFalsePositives:
+    """Regression guard: an inferred banner version must not flood with
+    open-ended CVE matches; upstream NVD bounds must suppress not-vulnerable
+    versions; authoritative (dpkg) findings must stay intact."""
+
+    def _openssh_open_ended_db(self, n=5):
+        recs = [{"id": f"DEBIAN-CVE-2007-{i:04d}", "upstream": [f"CVE-2007-{i:04d}"],
+                 "affected": [{"package": {"name": "openssh", "ecosystem": "Debian:12"},
+                               "ranges": [{"type": "ECOSYSTEM",
+                                           "events": [{"introduced": "0"}]}]}]}
+                for i in range(n)]
+        return _mock_vuln_db({"openssh": recs})
+
+    def test_banner_openssh_no_suspected_flood(self):
+        db = self._openssh_open_ended_db(5)
+        c = _candidate(version="9.5", lookup_key="openssh")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 5
+        assert all(f.state == FindingState.potential for f in findings)
+        assert all(f.match_basis == "range-open" for f in findings)
+        # none is suspected/confirmed, and after verification each is low-confidence
+        for f in findings:
+            verify(f)
+            assert f.state == FindingState.potential
+            assert f.confidence <= 30
+
+    def test_authoritative_openssh_still_confirmed(self):
+        db = self._openssh_open_ended_db(5)
+        c = _candidate(version="1:9.2p1-2", lookup_key="openssh",
+                       source_confidence=SourceConfidence.authoritative)
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 5
+        assert all(f.state == FindingState.confirmed for f in findings)
+
+    def test_nvd_bound_suppresses_patched_banner(self):
+        # open-ended Debian record + upstream NVD fix at 2.0; banner 3.0 is patched
+        db = _mock_vuln_db({"vsftpd": [
+            {"id": "DEBIAN-CVE-2020-1", "upstream": ["CVE-2020-1"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}]}]},
+            {"id": "CVE-2020-1",
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "NVD/CPE"},
+                           "ranges": [{"type": "SEMVER",
+                                       "events": [{"introduced": "0"}, {"fixed": "2.0"}]}]}]},
+        ]})
+        c = _candidate(version="3.0", lookup_key="vsftpd", product="vsftpd")
+        assert match_candidate("10.0.0.1", c, db) == []

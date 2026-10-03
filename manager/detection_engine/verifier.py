@@ -118,6 +118,15 @@ def verify(finding: Finding, *, reachability: str = "open",
     if any("backport-possible" in n for n in finding.notes):
         penalize(20, "backport_possible", "version-inferred, backport-possible")
 
+    # Open-ended range (gap #4): the finding matched a [introduced, unbounded)
+    # range, which has no upper version bound and so matches every version of the
+    # product — product-presence, not evidence this version is vulnerable. matcher
+    # already demotes such an inferred match to `potential`/`range-open`; the
+    # penalty here makes its confidence number reflect that weak evidence so it
+    # sorts below real version matches, and records the reason in the audit.
+    if finding.match_basis == "range-open":
+        penalize(25, "open_ended_range", "open-ended range, no upper version bound")
+
     # AI-normalized candidates get extra scrutiny — capped, never trusted
     # like a rule-based or credentialed match.
     if finding.ai_assisted:
