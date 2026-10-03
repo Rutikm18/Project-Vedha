@@ -17,7 +17,12 @@ from app.models.agent import Agent
 
 logger = structlog.get_logger()
 
-_PUBLIC_PATHS = {"/", "/health", "/metrics", "/auth/login", "/auth/refresh", "/auth/logout", "/docs", "/openapi.json", "/redoc"}
+_PUBLIC_PATHS = {
+    "/", "/health", "/metrics", "/auth/login", "/auth/refresh", "/auth/logout", "/docs", "/openapi.json", "/redoc",
+    # Second sign-in step: authenticated by the short-lived MFA challenge token in
+    # the body (auth/mfa.py), because no session exists yet.
+    "/auth/mfa/verify", "/auth/mfa/enroll/setup", "/auth/mfa/enroll/enable",
+}
 _PUBLIC_PREFIXES = ("/docs", "/redoc")
 
 _AGENT_REFRESH_PATH = re.compile(r"^/agents/[^/]+/refresh$")

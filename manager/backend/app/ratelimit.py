@@ -101,6 +101,11 @@ def rate_limit(scope: str, limit: int, window_sec: int):
 
 # 5 login attempts per minute per IP — stops brute force without hurting humans.
 login_rate_limit = rate_limit("login", limit=5, window_sec=60)
+# The code step of two-step sign-in has its own bucket, so a password sign-in and
+# its code (or the three calls of first-time enrolment) do not use up the login
+# allowance. Guessing is bounded anyway: each challenge allows five codes and
+# needs the password to obtain.
+mfa_rate_limit = rate_limit("mfa", limit=10, window_sec=60)
 
 
 def user_rate_limit(scope: str, limit: int, window_sec: int):

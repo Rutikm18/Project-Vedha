@@ -63,6 +63,10 @@ class AuthPolicy(_Strict):
     # None = no absolute limit (sessions slide, as they always have).
     operator_session_max_hours: int | None = Field(default=None, ge=1, le=720)
     customer_session_max_hours: int | None = Field(default=None, ge=1, le=720)
+    # Two-step sign-in (TOTP). When required, a user without it enrols at their
+    # next sign-in before a session is issued.
+    mfa_required_for_operators: bool = False
+    mfa_required_for_customers: bool = False
 
     @field_validator("ip_allowlist")
     @classmethod
@@ -205,6 +209,10 @@ def sign_in_allowed(policy: AuthPolicy, *, role: str, address: str | None) -> bo
     if role == "client" and not policy.ip_allowlist_applies_to_portal:
         return True
     return ip_allowed(policy.ip_allowlist, address)
+
+
+def mfa_required(policy: AuthPolicy, *, role: str) -> bool:
+    return policy.mfa_required_for_customers if role == "client" else policy.mfa_required_for_operators
 
 
 def session_limit_hours(policy: AuthPolicy, *, role: str) -> int | None:

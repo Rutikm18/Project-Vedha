@@ -126,3 +126,46 @@ test("the legacy OTP endpoints and stores are gone", () => {
     assert.equal(fs.existsSync(path.join(root, f)), false, `${f} should be removed`);
   }
 });
+
+function mfaChallenge(): Response {
+  const h = new Headers({ "content-type": "application/json" });
+  h.append("set-cookie", "vedha_mfa=CHALLENGE.1; Path=/api/auth/login; Max-Age=300; HttpOnly");
+  return new Response(JSON.stringify({ ok: false, mfa: "verify" }), { status: 200, headers: h });
+}
+
+test("an MFA account is asked for a code, which is sent with the challenge cookie", async () => {
+  let posts = 0;
+  const calls = stub({
+    "POST /api/auth/login": () => (++posts === 1 ? mfaChallenge() : loginOk()),
+    "POST /api/auth/pats": () => json({ id: "pat-1", token: "vpat_secret" }, 201),
+    "DELETE /api/auth/login": () => json({ ok: true }),
+    "GET /api/auth/me": () => json({ email: "ops@corp.io", role: "manager" }),
+  });
+  const asked: string[] = [];
+  const s = await loginWithPassword("http://srv", "ops@corp.io", "pw", async () => { asked.push("?"); return "123456"; });
+  assert.equal(s.token, "vpat_secret");
+  assert.equal(asked.length, 1);
+  const step = calls.filter((c) => c.method === "POST" && c.url.endsWith("/api/auth/login"))[1];
+  assert.equal(step.headers.Cookie, "vedha_mfa=CHALLENGE.1");
+  assert.deepEqual(JSON.parse(step.body!), { step: "verify", code: "123456" });
+});
+
+test("a wrong code is retried, then the login fails without a token", async () => {
+  let posts = 0;
+  stub({
+    "POST /api/auth/login": () => (++posts === 1 ? mfaChallenge() : json({ code: "invalid_code", error: "x" }, 401)),
+  });
+  const original = process.stderr.write;
+  process.stderr.write = (() => true) as typeof process.stderr.write;
+  try {
+    await assert.rejects(loginWithPassword("http://srv", "a@b.io", "pw", async () => "000000"),
+      (e: unknown) => e instanceof LoginError && /not accepted/.test(e.message));
+  } finally { process.stderr.write = original; }
+  assert.equal(posts, 4); // password + three code attempts
+});
+
+test("required enrolment points the user at the web console", async () => {
+  stub({ "POST /api/auth/login": () => json({ ok: false, mfa: "enroll" }) });
+  await assert.rejects(loginWithPassword("http://srv", "a@b.io", "pw", async () => "1"),
+    (e: unknown) => e instanceof LoginError && /web console/.test(e.message));
+});

@@ -137,7 +137,7 @@ async function ensureAuthenticated(): Promise<void> {
   ln(`  ${A.dim}Signing in…${A.reset}`);
   let session;
   try {
-    session = await loginWithPassword(server, email, password);
+    session = await loginWithPassword(server, email, password, () => ask('Authenticator code (or recovery code)'));
   } catch (e) {
     ln(`  ${A.red}${e instanceof LoginError ? e.message : 'Authentication failed'}${A.reset}`);
     if (e instanceof LoginError && e.unreachable) {

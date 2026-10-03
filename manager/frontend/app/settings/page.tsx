@@ -14,6 +14,7 @@ import { PageShell } from "../../components/PageShell";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { PlanLicenceSection } from "../../components/portal/PlanLicenceSection";
 import { AuthPolicySection, CustomerDefaultsSection, ScanPolicySection } from "../../components/settings/PolicySections";
+import { AccountSecuritySection } from "../../components/settings/AccountSecuritySection";
 import { fetchJson } from "../../lib/fetcher";
 import { copyText } from "../../lib/clipboard";
 import {
@@ -171,6 +172,7 @@ const NAV_SECTIONS = [
   { key: "api-keys",      label: "API Keys",            icon: KeyRound },
   { key: "probe-fleet",   label: "Probe Fleet",         icon: Monitor },
   { key: "ai",            label: "AI Runtime",          icon: Bot },
+  { key: "account",       label: "Account security",    icon: LockKeyhole },
   { key: "access",        label: "Access & Security",   icon: ShieldCheck },
   { key: "scanning",      label: "Scanning",            icon: Radar },
   { key: "new-customers", label: "New customers",       icon: UserPlus },
@@ -184,7 +186,7 @@ const NAV_SECTIONS = [
 
 const PORTAL_NAV_SECTIONS = [
   { key: "plan", label: "Plan & Licence", icon: FileBadge2 },
-  ...NAV_SECTIONS.filter(({ key }) => ["workspace", "probe-fleet", "ai", "audit-log"].includes(key)),
+  ...NAV_SECTIONS.filter(({ key }) => ["workspace", "account", "probe-fleet", "ai", "audit-log"].includes(key)),
 ];
 
 // ─── Shared UI atoms ──────────────────────────────────────────────────────────
@@ -263,7 +265,16 @@ function TeamSection() {
     queryKey: ["team-users"],
     queryFn: () => fetchJson<TeamUser[]>("/api/users"),
   });
+  // Account actions are admin-only on the server; other roles see the list only
+  // (a refused request would make the shared fetch helper sign them out).
+  const { data: me } = useQuery({
+    queryKey: ["me-role"],
+    queryFn: () => fetchJson<{ role: string; email?: string }>("/api/auth/me"),
+    staleTime: 5 * 60_000,
+  });
+  const isAdmin = me?.role === "admin";
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirmReset, setConfirmReset] = useState<string | null>(null);
 
   async function toggle(id: string, active: boolean) {
     setMsg(null);
@@ -271,6 +282,16 @@ function TeamSection() {
       await fetchJson(`/api/users/${id}/${active ? "deactivate" : "activate"}`, { method: "POST" });
       await refetch();
       setMsg(active ? "User deactivated." : "User re-enabled.");
+    } catch (e) { setMsg(e instanceof Error ? e.message : "Request failed"); }
+  }
+
+  async function resetMfa(user: TeamUser) {
+    setMsg(null);
+    setConfirmReset(null);
+    try {
+      await fetchJson(`/api/users/${user.id}/mfa-reset`, { method: "POST" });
+      await refetch();
+      setMsg(`Two-step sign-in cleared for ${user.email}. They can sign in with their password and set it up again; if your sign-in policy requires it, they are asked to at sign-in.`);
     } catch (e) { setMsg(e instanceof Error ? e.message : "Request failed"); }
   }
 
@@ -295,16 +316,33 @@ function TeamSection() {
                 <span className="settings-team-date">Joined {formatDate(user.created_at)}</span>
               </div>
             </div>
-            <div className="settings-team-actions">
-              <button
-                className={`btn btn-sm ${user.is_active ? "btn-danger-ghost" : "btn-secondary"}`}
-                onClick={() => void toggle(user.id, user.is_active)}
-                title={user.is_active ? "Deactivate" : "Re-enable"}
-              >
-                {user.is_active ? <X size={12} /> : <CheckCircle2 size={12} />}
-                {user.is_active ? "Deactivate" : "Enable"}
-              </button>
-            </div>
+            {isAdmin && (
+              <div className="settings-team-actions">
+                {user.mfa_enabled && user.email !== me?.email && (
+                  confirmReset === user.id ? (
+                    <>
+                      <button className="btn btn-sm btn-danger-ghost" onClick={() => void resetMfa(user)}>Confirm reset</button>
+                      <button className="btn btn-sm btn-secondary" onClick={() => setConfirmReset(null)}>Cancel</button>
+                    </>
+                  ) : (
+                    <button className="btn btn-sm btn-secondary" onClick={() => setConfirmReset(user.id)}
+                      title="For a lost phone: clears their authenticator and recovery codes">
+                      <Shield size={12} /> Reset MFA
+                    </button>
+                  )
+                )}
+                {user.email !== me?.email && (
+                  <button
+                    className={`btn btn-sm ${user.is_active ? "btn-danger-ghost" : "btn-secondary"}`}
+                    onClick={() => void toggle(user.id, user.is_active)}
+                    title={user.is_active ? "Deactivate" : "Re-enable"}
+                  >
+                    {user.is_active ? <X size={12} /> : <CheckCircle2 size={12} />}
+                    {user.is_active ? "Deactivate" : "Enable"}
+                  </button>
+                )}
+              </div>
+            )}
           </article>
         ))}
       </div>
@@ -1065,6 +1103,7 @@ export function SettingsWorkspace({ surface = "manager" }: { surface?: SettingsW
           {section === "api-keys"      && <ApiKeysSection />}
           {section === "probe-fleet"   && <ProbeFleetSection surface={surface} />}
           {section === "ai"            && <AiRuntimeSection surface={surface} />}
+          {section === "account"       && <AccountSecuritySection surface={surface} />}
           {section === "access"        && <><AccessSection status={deployment} /><AuthPolicySection /></>}
           {section === "scanning"      && <div className="settings-panel animate-slide-in"><SectionTitle icon={Radar} title="Scanning" detail="When scans may run, and what is never scanned." /><ScanPolicySection /></div>}
           {section === "new-customers" && <div className="settings-panel animate-slide-in"><SectionTitle icon={UserPlus} title="New customers" detail="What a newly added customer starts with." /><CustomerDefaultsSection /></div>}

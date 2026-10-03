@@ -83,24 +83,62 @@ export function setCookieValue(setCookies: string[], name: string): string | nul
   return null;
 }
 
+/** Asks for the authenticator (or recovery) code when the account has two-step sign-in. */
+export type AskCode = () => Promise<string>;
+
+/** Attempts at the code before giving up; the server allows five per challenge. */
+const CODE_ATTEMPTS = 3;
+
+function loginFailure(body: { error?: string; code?: string }, status: number): LoginError {
+  return new LoginError(
+    body.code === 'invalid_credentials' ? 'Invalid email or password.'
+    : body.code === 'invalid_code'      ? 'That code was not accepted.'
+    : body.code === 'mfa_expired'       ? 'The sign-in took too long. Run vedha login again.'
+    : body.code === 'rate_limited'      ? 'Too many attempts. Wait a minute and try again.'
+    : body.error ?? `Login failed (HTTP ${status}).`,
+  );
+}
+
 export async function loginWithPassword(
   server: string,
   email: string,
   password: string,
+  askCode?: AskCode,
 ): Promise<Session> {
   const json = { 'Content-Type': 'application/json' };
 
-  const res = await fetch(`${server}/api/auth/login`, {
+  let res = await fetch(`${server}/api/auth/login`, {
     method: 'POST', headers: json, body: JSON.stringify({ email, password }),
   }).catch(() => null);
   if (!res) throw new LoginError(`Could not reach the VEDHA server at ${server}.`, true);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { error?: string; code?: string };
-    throw new LoginError(
-      body.code === 'invalid_credentials' ? 'Invalid email or password.'
-      : body.code === 'rate_limited'      ? 'Too many attempts. Wait a minute and try again.'
-      : body.error ?? `Login failed (HTTP ${res.status}).`,
-    );
+  if (!res.ok) throw loginFailure(await res.json().catch(() => ({})), res.status);
+
+  // Two-step sign-in: the password was right; a code finishes it.
+  const first = await res.clone().json().catch(() => ({})) as { mfa?: string };
+  if (first.mfa === 'enroll') {
+    throw new LoginError('Your organisation requires two-step sign-in. Sign in to the web console once to set up '
+      + 'an authenticator app, then run vedha login again.');
+  }
+  if (first.mfa === 'verify') {
+    const challenge = setCookieValue(res.headers.getSetCookie(), 'vedha_mfa');
+    if (!challenge) throw new LoginError('The server did not start the code step.');
+    if (!askCode) throw new LoginError('This account uses two-step sign-in; run vedha login in a terminal.');
+    let finished: Response | null = null;
+    for (let attempt = 1; attempt <= CODE_ATTEMPTS && !finished; attempt++) {
+      const code = (await askCode()).trim();
+      if (!code) throw new LoginError('No code entered.');
+      const step = await fetch(`${server}/api/auth/login`, {
+        method: 'POST',
+        headers: { ...json, Cookie: `vedha_mfa=${encodeURIComponent(challenge)}` },
+        body: JSON.stringify({ step: 'verify', code }),
+      }).catch(() => null);
+      if (!step) throw new LoginError(`Could not reach the VEDHA server at ${server}.`, true);
+      if (step.ok) { finished = step; break; }
+      const body = await step.json().catch(() => ({})) as { error?: string; code?: string };
+      if (body.code !== 'invalid_code' || attempt === CODE_ATTEMPTS) throw loginFailure(body, step.status);
+      process.stderr.write('That code was not accepted — try the newest one.\n');
+    }
+    res = finished!;
   }
 
   const cookies = res.headers.getSetCookie();

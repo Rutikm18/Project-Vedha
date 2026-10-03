@@ -7,6 +7,7 @@ import {
   LockKeyhole, ShieldCheck,
 } from "lucide-react";
 import { VedhaMark } from "../../components/brand/VedhaMark";
+import { MfaStep, type MfaMode } from "../../components/auth/MfaStep";
 
 export default function LoginPage() {
   return (
@@ -34,6 +35,8 @@ function LoginForm() {
   const [devHint, setDevHint] = useState<{ email: string; password: string } | null>(null);
   // Seconds remaining on a rate-limit lockout; > 0 disables the form.
   const [cooldown, setCooldown] = useState(0);
+  // Password accepted; a code (or first-time enrolment) is needed to finish.
+  const [mfa, setMfa] = useState<MfaMode | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
 
   // Tick the rate-limit cooldown down to zero.
@@ -90,8 +93,13 @@ function LoginForm() {
         body: JSON.stringify({ email: emailValue.trim().toLowerCase(), password: passwordValue }),
       });
       const data = await response.json() as {
-        ok?: boolean; error?: string; code?: string; retryAfter?: number;
+        ok?: boolean; error?: string; code?: string; retryAfter?: number; mfa?: MfaMode;
       };
+      if (response.ok && data.mfa) {
+        setPassword("");
+        setMfa(data.mfa);
+        return;
+      }
       if (!response.ok || !data.ok) {
         switch (data.code) {
           case "invalid_credentials":
@@ -133,6 +141,17 @@ function LoginForm() {
 
   // TESTING ONLY: fill the form with the seeded admin credentials and sign in
   // in one click. Only rendered when the dev-hint endpoint returned a hint.
+  const finishSignIn = useCallback(() => {
+    router.replace(nextPath);
+    router.refresh();
+  }, [nextPath, router]);
+
+  const restartSignIn = useCallback((message?: string) => {
+    setMfa(null);
+    setError(message ?? null);
+    setTimeout(() => emailRef.current?.focus(), 0);
+  }, []);
+
   const fillAndSignIn = useCallback(() => {
     if (!devHint) return;
     setEmail(devHint.email);
@@ -193,6 +212,10 @@ function LoginForm() {
             <span>VEDHA</span>
           </div>
 
+          {mfa ? (
+            <MfaStep mode={mfa} endpoint="/api/auth/login" onDone={finishSignIn} onRestart={restartSignIn} />
+          ) : (
+          <>
           <div className="login-form-heading">
             <span className="login-form-icon"><Fingerprint size={22} /></span>
             <h2>Welcome back</h2>
@@ -316,6 +339,9 @@ function LoginForm() {
               )}
             </button>
           </form>
+
+          </>
+          )}
 
           <div className="login-assurance">
             <LockKeyhole size={13} />

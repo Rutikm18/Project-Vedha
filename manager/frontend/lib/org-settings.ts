@@ -9,6 +9,8 @@ export interface AuthPolicy {
   ip_allowlist_applies_to_portal: boolean;
   operator_session_max_hours: number | null;
   customer_session_max_hours: number | null;
+  mfa_required_for_operators: boolean;
+  mfa_required_for_customers: boolean;
 }
 
 export interface BlackoutWindow {
