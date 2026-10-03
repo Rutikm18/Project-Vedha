@@ -195,8 +195,21 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
     for rid in sorted({t.rule_id for t in posture_traces}):
         verdict, reasons = verdict_for_rule(posture_traces, rid)
         posture_verdicts[rid] = {"verdict": verdict, "reasons": reasons}
+
+    # Gap #4: a `range-open` finding matched only an open-ended [introduced,
+    # unbounded) range from an inferred (banner) source — it carries no version
+    # discrimination (it would match every version of the product), so it is
+    # product-presence, NOT a version-range vulnerability. Keep it OUT of the
+    # customer-facing `cve` set (which the backend persists one-for-one as
+    # findings) so a banner-identified host no longer floods with zero-signal
+    # CVEs. It is not discarded: it is returned under `cve_product_presence`
+    # (and counted) so the signal remains traceable and a future UI can surface
+    # it as a low-priority "product present — verify patch level" rollup.
+    product_presence = [f for f in cve_findings if f.match_basis == "range-open"]
+    cve_findings = [f for f in cve_findings if f.match_basis != "range-open"]
     return {
         "cve": cve_findings,
+        "cve_product_presence": product_presence,
         "posture": posture_findings,
         "posture_traces": [t.to_dict() for t in posture_traces],
         "posture_coverage": posture_coverage,
@@ -208,6 +221,7 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
         "ingest": ingest_result,
         "counts": {
             "cve": len(cve_findings),
+            "cve_product_presence": len(product_presence),
             "cve_suppressed": len(suppression_audit),
             "posture": len(posture_findings),
             "posture_confirmed": sum(1 for f in posture_findings if f.state == "confirmed"),

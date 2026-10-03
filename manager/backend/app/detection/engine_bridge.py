@@ -297,7 +297,13 @@ def detect_all_from_facts_traced(
         except ImportError:                          # older engine: CVE-only
             from pipeline import run_pipeline  # type: ignore
             findings, _ = run_pipeline([tmp])
-            return [f.to_dict() for f in findings], [], empty_meta
+            # Mirror run_full_detection's gap #4 partition: a `range-open` match
+            # is product-presence (open-ended range, no version signal), not a
+            # customer-facing CVE — withhold it here too so this degraded path
+            # cannot reintroduce the banner-host flood.
+            cve = [f.to_dict() for f in findings
+                   if getattr(f, "match_basis", None) != "range-open"]
+            return cve, [], empty_meta
     except Exception as exc:  # noqa: BLE001
         # The CVE track can fail on its own (e.g. a missing/oversized NVD snapshot);
         # the POSTURE track must NOT go down with it — config-exposure findings need

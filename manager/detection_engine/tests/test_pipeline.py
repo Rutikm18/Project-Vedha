@@ -445,3 +445,34 @@ class TestIdentifiedProducts:
             kev_db=_empty_kev(), epss_db=_empty_epss(), candidates_out=out)
         assert isinstance(result, tuple) and len(result) == 2
         assert [c.product for c in out["10.0.0.1"]] == ["openssh"]
+
+
+# ---------------------------------------------------------------------------
+# gap #4: range-open product-presence findings are withheld from the
+# customer-facing `cve` set (so a banner host no longer floods), but kept
+# in `cve_product_presence` for traceability.
+# ---------------------------------------------------------------------------
+
+class TestGap4ProductPresencePartition:
+    def _openssh_open_ended_db(self) -> VulnDB:
+        return _mock_vuln_db({"openssh": [
+            {"id": "DEBIAN-CVE-2007-2243", "upstream": ["CVE-2007-2243"],
+             "affected": [{"package": {"name": "openssh", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "0"}]}]}]},
+        ]})
+
+    def test_banner_open_ended_partitioned_out_of_cve(self, tmp_path):
+        banner = _banner_jsonl(tmp_path, target="10.0.0.2",
+                               first_line="SSH-2.0-OpenSSH_8.4p1")
+        result = run_full_detection(
+            [banner], vuln_db=self._openssh_open_ended_db(),
+            kev_db=_empty_kev(), epss_db=_empty_epss())
+        # Not a customer-facing CVE finding (no flood)...
+        assert result["cve"] == []
+        assert result["counts"]["cve"] == 0
+        # ...but preserved, counted, and clearly product-presence.
+        assert len(result["cve_product_presence"]) == 1
+        assert result["counts"]["cve_product_presence"] == 1
+        assert result["cve_product_presence"][0].match_basis == "range-open"
+        assert result["cve_product_presence"][0].state == FindingState.potential
