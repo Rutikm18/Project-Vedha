@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -44,6 +44,33 @@ import {
   type ReportRetestRecord,
 } from "../../lib/report/report-document";
 import { SEV_COLOR, toSeverity } from "../../lib/severity";
+import {
+  METHOD_FIELDS,
+  assetLabel,
+  compactRefs,
+  findingRefs,
+  formatDate,
+  groupRef,
+  isIssued,
+  isOpenStatus,
+  issueGroups,
+  statusLabel,
+  type IssueGroup,
+  statusSummary,
+  usableTimeZone,
+} from "../../lib/report/presentation";
+import {
+  ClosureRegister,
+  ExecutiveSummary,
+  FindingsOverview,
+  IssueReading,
+  ReadinessAppendix,
+  RecordDisclosure,
+  RemediationRoadmap,
+  ReportCover,
+  SeverityPill,
+  issueAnchor,
+} from "./ReportReadingView";
 import { FindingRiskBand } from "./FindingRiskBand";
 
 const CONTROL_FIELDS = [
@@ -68,14 +95,6 @@ function displayLabel(value: string): string {
   return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function usableTimeZone(value: string): string {
-  try {
-    new Intl.DateTimeFormat("en-GB", { timeZone: value }).format(new Date(0));
-    return value;
-  } catch {
-    return "UTC";
-  }
-}
 
 function formatTimestamp(value: string | null | undefined, timeZone: string): string | null {
   if (!value) return null;
@@ -746,13 +765,13 @@ function DerivedRegionalCompliance({ context }: { context: ReportDerivedRegional
   );
 }
 
-export function FindingReport({ finding, ordinal }: { finding: ReportFinding; ordinal: number }) {
+export function FindingReport({ finding, ordinal, anchor = true }: { finding: ReportFinding; ordinal: number; anchor?: boolean }) {
   const severity = toSeverity(finding.severity);
   const findingRef = `F${String(ordinal).padStart(3, "0")}`;
   const closure = finding.closure;
 
   return (
-    <article className="cr-finding" id={`finding-${finding.id}`} style={{ "--cr-severity": SEV_COLOR[severity] } as React.CSSProperties}>
+    <article className="cr-finding" id={anchor ? `finding-${finding.id}` : undefined} style={{ "--cr-severity": SEV_COLOR[severity] } as React.CSSProperties}>
       <header className="cr-finding-head">
         <span className="cr-finding-ordinal">{findingRef}</span>
         <div>
@@ -1010,25 +1029,120 @@ export function FindingReport({ finding, ordinal }: { finding: ReportFinding; or
   );
 }
 
-function SectionHeading({ id, title, description }: { id: string; title: string; description: string }) {
+function SectionHeading({ id, title, description, number }: { id: string; title: string; description: string; number?: string }) {
   return (
     <header className="cr-section-head">
-      <h2 id={id}>{title}</h2>
+      <h2 id={id}>{number && <span className="rr-num">{number}</span>}{title}</h2>
       <p>{description}</p>
     </header>
   );
 }
 
+/** One issue: the reading view, then the complete canonical record of each
+ *  affected finding behind a disclosure. Shared by the full and technical reports. */
+export function IssueCard({ group, index, refs, tz, eager }: {
+  group: IssueGroup;
+  index: number;
+  refs: Map<string, string>;
+  tz: string;
+  eager: boolean;
+}) {
+  const many = group.findings.length > 1;
+  const lead = group.lead;
+  const displayTimeZone = tz;
+  const ordinal = (finding: ReportFinding) => Number((refs.get(finding.id) ?? "F0").slice(1));
+  return (
+        <article className="rr-issue" id={issueAnchor(index)} data-severity={group.severity}>
+          <header className="rr-issue-head">
+            <div className="rr-issue-tags">
+              <span className="rr-ref">{groupRef(group, refs)}</span>
+              <SeverityPill severity={group.severity} />
+              <span className="rr-issue-status" data-open={group.open > 0}>
+                {many ? `${group.findings.length} affected assets · ${statusSummary(group.findings)}` : statusSummary(group.findings)}
+              </span>
+            </div>
+            <h3>{group.title}</h3>
+            {!many && assetLabel(lead) && <p className="rr-muted"><Server size={12} /> {assetLabel(lead)}</p>}
+          </header>
+          <IssueReading group={group} refs={refs} tz={displayTimeZone} />
+          {many ? (
+            <div className="rr-assets">
+              <h4>Affected assets ({group.findings.length})</h4>
+              {(() => {
+                const row = (list: ReportFinding[]) => (
+                  <>
+                {list.map((finding) => (
+                  <RecordDisclosure
+                    key={finding.id}
+                    finding={finding}
+                    eager={eager}
+                    label={`Complete canonical record — ${refs.get(finding.id)}`}
+                    summary={(
+                      <span className="rr-asset-row">
+                        <b>{refs.get(finding.id)}</b>
+                        <span>{assetLabel(finding) ?? "Asset not recorded"}</span>
+                        <span data-open={isOpenStatus(finding.status)}>{statusLabel(finding.status)}</span>
+                        <span className="rr-muted">{finding.current_sla.deadline && isOpenStatus(finding.status) ? `fix by ${formatDate(finding.current_sla.deadline, displayTimeZone)}` : ""}</span>
+                      </span>
+                    )}
+                  >
+                    {() => <FindingReport finding={finding} ordinal={ordinal(finding)} anchor={false} />}
+                  </RecordDisclosure>
+                ))}
+                  </>
+                );
+                const shown = group.findings.slice(0, VISIBLE_ASSETS);
+                const rest = group.findings.slice(VISIBLE_ASSETS);
+                return (
+                  <>
+                    {row(shown)}
+                    {rest.length > 0 && (
+                      <details className="rr-more-assets">
+                        <summary>Show {rest.length} more asset{rest.length === 1 ? "" : "s"}</summary>
+                        {row(rest)}
+                      </details>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          ) : (
+            <RecordDisclosure finding={lead} eager={eager} label={`Complete canonical record — ${refs.get(lead.id)}`}>
+              {() => <FindingReport finding={lead} ordinal={ordinal(lead)} anchor={false} />}
+            </RecordDisclosure>
+          )}
+        </article>
+  );
+}
+
+/** Above this many findings, complete records render when first opened. */
+export const EAGER_RECORD_LIMIT = 60;
+/** Affected assets listed before "Show N more". */
+const VISIBLE_ASSETS = 8;
+
+/** Open the disclosure(s) holding the element a link points at, then show it. */
+function useHashDisclosure(): void {
+  useEffect(() => {
+    const reveal = () => {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      const target = id ? document.getElementById(id) : null;
+      if (!target) return;
+      if (target instanceof HTMLDetailsElement) target.open = true;
+      let parent = target.parentElement?.closest("details") ?? null;
+      while (parent) {
+        parent.open = true;
+        parent = parent.parentElement?.closest("details") ?? null;
+      }
+      window.requestAnimationFrame(() => target.scrollIntoView({ block: "start" }));
+    };
+    reveal();
+    window.addEventListener("hashchange", reveal);
+    return () => window.removeEventListener("hashchange", reveal);
+  }, []);
+}
+
 export function CanonicalReportDocument({ report }: { report: ReportDocument }) {
   const metadata = report.engagement.recorded_report_metadata;
-  const methodology = metadata.methodology;
-  const limitations = metadata.limitations;
-  const riskRatingMethod = metadata.risk_rating_method;
-  const toolsUsed = metadata.tools_used;
-  const testingNarrative = metadata.testing_narrative;
-  const segmentationResults = metadata.segmentation_results;
-  const environmentCleanup = metadata.environment_cleanup;
-  const evidenceRetentionPolicy = metadata.evidence_retention_policy;
   const severityRows = Object.entries(report.summary.by_severity);
   const statusRows = Object.entries(report.summary.by_status);
   const statusKeys = Object.keys(report.summary.by_status);
@@ -1037,200 +1151,134 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
   const profileLabels = report.engagement.regulatory_profiles.map(
     (profile, index) => profile.name ?? profile.profile_id ?? profile.recorded_reference ?? `Profile ${index + 1}`,
   );
+  const groups = useMemo(() => issueGroups(report.findings), [report.findings]);
+  const refs = useMemo(() => findingRefs(report), [report]);
+  const issued = isIssued(report);
+  const eager = report.findings.length <= EAGER_RECORD_LIMIT;
+  const methodFields = METHOD_FIELDS.map(([key, title]) => [key, title, maskedRecordedValue(metadata[key])] as const);
+  const missingMethod = methodFields.filter(([, , value]) => !value).map(([, title]) => title.toLowerCase());
+  useHashDisclosure();
 
   return (
     <ReportTimeZoneContext.Provider value={displayTimeZone}>
-    <article className="report-document cr-report" aria-label={`${report.engagement.name} vulnerability assessment report`}>
-      <header className="report-cover cr-cover">
-        <div className="cr-cover-main">
-          <span><LockKeyhole size={13} />LIVE, NON-PERSISTED OPERATOR DRAFT</span>
-          <h1>{report.engagement.name}</h1>
-          <p>{report.engagement.client ?? "Client not recorded"} · Vulnerability assessment report</p>
-          <div className="cr-cover-warning">
-            This view is generated from the current read model. It is not an approved, published, or immutable report record.
-          </div>
-        </div>
-        <dl>
-          <div><dt>Engagement ID</dt><dd>{report.engagement.id}</dd></div>
-          <div><dt>Schema version</dt><dd>{report.document.schema_version}</dd></div>
-          <div><dt>Report version</dt><dd>{maskedRecordedValue(metadata.version) ?? "Not recorded"}</dd></div>
-          <div><dt>Classification</dt><dd>{maskedRecordedValue(metadata.classification) ?? "Not recorded"}</dd></div>
-          <div><dt>Generated at (exact)</dt><dd><code>{report.document.generated_at}</code> {report.document.timezone}</dd></div>
-          <div><dt>Display timezone</dt><dd>{configuredDisplayTimeZone}{displayTimeZone !== configuredDisplayTimeZone ? ` (rendered as ${displayTimeZone})` : ""}</dd></div>
-          <div><dt>Snapshot</dt><dd>{report.document.snapshot_kind} · guarantee: {report.document.snapshot_guarantee} · persisted: {String(report.document.persisted)}</dd></div>
-        </dl>
-      </header>
+    <article
+      className="report-document cr-report rr-report"
+      data-issued={issued}
+      aria-label={`${report.engagement.name} vulnerability assessment report`}
+    >
+      <ReportCover report={report} tz={displayTimeZone} issued={issued} />
 
-      <nav className="cr-section-nav no-print" aria-label="Report sections">
-        <a href="#document-control">Document control</a>
-        <a href="#executive-summary">Executive summary</a>
-        <a href="#scope-readiness">Scope &amp; readiness</a>
-        <a href="#finding-register">Finding register</a>
+      <nav className="cr-section-nav rr-nav no-print" aria-label="Report sections">
+        <a href="#executive-summary">Summary</a>
+        <a href="#scope-methodology">Scope &amp; method</a>
+        <a href="#finding-register">Findings</a>
+        <a href="#remediation-roadmap">Roadmap</a>
         <a href="#closure-register">Retest &amp; closure</a>
-        <a href="#compliance-matrix">Compliance context</a>
-        <a href="#methodology-limitations">Methodology &amp; limitations</a>
+        <a href="#compliance-matrix">Compliance</a>
+        <a href="#record-readiness">Record readiness</a>
+        <a href="#document-control">Document control</a>
       </nav>
 
-      <div className="cr-report-body">
-        <section className="cr-report-section" aria-labelledby="document-control">
-          <SectionHeading id="document-control" title="Document control" description="Recorded engagement metadata and live document generation facts." />
-          <dl className="cr-meta-grid">
-            {CONTROL_FIELDS.map(([key, label]) => (
-              <div key={key}>
-                <dt>{label}</dt>
-                <dd>{CONTROL_TIME_FIELDS.has(key)
-                  ? <RecordedTime value={typeof metadata[key] === "string" ? metadata[key] : null} />
-                  : maskedRecordedValue(metadata[key]) ?? "Not recorded"}</dd>
+      <div className="cr-report-body rr-body">
+        <section className="cr-report-section rr-section" aria-labelledby="executive-summary">
+          <SectionHeading id="executive-summary" number="1" title="Executive summary" description="Composed only from recorded counts and the disclosed rating rule; no generated risk narrative." />
+          <ExecutiveSummary report={report} tz={displayTimeZone} groups={groups} />
+          <details className="rr-more">
+            <summary>Detailed counts by severity and status</summary>
+            <p className="cr-executive-copy">{executiveSummaryText(report.summary)}</p>
+            <div className="cr-two-up">
+              <div className="cr-table-wrap">
+                <table className="cr-table">
+                  <caption>Open and terminal findings by recorded severity</caption>
+                  <thead><tr><th scope="col">Severity</th><th scope="col">Total</th><th scope="col">Open / confirmed</th><th scope="col">Terminal</th></tr></thead>
+                  <tbody>{severityRows.map(([severity, count]) => (
+                    <tr key={severity}>
+                      <th scope="row">{displayLabel(severity)}</th>
+                      <td>{count}</td>
+                      <td>{report.summary.open_by_severity[severity] ?? 0}</td>
+                      <td>{report.summary.terminal_by_severity[severity] ?? 0}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
               </div>
-            ))}
-            <div><dt>Engagement status</dt><dd>{report.engagement.status}</dd></div>
+              <div className="cr-table-wrap">
+                <table className="cr-table">
+                  <caption>Findings by recorded status</caption>
+                  <thead><tr><th scope="col">Status</th><th scope="col">Count</th></tr></thead>
+                  <tbody>{statusRows.map(([status, count]) => <tr key={status}><th scope="row">{displayLabel(status)}</th><td>{count}</td></tr>)}</tbody>
+                </table>
+              </div>
+            </div>
+            <div className="cr-table-wrap cr-subsection">
+              <table className="cr-table">
+                <caption>Recorded severity × status cross-tab</caption>
+                <thead>
+                  <tr><th scope="col">Severity</th>{statusKeys.map((status) => <th scope="col" key={status}>{displayLabel(status)}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {severityRows.map(([severity]) => (
+                    <tr key={severity}>
+                      <th scope="row">{displayLabel(severity)}</th>
+                      {statusKeys.map((status) => <td key={status}>{report.summary.by_severity_status[severity]?.[status] ?? 0}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="cr-caution"><AlertTriangle size={13} />“Terminal” is an operational disposition aggregate. Remediated, risk-accepted, and false-positive records remain distinct below and are not presented as a regulatory closure conclusion.</p>
+          </details>
+        </section>
+
+        <section className="cr-report-section rr-section" aria-labelledby="scope-methodology">
+          <SectionHeading id="scope-methodology" number="2" title="Scope and methodology" description="The recorded assessment boundary and how the work was done." />
+          <dl className="rr-facts rr-facts--scope">
+            <div><dt>In scope</dt><dd><Chips values={report.engagement.scope_cidrs} tone="accent" /></dd></div>
+            <div><dt>Excluded</dt><dd><Chips values={report.engagement.excluded_cidrs} /></dd></div>
+            <div><dt>Start</dt><dd><RecordedTime value={report.engagement.start_time} /></dd></div>
+            <div><dt>End</dt><dd><RecordedTime value={report.engagement.end_time} /></dd></div>
             <div><dt>Lead assessor</dt><dd>{report.engagement.assessor ?? "Not recorded"}</dd></div>
-            <div><dt>Engagement created</dt><dd><RecordedTime value={report.engagement.created_at} /></dd></div>
-            <div><dt>Engagement updated</dt><dd><RecordedTime value={report.engagement.updated_at} /></dd></div>
-            <div><dt>Document timezone</dt><dd>{report.document.timezone}</dd></div>
-            <div><dt>Configured display timezone</dt><dd>{configuredDisplayTimeZone}</dd></div>
-            <div><dt>Persisted report record</dt><dd>No</dd></div>
+            <div><dt>Engagement status</dt><dd>{displayLabel(report.engagement.status)}</dd></div>
+            {report.engagement.tags.length > 0 && <div><dt>Tags</dt><dd><Chips values={report.engagement.tags} /></dd></div>}
+            {profileLabels.length > 0 && <div data-wide><dt>Selected regulatory profiles</dt><dd><Chips values={profileLabels} tone="accent" /></dd></div>}
           </dl>
-          <GapList gaps={report.engagement.metadata_gaps} empty="No document-control metadata gaps were identified by the canonical read model." />
+          {report.engagement.description && (
+            <div className="rr-sec"><h4>Engagement description</h4><RecordedBlock value={report.engagement.description} /></div>
+          )}
+          <div className="rr-method">
+            {methodFields.filter(([, , value]) => value).map(([key, title, value]) => (
+              <div key={key} className="rr-sec"><h4>{title}</h4><RecordedBlock value={value} /></div>
+            ))}
+          </div>
+          {missingMethod.length > 0 && (
+            <p className="rr-missing">Not recorded in the report metadata: {missingMethod.join(", ")}.</p>
+          )}
+          <p className="cr-caution"><AlertTriangle size={13} />Absence of a recorded limitation does not establish that the assessment had no limitations.</p>
         </section>
 
-        <section className="cr-report-section" aria-labelledby="executive-summary">
-          <SectionHeading id="executive-summary" title="Executive summary" description="Deterministic counts from the canonical finding set; no generated risk narrative." />
-          <p className="cr-executive-copy">{executiveSummaryText(report.summary)}</p>
-          <div className="cr-summary-strip">
-            <div><span>Total findings</span><strong>{report.summary.total_findings}</strong></div>
-            <div><span>Open or confirmed</span><strong>{report.summary.open_or_confirmed}</strong></div>
-            <div><span>Terminal dispositions</span><strong>{report.summary.terminal}</strong></div>
-            <div><span>Reopen history</span><strong>{report.summary.findings_with_reopen_history}</strong></div>
-          </div>
-          <div className="cr-two-up">
-            <div className="cr-table-wrap">
-              <table className="cr-table">
-                <caption>Open and terminal findings by recorded severity</caption>
-                <thead><tr><th scope="col">Severity</th><th scope="col">Total</th><th scope="col">Open / confirmed</th><th scope="col">Terminal</th></tr></thead>
-                <tbody>{severityRows.map(([severity, count]) => (
-                  <tr key={severity}>
-                    <th scope="row">{displayLabel(severity)}</th>
-                    <td>{count}</td>
-                    <td>{report.summary.open_by_severity[severity] ?? 0}</td>
-                    <td>{report.summary.terminal_by_severity[severity] ?? 0}</td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
-            <div className="cr-table-wrap">
-              <table className="cr-table">
-                <caption>Findings by recorded status</caption>
-                <thead><tr><th scope="col">Status</th><th scope="col">Count</th></tr></thead>
-                <tbody>{statusRows.map(([status, count]) => <tr key={status}><th scope="row">{displayLabel(status)}</th><td>{count}</td></tr>)}</tbody>
-              </table>
-            </div>
-          </div>
-          <p className="cr-caution"><AlertTriangle size={13} />“Terminal” is an operational disposition aggregate. Remediated, risk-accepted, and false-positive records remain distinct below and are not presented as a regulatory closure conclusion.</p>
-          <div className="cr-table-wrap cr-subsection">
-            <table className="cr-table">
-              <caption>Recorded severity × status cross-tab</caption>
-              <thead>
-                <tr><th scope="col">Severity</th>{statusKeys.map((status) => <th scope="col" key={status}>{displayLabel(status)}</th>)}</tr>
-              </thead>
-              <tbody>
-                {severityRows.map(([severity]) => (
-                  <tr key={severity}>
-                    <th scope="row">{displayLabel(severity)}</th>
-                    {statusKeys.map((status) => <td key={status}>{report.summary.by_severity_status[severity]?.[status] ?? 0}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="cr-report-section" aria-labelledby="scope-readiness">
-          <SectionHeading id="scope-readiness" title="Scope and record readiness" description="Recorded assessment boundary and explicit completeness gaps." />
-          <div className="cr-two-up">
-            <div>
-              <h3>Assessment scope</h3>
-              <dl className="cr-meta-grid cr-meta-grid--compact">
-                <div><dt>Start time</dt><dd><RecordedTime value={report.engagement.start_time} /></dd></div>
-                <div><dt>End time</dt><dd><RecordedTime value={report.engagement.end_time} /></dd></div>
-                <div className="cr-wide"><dt>In-scope CIDRs</dt><dd><Chips values={report.engagement.scope_cidrs} tone="accent" /></dd></div>
-                <div className="cr-wide"><dt>Excluded CIDRs</dt><dd><Chips values={report.engagement.excluded_cidrs} /></dd></div>
-                <div className="cr-wide"><dt>Tags</dt><dd><Chips values={report.engagement.tags} /></dd></div>
-                <div className="cr-wide"><dt>Selected regulatory profiles</dt><dd><Chips values={profileLabels} tone="accent" /></dd></div>
-              </dl>
-              <h4>Recorded engagement description</h4>
-              <RecordedBlock value={report.engagement.description} />
-            </div>
-            <div className="cr-readiness-panel" data-complete={report.readiness.complete}>
-              <h3>{report.readiness.complete ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}Canonical record check</h3>
-              <p>{report.readiness.complete
-                ? "No configured completeness gaps were identified. This does not constitute approval for delivery."
-                : "The live record contains gaps that require operator review before customer delivery."}</p>
-              <GapList gaps={report.readiness.report_gaps} />
-              {Object.keys(report.readiness.gap_counts).length > 0 && (
-                <div className="cr-table-wrap">
-                  <table className="cr-table">
-                    <caption>Finding-level gap inventory</caption>
-                    <thead><tr><th scope="col">Gap</th><th scope="col">Count</th><th scope="col">Affected finding IDs</th></tr></thead>
-                    <tbody>
-                      {Object.entries(report.readiness.gap_counts).map(([gap, count]) => (
-                        <tr key={gap}>
-                          <th scope="row"><span>{gapLabel(gap)}</span><code>{gap}</code></th>
-                          <td>{count}</td>
-                          <td><Chips values={report.readiness.affected_finding_ids[gap] ?? []} /></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="cr-report-section cr-findings-section" aria-labelledby="finding-register">
-          <SectionHeading id="finding-register" title="Complete finding register" description={`${report.findings.length} canonical finding record${report.findings.length === 1 ? "" : "s"}, including evidence, remediation, closure, lifecycle, and mapping gaps.`} />
-          {report.findings.length ? (
-            <div className="cr-finding-list">
-              {report.findings.map((finding, index) => <FindingReport key={finding.id} finding={finding} ordinal={index + 1} />)}
+        <section className="cr-report-section cr-findings-section rr-section" aria-labelledby="finding-register">
+          <SectionHeading id="finding-register" number="3" title="Findings" description={`${report.findings.length} canonical finding record${report.findings.length === 1 ? "" : "s"}. Each issue reads first; its complete canonical record (evidence provenance, lifecycle, mappings, gaps) is one click away.`} />
+          <FindingsOverview groups={groups} refs={refs} total={report.findings.length} />
+          {groups.length ? (
+            <div className="rr-issues">
+              {groups.map((group, index) => (
+                <IssueCard key={group.key} group={group} index={index} refs={refs} tz={displayTimeZone} eager={eager} />
+              ))}
             </div>
           ) : <p className="cr-missing"><FileWarning size={13} />No findings are recorded for this engagement.</p>}
         </section>
 
-        <section className="cr-report-section" aria-labelledby="closure-register">
-          <SectionHeading id="closure-register" title="Retest and closure register" description="Document-level disposition, review, and before/after retest evidence derived from the complete finding set." />
-          <div className="cr-table-wrap">
-            <table className="cr-table cr-closure-register">
-              <caption>Closure and retest status for every finding</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Finding</th>
-                  <th scope="col">Severity / disposition</th>
-                  <th scope="col">Closure record</th>
-                  <th scope="col">Retest verification</th>
-                  <th scope="col">History / gaps</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.findings.map((finding, index) => {
-                  const retest = finding.closure.retest;
-                  return (
-                    <tr key={finding.id}>
-                      <th scope="row"><a href={`#finding-${finding.id}`}>F{String(index + 1).padStart(3, "0")} · {finding.title}</a></th>
-                      <td>{displayLabel(finding.severity)}<br />{displayLabel(finding.closure.current_disposition)}</td>
-                      <td><RecordedTime value={finding.closure.resolved_at} />{finding.closure.resolution_method ?? "Method not recorded"}<br />{maskedRecordedValue(finding.closure.reviewed_by) ?? "Reviewer not recorded"}</td>
-                      <td>{retest?.passed === true ? "Passed" : retest?.passed === false ? "Failed" : "Not recorded"}<br /><RecordedTime value={retest?.verified_at} />Before / after artifacts: {retest?.before_evidence.artifacts.length ?? 0} / {retest?.after_evidence.artifacts.length ?? 0}</td>
-                      <td>Reopened: {finding.closure.reopened_count}<br /><Chips values={finding.closure.completeness_gaps} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        <section className="cr-report-section rr-section" aria-labelledby="remediation-roadmap">
+          <SectionHeading id="remediation-roadmap" number="4" title="Remediation roadmap" description="Open findings grouped by priority, with owners and recorded deadlines." />
+          <RemediationRoadmap report={report} tz={displayTimeZone} groups={groups} />
         </section>
 
-        <section className="cr-report-section" aria-labelledby="compliance-matrix">
-          <SectionHeading id="compliance-matrix" title="Compliance context and control mapping" description="Derived applicability context and reporting clocks are presented separately from versioned mappings explicitly recorded on findings." />
+        <section className="cr-report-section rr-section" aria-labelledby="closure-register">
+          <SectionHeading id="closure-register" number="5" title="Retest and closure register" description="Disposition, review, and before/after retest evidence for the complete finding set." />
+          <ClosureRegister groups={groups} refs={refs} tz={displayTimeZone} />
+        </section>
+
+        <section className="cr-report-section rr-section" aria-labelledby="compliance-matrix">
+          <SectionHeading id="compliance-matrix" number="6" title="Compliance context" description="Derived applicability context and reporting clocks, kept separate from versioned mappings explicitly recorded on findings." />
           <DerivedRegionalCompliance context={report.derived_regional_compliance} />
           <div className="cr-subsection">
             <h3>Recorded finding-to-control mapping roll-up</h3>
@@ -1264,14 +1312,14 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
                   <div className="cr-table-wrap">
                     <table className="cr-table">
                       <caption>Recorded controls for {framework.framework ?? "unrecorded framework"} {framework.framework_version ?? ""}</caption>
-                      <thead><tr><th scope="col">Control ID</th><th scope="col">Control title</th><th scope="col">Recorded results</th><th scope="col">Finding IDs</th></tr></thead>
+                      <thead><tr><th scope="col">Control ID</th><th scope="col">Control title</th><th scope="col">Recorded results</th><th scope="col">Findings</th></tr></thead>
                       <tbody>
                         {framework.controls.map((control, controlIndex) => (
                           <tr key={`${control.control_id ?? "unrecorded"}-${controlIndex}`}>
                             <th scope="row">{control.control_id ?? "Not recorded"}</th>
                             <td>{control.control_title ?? "Not recorded"}</td>
                             <td><Chips values={control.recorded_results} /></td>
-                            <td><Chips values={control.finding_ids} /></td>
+                            <td>{compactRefs(control.finding_ids.map((id) => refs.get(id) ?? id))}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1282,23 +1330,40 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
             </div>
           ) : <p className="cr-unset">No framework roll-up is available.</p>}
           {report.compliance_rollup.unmapped_finding_ids.length > 0 && (
-            <div className="cr-subsection"><h3>Findings without recorded mappings</h3><Chips values={report.compliance_rollup.unmapped_finding_ids} /></div>
+            <div className="cr-subsection"><h3>Findings without recorded mappings</h3><p>{compactRefs(report.compliance_rollup.unmapped_finding_ids.map((id) => refs.get(id) ?? id))}</p></div>
           )}
         </section>
 
-        <section className="cr-report-section" aria-labelledby="methodology-limitations">
-          <SectionHeading id="methodology-limitations" title="Methodology and limitations" description="Recorded report metadata only; missing boundaries are stated explicitly." />
-          <div className="cr-method-grid">
-            <div><h3>Methodology</h3><RecordedBlock value={methodology} empty="No methodology is recorded in report metadata." /></div>
-            <div><h3>Risk-rating method</h3><RecordedBlock value={riskRatingMethod} empty="No risk-rating method is recorded in report metadata." /></div>
-            <div><h3>Testing narrative</h3><RecordedBlock value={testingNarrative} empty="No testing narrative is recorded in report metadata." /></div>
-            <div><h3>Tools used</h3><RecordedBlock value={toolsUsed} empty="No assessment tools are recorded in report metadata." /></div>
-            <div><h3>Segmentation results</h3><RecordedBlock value={segmentationResults} empty="No segmentation-test results are recorded in report metadata." /></div>
-            <div><h3>Environment cleanup</h3><RecordedBlock value={environmentCleanup} empty="No environment-cleanup record is present." /></div>
-            <div><h3>Evidence retention policy</h3><RecordedBlock value={evidenceRetentionPolicy} empty="No evidence-retention policy is recorded." /></div>
-            <div><h3>Limitations</h3><RecordedBlock value={limitations} empty="No limitations are recorded in report metadata." /></div>
+        <section className="cr-report-section rr-section rr-operator-only" aria-labelledby="record-readiness">
+          <SectionHeading id="record-readiness" number="A" title="Record readiness" description="Operator check before delivery: what the canonical record is still missing. Left out of the customer print." />
+          <ReadinessAppendix report={report} />
+        </section>
+
+        <section className="cr-report-section rr-section" aria-labelledby="document-control">
+          <SectionHeading id="document-control" number="B" title="Document control" description="Recorded engagement metadata and live document generation facts." />
+          <p className="rr-live-flag"><LockKeyhole size={12} />LIVE, NON-PERSISTED OPERATOR DRAFT</p>
+          <dl className="cr-meta-grid">
+            {CONTROL_FIELDS.map(([key, label]) => (
+              <div key={key}>
+                <dt>{label}</dt>
+                <dd>{CONTROL_TIME_FIELDS.has(key)
+                  ? <RecordedTime value={typeof metadata[key] === "string" ? metadata[key] : null} />
+                  : maskedRecordedValue(metadata[key]) ?? "Not recorded"}</dd>
+              </div>
+            ))}
+            <div><dt>Engagement ID</dt><dd>{report.engagement.id}</dd></div>
+            <div><dt>Engagement status</dt><dd>{report.engagement.status}</dd></div>
+            <div><dt>Lead assessor</dt><dd>{report.engagement.assessor ?? "Not recorded"}</dd></div>
+            <div><dt>Engagement created</dt><dd><RecordedTime value={report.engagement.created_at} /></dd></div>
+            <div><dt>Engagement updated</dt><dd><RecordedTime value={report.engagement.updated_at} /></dd></div>
+            <div><dt>Schema version</dt><dd>{report.document.schema_version}</dd></div>
+            <div><dt>Generated at (exact)</dt><dd><code>{report.document.generated_at}</code> {report.document.timezone}</dd></div>
+            <div><dt>Display timezone</dt><dd>{configuredDisplayTimeZone}{displayTimeZone !== configuredDisplayTimeZone ? ` (rendered as ${displayTimeZone})` : ""}</dd></div>
+            <div className="cr-wide"><dt>Snapshot</dt><dd>{report.document.snapshot_kind} · guarantee: {report.document.snapshot_guarantee} · persisted: {String(report.document.persisted)}</dd></div>
+          </dl>
+          <div className="rr-operator-only">
+            <GapList gaps={report.engagement.metadata_gaps} empty="No document-control metadata gaps were identified by the canonical read model." />
           </div>
-          <p className="cr-caution"><AlertTriangle size={13} />Absence of a recorded limitation does not establish that the assessment had no limitations.</p>
         </section>
       </div>
 
