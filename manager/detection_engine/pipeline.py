@@ -153,6 +153,33 @@ def identified_products_from(
     return out
 
 
+def _os_by_asset(ingest_result: IngestResult) -> dict[str, dict]:
+    """{asset_ip: {os_guess, os_release, os_build}} from each host's OS facts, so
+    exploitability can gate a KEV link by the real OS (gap #5). Picks the most
+    authoritative OS fact per host — a higher confidence, and an explicit SMB-NTLM
+    build outranks a bare TTL family guess. Assets with no OS signal are omitted
+    (exploitability then fails open for them)."""
+    out: dict[str, dict] = {}
+    for ip, asset in ingest_result.assets.items():
+        best: dict | None = None
+        best_rank = -1.0
+        for f in asset.facts:
+            d = f.data if isinstance(f.data, dict) else {}
+            guess = d.get("os_guess") or d.get("os_release")
+            build = d.get("os_build")
+            if not guess and not isinstance(build, int):
+                continue
+            rank = float(d.get("confidence") or 0.0) + (1.0 if isinstance(build, int) else 0.0)
+            if rank > best_rank:
+                best_rank = rank
+                best = {"os_guess": d.get("os_guess"),
+                        "os_release": d.get("os_release"),
+                        "os_build": build if isinstance(build, int) else None}
+        if best:
+            out[ip] = best
+    return out
+
+
 def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
                        kev_db: KevDB | None = None, epss_db: EpssDB | None = None,
                        exposure: dict[str, dict] | None = None,
@@ -189,7 +216,8 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
     # CVE track has had this since enrichment.py; posture findings — which are
     # most of what a Windows estate actually returns — were ranked by a static
     # severity constant with no notion of what attackers are using today.
-    posture_findings = apply_exploitability(posture_findings, kev_db, epss_db)
+    posture_findings = apply_exploitability(
+        posture_findings, kev_db, epss_db, os_by_asset=_os_by_asset(ingest_result))
     posture_coverage = summarize_traces(posture_traces)
     posture_verdicts = {}
     for rid in sorted({t.rule_id for t in posture_traces}):

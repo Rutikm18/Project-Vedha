@@ -476,3 +476,47 @@ class TestGap4ProductPresencePartition:
         assert result["counts"]["cve_product_presence"] == 1
         assert result["cve_product_presence"][0].match_basis == "range-open"
         assert result["cve_product_presence"][0].state == FindingState.potential
+
+
+# ---------------------------------------------------------------------------
+# gap #5: KEV escalation of posture findings is OS-gated end-to-end — BlueKeep
+# (pre-Win8) must not be linked on a Windows 11 host, but must be on Windows 7.
+# ---------------------------------------------------------------------------
+
+def _rdp_no_nla_jsonl(tmp_path, os_build, os_release, target="10.0.0.20",
+                      filename=None):
+    filename = filename or f"rdp_{os_build}.jsonl"
+    recs = [
+        {"scanner": "rdp_scan", "target": target, "timestamp": "2026-01-01T00:00:00Z",
+         "port": 3389, "proto": "tcp", "status": "open", "evidence": "e", "error": None,
+         "data": {"rdp_confirmed": True, "nla": False, "nla_required": False,
+                  "selected_protocol": 1}},
+        {"scanner": "os_fingerprint", "target": target, "timestamp": "2026-01-01T00:00:00Z",
+         "port": None, "proto": None, "status": "observed", "evidence": "e", "error": None,
+         "data": {"os_guess": "Windows", "os_release": os_release,
+                  "os_build": os_build, "confidence": 0.97}},
+    ]
+    p = tmp_path / filename
+    p.write_text("\n".join(json.dumps(r) for r in recs) + "\n")
+    return str(p)
+
+
+class TestGap5OsGatedKevEndToEnd:
+    def _rdp_finding(self, tmp_path, os_build, os_release):
+        kev = KevDB({"CVE-2019-0708"}, "2026-01-01T00:00:00+00:00")
+        epss = EpssDB({}, "2026-01-01T00:00:00+00:00")
+        res = run_full_detection(
+            [_rdp_no_nla_jsonl(tmp_path, os_build, os_release)],
+            vuln_db=_mock_vuln_db({}), kev_db=kev, epss_db=epss)
+        return next(f for f in res["posture"] if f.rule_id == "POSTURE-RDP-NO-NLA")
+
+    def test_bluekeep_not_escalated_on_windows_11(self, tmp_path):
+        f = self._rdp_finding(tmp_path, 26100, "Windows 11 24H2")
+        assert f.exploitability != "actively_exploited"
+        assert not [r for r in (f.kev_refs or []) if r.get("kev_listed")]
+
+    def test_bluekeep_escalated_on_windows_7(self, tmp_path):
+        f = self._rdp_finding(tmp_path, 7601, "Windows 7 SP1")
+        assert f.exploitability == "actively_exploited"
+        assert any(r["cve_id"] == "CVE-2019-0708" and r["kev_listed"]
+                   for r in f.kev_refs)
