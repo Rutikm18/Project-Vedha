@@ -120,3 +120,52 @@ def test_scan_port_no_tls_fact_when_standard_rdp(monkeypatch):
     res = asyncio.run(sc._scan_port("host.example", 3389))
     assert len(res) == 1
     assert res[0].scanner == "rdp_scan"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: the SCHANNEL (RDP-transport) tls_scan fact is graded by findings.py's
+# existing TLS rules — the deep-scan router never runs tls_scan on 3389, so this
+# is what actually closes gap #3 in the detection output.
+# ---------------------------------------------------------------------------
+from scanner.findings import run_findings
+
+
+def _schannel_fact(accepted, cipher_analysis=None):
+    return {
+        "scanner": "tls_scan", "target": "192.0.2.5", "port": 3389,
+        "proto": "tcp", "status": "open",
+        "data": {
+            "accepted_versions": accepted,
+            "cipher_analysis": cipher_analysis or [],
+            "certificate": {},
+            "transport": "rdp",
+        },
+    }
+
+
+def test_findings_grade_deprecated_schannel_on_3389():
+    fact = _schannel_fact(["TLSv1_0", "TLSv1_2"])
+    findings = run_findings([fact])
+    hit = [f for f in findings if f.rule_id == "TLS-LEGACY-PROTO" and f.port == 3389]
+    assert hit, "deprecated SCHANNEL TLS on RDP 3389 should raise TLS-LEGACY-PROTO"
+
+
+def test_findings_grade_weak_schannel_cipher_on_3389():
+    fact = _schannel_fact(
+        ["TLSv1_2"],
+        cipher_analysis=[{"name": "RC4-MD5", "weak": True,
+                          "weak_reasons": ["RC4 (broken stream cipher)"]}])
+    findings = run_findings([fact])
+    hit = [f for f in findings if f.rule_id == "TLS-WEAK-CIPHER" and f.port == 3389]
+    assert hit, "weak SCHANNEL cipher on RDP 3389 should raise TLS-WEAK-CIPHER"
+
+
+def test_findings_grade_underscore_form_tls_version_on_443():
+    # Regression: the real tls_scanner emits stdlib underscore labels ("TLSv1_0"),
+    # not the dotted form hand-built tests used — _rule_tls must grade both, or
+    # TLS 1.0/1.1 goes undetected on EVERY port (the latent bug this fold fixes).
+    fact = {"scanner": "tls_scan", "target": "10.0.0.9", "port": 443,
+            "proto": "tcp", "status": "open",
+            "data": {"accepted_versions": ["TLSv1_0", "TLSv1_2"]}}
+    findings = run_findings([fact])
+    assert any(f.rule_id == "TLS-LEGACY-PROTO" for f in findings)
