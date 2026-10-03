@@ -372,3 +372,6 @@
   .rr-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .rr-two { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
 }
+.rr-placeholder { margin: 0; font-style: italic; color: var(--text-muted); }
+.rr-callout { margin: 0 0 4px; padding: 10px 14px; border-radius: 10px; border-left: 3px solid var(--sev-medium-color); background: var(--sev-medium-bg); font-size: 13px; }
+.rr-ok-note.rr-neutral { color: var(--text-secondary); font-weight: 500; }

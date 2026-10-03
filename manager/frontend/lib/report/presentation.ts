@@ -88,9 +88,34 @@ export function statusLabel(status: string | null | undefined): string {
 }
 
 /** "closure_review_metadata_absent" → "Closure review metadata absent". */
+const ACRONYMS = new Set([
+  "api", "cve", "cvss", "cwe", "dns", "epss", "ftp", "http", "https", "id", "ip", "kev", "ldap",
+  "mfa", "ntlm", "rdp", "sla", "smb", "smtp", "snmp", "sql", "ssh", "ssl", "tls", "url", "vpn",
+  "xss", "csrf", "ssrf", "rce", "os", "ui", "utc", "sha", "iso", "nist", "pci", "dss", "soc",
+]);
+
+/** "weak_tls" → "Weak TLS"; "closure_review_metadata_absent" → "Closure review metadata absent". */
 export function humanize(value: string | null | undefined): string {
   const text = String(value ?? "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
-  return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
+  if (!text) return "";
+  const words = text.split(" ").map((word) => (ACRONYMS.has(word.toLowerCase()) ? word.toUpperCase() : word));
+  const first = words[0]!;
+  words[0] = first === first.toUpperCase() ? first : first.charAt(0).toUpperCase() + first.slice(1);
+  return words.join(" ");
+}
+
+const SLA_TEXT: Record<string, string> = {
+  breached: "Overdue",
+  at_risk: "At risk",
+  due_soon: "Due soon",
+  on_track: "On track",
+  closed: "Closed",
+};
+
+/** Plain wording for an SLA state; null when the finding is not tracked. */
+export function slaLabel(state: string | null | undefined): string | null {
+  if (!state || state === "untracked") return null;
+  return SLA_TEXT[state] ?? humanize(state);
 }
 
 // ─── Ordering and references ─────────────────────────────────────────────────
@@ -192,7 +217,7 @@ export function overallRating(report: ReportDocument): OverallRating {
   return {
     level,
     label: SEVERITY_LABEL[level],
-    basis: `Highest severity among ${open.length} open finding${open.length === 1 ? "" : "s"}: ${count} ${SEVERITY_LABEL[level].toLowerCase()}.`,
+    basis: `${count} of ${open.length} open finding${open.length === 1 ? " is" : "s are"} ${SEVERITY_LABEL[level].toLowerCase()}, the highest severity still open.`,
   };
 }
 
@@ -233,8 +258,24 @@ export interface KeyMetrics {
   retestsPassed: number;
 }
 
+/** What a reader sees as "the asset": its label, else its record id. Two asset
+ *  records with the same address count as one asset. */
 export function assetKey(f: ReportFinding): string | null {
-  return f.asset?.id ?? f.asset?.ip_address ?? f.asset?.hostname ?? null;
+  return assetLabel(f) ?? f.asset?.id ?? null;
+}
+
+/** Distinct assets among findings, as a reader would count them. */
+export function distinctAssetCount(findings: readonly ReportFinding[]): number {
+  return new Set(findings.map(assetKey).filter(Boolean)).size;
+}
+
+/** "3 affected assets", or "4 findings on 1 asset" when records repeat on a host. */
+export function issueScope(findings: readonly ReportFinding[]): string {
+  const assets = distinctAssetCount(findings);
+  const n = findings.length;
+  if (assets === 0) return `${n} finding${n === 1 ? "" : "s"}`;
+  if (assets === n) return `${assets} affected asset${assets === 1 ? "" : "s"}`;
+  return `${n} findings on ${assets} asset${assets === 1 ? "" : "s"}`;
 }
 
 export function keyMetrics(report: ReportDocument): KeyMetrics {
@@ -289,7 +330,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 function zoned(date: Date, timeZone: string): { day: string; month: string; year: string; hour: string; minute: string; zone: string } {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
     day: "2-digit", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
-    hourCycle: "h23", timeZone, timeZoneName: "short",
+    hourCycle: "h23", timeZone, timeZoneName: "longOffset",
   }).formatToParts(date).map((p) => [p.type, p.value]));
   return {
     day: parts.day ?? "",
@@ -297,7 +338,8 @@ function zoned(date: Date, timeZone: string): { day: string; month: string; year
     year: parts.year ?? "",
     hour: parts.hour ?? "",
     minute: parts.minute ?? "",
-    zone: parts.timeZoneName ?? timeZone,
+    // "GMT+05:30" → "UTC+05:30"; "GMT" → "UTC".
+    zone: (parts.timeZoneName ?? "UTC").replace(/^GMT/, "UTC"),
   };
 }
 
@@ -405,9 +447,12 @@ export function findingFacts(f: ReportFinding, timeZone = "UTC"): Fact[] {
   const cvss = numeric(f.cvss_score);
   add("CVSS", cvss !== null ? cvss.toFixed(1) : null);
   add("CVSS vector", maskedText(f.cvss_vector));
-  add("EPSS", percent(f.epss_score));
+  // EPSS is the probability of exploitation in the next 30 days.
+  const epss = percent(f.epss_score);
+  add("EPSS", epss ? `${epss} (30-day)` : null);
+  // Vedha's composite risk rank runs 0–1000; say so, or "645" means nothing.
   const risk = numeric(f.risk_score);
-  add("Risk score", risk !== null ? String(Math.round(risk * 10) / 10) : null);
+  add("Risk score", risk !== null ? `${Math.round(risk)} / 1000` : null);
   add("Exploitability", f.exploit_validated ? "Exploit validated" : f.exploitable ? "Exploitable" : null);
   add("Affected asset", assetLabel(f));
   add("Operating system", maskedText([f.asset?.os, f.asset?.os_version].filter(Boolean).join(" ")));
@@ -418,7 +463,8 @@ export function findingFacts(f: ReportFinding, timeZone = "UTC"): Fact[] {
   add("First seen", formatDate(f.first_seen, timeZone));
   add("Last seen", formatDate(f.last_seen, timeZone));
   if (isOpenStatus(f.status) && f.current_sla.deadline) {
-    add("Fix by", `${formatDate(f.current_sla.deadline, timeZone)} (${humanize(f.current_sla.state)})`);
+    const sla = slaLabel(f.current_sla.state);
+    add("Fix by", `${formatDate(f.current_sla.deadline, timeZone)}${sla ? ` (${sla.toLowerCase()})` : ""}`);
   }
   add("Owner", maskedText(f.action_tracking.owner) ?? maskedText(f.action_tracking.assigned_to_email));
   return facts.filter((x): x is Fact => x !== null);
@@ -568,8 +614,10 @@ export interface ClosureView {
 export function closureView(f: ReportFinding): ClosureView {
   const retest = f.closure.retest;
   return {
-    disposition: statusLabel(f.closure.current_disposition || f.status),
-    closed: f.closure.is_terminal,
+    // The finding's own status is the one the whole report uses; the closure
+    // projection only adds when and how it closed.
+    disposition: statusLabel(f.status),
+    closed: !isOpenStatus(f.status),
     resolvedAt: f.closure.resolved_at,
     method: maskedText(f.closure.resolution_method) ? humanize(maskedText(f.closure.resolution_method)) : null,
     reviewedBy: maskedText(f.closure.reviewed_by),
@@ -584,6 +632,8 @@ export function closureView(f: ReportFinding): ClosureView {
 export interface RoadmapItem {
   /** "F001" or "F001–F004" for an issue on several assets. */
   ref: string;
+  /** The individual references behind `ref`. */
+  refs: string[];
   title: string;
   severity: SeverityKey;
   /** Open instances of the issue. */
@@ -650,6 +700,7 @@ export function remediationRoadmap(report: ReportDocument): RoadmapBucket[] {
         const states = live.map((f) => f.current_sla.state).filter((s) => SLA_RANK.includes(s)).sort((a, b) => SLA_RANK.indexOf(a) - SLA_RANK.indexOf(b));
         return {
           ref: groupRef(g, refs, (f) => isOpenStatus(f.status)),
+          refs: live.map((f) => refs.get(f.id) ?? ""),
           title: g.title,
           severity: g.severity,
           count: live.length,
@@ -720,7 +771,7 @@ export function compactRefs(refs: readonly string[]): string {
     let end = start;
     while (i + 1 < sorted.length && sorted[i + 1] === end + 1) end = sorted[++i]!;
     const fmt = (n: number) => `F${String(n).padStart(3, "0")}`;
-    parts.push(end > start + 1 ? `${fmt(start)}–${fmt(end)}` : end === start + 1 ? `${fmt(start)}, ${fmt(end)}` : fmt(start));
+    parts.push(end > start ? `${fmt(start)}–${fmt(end)}` : fmt(start));
   }
   return parts.join(", ");
 }
@@ -768,19 +819,41 @@ export function executiveNarrative(report: ReportDocument, timeZone = "UTC"): { 
   const rating = overallRating(report);
   const rows = severityRows(report);
   const groups = issueGroups(report.findings);
-  const client = maskedText(report.engagement.client) || "the client";
-  const ranges = report.engagement.scope_cidrs.length;
-  const window = [formatDate(report.engagement.start_time, timeZone), formatDate(report.engagement.end_time, timeZone)].filter(Boolean).join(" to ");
+  const subject = maskedText(report.engagement.client) ?? maskedText(report.engagement.name) ?? "the assessed environment";
+  const ranges = report.engagement.scope_cidrs;
+  const scope = ranges.length === 0
+    ? ""
+    : ranges.length <= 3
+      ? `, covering ${ranges.join(", ")}`
+      : `, covering ${ranges.length} network ranges`;
+  const start = formatDate(report.engagement.start_time, timeZone);
+  const end = formatDate(report.engagement.end_time, timeZone);
+  const window = start && end ? (start === end ? `, on ${start}` : `, between ${start} and ${end}`) : start ? `, from ${start}` : "";
   const counts = rows.filter((r) => r.total > 0).map((r) => `${r.total} ${SEVERITY_LABEL[r.severity].toLowerCase()}`).join(", ");
+
+  const status = m.total === 0
+    ? ""
+    : m.closed === 0
+      ? ` ${m.open === 1 ? "It remains" : `All ${m.open} remain`} open.`
+      : m.open === 0
+        ? ` ${m.closed === 1 ? "It has" : `All ${m.closed} have`} been closed (remediated, risk accepted or marked false positive).`
+        : ` ${m.open} remain${m.open === 1 ? "s" : ""} open; ${m.closed} ${m.closed === 1 ? "has" : "have"} been closed (remediated, risk accepted or marked false positive).`;
+
   const sentences = [
-    `This report presents the results of the vulnerability assessment of ${client}${ranges ? `, covering ${ranges} network range${ranges === 1 ? "" : "s"}` : ""}${window ? `, carried out from ${window}` : ""}.`,
+    `This report presents the results of the vulnerability assessment of ${subject}${scope}${window}.`,
     m.total
-      ? `The assessment recorded ${m.total} finding${m.total === 1 ? "" : "s"}${groups.length < m.total ? ` across ${groups.length} distinct issue${groups.length === 1 ? "" : "s"}` : ""}${counts ? ` (${counts})` : ""}. ${m.open} remain${m.open === 1 ? "s" : ""} open and ${m.closed} ${m.closed === 1 ? "has" : "have"} a closing disposition.`
+      ? `The assessment recorded ${m.total} finding${m.total === 1 ? "" : "s"}${groups.length < m.total ? ` (${groups.length} distinct issue${groups.length === 1 ? "" : "s"})` : ""}: ${counts}.${status}`
       : "The assessment recorded no findings.",
-    rating.level === "none" ? `Overall risk: ${rating.label.toLowerCase()}. ${rating.basis}` : `Overall risk is rated ${rating.label.toUpperCase()}. ${rating.basis}`,
   ];
-  const ratingIndex = 2;
-  if (m.slaBreached) sentences.push(`${m.slaBreached} open finding${m.slaBreached === 1 ? " is" : "s are"} past the remediation deadline set by the current SLA policy.`);
+  const ratingIndex = sentences.length;
+  if (rating.level === "none") {
+    sentences.push(m.total ? "No findings are open, so no overall risk is rated." : "No overall risk is rated because nothing was found.");
+  } else {
+    const open = report.findings.filter((f) => isOpenStatus(f.status));
+    const top = open.filter((f) => severityKey(f.severity) === rating.level).length;
+    sentences.push(`Overall risk is rated ${rating.label}: ${top === open.length ? (top === 1 ? "the only open finding is" : `all ${top} open findings are`) : `${top} of the ${open.length} open findings ${top === 1 ? "is" : "are"}`} ${SEVERITY_LABEL[rating.level].toLowerCase()}.`);
+  }
+  if (m.slaBreached) sentences.push(`${m.slaBreached} open finding${m.slaBreached === 1 ? " is" : "s are"} overdue against the remediation deadline in the current SLA policy.`);
   if (m.exploitableOpen) sentences.push(`${m.exploitableOpen} open finding${m.exploitableOpen === 1 ? " is" : "s are"} recorded as exploitable.`);
   return { sentences, ratingIndex };
 }
@@ -788,7 +861,7 @@ export function executiveNarrative(report: ReportDocument, timeZone = "UTC"): { 
 /** "Priority 1: fix immediately — 4 findings (F001–F004), within 3 days…". */
 export function priorityLines(report: ReportDocument): string[] {
   return remediationRoadmap(report).map((b) =>
-    `${b.title.replace(/^Priority (\d) — /, "Priority $1: ")} — ${b.findings} finding${b.findings === 1 ? "" : "s"}${b.items.length < b.findings ? ` in ${b.items.length} issue${b.items.length === 1 ? "" : "s"}` : ""} (${b.items.map((i) => i.ref).join(", ")})${b.target ? `, ${b.target}` : ""}.`);
+    `${b.title.replace(/^Priority (\d) — /, "Priority $1: ")} — ${b.findings} finding${b.findings === 1 ? "" : "s"}${b.items.length < b.findings ? ` in ${b.items.length} issue${b.items.length === 1 ? "" : "s"}` : ""} (${compactRefs(b.items.flatMap((i) => i.refs))})${b.target ? `, ${b.target}` : ""}.`);
 }
 
 /** Facts for an issue: the lead's, with per-asset facts summarised when it
@@ -800,9 +873,13 @@ export function issueFacts(group: IssueGroup, timeZone = "UTC"): Fact[] {
   const live = group.findings.filter((f) => isOpenStatus(f.status));
   const earliest = live.map((f) => f.current_sla.deadline).filter((d): d is string => Boolean(d)).sort()[0];
   const firstSeen = group.findings.map((f) => f.first_seen).filter((d): d is string => Boolean(d)).sort()[0];
+  const assets = distinctAssetCount(group.findings);
   return [
     ...facts.filter((x) => !PER_ASSET.has(x.label)),
-    { label: "Affected assets", value: String(group.findings.length) },
+    ...(assets === 1
+      ? [{ label: "Affected asset", value: assetKey(group.findings[0]!) ?? "" }]
+      : assets > 1 ? [{ label: "Affected assets", value: String(assets) }] : []),
+    ...(assets !== group.findings.length ? [{ label: "Findings", value: String(group.findings.length) }] : []),
     ...(firstSeen ? [{ label: "First seen", value: formatDate(firstSeen, timeZone)! }] : []),
     ...(earliest ? [{ label: "Earliest fix-by", value: formatDate(earliest, timeZone)! }] : []),
   ];
@@ -814,4 +891,63 @@ export function statusSummary(findings: readonly ReportFinding[]): string {
   for (const f of findings) counts.set(statusLabel(f.status), (counts.get(statusLabel(f.status)) ?? 0) + 1);
   if (findings.length === 1) return [...counts.keys()][0] ?? "";
   return [...counts.entries()].map(([label, n]) => `${n} ${label.toLowerCase()}`).join(" · ");
+}
+
+/** What each finding status means, for the reader of a delivered report. */
+export const STATUS_DEFINITIONS: Array<{ status: string; meaning: string }> = [
+  { status: "Open", meaning: "Found by the assessment and not yet addressed." },
+  { status: "Confirmed", meaning: "Open, and verified as real by the assessor or a second check." },
+  { status: "Remediated", meaning: "Recorded as fixed. A passed retest, where shown, is the evidence of the fix." },
+  { status: "Risk accepted", meaning: "Left in place by a recorded business decision; the exposure remains." },
+  { status: "False positive", meaning: "Reviewed and recorded as not a real issue." },
+];
+
+/** Plain description of the database snapshot the document was read from. */
+export function snapshotLabel(kind: string, guarantee: string): string {
+  const what: Record<string, string> = {
+    postgresql_repeatable_read_read_only: "Consistent read-only database snapshot",
+    sqlite_read_transaction: "Consistent database read",
+    caller_managed_snapshot: "Snapshot managed by the caller",
+    best_effort_read_session: "Best-effort read (records may change during generation)",
+  };
+  return `${what[kind] ?? humanize(kind)} (${kind}; guarantee: ${guarantee})`;
+}
+
+/** Issues sharing one category share one pointer set: list each set once. */
+export function pointerBlocks(groups: readonly IssueGroup[], refs: Map<string, string>): Array<{ refs: string; category: string; rows: Array<[string, string]> }> {
+  const blocks = new Map<string, { refs: string[]; category: string; rows: Array<[string, string]> }>();
+  for (const g of groups) {
+    const c = g.lead.derived_compliance_context;
+    const rows: Array<[string, string]> = [
+      ...c.global_framework_pointers.map((p) => [p.framework, p.controls.join(", ")] as [string, string]),
+      ...c.regional_obligations.map((o) => [o.framework, o.controls.join(", ")] as [string, string]),
+    ];
+    if (!rows.length) continue;
+    const key = `${c.category}|${JSON.stringify(rows)}`;
+    const block = blocks.get(key) ?? { refs: [], category: humanize(c.category), rows };
+    block.refs.push(...g.findings.map((f) => refs.get(f.id) ?? ""));
+    blocks.set(key, block);
+  }
+  return [...blocks.values()].map((b) => ({ ...b, refs: compactRefs(b.refs) }));
+}
+
+/** "<run id>\n<scan type> · <date>", leaving out what is not recorded. */
+export function runSummary(p: ReportFinding["initial_detection_provenance"], fallbackId: string | null, timeZone = "UTC"): string {
+  if (!p) return fallbackId ?? "—";
+  const detail = [p.scan_type ? humanize(p.scan_type) : null, formatDate(p.started_at, timeZone)].filter(Boolean).join(" · ");
+  return detail ? `${p.run_id}\n${detail}` : p.run_id;
+}
+
+/** "report_tools_used_absent" → "tools used". */
+export function gapShort(code: string): string {
+  return humanize(code.replace(/^report_/, "").replace(/_(absent|missing)$/, "")).replace(/^\w/, (c) => c.toLowerCase());
+}
+
+/** Earliest deadline among an issue's open findings, flagged when overdue. */
+export function issueFixBy(group: IssueGroup, timeZone = "UTC"): { text: string | null; overdue: boolean } {
+  const live = group.findings.filter((f) => isOpenStatus(f.status));
+  const earliest = live.map((f) => f.current_sla.deadline).filter((d): d is string => Boolean(d)).sort()[0];
+  const overdue = live.some((f) => f.current_sla.state === "breached");
+  const date = formatDate(earliest, timeZone);
+  return { text: date ? `${date}${overdue ? " (overdue)" : ""}` : null, overdue };
 }

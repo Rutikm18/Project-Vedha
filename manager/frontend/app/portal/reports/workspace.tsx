@@ -238,7 +238,7 @@ function FindingsTable({ findings, max }: { findings: PortalFinding[]; max?: num
       <table className="responsive-table" style={{ width: "100%", minWidth: 500, borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "var(--bg-panel)" }}>
-            {["Severity", "Finding", ...(repeated ? ["Found"] : []), "CVSS", "Risk", "Status"].map((h, i) => (
+            {["Severity", "Finding", ...(repeated ? ["Found"] : []), "CVSS", "Risk (0–1000)", "Status"].map((h, i) => (
               <th key={h} style={{
                 padding: "9px 12px", textAlign: i >= 2 ? "right" : "left",
                 fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em",
@@ -286,7 +286,7 @@ function FindingsTable({ findings, max }: { findings: PortalFinding[]; max?: num
               </td>
               <td data-label="Risk" style={{ padding: "11px 12px", textAlign: "right",
                 fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-secondary)" }}>
-                {risk >= 0 ? risk : "—"}
+                {risk >= 0 ? Math.round(risk) : "—"}
               </td>
               <td data-label="Status" style={{ padding: "11px 12px", textAlign: "right",
                 fontSize: 11, textTransform: "capitalize", color: "var(--text-muted)" }}>
@@ -383,7 +383,7 @@ function FindingCard({ issue, index }: { issue: PortalIssue; index: number }) {
       }}>
         {[
           { label: "CVSS", value: f.cvss_score ?? "—", color: f.cvss_score !== null ? sevColor : "var(--text-muted)" },
-          { label: many ? "Highest risk" : "Risk score", value: risk >= 0 ? risk : "—", color: risk >= 0 ? sevColor : "var(--text-muted)" },
+          { label: many ? "Highest risk (0–1000)" : "Risk score (0–1000)", value: risk >= 0 ? Math.round(risk) : "—", color: risk >= 0 ? sevColor : "var(--text-muted)" },
           { label: "Status", value: issueStatus(issue), color: "var(--text-secondary)" },
         ].map((item, i) => (
           <div key={item.label} style={{
@@ -406,7 +406,7 @@ function FindingCard({ issue, index }: { issue: PortalIssue; index: number }) {
           <FieldLabel>Observation &amp; evidence</FieldLabel>
           <p style={{ margin: "7px 0 0", fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.65 }}>
             {f.description
-              ?? "This finding was recorded during the assessment. A detailed technical description was not captured for this item."}
+              ?? "No detailed description has been recorded for this finding."}
           </p>
         </div>
 
@@ -468,7 +468,7 @@ function FindingCard({ issue, index }: { issue: PortalIssue; index: number }) {
           </FieldLabel>
           <p style={{ margin: "7px 0 0", fontSize: 12.5, color: "var(--text-primary)", lineHeight: 1.65 }}>
             {f.remediation
-              ?? "Remediation guidance for this finding is being prepared by your security team."}
+              ?? "No remediation guidance has been recorded for this finding yet. Ask your security team for the agreed next step."}
           </p>
         </div>
       </div>

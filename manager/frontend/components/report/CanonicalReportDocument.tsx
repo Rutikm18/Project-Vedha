@@ -54,6 +54,7 @@ import {
   isIssued,
   isOpenStatus,
   issueGroups,
+  issueScope,
   statusLabel,
   type IssueGroup,
   statusSummary,
@@ -1058,7 +1059,7 @@ export function IssueCard({ group, index, refs, tz, eager }: {
               <span className="rr-ref">{groupRef(group, refs)}</span>
               <SeverityPill severity={group.severity} />
               <span className="rr-issue-status" data-open={group.open > 0}>
-                {many ? `${group.findings.length} affected assets · ${statusSummary(group.findings)}` : statusSummary(group.findings)}
+                {many ? `${issueScope(group.findings)} · ${statusSummary(group.findings)}` : statusSummary(group.findings)}
               </span>
             </div>
             <h3>{group.title}</h3>
@@ -1157,6 +1158,10 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
   const eager = report.findings.length <= EAGER_RECORD_LIMIT;
   const methodFields = METHOD_FIELDS.map(([key, title]) => [key, title, maskedRecordedValue(metadata[key])] as const);
   const missingMethod = methodFields.filter(([, , value]) => !value).map(([, title]) => title.toLowerCase());
+  const scopeMissing = [
+    !report.engagement.start_time && !report.engagement.end_time ? "assessment window" : null,
+    !report.engagement.assessor ? "lead assessor" : null,
+  ].filter((x): x is string => Boolean(x));
   useHashDisclosure();
 
   return (
@@ -1232,15 +1237,17 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
         <section className="cr-report-section rr-section" aria-labelledby="scope-methodology">
           <SectionHeading id="scope-methodology" number="2" title="Scope and methodology" description="The recorded assessment boundary and how the work was done." />
           <dl className="rr-facts rr-facts--scope">
-            <div><dt>In scope</dt><dd><Chips values={report.engagement.scope_cidrs} tone="accent" /></dd></div>
-            <div><dt>Excluded</dt><dd><Chips values={report.engagement.excluded_cidrs} /></dd></div>
-            <div><dt>Start</dt><dd><RecordedTime value={report.engagement.start_time} /></dd></div>
-            <div><dt>End</dt><dd><RecordedTime value={report.engagement.end_time} /></dd></div>
-            <div><dt>Lead assessor</dt><dd>{report.engagement.assessor ?? "Not recorded"}</dd></div>
+            {report.engagement.scope_cidrs.length > 0 && <div><dt>In scope</dt><dd><Chips values={report.engagement.scope_cidrs} tone="accent" /></dd></div>}
+            {report.engagement.excluded_cidrs.length > 0 && <div><dt>Excluded from scope</dt><dd><Chips values={report.engagement.excluded_cidrs} /></dd></div>}
+            {report.engagement.start_time && <div><dt>Start</dt><dd><RecordedTime value={report.engagement.start_time} /></dd></div>}
+            {report.engagement.end_time && <div><dt>End</dt><dd><RecordedTime value={report.engagement.end_time} /></dd></div>}
+            {report.engagement.assessor && <div><dt>Lead assessor</dt><dd>{report.engagement.assessor}</dd></div>}
             <div><dt>Engagement status</dt><dd>{displayLabel(report.engagement.status)}</dd></div>
             {report.engagement.tags.length > 0 && <div><dt>Tags</dt><dd><Chips values={report.engagement.tags} /></dd></div>}
             {profileLabels.length > 0 && <div data-wide><dt>Selected regulatory profiles</dt><dd><Chips values={profileLabels} tone="accent" /></dd></div>}
           </dl>
+          {!report.engagement.scope_cidrs.length && <p className="rr-callout">No in-scope network ranges are recorded for this engagement.</p>}
+          {scopeMissing.length > 0 && <p className="rr-missing">Not recorded: {scopeMissing.join(", ")}.</p>}
           {report.engagement.description && (
             <div className="rr-sec"><h4>Engagement description</h4><RecordedBlock value={report.engagement.description} /></div>
           )}
@@ -1249,9 +1256,9 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
               <div key={key} className="rr-sec"><h4>{title}</h4><RecordedBlock value={value} /></div>
             ))}
           </div>
-          {missingMethod.length > 0 && (
-            <p className="rr-missing">Not recorded in the report metadata: {missingMethod.join(", ")}.</p>
-          )}
+          {missingMethod.length === METHOD_FIELDS.length
+            ? <p className="rr-missing">The methodology, tools and limitations are not recorded for this engagement.</p>
+            : missingMethod.length > 0 && <p className="rr-missing">Not recorded: {missingMethod.join(", ")}.</p>}
           <p className="cr-caution"><AlertTriangle size={13} />Absence of a recorded limitation does not establish that the assessment had no limitations.</p>
         </section>
 

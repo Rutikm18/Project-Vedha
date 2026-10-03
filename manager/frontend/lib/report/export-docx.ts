@@ -27,6 +27,14 @@ import {
   issueGroups,
   executiveNarrative,
   issueFacts,
+  issueFixBy,
+  gapShort,
+  pointerBlocks,
+  runSummary,
+  issueScope,
+  slaLabel,
+  snapshotLabel,
+  STATUS_DEFINITIONS,
   keyMetrics,
   statusSummary,
   priorityLines,
@@ -162,6 +170,23 @@ function pillCell(severity: SeverityKey | "none", label?: string): Cell {
   return { content: text((label ?? (severity === "none" ? "None" : SEVERITY_LABEL[severity])).toUpperCase(), { bold: true, color: "#FFFFFF", size: 7.5 }, { after: 0, align: "center" }), fill: color };
 }
 
+/**
+ * A table whose plain-text columns are dropped when empty on every row, with
+ * one footnote naming them. Empty tables become a single note.
+ */
+function smartTable(D: Doc, headers: string[], widths: number[], rows: Array<Array<string | Cell>>, o: { empty?: string; noun?: string; quietDrop?: boolean } = {}): void {
+  if (!rows.length) { D.note(o.empty ?? "None recorded."); return; }
+  const blank = (c: string | Cell | undefined) => c === undefined || (typeof c === "string" && (c.trim() === "" || c.trim() === "—"));
+  const keep = headers.map((_, i) => rows.some((r) => !blank(r[i])));
+  const dropped = headers.filter((_, i) => !keep[i]);
+  D.add(table(
+    headers.filter((_, i) => keep[i]),
+    widths.filter((_, i) => keep[i]),
+    rows.map((r) => r.filter((_, i) => keep[i]).map((c) => (typeof c === "string" ? cellText(c) : c))),
+  ));
+  if (dropped.length && !o.quietDrop) D.muted(`${dropped.join(", ")}: not recorded for any ${o.noun ?? "row"} above.`);
+}
+
 // ─── Document builder ────────────────────────────────────────────────────────
 
 class Doc {
@@ -242,14 +267,14 @@ function cover({ D, report, tz, issued }: Ctx): void {
     text("VEDHA   SECURITY ASSESSMENT", { bold: true, color: "#9DB2D6", size: 8.5, spacing: 20 }, { after: 900 }) +
     text("Vulnerability Assessment Report", { bold: true, color: "#FFFFFF", size: 26 }, { after: 120 }) +
     text(report.engagement.name, { color: "#D6E0F2", size: 15 }, { after: 80 }) +
-    text(report.engagement.client ? `Prepared for ${plain(report.engagement.client)}` : "Client not recorded", { color: "#9DB2D6", size: 10.5 }, { after: issued ? 600 : 240 }) +
+    (report.engagement.client ? text(`Prepared for ${plain(report.engagement.client)}`, { color: "#9DB2D6", size: 10.5 }, { after: issued ? 600 : 240 }) : para("", { after: issued ? 600 : 240 })) +
     (issued ? "" : text("DRAFT / NOT APPROVED — HUMAN REVIEW REQUIRED", { bold: true, color: "#FCD34D", size: 8.5 }, { after: 240 }));
   D.add(table(null, [1], [[{ content: band, fill: BRAND_HEX.navy }]], { style: "VedhaGrid", noBorders: true }));
 
   const rating = overallRating(report);
   const color = rating.level === "none" ? BRAND_HEX.ok : SEVERITY_HEX[rating.level].fg;
   D.add(table(null, [1, 2.4], [[
-    { content: text("OVERALL RISK", { bold: true, size: 7, color: BRAND_HEX.muted }, { after: 40 }) + text(rating.label, { bold: true, size: 20, color }, { after: 0 }), fill: BRAND_HEX.wash },
+    { content: text("OVERALL RISK", { bold: true, size: 7, color: BRAND_HEX.muted }, { after: 40 }) + text(rating.label, { bold: true, size: rating.label.length > 10 ? 14 : 20, color }, { after: 0 }), fill: BRAND_HEX.wash },
     { content: text(rating.basis, { size: 9.5 }, { after: 60 }) + text("Rating method: highest severity among open findings.", { size: 7.5, color: BRAND_HEX.muted }, { after: 0 }), fill: BRAND_HEX.wash },
   ]], { style: "VedhaGrid", noBorders: true }));
 
@@ -257,23 +282,24 @@ function cover({ D, report, tz, issued }: Ctx): void {
   D.add(table(null, [1, 1, 1, 1, 1], [rows.map((r) => ({
     content: text(String(r.open), { bold: true, size: 18, color: SEVERITY_HEX[r.severity].fg }, { after: 0 }) +
       text(`${SEVERITY_LABEL[r.severity]} open`, { bold: true, size: 8 }, { after: 0 }) +
-      text(`${r.total} recorded`, { size: 7, color: BRAND_HEX.muted }, { after: 0 }),
+      text(`of ${r.total} found`, { size: 7, color: BRAND_HEX.muted }, { after: 0 }),
     fill: SEVERITY_HEX[r.severity].bg,
   }))], { style: "VedhaGrid", noBorders: true }));
 
   const period = meta("reporting_period")
     ?? ([formatDate(report.engagement.start_time, tz), formatDate(report.engagement.end_time, tz)].filter(Boolean).join(" – ") || null);
-  D.keyValues([
-    { label: "Client", value: dash(plain(report.engagement.client)) },
-    { label: "Assessment period", value: dash(period) },
-    { label: "Report version", value: dash(meta("version")) },
-    { label: "Issue date", value: dash(formatDate(meta("issue_date"), tz)) },
-    { label: "Classification", value: dash(meta("classification")) },
-    { label: "Document status", value: dash(meta("document_status") ?? (issued ? "Issued" : "Draft")) },
-    { label: "Prepared by", value: dash(meta("prepared_by") ?? plain(report.engagement.assessor)) },
-    { label: "Generated", value: dash(formatDateTime(report.document.generated_at, tz)) },
-  ], 2);
-  D.muted(`${meta("classification") ?? "Confidential"}. This report contains security-sensitive information about ${plain(report.engagement.client) || "the client"}'s systems. Distribute only to the named recipients.`);
+  D.keyValues(([
+    ["Client", plain(report.engagement.client)],
+    ["Assessment period", period],
+    ["Report version", meta("version")],
+    ["Issue date", formatDate(meta("issue_date"), tz)],
+    ["Classification", meta("classification")],
+    ["Document status", meta("document_status") ?? (issued ? "Issued" : "Draft")],
+    ["Prepared by", meta("prepared_by") ?? plain(report.engagement.assessor)],
+    ["Generated", formatDateTime(report.document.generated_at, tz)],
+  ] as Array<[string, string | null]>).filter(([, v]) => v).map(([label, value]) => ({ label, value: value! })), 2);
+  const client = plain(report.engagement.client);
+  D.muted(`${meta("classification") ?? "Confidential"}. This report contains security-sensitive information about ${client ? `${client}'s systems` : "the assessed systems"}. Distribute only to the named recipients.`);
 }
 
 function documentControl({ D, report, tz }: Ctx): void {
@@ -287,10 +313,14 @@ function documentControl({ D, report, tz }: Ctx): void {
     ["Issue date", formatDateTime(meta("issue_date"), tz)], ["Reporting period", meta("reporting_period")], ["Distribution", meta("distribution")],
   ];
   const recorded = rows.filter(([, v]) => v);
-  if (recorded.length) D.add(table(["Field", "Recorded value"], [1, 2.4], recorded.map(([k, v]) => [cellText(k, { bold: true }), cellText(v!)])));
-  else D.note("No document-control metadata is recorded for this engagement.");
-  const missing = rows.filter(([, v]) => !v).map(([k]) => k);
-  if (missing.length) D.note(`Not recorded: ${missing.join(", ")}.`);
+  const missing = rows.filter(([, v]) => !v).map(([k]) => k.toLowerCase());
+  if (recorded.length) {
+    D.add(table(["Field", "Recorded value"], [1, 2.4], recorded.map(([k, v]) => [cellText(k, { bold: true }), cellText(v!)])));
+    if (missing.length) D.note(`Not yet recorded: ${missing.join(", ")}.`);
+  } else {
+    D.note("No document-control fields are recorded yet. Before this report is issued, record at least its version, classification, author, reviewer and approver.", "caution");
+  }
+  if (!meta("classification")) D.note("Classification is not recorded, so this document is marked Confidential by default.");
   D.add(text("Contents", {}, { style: "Heading2" }));
   D.add("__TOC__");
 }
@@ -305,7 +335,7 @@ function executiveSummary({ D, report, tz, refs }: Ctx): void {
   const tiles: Array<[string, number, string]> = [
     ["Open findings", m.open, BRAND_HEX.navy],
     ["Critical and high open", m.criticalHighOpen, m.criticalHighOpen ? SEVERITY_HEX.critical.fg : BRAND_HEX.ok],
-    ["Past SLA deadline", m.slaBreached, m.slaBreached ? SEVERITY_HEX.high.fg : BRAND_HEX.ok],
+    ["Overdue against the SLA", m.slaBreached, m.slaBreached ? SEVERITY_HEX.high.fg : BRAND_HEX.ok],
     ["Assets with open findings", m.assetsAffected, BRAND_HEX.navy],
   ];
   D.add(table(null, [1, 1, 1, 1], [tiles.map(([label, value, color]) => ({
@@ -331,7 +361,9 @@ function executiveSummary({ D, report, tz, refs }: Ctx): void {
   D.muted("Dark: open or confirmed. Light: remediated, risk accepted or false positive.");
 
   const statuses = statusRows(report);
-  if (statuses.length) {
+  if (statuses.length === 1) {
+    D.muted(`Status: all ${statuses[0]!.count} finding${statuses[0]!.count === 1 ? " is" : "s are"} ${statuses[0]!.label.toLowerCase()}.`);
+  } else if (statuses.length > 1) {
     D.h3("Findings by status");
     D.add(table(statuses.map((s) => s.label), statuses.map(() => 1), [statuses.map((s) => cellText(String(s.count), { bold: true, size: 12 }))]));
   }
@@ -341,8 +373,8 @@ function executiveSummary({ D, report, tz, refs }: Ctx): void {
   if (top.length) {
     D.add(table(["Ref", "Finding", "Severity", "Assets", "Fix by"], [0.8, 2.8, 0.95, 1.4, 1], top.map(({ ref, group }) => {
       const live = group.findings.filter((f) => isOpenStatus(f.status));
-      const earliest = live.map((f) => f.current_sla.deadline).filter((d): d is string => Boolean(d)).sort()[0];
-      return [cellText(ref, { bold: true }), cellText(group.title), pillCell(group.severity), cellText(dash(groupAssets(live))), cellText(dash(formatDate(earliest, tz)))];
+      const fix = issueFixBy(group, tz);
+      return [cellText(ref, { bold: true, size: 8 }), cellText(group.title), pillCell(group.severity), cellText(dash(groupAssets(live))), cellText(dash(fix.text), { color: fix.overdue ? SEVERITY_HEX.critical.fg : undefined, bold: fix.overdue })];
     })));
   } else {
     D.note("No findings are open.", "info");
@@ -360,14 +392,18 @@ function scopeAndMethod({ D, report, tz }: Ctx): void {
   D.h1("2  Scope and methodology");
   const e = report.engagement;
   D.h3("Assessment scope");
-  D.keyValues([
-    { label: "In scope", value: dash(e.scope_cidrs.join(", ")) },
-    { label: "Excluded", value: dash(e.excluded_cidrs.join(", ")) },
-    { label: "Assessment window", value: dash([formatDateTime(e.start_time, tz), formatDateTime(e.end_time, tz)].filter(Boolean).join(" – ")) },
-    { label: "Lead assessor", value: dash(plain(e.assessor)) },
-    { label: "Engagement status", value: humanize(e.status) },
-    { label: "Tags", value: dash(e.tags.join(", ")) },
-  ], 2);
+  const scopeRows: Array<[string, string]> = [
+    ["In scope", e.scope_cidrs.join(", ")],
+    ["Excluded from scope", e.excluded_cidrs.join(", ")],
+    ["Assessment window", [formatDateTime(e.start_time, tz), formatDateTime(e.end_time, tz)].filter(Boolean).join(" – ")],
+    ["Lead assessor", plain(e.assessor)],
+    ["Engagement status", humanize(e.status)],
+    ["Tags", e.tags.join(", ")],
+  ];
+  D.keyValues(scopeRows.filter(([, v]) => v).map(([label, value]) => ({ label, value })), 2);
+  const scopeMissing = scopeRows.filter(([label, v]) => !v && label !== "Excluded from scope" && label !== "Tags").map(([label]) => label.toLowerCase());
+  if (!e.scope_cidrs.length) D.note("No in-scope network ranges are recorded for this engagement.", "caution");
+  else if (scopeMissing.length) D.note(`Not recorded: ${scopeMissing.join(", ")}.`);
   const description = maskedText(e.description);
   if (description) { D.h3("Engagement description"); D.p(description); }
   if (e.regulatory_profiles.length) {
@@ -381,7 +417,11 @@ function scopeAndMethod({ D, report, tz }: Ctx): void {
     D.h3(title);
     D.p(value);
   }
-  if (missing.length) D.note(`Not recorded in the report metadata: ${missing.join(", ")}. Absence of a recorded limitation does not establish that the assessment had none.`);
+  if (missing.length === METHOD_FIELDS.length) {
+    D.note("The methodology, tools and limitations are not recorded for this engagement. Absence of a recorded limitation does not establish that the assessment had none.");
+  } else if (missing.length) {
+    D.note(`Not recorded: ${missing.join(", ")}. Absence of a recorded limitation does not establish that the assessment had none.`);
+  }
 }
 
 
@@ -390,17 +430,17 @@ function findingsOverview({ D, ordered, groups, refs }: Ctx): void {
   const repeated = groups.length < ordered.length;
   D.muted(`${ordered.length} finding${ordered.length === 1 ? "" : "s"}${repeated ? ` across ${groups.length} distinct issues` : ""}, most severe first.${repeated ? " An issue found on several assets is listed once, with its range of references." : ""}`);
   if (!groups.length) { D.note("No findings are recorded for this engagement."); return; }
-  D.add(table(["Ref", "Finding", "Severity", "CVSS", "Assets", "Status"], [0.8, 2.8, 0.95, 0.55, 1.3, 1.2], groups.map((g) => {
+  smartTable(D, ["Ref", "Finding", "Severity", "CVSS", "Assets", "Status"], [0.95, 2.7, 0.95, 0.55, 1.3, 1.2], groups.map((g) => {
     const cvss = [...new Set(g.findings.map((f) => f.cvss_score).filter((v) => v !== null && v !== "").map(String))];
     return [
-      cellText(groupRef(g, refs), { bold: true }),
-      cellText(g.title),
+      cellText(groupRef(g, refs), { bold: true, size: 8 }),
+      g.title,
       pillCell(g.severity),
-      cellText(cvss.length === 0 ? "—" : cvss.length === 1 ? cvss[0]! : "varies"),
-      cellText(dash(groupAssets(g.findings))),
+      cvss.length === 0 ? "—" : cvss.length === 1 ? cvss[0]! : "varies",
+      dash(groupAssets(g.findings)),
       cellText(statusSummary(g.findings), { bold: true, color: g.open ? SEVERITY_HEX.critical.fg : BRAND_HEX.ok }),
     ];
-  })));
+  }), { noun: "issue" });
 }
 
 function evidence(D: Doc, ev: ReportEvidence, prefix: string, tz: string, maxLines = EVIDENCE_LINES): void {
@@ -428,7 +468,7 @@ function findingSection(ctx: Ctx, group: IssueGroup): void {
   const color = SEVERITY_HEX[sev];
 
   D.headings.push({ title: `${headRef}  ${f.title}`, level: 2 });
-  const statusText = many ? `${group.findings.length} affected assets · ${statusSummary(group.findings)}` : statusLabel(f.status);
+  const statusText = many ? `${issueScope(group.findings)} · ${statusSummary(group.findings)}` : statusLabel(f.status);
   D.add(table(null, [0.022, 1], [[
     { content: "<w:p/>", fill: color.fg },
     {
@@ -438,11 +478,15 @@ function findingSection(ctx: Ctx, group: IssueGroup): void {
     },
   ]], { style: "VedhaGrid", noBorders: true }));
 
-  const facts = issueFacts(group, tz).map((x) => (x.label === "Affected assets" ? { ...x, value: `${x.value} (listed below)` } : x));
+  const facts = issueFacts(group, tz).map((x) => (many && x.label === "Affected assets" ? { ...x, value: `${x.value} (listed below)` } : x));
   D.keyValues(facts.map((x) => ({ label: x.label, value: x.value, mono: x.label === "CVSS vector" })), 3);
 
   const narrative = findingNarrative(f);
   const shared = many ? sharedNarrativeKeys(group) : null;
+  if (!narrative.sections.some((x) => x.key === "description")) {
+    D.h3("Description");
+    D.muted("No description has been recorded for this finding.");
+  }
   for (const section of narrative.sections) {
     D.h3(section.title);
     if (shared && !shared.has(section.key)) D.muted(`As recorded for ${ref}; other instances record this differently (see the Excel workbook).`);
@@ -466,6 +510,9 @@ function findingSection(ctx: Ctx, group: IssueGroup): void {
       if (plan.compensating) D.p(`Compensating controls: ${plan.compensating}`);
     }
     if (rem.recommendations.length) { D.p("Recommendations:", { bold: true, size: 9 }); D.bullets(rem.recommendations); }
+  } else {
+    D.h3("Remediation");
+    D.muted("No remediation guidance has been recorded for this finding.");
   }
 
   const c = closureView(f);
@@ -474,7 +521,7 @@ function findingSection(ctx: Ctx, group: IssueGroup): void {
     D.keyValues([
       { label: "Disposition", value: c.disposition },
       ...(c.resolvedAt ? [{ label: "Resolved", value: formatDate(c.resolvedAt, tz)! }] : []),
-      ...(c.method ? [{ label: "Method", value: c.method }] : []),
+      ...(c.method ? [{ label: "Closure method", value: c.method }] : []),
       ...(c.reviewedBy ? [{ label: "Reviewed by", value: c.reviewedBy }] : []),
       ...(c.retest ? [{ label: "Retest", value: `${c.retest}${c.retestAt ? `, ${formatDate(c.retestAt, tz)}` : ""}` }] : []),
       ...(c.reopened ? [{ label: "Reopened", value: `${c.reopened} time${c.reopened === 1 ? "" : "s"}` }] : []),
@@ -519,18 +566,17 @@ function findingSection(ctx: Ctx, group: IssueGroup): void {
       D.add(table(["Ref", "Asset", "Status", "Ref", "Asset", "Status", "Ref", "Asset", "Status"], [0.55, 1.3, 0.85, 0.55, 1.3, 0.85, 0.55, 1.3, 0.85], rows));
       D.muted("Fix-by dates and SLA state for each asset are in the Excel workbook (Findings sheet).");
     } else {
-      D.add(table(["Ref", "Asset", "Status", "First seen", "Fix by", "SLA"], [0.55, 2.2, 1, 0.9, 0.9, 0.8], group.findings.map((x) => [
+      smartTable(D, ["Ref", "Asset", "Status", "First seen", "Fix by", "SLA"], [0.55, 2.2, 1, 0.9, 0.9, 0.8], group.findings.map((x) => [
         cellText(refs.get(x.id) ?? "", { bold: true }),
-        cellText(dash(assetLabel(x))),
+        dash(assetLabel(x)),
         cellText(statusLabel(x.status), { color: isOpenStatus(x.status) ? color.fg : BRAND_HEX.ok }),
-        cellText(dash(formatDate(x.first_seen, tz))),
-        cellText(isOpenStatus(x.status) ? dash(formatDate(x.current_sla.deadline, tz)) : "—"),
-        cellText(isOpenStatus(x.status) && x.current_sla.state !== "untracked" ? humanize(x.current_sla.state) : "—"),
-      ])));
+        dash(formatDate(x.first_seen, tz)),
+        isOpenStatus(x.status) ? dash(formatDate(x.current_sla.deadline, tz)) : "—",
+        isOpenStatus(x.status) ? slaLabel(x.current_sla.state) ?? "—" : "—",
+      ]), { noun: "asset" });
     }
   }
 
-  if (narrative.missing.length) D.muted(`Not recorded for this finding: ${narrative.missing.map((x) => x.toLowerCase()).join(", ")}.`);
   D.add(para("", { after: 240 }));
 }
 
@@ -545,7 +591,7 @@ function detailedFindings(ctx: Ctx): void {
     D.h2("Low and informational observations");
     D.muted(`${low.length} low and informational issues are listed in brief. Their complete records are in the Excel workbook.`);
     D.add(table(["Ref", "Finding", "Severity", "Assets", "Summary"], [0.8, 2.5, 0.95, 1.2, 3], low.map((g) => [
-      cellText(groupRef(g, refs), { bold: true }), cellText(g.title), pillCell(g.severity), cellText(dash(groupAssets(g.findings))), cellText((plain(g.lead.description) || "—").slice(0, 220), { size: 8 }),
+      cellText(groupRef(g, refs), { bold: true, size: 8 }), cellText(g.title), pillCell(g.severity), cellText(dash(groupAssets(g.findings))), cellText((plain(g.lead.description) || "—").slice(0, 220), { size: 8 }),
     ])));
   }
 }
@@ -555,34 +601,42 @@ function roadmapSection({ D, report, tz }: Ctx): void {
   const roadmap = remediationRoadmap(report);
   if (!roadmap.length) { D.note("No findings are open, so no remediation is outstanding.", "info"); return; }
   D.muted("Open findings grouped by priority. Target windows come only from the current SLA policy recorded for each finding; where none is recorded, no target is shown.");
+  const anyOwner = roadmap.some((b) => b.items.some((i) => i.owner));
+  if (!anyOwner) D.note("No remediation owners are recorded yet. Assign one per issue so every fix has someone accountable for it.", "caution");
   for (const bucket of roadmap) {
     D.h2(bucket.title);
     D.muted(`${bucket.findings} open finding${bucket.findings === 1 ? "" : "s"}${bucket.items.length < bucket.findings ? ` in ${bucket.items.length} issue${bucket.items.length === 1 ? "" : "s"}` : ""}${bucket.target ? ` · fix ${bucket.target}` : " · no SLA window recorded"}`);
-    D.add(table(["Ref", "Finding", "Assets", "Owner", "Fix by", "SLA"], [0.8, 2.6, 1.4, 1.1, 0.95, 0.8], bucket.items.map((i) => [
-      cellText(i.ref, { bold: true }), cellText(i.title), cellText(dash(i.asset)), cellText(dash(i.owner)), cellText(dash(formatDate(i.deadline, tz))),
-      cellText(i.slaState ? humanize(i.slaState) : "—", { bold: Boolean(i.slaState), color: i.slaState === "breached" ? SEVERITY_HEX.critical.fg : i.slaState === "at_risk" ? SEVERITY_HEX.high.fg : undefined }),
-    ])));
+    smartTable(D, ["Ref", "Finding", "Assets", "Owner", "Fix by", "SLA"], [0.95, 2.5, 1.4, 1.1, 0.95, 0.8], bucket.items.map((i) => [
+      cellText(i.ref, { bold: true, size: 8 }), i.title, dash(i.asset), dash(i.owner), dash(formatDate(i.deadline, tz)),
+      i.slaState ? cellText(slaLabel(i.slaState) ?? "—", { bold: true, color: i.slaState === "breached" ? SEVERITY_HEX.critical.fg : i.slaState === "at_risk" ? SEVERITY_HEX.high.fg : undefined }) : "—",
+    ]), { noun: "issue", quietDrop: !anyOwner });
   }
 }
 
 function closureRegister({ D, groups, refs, tz }: Ctx): void {
   D.h1("6  Retest and closure register");
-  D.muted("Disposition and retest status for every finding. “Closed” is an operational disposition: remediated, risk-accepted and false-positive records stay distinct and are not a regulatory closure conclusion.");
   if (!groups.length) { D.note("No findings are recorded."); return; }
-  D.add(table(["Ref", "Finding", "Severity", "Disposition", "Resolved", "Retest", "Reopened"], [0.8, 2.4, 0.95, 1.35, 0.9, 0.85, 0.65], groups.map((g) => {
+  const anyHistory = groups.some((g) => g.findings.some((f) => !isOpenStatus(f.status) || f.closure.retest || f.closure.reopened_count > 0));
+  if (!anyHistory) {
+    const n = groups.reduce((a, g) => a + g.findings.length, 0);
+    D.note(`No finding has been closed, retested or reopened yet. ${n === 1 ? "The finding remains" : `All ${n} findings remain`} open; the remediation roadmap shows what to fix first.`, "info");
+    return;
+  }
+  D.muted("Disposition and retest status for every finding. “Closed” is an operational disposition: remediated, risk-accepted and false-positive records stay distinct and are not a regulatory closure conclusion.");
+  smartTable(D, ["Ref", "Finding", "Severity", "Disposition", "Resolved", "Retest", "Reopened"], [0.95, 2.3, 0.95, 1.35, 0.9, 0.85, 0.8], groups.map((g) => {
     const views = g.findings.map(closureView);
     const resolved = views.map((v) => v.resolvedAt).filter((d): d is string => Boolean(d)).sort();
     const passed = views.filter((v) => v.retest === "Passed").length;
     const failed = views.filter((v) => v.retest === "Failed").length;
     const retest = g.findings.length === 1 ? views[0]!.retest : passed || failed ? [passed ? `${passed} passed` : null, failed ? `${failed} failed` : null].filter(Boolean).join(", ") : null;
     return [
-      cellText(groupRef(g, refs), { bold: true }), cellText(g.title), pillCell(g.severity),
+      cellText(groupRef(g, refs), { bold: true, size: 8 }), cellText(g.title), pillCell(g.severity),
       cellText(g.findings.length === 1 ? views[0]!.disposition : statusSummary(g.findings), { bold: true, color: g.open ? SEVERITY_HEX.critical.fg : BRAND_HEX.ok }),
-      cellText(g.open === 0 && resolved.length ? dash(formatDate(resolved[resolved.length - 1], tz)) : "—"),
-      cellText(retest ?? "—", { color: failed ? SEVERITY_HEX.critical.fg : retest ? BRAND_HEX.ok : undefined }),
-      cellText(String(views.reduce((a, v) => a + v.reopened, 0))),
+      g.open === 0 && resolved.length ? dash(formatDate(resolved[resolved.length - 1], tz)) : "—",
+      retest ? cellText(retest, { color: failed ? SEVERITY_HEX.critical.fg : BRAND_HEX.ok }) : "—",
+      views.reduce((a, v) => a + v.reopened, 0) ? `${views.reduce((a, v) => a + v.reopened, 0)}×` : "",
     ];
-  })));
+  }), { noun: "finding" });
 }
 
 function complianceSection({ D, report, refs }: Ctx): void {
@@ -613,12 +667,12 @@ function complianceSection({ D, report, refs }: Ctx): void {
   D.note("Derived context only. The following profile, frameworks, obligations, and reporting clocks are not assessed control results, a certification, an attestation, or legal advice.", "caution");
   const sector = typeof d.profile.sector === "string" ? humanize(d.profile.sector) : null;
   const jurisdictions = Array.isArray(d.profile.jurisdictions) ? d.profile.jurisdictions.filter((x): x is string => typeof x === "string").join(", ") : null;
-  D.keyValues([
-    { label: "Profile basis", value: humanize(d.profile_source) },
-    { label: d.profile_source === "recorded_engagement_profile" ? "Configured sector" : "Default sector", value: dash(sector) },
-    { label: "Jurisdictions", value: dash(jurisdictions) },
-    { label: "Asset tags considered", value: dash(d.asset_tags.join(", ")) },
-  ], 2);
+  D.keyValues(([
+    ["Profile basis", humanize(d.profile_source)],
+    [d.profile_source === "recorded_engagement_profile" ? "Configured sector" : "Default sector", sector],
+    ["Jurisdictions", jurisdictions],
+    ["Asset tags considered", d.asset_tags.join(", ")],
+  ] as Array<[string, string | null]>).filter(([, v]) => v).map(([label, value]) => ({ label, value: value! })), 2);
   if (d.frameworks.length) {
     D.add(table(["Framework", "Authority", "Basis", "Source reference"], [1.8, 1.6, 0.9, 2.2], d.frameworks.map((fw) => [cellText(fw.name, { bold: true }), cellText(fw.authority), cellText(fw.tag_triggered ? "Asset tag" : "Profile"), cellText(fw.source_reference, { size: 8 })])));
   }
@@ -632,65 +686,83 @@ function complianceSection({ D, report, refs }: Ctx): void {
 
 function appendices(ctx: Ctx): void {
   const { D, report, ordered, groups, refs, tz } = ctx;
-  D.h1("Appendix A — Risk rating");
+  const letters = "ABCDEF";
+  let next = 0;
+  const appendix = (title: string) => D.h1(`Appendix ${letters[next++]} — ${title}`);
+
+  appendix("Risk rating and status definitions");
   D.p("Severity follows the FIRST CVSS v3.1 qualitative scale. Where an assessor recorded a different rating method, it is stated below.");
   D.add(table(["Severity", "CVSS v3.1", "Meaning"], [0.9, 0.8, 3.4], SEVERITY_DEFINITIONS.map((d) => [pillCell(d.severity), cellText(d.cvss), cellText(d.meaning)])));
   const method = metadataText(report, "risk_rating_method");
   if (method) D.p(`Recorded rating method: ${method}`);
   D.muted("Overall risk is the highest severity among findings that are still open or confirmed.");
+  D.h3("Status definitions");
+  D.add(table(["Status", "Meaning"], [1, 3.9], STATUS_DEFINITIONS.map((d) => [cellText(d.status, { bold: true }), cellText(d.meaning)])));
+  D.h3("Other measures");
+  D.bullets([
+    "CVSS: the Common Vulnerability Scoring System base score (0–10) for the weakness itself.",
+    "EPSS: the FIRST Exploit Prediction Scoring System estimate of the chance the weakness is exploited in the wild in the next 30 days.",
+    "Risk score: Vedha's composite rank from 0 to 1000, combining severity, CVSS, EPSS, known exploitation, asset criticality and exposure. Use it to order work, not as a probability.",
+    "Fix by: the deadline set by the current SLA policy, counted from when the finding was first seen.",
+  ]);
 
-  D.h1("Appendix B — Derived control pointers by finding — not assessed");
+  appendix("Derived control pointers — not assessed");
   D.note("Derived compliance context — not assessed. These pointers are separate from recorded mappings and are not a certification, attestation, legal conclusion, or recorded control result.", "caution");
-  const pointers: Cell[][] = [];
-  for (const g of groups) {
-    const c = g.lead.derived_compliance_context;
-    for (const p of c.global_framework_pointers) pointers.push([cellText(groupRef(g, refs), { bold: true }), cellText(p.framework), cellText(p.controls.join(", ")), cellText(humanize(c.category))]);
-    for (const o of c.regional_obligations) pointers.push([cellText(groupRef(g, refs), { bold: true }), cellText(o.framework), cellText(o.controls.join(", ")), cellText(humanize(c.category))]);
-  }
-  if (pointers.length) D.add(table(["Ref", "Framework", "Control pointers", "Category"], [0.7, 1.8, 2.3, 1], pointers));
-  else D.note("No control pointers were derived.");
+  const blocks = pointerBlocks(groups, refs);
+  if (blocks.length) {
+    D.add(table(["Findings", "Category", "Framework", "Control pointers"], [0.85, 0.9, 1.5, 2.6], blocks.flatMap((b) => b.rows.map(([framework, controls], i) => [
+      i === 0 ? cellText(b.refs, { bold: true, size: 8 }) : { content: "<w:p/>" }, i === 0 ? cellText(b.category) : { content: "<w:p/>" }, cellText(framework), cellText(controls),
+    ]))));
+  } else D.note("No control pointers were derived.");
   const generic = ordered.filter((f) => f.derived_compliance_context.used_generic_fallback);
   if (generic.length) D.note(`Generic fallback warning: ${compactRefs(generic.map((f) => refs.get(f.id) ?? ""))} used the generic control-pointer set. Confirm the classification and control applicability before customer delivery.`, "caution");
 
-  D.h1("Appendix C — Evidence integrity and provenance");
+  appendix("Evidence integrity and provenance");
   if (ordered.length <= 60) {
     D.p("Detection runs and evidence hashes for each finding, so any excerpt in this report can be traced to the scan that produced it.");
     D.add(table(["Ref", "Initial discovery run", "Latest observation run", "Evidence SHA-256"], [0.5, 1.6, 1.6, 2.2], ordered.map((f) => [
       cellText(refs.get(f.id) ?? "", { bold: true }),
-      cellText(f.initial_detection_provenance ? `${f.initial_detection_provenance.run_id}\n${dash(f.initial_detection_provenance.scan_type)} · ${dash(formatDate(f.initial_detection_provenance.started_at, tz))}` : dash(f.initial_detection_run_id), { font: MONO, size: 7 }),
-      cellText(f.latest_detection_provenance ? `${f.latest_detection_provenance.run_id}\n${dash(f.latest_detection_provenance.scan_type)} · ${dash(formatDate(f.latest_detection_provenance.started_at, tz))}` : dash(f.detection_run_id), { font: MONO, size: 7 }),
-      cellText(f.evidence.artifacts.map((a) => `E${String(a.index).padStart(2, "0")} ${a.sha256 ?? "—"}${a.sha256_verified ? " (verified)" : ""}`).join("\n") || "No evidence recorded", { font: MONO, size: 7 }),
+      cellText(runSummary(f.initial_detection_provenance, f.initial_detection_run_id, tz), { font: MONO, size: 7 }),
+      cellText(runSummary(f.latest_detection_provenance, f.detection_run_id, tz), { font: MONO, size: 7 }),
+      cellText(f.evidence.artifacts.map((a) => `E${String(a.index).padStart(2, "0")} ${a.sha256 ? `${a.sha256}${a.sha256_verified ? " (verified)" : ""}` : "no hash recorded"}`).join("\n") || "No evidence recorded", { font: MONO, size: 7 }),
     ])));
   } else {
     D.p(`Summary per issue. Per-finding detection runs and evidence hashes for all ${ordered.length} findings are in the Excel workbook (Findings and Evidence sheets).`);
-    D.add(table(["Ref", "Finding", "Detection runs", "Evidence items", "Hash verified"], [0.8, 2.6, 0.9, 0.9, 0.9], groups.map((g) => {
+    D.add(table(["Ref", "Finding", "Detection runs", "Evidence items", "Hash verified"], [0.95, 2.5, 0.9, 0.9, 0.9], groups.map((g) => {
       const runs = new Set(g.findings.flatMap((f) => [f.initial_detection_run_id, f.detection_run_id]).filter(Boolean));
       const artifacts = g.findings.flatMap((f) => f.evidence.artifacts);
-      return [cellText(groupRef(g, refs), { bold: true }), cellText(g.title), cellText(String(runs.size)), cellText(String(artifacts.length)), cellText(artifacts.length ? `${artifacts.filter((a) => a.sha256_verified).length} of ${artifacts.length}` : "—")];
+      return [cellText(groupRef(g, refs), { bold: true, size: 8 }), cellText(g.title), cellText(String(runs.size)), cellText(String(artifacts.length)), cellText(artifacts.length ? `${artifacts.filter((a) => a.sha256_verified).length} of ${artifacts.length}` : "—")];
     })));
   }
 
-  const gaps = gapInventory(report);
-  D.h1("Appendix D — Record readiness");
-  D.p(report.readiness.complete
-    ? "No configured completeness gaps were identified. This does not constitute approval for delivery."
-    : "The live record contains gaps that need operator review before customer delivery. Each gap is listed once, with the findings it affects.");
-  if (gaps.reportLevel.length) { D.h3("Report-level gaps"); D.bullets(gaps.reportLevel.map((g) => `${g.label} (${g.code})`)); }
-  if (gaps.findingLevel.length) {
-    D.h3("Finding-level gaps");
-    D.add(table(["Gap", "Count", "Findings"], [2.2, 0.5, 2.2], gaps.findingLevel.map((g) => [
-      { content: text(g.label, { size: 9 }, { after: 0 }) + text(g.code, { size: 7.5, font: MONO, color: BRAND_HEX.muted }, { after: 0 }) },
-      cellText(String(g.count)), cellText(compactRefs(g.refs)),
-    ])));
+  // An issued report has passed review; the readiness check belongs to drafts.
+  if (!ctx.issued) {
+    const gaps = gapInventory(report);
+    appendix("Record readiness");
+    D.p(report.readiness.complete
+      ? "No configured completeness gaps were identified. This does not constitute approval for delivery."
+      : "The live record contains gaps that need operator review before customer delivery. Each gap is listed once, with the findings it affects.");
+    if (gaps.reportLevel.length) {
+      D.h3(`Report-level gaps (${gaps.reportLevel.length})`);
+      D.p(`Missing from the record: ${gaps.reportLevel.map((g) => gapShort(g.code)).join(", ")}.`);
+      D.p(`Codes: ${gaps.reportLevel.map((g) => g.code).join(", ")}`, { font: MONO, size: 7, color: BRAND_HEX.muted });
+    }
+    if (gaps.findingLevel.length) {
+      D.h3("Finding-level gaps");
+      D.add(table(["Gap", "Count", "Findings"], [2.2, 0.5, 2.2], gaps.findingLevel.map((g) => [
+        { content: text(g.label, { size: 9 }, { after: 0 }) + text(g.code, { size: 7.5, font: MONO, color: BRAND_HEX.muted }, { after: 0 }) },
+        cellText(String(g.count)), cellText(compactRefs(g.refs)),
+      ])));
+    }
   }
 
-  D.h1("Appendix E — About this document");
+  appendix("About this document");
   D.keyValues([
     { label: "Engagement ID", value: report.engagement.id, mono: true },
     { label: "Schema version", value: report.document.schema_version },
     { label: "Generated (UTC)", value: report.document.generated_at, mono: true },
     { label: "Display time zone", value: tz },
-    { label: "Snapshot", value: `${report.document.snapshot_kind} · guarantee: ${report.document.snapshot_guarantee}` },
+    { label: "Data snapshot", value: snapshotLabel(report.document.snapshot_kind, report.document.snapshot_guarantee) },
     { label: "Persisted report record", value: report.document.persisted ? "Yes" : "No" },
   ], 2);
   D.muted("This report is generated from the live canonical record at the time shown. Unless the document status records an approved issue, it is a draft for review, not an approved, signed, or immutable deliverable.");

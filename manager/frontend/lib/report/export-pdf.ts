@@ -39,6 +39,15 @@ import {
   isOpenStatus,
   executiveNarrative,
   issueFacts,
+  issueFixBy,
+  gapShort,
+  pointerBlocks,
+  runSummary,
+  issueScope,
+  readableText,
+  slaLabel,
+  snapshotLabel,
+  STATUS_DEFINITIONS,
   keyMetrics,
   statusSummary,
   priorityLines,
@@ -304,9 +313,25 @@ class Layout {
     this.y += 4;
   }
 
-  table(columns: Column[], rows: Cell[][], o: { size?: number; zebra?: boolean; empty?: string } = {}): void {
+  table(allColumns: Column[], allRows: Cell[][], o: { size?: number; zebra?: boolean; empty?: string; keepEmpty?: boolean; noun?: string; quietDrop?: boolean } = {}): void {
     const size = o.size ?? 8.4;
     const pad = 5;
+    // An empty table says nothing with a header: state it once instead.
+    if (allRows.length === 0) {
+      this.note(o.empty ?? "None recorded.", "muted");
+      return;
+    }
+    // A column empty on every row is dropped and named once under the table.
+    const blank = (cell: Cell | undefined) => {
+      if (cell === undefined) return true;
+      if (typeof cell !== "string" && cell.pill) return false;
+      const text = (typeof cell === "string" ? cell : cell.text).trim();
+      return text === "" || text === "—";
+    };
+    const keep = allColumns.map((_, i) => o.keepEmpty || allRows.some((row) => !blank(row[i])));
+    const dropped = allColumns.filter((_, i) => !keep[i]).map((c) => c.header);
+    const columns = allColumns.filter((_, i) => keep[i]);
+    const rows = allRows.map((row) => row.filter((_, i) => keep[i]));
     const total = columns.reduce((a, c) => a + c.width, 0);
     const widths = columns.map((c) => (c.width / total) * CONTENT_W);
     const drawHeader = () => {
@@ -321,11 +346,6 @@ class Layout {
       this.y += h;
     };
     drawHeader();
-    if (rows.length === 0) {
-      this.text(o.empty ?? "None recorded.", MARGIN_X + pad, this.y + 5, { font: "italic", size, color: BRAND_HEX.muted });
-      this.y += 22;
-      return;
-    }
     rows.forEach((row, index) => {
       const cells = row.map((cell) => (typeof cell === "string" ? { text: cell } : cell));
       const heights = cells.map((cell, i) => (cell.pill ? size + 7 : this.measure(cell.text.slice(0, 1600), { font: cell.font ?? columns[i]!.font ?? "regular", size: cell.size ?? size, width: widths[i]! - pad * 2, lineGap: 1.6 })));
@@ -345,6 +365,11 @@ class Layout {
       this.y += rowH;
       this.doc.moveTo(MARGIN_X, this.y).lineTo(MARGIN_X + CONTENT_W, this.y).lineWidth(0.4).strokeColor(BRAND_HEX.rule).stroke();
     });
+    if (dropped.length && !o.quietDrop) {
+      const note = `${dropped.join(", ")}: not recorded for any ${o.noun ?? "row"} above.`;
+      this.text(note, MARGIN_X, this.y + 4, { font: "italic", size: 7.4, color: BRAND_HEX.muted });
+      this.y += 14;
+    }
     this.y += 10;
   }
 
@@ -415,7 +440,8 @@ function cover({ L, report, tz, issued }: Ctx): void {
   L.text("SECURITY ASSESSMENT", MARGIN_X + 62, 59.5, { font: "medium", size: 8, color: "#9DB2D6" });
   L.text("Vulnerability Assessment Report", MARGIN_X, 168, { font: "semibold", size: 27, color: "#FFFFFF", width: CONTENT_W });
   L.text(report.engagement.name, MARGIN_X, 212, { font: "regular", size: 15, color: "#D6E0F2", width: CONTENT_W });
-  L.text(report.engagement.client ? `Prepared for ${plainText(report.engagement.client)}` : "Client not recorded", MARGIN_X, 240, { size: 10.5, color: "#9DB2D6" });
+  const nameH = L.measure(report.engagement.name, { size: 15, width: CONTENT_W });
+  if (report.engagement.client) L.text(`Prepared for ${plainText(report.engagement.client)}`, MARGIN_X, 220 + nameH, { size: 10.5, color: "#9DB2D6" });
   if (!issued) {
     L.text("DRAFT / NOT APPROVED — HUMAN REVIEW REQUIRED", MARGIN_X, 288, { font: "semibold", size: 8.6, color: "#FCD34D" });
   }
@@ -426,7 +452,7 @@ function cover({ L, report, tz, issued }: Ctx): void {
   doc.roundedRect(MARGIN_X, 366, CONTENT_W, 74, 5).fill(BRAND_HEX.wash);
   doc.rect(MARGIN_X, 366, 4, 74).fill(color);
   L.text("OVERALL RISK", MARGIN_X + 18, 380, { font: "semibold", size: 7.2, color: BRAND_HEX.muted });
-  L.text(rating.label, MARGIN_X + 18, 393, { font: "bold", size: 20, color });
+  L.text(rating.label, MARGIN_X + 18, 393, { font: "bold", size: rating.label.length > 10 ? 14 : 20, color, width: 165 });
   L.text(rating.basis, MARGIN_X + 190, 384, { size: 9, color: BRAND_HEX.ink, width: CONTENT_W - 210 });
   L.text("Rating method: highest severity among open findings.", MARGIN_X + 190, 414, { size: 7.4, color: BRAND_HEX.muted, width: CONTENT_W - 210 });
 
@@ -439,27 +465,29 @@ function cover({ L, report, tz, issued }: Ctx): void {
     doc.rect(x, 456, tileW, 3).fill(SEVERITY_HEX[row.severity].fg);
     L.text(String(row.open), x + 10, 466, { font: "bold", size: 18, color: SEVERITY_HEX[row.severity].fg });
     L.text(`${SEVERITY_LABEL[row.severity]} open`, x + 10, 491, { font: "medium", size: 7.4, color: BRAND_HEX.ink, width: tileW - 14 });
-    L.text(`${row.total} recorded`, x + 10, 501, { size: 6.8, color: BRAND_HEX.muted, width: tileW - 14 });
+    L.text(`of ${row.total} found`, x + 10, 501, { size: 6.8, color: BRAND_HEX.muted, width: tileW - 14 });
   });
 
   // Document facts.
   L.y = 542;
   const period = meta("reporting_period")
     ?? ([formatDate(report.engagement.start_time, tz), formatDate(report.engagement.end_time, tz)].filter(Boolean).join(" – ") || null);
-  L.keyValues([
-    { label: "Client", value: dash(plainText(report.engagement.client)) },
-    { label: "Assessment period", value: dash(period) },
-    { label: "Report version", value: dash(meta("version")) },
-    { label: "Issue date", value: dash(formatDate(meta("issue_date"), tz)) },
-    { label: "Classification", value: dash(meta("classification")) },
-    { label: "Document status", value: dash(meta("document_status") ?? (issued ? "Issued" : "Draft")) },
-    { label: "Prepared by", value: dash(meta("prepared_by") ?? plainText(report.engagement.assessor)) },
-    { label: "Generated", value: dash(formatDateTime(report.document.generated_at, tz)) },
-  ], 2);
+  // Only recorded facts go on the cover; document control lists what is missing.
+  L.keyValues(([
+    ["Client", plainText(report.engagement.client)],
+    ["Assessment period", period],
+    ["Report version", meta("version")],
+    ["Issue date", formatDate(meta("issue_date"), tz)],
+    ["Classification", meta("classification")],
+    ["Document status", meta("document_status") ?? (issued ? "Issued" : "Draft")],
+    ["Prepared by", meta("prepared_by") ?? plainText(report.engagement.assessor)],
+    ["Generated", formatDateTime(report.document.generated_at, tz)],
+  ] as Array<[string, string | null]>).filter(([, v]) => v).map(([label, value]) => ({ label, value: value! })), 2);
 
   const classification = meta("classification") ?? "Confidential";
+  const client = plainText(report.engagement.client);
   L.text(
-    `${classification}. This report contains security-sensitive information about ${plainText(report.engagement.client) || "the client"}'s systems. Distribute only to the named recipients.`,
+    `${classification}. This report contains security-sensitive information about ${client ? `${client}'s systems` : "the assessed systems"}. Distribute only to the named recipients.`,
     MARGIN_X, 752, { size: 7.4, color: BRAND_HEX.muted, width: CONTENT_W },
   );
 }
@@ -483,13 +511,19 @@ function documentControl({ L, report, tz }: Ctx): number {
     ["Distribution", meta("distribution")],
   ];
   const recorded = rows.filter(([, v]) => v);
-  L.table(
-    [{ header: "Field", width: 1 }, { header: "Recorded value", width: 2.4 }],
-    recorded.map(([k, v]) => [{ text: k, font: "medium" }, v!]),
-    { empty: "No document-control metadata is recorded for this engagement." },
-  );
-  const missing = rows.filter(([, v]) => !v).map(([k]) => k);
-  if (missing.length) L.note(`Not recorded: ${missing.join(", ")}.`, "muted");
+  const missing = rows.filter(([, v]) => !v).map(([k]) => k.toLowerCase());
+  if (recorded.length) {
+    L.table(
+      [{ header: "Field", width: 1 }, { header: "Recorded value", width: 2.4 }],
+      recorded.map(([k, v]) => [{ text: k, font: "medium" }, v!]),
+    );
+    if (missing.length) L.note(`Not yet recorded: ${missing.join(", ")}.`, "muted");
+  } else {
+    L.note("No document-control fields are recorded yet. Before this report is issued, record at least its version, classification, author, reviewer and approver.", "caution");
+  }
+  if (!meta("classification")) {
+    L.note("Classification is not recorded, so this document is marked Confidential by default.", "muted");
+  }
 
   L.y += 10;
   L.heading("Contents", 2);
@@ -530,7 +564,7 @@ function executiveSummary({ L, report, tz }: Ctx): void {
   const tiles: Array<[string, number, string]> = [
     ["Open findings", m.open, BRAND_HEX.navy],
     ["Critical and high open", m.criticalHighOpen, m.criticalHighOpen ? SEVERITY_HEX.critical.fg : BRAND_HEX.ok],
-    ["Past SLA deadline", m.slaBreached, m.slaBreached ? SEVERITY_HEX.high.fg : BRAND_HEX.ok],
+    ["Overdue against the SLA", m.slaBreached, m.slaBreached ? SEVERITY_HEX.high.fg : BRAND_HEX.ok],
     ["Assets with open findings", m.assetsAffected, BRAND_HEX.navy],
   ];
   L.ensure(70);
@@ -565,7 +599,9 @@ function executiveSummary({ L, report, tz }: Ctx): void {
 
   // Status breakdown.
   const statuses = statusRows(report);
-  if (statuses.length) {
+  if (statuses.length === 1) {
+    L.para(`Status: all ${statuses[0]!.count} finding${statuses[0]!.count === 1 ? " is" : "s are"} ${statuses[0]!.label.toLowerCase()}.`, { size: 9, color: BRAND_HEX.muted });
+  } else if (statuses.length > 1) {
     L.heading("Findings by status", 3);
     L.table(
       statuses.map((s) => ({ header: s.label, width: 1, align: "center" as const })),
@@ -579,16 +615,16 @@ function executiveSummary({ L, report, tz }: Ctx): void {
   L.heading("Top open risks", 3);
   if (top.length) {
     L.table(
-      [{ header: "Ref", width: 0.75 }, { header: "Finding", width: 2.8 }, { header: "Severity", width: 0.95 }, { header: "Assets", width: 1.4 }, { header: "Fix by", width: 1 }],
+      [{ header: "Ref", width: 0.95 }, { header: "Finding", width: 2.8 }, { header: "Severity", width: 0.95 }, { header: "Assets", width: 1.4 }, { header: "Fix by", width: 1 }],
       top.map(({ ref, group }) => {
         const live = group.findings.filter((f) => isOpenStatus(f.status));
-        const earliest = live.map((f) => f.current_sla.deadline).filter((d): d is string => Boolean(d)).sort()[0];
+        const fix = issueFixBy(group, tz);
         return [
           { text: ref, font: "semibold" },
           group.title,
           { text: "", pill: group.severity },
           dash(groupAssets(live)),
-          dash(formatDate(earliest, tz)),
+          fix.overdue ? { text: fix.text ?? "—", color: SEVERITY_HEX.critical.fg, font: "medium" } : dash(fix.text),
         ];
       }),
     );
@@ -608,14 +644,19 @@ function scopeAndMethod({ L, report, tz }: Ctx): void {
   L.heading("Scope and methodology", 1, { newPage: true, number: "2" });
   const e = report.engagement;
   L.heading("Assessment scope", 3);
-  L.keyValues([
-    { label: "In scope", value: dash(e.scope_cidrs.join(", ")) },
-    { label: "Excluded", value: dash(e.excluded_cidrs.join(", ")) },
-    { label: "Assessment window", value: dash([formatDateTime(e.start_time, tz), formatDateTime(e.end_time, tz)].filter(Boolean).join(" – ")) },
-    { label: "Lead assessor", value: dash(plainText(e.assessor)) },
-    { label: "Engagement status", value: humanize(e.status) },
-    { label: "Tags", value: dash(e.tags.join(", ")) },
-  ], 2);
+  const window = [formatDateTime(e.start_time, tz), formatDateTime(e.end_time, tz)].filter(Boolean).join(" – ");
+  const scopeRows: Array<[string, string]> = [
+    ["In scope", e.scope_cidrs.join(", ")],
+    ["Excluded from scope", e.excluded_cidrs.join(", ")],
+    ["Assessment window", window],
+    ["Lead assessor", plainText(e.assessor)],
+    ["Engagement status", humanize(e.status)],
+    ["Tags", e.tags.join(", ")],
+  ];
+  L.keyValues(scopeRows.filter(([, v]) => v).map(([label, value]) => ({ label, value })), 2);
+  const scopeMissing = scopeRows.filter(([label, v]) => !v && label !== "Excluded from scope" && label !== "Tags").map(([label]) => label.toLowerCase());
+  if (!e.scope_cidrs.length) L.note("No in-scope network ranges are recorded for this engagement.", "caution");
+  else if (scopeMissing.length) L.note(`Not recorded: ${scopeMissing.join(", ")}.`, "muted");
   const description = maskedText(e.description);
   if (description) {
     L.heading("Engagement description", 3);
@@ -632,7 +673,11 @@ function scopeAndMethod({ L, report, tz }: Ctx): void {
     L.heading(title, 3);
     L.para(value);
   }
-  if (missing.length) L.note(`Not recorded in the report metadata: ${missing.join(", ")}. Absence of a recorded limitation does not establish that the assessment had none.`, "muted");
+  if (missing.length === METHOD_FIELDS.length) {
+    L.note("The methodology, tools and limitations are not recorded for this engagement. Absence of a recorded limitation does not establish that the assessment had none.", "muted");
+  } else if (missing.length) {
+    L.note(`Not recorded: ${missing.join(", ")}. Absence of a recorded limitation does not establish that the assessment had none.`, "muted");
+  }
 }
 
 
@@ -644,7 +689,7 @@ function findingsOverview({ L, ordered, groups, refs }: Ctx): void {
     { color: BRAND_HEX.muted, size: 9 },
   );
   L.table(
-    [{ header: "Ref", width: 0.75 }, { header: "Finding", width: 2.9 }, { header: "Severity", width: 0.95 }, { header: "CVSS", width: 0.5, align: "center" }, { header: "Assets", width: 1.3 }, { header: "Status", width: 1.15 }],
+    [{ header: "Ref", width: 0.95 }, { header: "Finding", width: 2.9 }, { header: "Severity", width: 0.95 }, { header: "CVSS", width: 0.5, align: "center" }, { header: "Assets", width: 1.3 }, { header: "Status", width: 1.15 }],
     groups.map((g) => {
       const cvss = [...new Set(g.findings.map((f) => f.cvss_score).filter((v) => v !== null && v !== "").map(String))];
       return [
@@ -702,16 +747,22 @@ function findingSection(ctx: Ctx, group: IssueGroup): void {
   const refW = L.doc.widthOfString(headRef);
   L.text(headRef, MARGIN_X + 16, top + 10, { font: "bold", size: 9, color: hex.fg, width: refW + 4 });
   const pw = L.pill(sev, MARGIN_X + 24 + refW, top + 8.5);
-  const statusText = many ? `${group.findings.length} affected assets · ${statusSummary(group.findings)}` : statusLabel(f.status);
+  const statusText = many ? `${issueScope(group.findings)} · ${statusSummary(group.findings)}` : statusLabel(f.status);
   L.text(statusText, MARGIN_X + 32 + refW + pw, top + 10, { font: "medium", size: 8.4, color: group.open ? hex.fg : BRAND_HEX.ok, width: CONTENT_W - refW - pw - 50 });
   L.text(f.title, MARGIN_X + 16, top + 27, { font: "semibold", size: 13.5, color: BRAND_HEX.ink, width: CONTENT_W - 30 });
   L.y = top + titleH + 52;
 
-  const facts = issueFacts(group, tz).map((x) => (x.label === "Affected assets" ? { ...x, value: `${x.value} (listed below)` } : x));
+  const facts = issueFacts(group, tz).map((x) => (many && x.label === "Affected assets" ? { ...x, value: `${x.value} (listed below)` } : x));
   if (facts.length) L.keyValues(facts.map((x) => ({ label: x.label, value: x.value, mono: x.label === "CVSS vector" })), 3, false);
 
   const narrative = findingNarrative(f);
   const shared = many ? sharedNarrativeKeys(group) : null;
+  // Description and remediation are what every reader needs; say plainly when
+  // either is missing. Optional sections are simply left out.
+  if (!narrative.sections.some((x) => x.key === "description")) {
+    L.heading("Description", 3);
+    L.para("No description has been recorded for this finding.", { font: "italic", color: BRAND_HEX.muted, size: 9 });
+  }
   for (const section of narrative.sections) {
     L.heading(section.title, 3);
     if (shared && !shared.has(section.key)) L.para(`As recorded for ${ref}; other instances record this differently (see the Excel workbook).`, { font: "italic", size: 7.8, color: BRAND_HEX.muted, gap: 3 });
@@ -738,6 +789,9 @@ function findingSection(ctx: Ctx, group: IssueGroup): void {
       L.para("Recommendations:", { font: "medium", size: 9 });
       L.bullets(rem.recommendations);
     }
+  } else {
+    L.heading("Remediation", 3);
+    L.para("No remediation guidance has been recorded for this finding.", { font: "italic", color: BRAND_HEX.muted, size: 9 });
   }
 
   // Closure and retest (per instance; an issue on many assets lists them below).
@@ -747,7 +801,7 @@ function findingSection(ctx: Ctx, group: IssueGroup): void {
     L.keyValues([
       { label: "Disposition", value: c.disposition },
       ...(c.resolvedAt ? [{ label: "Resolved", value: formatDate(c.resolvedAt, tz)! }] : []),
-      ...(c.method ? [{ label: "Method", value: c.method }] : []),
+      ...(c.method ? [{ label: "Closure method", value: c.method }] : []),
       ...(c.reviewedBy ? [{ label: "Reviewed by", value: c.reviewedBy }] : []),
       ...(c.retest ? [{ label: "Retest", value: `${c.retest}${c.retestAt ? `, ${formatDate(c.retestAt, tz)}` : ""}` }] : []),
       ...(c.reopened ? [{ label: "Reopened", value: `${c.reopened} time${c.reopened === 1 ? "" : "s"}` }] : []),
@@ -755,10 +809,10 @@ function findingSection(ctx: Ctx, group: IssueGroup): void {
     const retest = f.closure.retest;
     if (retest) {
       const pairs: Array<[string, unknown]> = [
-        ["Method", retest.method], ["Vantage point", retest.vantage_point], ["Expected result", retest.expected_result],
-        ["Actual result", retest.actual_result], ["Change reference", retest.change_reference], ["Residual risk", retest.residual_risk],
+        ["Retest method", retest.method], ["Vantage point", retest.vantage_point], ["Expected result", retest.expected_result],
+        ["Retest actual result", retest.actual_result], ["Change reference", retest.change_reference], ["Residual risk", retest.residual_risk],
       ];
-      const recorded = pairs.map(([k, v]) => ({ label: k, value: plainText(typeof v === "string" ? v : v == null ? null : JSON.stringify(v)) })).filter((x) => x.value);
+      const recorded = pairs.map(([k, v]) => ({ label: k, value: readableText(v, "; ") ?? "" })).filter((x) => x.value);
       if (recorded.length) L.keyValues(recorded, 2);
       if (retest.integrity_status !== "verified") {
         L.note(`Retest evidence integrity: ${humanize(retest.integrity_status)}${retest.integrity_gaps.length ? ` (${retest.integrity_gaps.join(", ")})` : ""}.`, "caution");
@@ -813,15 +867,12 @@ function findingSection(ctx: Ctx, group: IssueGroup): void {
         { text: statusLabel(x.status), color: isOpenStatus(x.status) ? hex.fg : BRAND_HEX.ok, font: "medium" },
         dash(formatDate(x.first_seen, tz)),
         isOpenStatus(x.status) ? dash(formatDate(x.current_sla.deadline, tz)) : "—",
-        isOpenStatus(x.status) && x.current_sla.state !== "untracked" ? humanize(x.current_sla.state) : "—",
+        isOpenStatus(x.status) ? slaLabel(x.current_sla.state) ?? "—" : "—",
       ]),
       { size: 7.6 },
     );
   }
 
-  if (narrative.missing.length) {
-    L.para(`Not recorded for this finding: ${narrative.missing.map((x) => x.toLowerCase()).join(", ")}.`, { font: "italic", size: 7.6, color: BRAND_HEX.muted, gap: 6 });
-  }
   L.y += 18;
 }
 
@@ -840,7 +891,7 @@ function detailedFindings(ctx: Ctx): void {
     L.heading("Low and informational observations", 2, { toc: true });
     L.para(`${low.length} low and informational issues are listed in brief. Their complete records are in the Excel workbook.`, { color: BRAND_HEX.muted, size: 9 });
     L.table(
-      [{ header: "Ref", width: 0.75 }, { header: "Finding", width: 2.5 }, { header: "Severity", width: 0.95 }, { header: "Assets", width: 1.2 }, { header: "Summary", width: 3 }],
+      [{ header: "Ref", width: 0.95 }, { header: "Finding", width: 2.5 }, { header: "Severity", width: 0.95 }, { header: "Assets", width: 1.2 }, { header: "Summary", width: 3 }],
       low.map((g) => [
         { text: groupRef(g, refs), font: "semibold" },
         g.title,
@@ -861,6 +912,8 @@ function roadmapSection({ L, report, tz }: Ctx): void {
     return;
   }
   L.para("Open findings grouped by priority. Target windows come only from the current SLA policy recorded for each finding; where none is recorded, no target is shown.", { color: BRAND_HEX.muted, size: 9 });
+  const anyOwner = roadmap.some((b) => b.items.some((i) => i.owner));
+  if (!anyOwner) L.note("No remediation owners are recorded yet. Assign one per issue so every fix has someone accountable for it.", "caution");
   for (const bucket of roadmap) {
     const sev = bucket.severities[0]!;
     L.ensure(70);
@@ -870,24 +923,33 @@ function roadmapSection({ L, report, tz }: Ctx): void {
     L.text(`${bucket.findings} open finding${bucket.findings === 1 ? "" : "s"}${bucket.items.length < bucket.findings ? ` in ${bucket.items.length} issue${bucket.items.length === 1 ? "" : "s"}` : ""}${bucket.target ? ` · fix ${bucket.target}` : " · no SLA window recorded"}`, MARGIN_X + 12, L.y, { size: 8.4, color: BRAND_HEX.muted });
     L.y += 16;
     L.table(
-      [{ header: "Ref", width: 0.75 }, { header: "Finding", width: 2.6 }, { header: "Assets", width: 1.4 }, { header: "Owner", width: 1.1 }, { header: "Fix by", width: 0.95 }, { header: "SLA", width: 0.8 }],
+      [{ header: "Ref", width: 0.95 }, { header: "Finding", width: 2.6 }, { header: "Assets", width: 1.4 }, { header: "Owner", width: 1.1 }, { header: "Fix by", width: 0.95 }, { header: "SLA", width: 0.8 }],
       bucket.items.map((i) => [
         { text: i.ref, font: "semibold" },
         i.title,
         dash(i.asset),
         dash(i.owner),
         dash(formatDate(i.deadline, tz)),
-        i.slaState ? { text: humanize(i.slaState), color: i.slaState === "breached" ? SEVERITY_HEX.critical.fg : i.slaState === "at_risk" ? SEVERITY_HEX.high.fg : BRAND_HEX.ink, font: "medium" } : "—",
+        i.slaState ? { text: slaLabel(i.slaState) ?? "—", color: i.slaState === "breached" ? SEVERITY_HEX.critical.fg : i.slaState === "at_risk" ? SEVERITY_HEX.high.fg : BRAND_HEX.ink, font: "medium" } : "—",
       ]),
+      { noun: "issue", quietDrop: !anyOwner },
     );
   }
 }
 
 function closureRegister({ L, groups, refs, tz }: Ctx): void {
   L.heading("Retest and closure register", 1, { newPage: true, number: "6" });
+  const anyHistory = groups.some((g) => g.findings.some((f) => !isOpenStatus(f.status) || f.closure.retest || f.closure.reopened_count > 0));
+  if (!anyHistory) {
+    const n = groups.reduce((a, g) => a + g.findings.length, 0);
+    L.note(n
+      ? `No finding has been closed, retested or reopened yet. ${n === 1 ? "The finding remains" : `All ${n} findings remain`} open; the remediation roadmap shows what to fix first.`
+      : "No findings are recorded.", "info");
+    return;
+  }
   L.para("Disposition and retest status for every finding. “Closed” is an operational disposition: remediated, risk-accepted and false-positive records stay distinct and are not a regulatory closure conclusion.", { color: BRAND_HEX.muted, size: 9 });
   L.table(
-    [{ header: "Ref", width: 0.75 }, { header: "Finding", width: 2.4 }, { header: "Severity", width: 0.95 }, { header: "Disposition", width: 1.35 }, { header: "Resolved", width: 0.9 }, { header: "Retest", width: 0.85 }, { header: "Reopened", width: 0.65, align: "center" }],
+    [{ header: "Ref", width: 0.8 }, { header: "Finding", width: 2.3 }, { header: "Severity", width: 0.95 }, { header: "Disposition", width: 1.35 }, { header: "Resolved", width: 0.9 }, { header: "Retest", width: 0.85 }, { header: "Reopened", width: 0.8, align: "center" }],
     groups.map((g) => {
       const views = g.findings.map(closureView);
       const resolved = views.map((v) => v.resolvedAt).filter((d): d is string => Boolean(d)).sort();
@@ -903,10 +965,11 @@ function closureRegister({ L, groups, refs, tz }: Ctx): void {
         { text: g.findings.length === 1 ? views[0]!.disposition : statusSummary(g.findings), color: g.open ? SEVERITY_HEX.critical.fg : BRAND_HEX.ok, font: "medium" },
         g.open === 0 && resolved.length ? dash(formatDate(resolved[resolved.length - 1], tz)) : "—",
         retest ? { text: retest, color: failed ? SEVERITY_HEX.critical.fg : BRAND_HEX.ok, font: "medium" } : "—",
-        String(views.reduce((a, v) => a + v.reopened, 0)),
+        // Blank when never reopened, so the column drops if nothing ever was.
+        views.reduce((a, v) => a + v.reopened, 0) ? `${views.reduce((a, v) => a + v.reopened, 0)}×` : "",
       ];
     }),
-    { empty: "No findings are recorded." },
+    { empty: "No findings are recorded.", noun: "finding" },
   );
 }
 
@@ -950,12 +1013,12 @@ function complianceSection({ L, report, refs }: Ctx): void {
   L.note("Derived context only. The following profile, frameworks, obligations, and reporting clocks are not assessed control results, a certification, an attestation, or legal advice.", "caution");
   const sector = typeof d.profile.sector === "string" ? humanize(d.profile.sector) : null;
   const jurisdictions = Array.isArray(d.profile.jurisdictions) ? d.profile.jurisdictions.filter((x): x is string => typeof x === "string").join(", ") : null;
-  L.keyValues([
-    { label: "Profile basis", value: humanize(d.profile_source) },
-    { label: d.profile_source === "recorded_engagement_profile" ? "Configured sector" : "Default sector", value: dash(sector) },
-    { label: "Jurisdictions", value: dash(jurisdictions) },
-    { label: "Asset tags considered", value: dash(d.asset_tags.join(", ")) },
-  ], 2);
+  L.keyValues(([
+    ["Profile basis", humanize(d.profile_source)],
+    [d.profile_source === "recorded_engagement_profile" ? "Configured sector" : "Default sector", sector],
+    ["Jurisdictions", jurisdictions],
+    ["Asset tags considered", d.asset_tags.join(", ")],
+  ] as Array<[string, string | null]>).filter(([, v]) => v).map(([label, value]) => ({ label, value: value! })), 2);
   L.table(
     [{ header: "Framework", width: 1.8 }, { header: "Authority", width: 1.6 }, { header: "Basis", width: 0.9 }, { header: "Source reference", width: 2.2 }],
     d.frameworks.map((fw) => [fw.name, fw.authority, fw.tag_triggered ? "Asset tag" : "Profile", fw.source_reference]),
@@ -976,7 +1039,10 @@ function complianceSection({ L, report, refs }: Ctx): void {
 function appendices(ctx: Ctx): void {
   const { L, report, ordered, refs, tz } = ctx;
 
-  L.heading("Appendix A — Risk rating", 1, { newPage: true });
+  const letters = "ABCDEF";
+  let next = 0;
+  const appendix = (title: string) => L.heading(`Appendix ${letters[next++]} — ${title}`, 1, { newPage: true });
+  appendix("Risk rating and status definitions");
   L.para("Severity follows the FIRST CVSS v3.1 qualitative scale. Where an assessor recorded a different rating method, it is stated below.", { size: 9 });
   L.table(
     [{ header: "Severity", width: 0.9 }, { header: "CVSS v3.1", width: 0.8 }, { header: "Meaning", width: 3.4 }],
@@ -985,43 +1051,54 @@ function appendices(ctx: Ctx): void {
   const method = metadataText(report, "risk_rating_method");
   if (method) L.para(`Recorded rating method: ${method}`, { size: 9 });
   L.para("Overall risk is the highest severity among findings that are still open or confirmed.", { size: 9, color: BRAND_HEX.muted });
-
-  L.heading("Appendix B — Derived control pointers by finding — not assessed", 1, { newPage: true });
-  L.note("Derived compliance context — not assessed. These pointers are separate from recorded mappings and are not a certification, attestation, legal conclusion, or recorded control result.", "caution");
-  const pointerRows: Cell[][] = [];
-  for (const g of ctx.groups) {
-    const ctxd = g.lead.derived_compliance_context;
-    const ref = { text: groupRef(g, refs), font: "semibold" as FontName };
-    for (const p of ctxd.global_framework_pointers) pointerRows.push([ref, p.framework, p.controls.join(", "), humanize(ctxd.category)]);
-    for (const o of ctxd.regional_obligations) pointerRows.push([ref, o.framework, o.controls.join(", "), humanize(ctxd.category)]);
-  }
+  L.heading("Status definitions", 3);
   L.table(
-    [{ header: "Ref", width: 0.7 }, { header: "Framework", width: 1.8 }, { header: "Control pointers", width: 2.3 }, { header: "Category", width: 1 }],
+    [{ header: "Status", width: 1 }, { header: "Meaning", width: 3.9 }],
+    STATUS_DEFINITIONS.map((d) => [{ text: d.status, font: "medium" }, d.meaning]),
+  );
+  L.heading("Other measures", 3);
+  L.bullets([
+    "CVSS: the Common Vulnerability Scoring System base score (0–10) for the weakness itself.",
+    "EPSS: the FIRST Exploit Prediction Scoring System estimate of the chance the weakness is exploited in the wild in the next 30 days.",
+    "Risk score: Vedha's composite rank from 0 to 1000, combining severity, CVSS, EPSS, known exploitation, asset criticality and exposure. Use it to order work, not as a probability.",
+    "Fix by: the deadline set by the current SLA policy, counted from when the finding was first seen.",
+  ], { size: 9 });
+
+  appendix("Derived control pointers — not assessed");
+  L.note("Derived compliance context — not assessed. These pointers are separate from recorded mappings and are not a certification, attestation, legal conclusion, or recorded control result.", "caution");
+  const pointerRows: Cell[][] = pointerBlocks(ctx.groups, refs).flatMap((block) => block.rows.map(([framework, controls], i) => [
+    i === 0 ? { text: block.refs, font: "semibold" as FontName } : "",
+    i === 0 ? { text: block.category, font: "medium" as FontName } : "",
+    framework,
+    controls,
+  ] as Cell[]));
+  L.table(
+    [{ header: "Findings", width: 0.85 }, { header: "Category", width: 0.9 }, { header: "Framework", width: 1.5 }, { header: "Control pointers", width: 2.6 }],
     pointerRows,
-    { size: 7.6, empty: "No control pointers were derived." },
+    { size: 7.6, empty: "No control pointers were derived.", keepEmpty: true },
   );
   const generic = ordered.filter((f) => f.derived_compliance_context.used_generic_fallback);
   if (generic.length) {
     L.note(`Generic fallback warning: ${compactRefs(generic.map((f) => refs.get(f.id) ?? ""))} used the generic control-pointer set. Confirm the classification and control applicability before customer delivery.`, "caution");
   }
 
-  L.heading("Appendix C — Evidence integrity and provenance", 1, { newPage: true });
+  appendix("Evidence integrity and provenance");
   if (ordered.length <= PROVENANCE_DETAIL_MAX) {
     L.para("Detection runs and evidence hashes for each finding, so any excerpt in this report can be traced to the scan that produced it.", { size: 9 });
     L.table(
       [{ header: "Ref", width: 0.5 }, { header: "Initial discovery run", width: 1.6 }, { header: "Latest observation run", width: 1.6 }, { header: "Evidence SHA-256", width: 2.2 }],
       ordered.map((f) => [
         { text: refs.get(f.id) ?? "", font: "semibold" },
-        { text: f.initial_detection_provenance ? `${f.initial_detection_provenance.run_id}\n${dash(f.initial_detection_provenance.scan_type)} · ${dash(formatDate(f.initial_detection_provenance.started_at, tz))}` : dash(f.initial_detection_run_id), font: "mono", size: 6.6 },
-        { text: f.latest_detection_provenance ? `${f.latest_detection_provenance.run_id}\n${dash(f.latest_detection_provenance.scan_type)} · ${dash(formatDate(f.latest_detection_provenance.started_at, tz))}` : dash(f.detection_run_id), font: "mono", size: 6.6 },
-        { text: f.evidence.artifacts.map((a) => `E${String(a.index).padStart(2, "0")} ${short(a.sha256)}${a.sha256_verified ? " ✓" : ""}`).join("\n") || "No evidence recorded", font: "mono", size: 6.6 },
+        { text: runSummary(f.initial_detection_provenance, f.initial_detection_run_id, tz), font: "mono", size: 6.6 },
+        { text: runSummary(f.latest_detection_provenance, f.detection_run_id, tz), font: "mono", size: 6.6 },
+        { text: f.evidence.artifacts.map((a) => `E${String(a.index).padStart(2, "0")} ${a.sha256 ? `${short(a.sha256)}${a.sha256_verified ? " ✓ verified" : ""}` : "no hash recorded"}`).join("\n") || "No evidence recorded", font: "mono", size: 6.6 },
       ]),
       { size: 7 },
     );
   } else {
     L.para(`Summary per issue. Per-finding detection runs and evidence hashes for all ${ordered.length} findings are in the Excel workbook (Findings and Evidence sheets).`, { size: 9 });
     L.table(
-      [{ header: "Ref", width: 0.75 }, { header: "Finding", width: 2.6 }, { header: "Detection runs", width: 0.9, align: "center" }, { header: "Evidence items", width: 0.9, align: "center" }, { header: "Hash verified", width: 0.9, align: "center" }],
+      [{ header: "Ref", width: 0.95 }, { header: "Finding", width: 2.6 }, { header: "Detection runs", width: 0.9, align: "center" }, { header: "Evidence items", width: 0.9, align: "center" }, { header: "Hash verified", width: 0.9, align: "center" }],
       ctx.groups.map((g) => {
         const runs = new Set(g.findings.flatMap((f) => [f.initial_detection_run_id, f.detection_run_id]).filter(Boolean));
         const artifacts = g.findings.flatMap((f) => f.evidence.artifacts);
@@ -1038,13 +1115,16 @@ function appendices(ctx: Ctx): void {
   }
 
   const gaps = gapInventory(report);
-  L.heading("Appendix D — Record readiness", 1, { newPage: true });
+  // An issued report has passed review; the readiness check belongs to drafts.
+  if (!ctx.issued) {
+  appendix("Record readiness");
   L.para(report.readiness.complete
     ? "No configured completeness gaps were identified. This does not constitute approval for delivery."
     : "The live record contains gaps that need operator review before customer delivery. Each gap is listed once, with the findings it affects.", { size: 9 });
   if (gaps.reportLevel.length) {
-    L.heading("Report-level gaps", 3);
-    L.bullets(gaps.reportLevel.map((g) => `${g.label} (${g.code})`));
+    L.heading(`Report-level gaps (${gaps.reportLevel.length})`, 3);
+    L.para(`Missing from the record: ${gaps.reportLevel.map((g) => gapShort(g.code)).join(", ")}.`, { size: 9 });
+    L.para(`Codes: ${gaps.reportLevel.map((g) => g.code).join(", ")}`, { size: 7, font: "mono", color: BRAND_HEX.muted });
   }
   if (gaps.findingLevel.length) {
     L.heading("Finding-level gaps", 3);
@@ -1055,13 +1135,15 @@ function appendices(ctx: Ctx): void {
     );
   }
 
-  L.heading("Appendix E — About this document", 1, { newPage: true });
+  }
+
+  appendix("About this document");
   L.keyValues([
     { label: "Engagement ID", value: report.engagement.id, mono: true },
     { label: "Schema version", value: report.document.schema_version },
     { label: "Generated (UTC)", value: report.document.generated_at, mono: true },
     { label: "Display time zone", value: tz },
-    { label: "Snapshot", value: `${report.document.snapshot_kind} · guarantee: ${report.document.snapshot_guarantee}` },
+    { label: "Data snapshot", value: snapshotLabel(report.document.snapshot_kind, report.document.snapshot_guarantee) },
     { label: "Persisted report record", value: report.document.persisted ? "Yes" : "No" },
   ], 2);
   L.para("This report is generated from the live canonical record at the time shown. Unless the document status records an approved issue, it is a draft for review, not an approved, signed, or immutable deliverable.", { size: 8.6, color: BRAND_HEX.muted });
