@@ -46,7 +46,7 @@ describe("report presentation layer", () => {
     const rating = overallRating(mixedReport);
     assert.equal(rating.level, "critical");
     assert.equal(rating.label, "Critical");
-    assert.match(rating.basis, /5 open findings: 2 critical/);
+    assert.equal(rating.basis, "2 of 5 open findings are critical, the highest severity still open.");
 
     const closed = overallRating(canonicalReport);
     assert.equal(closed.level, "none");
@@ -134,7 +134,7 @@ describe("report presentation layer", () => {
     const closure = gaps.findingLevel.find((g) => g.code === "closure_review_metadata_absent")!;
     assert.equal(closure.count, 2);
     assert.deepEqual(closure.refs, ["F004", "F005"]);
-    assert.equal(compactRefs(["F001", "F002", "F003", "F005", "F006"]), "F001–F003, F005, F006");
+    assert.equal(compactRefs(["F001", "F002", "F003", "F005", "F006", "F009"]), "F001–F003, F005–F006, F009");
   });
 
   test("formats SLA windows and evidence excerpts honestly", () => {
@@ -154,5 +154,40 @@ describe("report dates", () => {
     assert.equal(formatDate("2026-09-26T20:00:00Z", "Asia/Kolkata"), "27 Sep 2026");
     assert.equal(formatDate("2026-09-05"), "05 Sep 2026");
     assert.match(formatDateTime("2026-09-26T08:30:00Z", "Asia/Kolkata")!, /^26 Sep 2026, 14:00 /);
+  });
+});
+
+describe("report wording carries its meaning", () => {
+  test("labels scales, SLA states and acronyms", async () => {
+    const p = await import("../lib/report/presentation");
+    assert.equal(p.humanize("weak_tls"), "Weak TLS");
+    assert.equal(p.humanize("smb_signing_off"), "SMB signing off");
+    assert.equal(p.slaLabel("breached"), "Overdue");
+    assert.equal(p.slaLabel("untracked"), null);
+    const facts = p.findingFacts(mixedReport.findings.find((f) => f.title === "Critical open finding")!);
+    assert.equal(facts.find((f) => f.label === "Risk score")?.value, "95 / 1000");
+    assert.match(facts.find((f) => f.label === "EPSS")!.value, /\(30-day\)$/);
+    assert.match(facts.find((f) => f.label === "Fix by")!.value, /\(overdue\)$/);
+    assert.match(p.formatDateTime("2026-09-26T08:30:00Z", "Asia/Kolkata")!, /UTC\+05:30$/);
+  });
+
+  test("counts an asset once even when two records share its address", async () => {
+    const p = await import("../lib/report/presentation");
+    const twice = [mixedReport.findings[0]!, { ...mixedReport.findings[0]!, id: "x", asset: { ...mixedReport.findings[0]!.asset!, id: "other-record" } }];
+    assert.equal(p.distinctAssetCount(twice), 1);
+    assert.equal(p.issueScope(twice), "2 findings on 1 asset");
+  });
+
+  test("writes the executive summary in plain, correct sentences", async () => {
+    const p = await import("../lib/report/presentation");
+    const mixed = p.executiveNarrative(mixedReport, "UTC").sentences.join(" ");
+    assert.match(mixed, /of Example Corp, covering 192\.0\.2\.0\/24, between 19 Sep 2026 and 25 Sep 2026\./);
+    assert.match(mixed, /5 remain open; 1 has been closed/);
+    assert.match(mixed, /Overall risk is rated Critical: 2 of the 5 open findings are critical\./);
+    assert.match(mixed, /1 open finding is overdue/);
+    const closed = p.executiveNarrative(canonicalReport, "UTC").sentences.join(" ");
+    assert.match(closed, /All 2 have been closed/);
+    assert.match(closed, /No findings are open, so no overall risk is rated\./);
+    assert.doesNotMatch(closed + mixed, / 0 have| 0 remain/);
   });
 });
