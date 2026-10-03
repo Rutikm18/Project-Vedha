@@ -23,9 +23,9 @@ import {
   gapInventory,
   groupAssets,
   groupRef,
-  humanize,
   isOpenStatus,
   issueFacts,
+  issueFixBy,
   keyMetrics,
   maskedText,
   overallRating,
@@ -34,6 +34,7 @@ import {
   remediationView,
   severityRows,
   sharedNarrativeKeys,
+  slaLabel,
   statusSummary,
   topRisks,
   type IssueGroup,
@@ -84,8 +85,8 @@ export function ReportCover({ report, tz, issued }: { report: ReportDocument; tz
       <div className="rr-cover-main">
         <p className="rr-eyebrow">Vulnerability assessment report</p>
         <h1>{report.engagement.name}</h1>
-        <p className="rr-cover-client">
-          {report.engagement.client ? <>Prepared for <strong>{maskedText(report.engagement.client)}</strong></> : "Client not recorded"}
+        <p className="rr-cover-client" hidden={!report.engagement.client}>
+          {report.engagement.client ? <>Prepared for <strong>{maskedText(report.engagement.client)}</strong></> : null}
         </p>
         {!issued && <p className="rr-draft-flag">Draft — not approved. Human review is required before delivery.</p>}
         <dl className="rr-cover-facts">
@@ -124,7 +125,7 @@ export function ExecutiveSummary({ report, tz, groups }: { report: ReportDocumen
   const tiles: Array<{ label: string; value: number; tone: "neutral" | "risk" | "ok" | "warn" }> = [
     { label: "Open findings", value: m.open, tone: "neutral" },
     { label: "Critical and high open", value: m.criticalHighOpen, tone: m.criticalHighOpen ? "risk" : "ok" },
-    { label: "Past SLA deadline", value: m.slaBreached, tone: m.slaBreached ? "warn" : "ok" },
+    { label: "Overdue against the SLA", value: m.slaBreached, tone: m.slaBreached ? "warn" : "ok" },
     { label: "Assets with open findings", value: m.assetsAffected, tone: "neutral" },
   ];
   return (
@@ -148,13 +149,13 @@ export function ExecutiveSummary({ report, tz, groups }: { report: ReportDocumen
               {top.map(({ ref, group }) => {
                 const index = groups.indexOf(group);
                 const live = group.findings.filter((f) => isOpenStatus(f.status));
-                const fixBy = live.map((f) => f.current_sla.deadline).filter((d): d is string => Boolean(d)).sort()[0];
+                const fix = issueFixBy(group, tz);
                 return (
                   <li key={group.key}>
                     <SeverityPill severity={group.severity} />
                     <div>
                       <a href={`#${issueAnchor(index)}`}>{group.title}</a>
-                      <span className="rr-muted">{ref} · {groupAssets(live) ?? "asset not recorded"}{fixBy ? ` · fix by ${formatDate(fixBy, tz)}` : ""}</span>
+                      <span className="rr-muted">{ref} · {groupAssets(live) ?? "asset not recorded"}{fix.text ? ` · fix by ${fix.text}` : ""}</span>
                     </div>
                   </li>
                 );
@@ -175,6 +176,7 @@ export function ExecutiveSummary({ report, tz, groups }: { report: ReportDocumen
 
 export function FindingsOverview({ groups, refs, total }: { groups: IssueGroup[]; refs: Map<string, string>; total: number }) {
   if (!groups.length) return <p className="rr-muted">No findings are recorded for this engagement.</p>;
+  const anyCvss = groups.some((g) => g.findings.some((f) => f.cvss_score !== null && f.cvss_score !== ""));
   return (
     <>
       <p className="rr-muted">
@@ -183,7 +185,7 @@ export function FindingsOverview({ groups, refs, total }: { groups: IssueGroup[]
       </p>
       <div className="rr-table-wrap">
         <table className="rr-table">
-          <thead><tr><th scope="col">Ref</th><th scope="col">Finding</th><th scope="col">Severity</th><th scope="col">CVSS</th><th scope="col">Assets</th><th scope="col">Status</th></tr></thead>
+          <thead><tr><th scope="col">Ref</th><th scope="col">Finding</th><th scope="col">Severity</th>{anyCvss && <th scope="col">CVSS</th>}<th scope="col">Assets</th><th scope="col">Status</th></tr></thead>
           <tbody>
             {groups.map((g, i) => {
               const cvss = [...new Set(g.findings.map((f) => f.cvss_score).filter((v) => v !== null && v !== "").map(String))];
@@ -192,7 +194,7 @@ export function FindingsOverview({ groups, refs, total }: { groups: IssueGroup[]
                   <td className="rr-ref">{groupRef(g, refs)}</td>
                   <td><a href={`#${issueAnchor(i)}`}>{g.title}</a></td>
                   <td><SeverityPill severity={g.severity} /></td>
-                  <td>{cvss.length === 0 ? "—" : cvss.length === 1 ? cvss[0] : "varies"}</td>
+                  {anyCvss && <td>{cvss.length === 0 ? "—" : cvss.length === 1 ? cvss[0] : "varies"}</td>}
                   <td>{groupAssets(g.findings) ?? "—"}</td>
                   <td data-open={g.open > 0}>{statusSummary(g.findings)}</td>
                 </tr>
@@ -201,6 +203,7 @@ export function FindingsOverview({ groups, refs, total }: { groups: IssueGroup[]
           </tbody>
         </table>
       </div>
+      {!anyCvss && <p className="rr-muted rr-small">No CVSS scores are recorded for these findings.</p>}
     </>
   );
 }
@@ -260,6 +263,12 @@ export function IssueReading({ group, refs, tz }: { group: IssueGroup; refs: Map
         </dl>
       )}
 
+      {!narrative.sections.some((x) => x.key === "description") && (
+        <section className="rr-sec">
+          <h4>Description</h4>
+          <p className="rr-placeholder">No description has been recorded for this finding.</p>
+        </section>
+      )}
       {narrative.sections.map((section) => (
         <section key={section.key} className="rr-sec">
           <h4>{section.title}</h4>
@@ -292,6 +301,13 @@ export function IssueReading({ group, refs, tz }: { group: IssueGroup; refs: Map
         </section>
       )}
 
+      {!rem.text && rem.plans.length === 0 && rem.recommendations.length === 0 && (
+        <section className="rr-sec">
+          <h4>Remediation</h4>
+          <p className="rr-placeholder">No remediation guidance has been recorded for this finding.</p>
+        </section>
+      )}
+
       {!many && (closure.closed || closure.retest || closure.reopened > 0) && (
         <p className="rr-closure" data-closed={closure.closed}>
           <ShieldCheck size={14} aria-hidden="true" />
@@ -307,7 +323,7 @@ export function IssueReading({ group, refs, tz }: { group: IssueGroup; refs: Map
       )}
 
       {narrative.missing.length > 0 && (
-        <p className="rr-missing">Not recorded: {narrative.missing.map((m) => m.toLowerCase()).join(", ")}.</p>
+        <p className="rr-missing rr-operator-only">Missing from the record (operator note): {narrative.missing.map((m) => m.toLowerCase()).join(", ")}.</p>
       )}
     </div>
   );
@@ -321,9 +337,11 @@ export function RemediationRoadmap({ report, tz, groups }: { report: ReportDocum
   const roadmap = remediationRoadmap(report);
   if (!roadmap.length) return <p className="rr-ok-note"><ShieldCheck size={14} />No findings are open, so no remediation is outstanding.</p>;
   const anchorOf = (title: string, severity: SeverityKey) => issueAnchor(groups.findIndex((g) => g.title === title && g.severity === severity));
+  const anyOwner = roadmap.some((b) => b.items.some((i) => i.owner));
   return (
     <div className="rr-roadmap">
       <p className="rr-muted">Target windows come only from the current SLA policy recorded for each finding; where none is recorded, no target is shown.</p>
+      {!anyOwner && <p className="rr-callout">No remediation owners are recorded yet. Assign one per issue so every fix has someone accountable for it.</p>}
       {roadmap.map((bucket) => (
         <section key={bucket.priority} className="rr-bucket" data-severity={bucket.severities[0]}>
           <header>
@@ -332,16 +350,16 @@ export function RemediationRoadmap({ report, tz, groups }: { report: ReportDocum
           </header>
           <div className="rr-table-wrap">
             <table className="rr-table">
-              <thead><tr><th scope="col">Ref</th><th scope="col">Finding</th><th scope="col">Assets</th><th scope="col">Owner</th><th scope="col">Fix by</th><th scope="col">SLA</th></tr></thead>
+              <thead><tr><th scope="col">Ref</th><th scope="col">Finding</th><th scope="col">Assets</th>{anyOwner && <th scope="col">Owner</th>}<th scope="col">Fix by</th><th scope="col">SLA</th></tr></thead>
               <tbody>
                 {bucket.items.map((item) => (
                   <tr key={item.ref + item.title}>
                     <td className="rr-ref">{item.ref}</td>
                     <td><a href={`#${anchorOf(item.title, item.severity)}`}>{item.title}</a></td>
                     <td>{item.asset ?? "—"}</td>
-                    <td>{item.owner ?? "—"}</td>
+                    {anyOwner && <td>{item.owner ?? "—"}</td>}
                     <td>{formatDate(item.deadline, tz) ?? "—"}</td>
-                    <td>{item.slaState ? <span className="rr-tag" data-tone={SLA_TONE[item.slaState] ?? "neutral"}>{humanize(item.slaState)}</span> : "—"}</td>
+                    <td>{item.slaState ? <span className="rr-tag" data-tone={SLA_TONE[item.slaState] ?? "neutral"}>{slaLabel(item.slaState)}</span> : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -354,6 +372,17 @@ export function RemediationRoadmap({ report, tz, groups }: { report: ReportDocum
 }
 
 export function ClosureRegister({ groups, refs, tz }: { groups: IssueGroup[]; refs: Map<string, string>; tz: string }) {
+  const anyHistory = groups.some((g) => g.findings.some((f) => !isOpenStatus(f.status) || f.closure.retest || f.closure.reopened_count > 0));
+  if (!anyHistory) {
+    const n = groups.reduce((a, g) => a + g.findings.length, 0);
+    return (
+      <p className="rr-ok-note rr-neutral">
+        {n
+          ? `No finding has been closed, retested or reopened yet. ${n === 1 ? "The finding remains" : `All ${n} findings remain`} open; the remediation roadmap shows what to fix first.`
+          : "No findings are recorded."}
+      </p>
+    );
+  }
   return (
     <div className="rr-table-wrap">
       <table className="rr-table cr-closure-register">
@@ -378,8 +407,8 @@ export function ClosureRegister({ groups, refs, tz }: { groups: IssueGroup[]; re
                 <td>{g.open === 0 && resolved.length ? formatDate(resolved[resolved.length - 1], tz) : "—"}</td>
                 <td>
                   {single
-                    ? <>{views[0]!.retest ?? "Not recorded"}<br /><span className="rr-muted rr-small">Before / after artifacts: {retest?.before_evidence.artifacts.length ?? 0} / {retest?.after_evidence.artifacts.length ?? 0}</span></>
-                    : passed || failed ? `${passed} passed, ${failed} failed` : "Not recorded"}
+                    ? <>{views[0]!.retest ?? "Not retested"}<br /><span className="rr-muted rr-small">Before / after artifacts: {retest?.before_evidence.artifacts.length ?? 0} / {retest?.after_evidence.artifacts.length ?? 0}</span></>
+                    : passed || failed ? `${passed} passed, ${failed} failed` : "Not retested"}
                 </td>
                 <td>Reopened: {views.reduce((a, v) => a + v.reopened, 0)}</td>
               </tr>
