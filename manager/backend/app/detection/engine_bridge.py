@@ -39,7 +39,10 @@ from app.models.detection_run_finding import (
     DetectionRunFinding, RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED,
     RUN_FINDING_RESOLVED,
 )
-from app.discovery.finding_translator import _resolve_asset, _find_open_duplicate
+from app.discovery.finding_translator import (
+    _resolve_asset, _find_open_duplicate, exposed_service_condition,
+    condition_index_key, DEDUP_KEY,
+)
 from app.detection.attack_paths import attack_path_findings
 from app.detection.prioritization import _posture_risk_on_manager_scale
 from app.detection.resolution import (
@@ -481,8 +484,19 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             asset = await _resolve_asset(db, engagement_id, p.get("asset_ip"), cache=cache)
             asset_id = asset.id if asset else None
 
+            # gap #2: an exposed-service posture finding (POSTURE-EXPOSED-*) carries
+            # a per-port condition key so it is the SAME issue as any other
+            # producer's exposed-service finding on that port, merging instead of
+            # adding a second, differently-titled row. Dedicated-scanner findings
+            # (SMB/RDP/TLS) are not keyed by port — two real issues can share one.
+            condition = (exposed_service_condition(p.get("port"))
+                         if str(p.get("rule_id") or "").startswith("POSTURE-EXPOSED-")
+                         else None)
+            if condition:
+                p[DEDUP_KEY] = condition
+
             dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
-                                             index=open_index)
+                                             condition=condition, index=open_index)
             if dup is not None:
                 dup.evidence = preserve_trusted_scan_provenance(
                     p,
@@ -515,6 +529,8 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                     remediated_index.pop((asset_id, title), None)
                 if open_index is not None:
                     open_index[(asset_id, title)] = regressed
+                    if condition:
+                        open_index[condition_index_key(asset_id, condition)] = regressed
                 continue
 
             state = p.get("state")
@@ -542,6 +558,8 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             db.add(f)
             touched.append(f)
             created += 1
+            if open_index is not None and condition:
+                open_index[condition_index_key(asset_id, condition)] = f
             # The dedup lookup no longer autoflushes into a query, so a second
             # finding with this identity in the SAME run only collapses onto
             # this row if the index knows about it.
