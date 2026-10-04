@@ -1433,6 +1433,18 @@ def detect_posture_traced(
     except Exception:  # noqa: BLE001 — must never sink core detection
         pass
 
+    # 1a-iii) TLS fingerprint threat-intel (IOC) layer: match the JARM/JA4S/JA4X
+    #     fingerprints the probe computed against a curated registry of known C2 /
+    #     tooling TLS profiles. The manager computed and stored these fingerprints
+    #     and matched none of them until now. SUSPECTED by design. Best-effort.
+    try:
+        from fingerprint_intel import detect_fingerprint_intel_traced
+        fi_findings, fi_traces = detect_fingerprint_intel_traced(asset, exposure)
+        out.extend(fi_findings)
+        traces.extend(fi_traces)
+    except Exception:  # noqa: BLE001 — must never sink core detection
+        pass
+
     # 1b) Confidence calibration (second pass, cross-signal aware): now that every rule
     # that fired on this host is known, calibrate each finding's confidence with
     # attack-chain corroboration and stamp the auditable precision_factors. Separate

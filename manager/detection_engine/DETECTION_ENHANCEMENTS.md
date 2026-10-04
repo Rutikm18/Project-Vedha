@@ -66,7 +66,7 @@ already prints this backlog; this plan works through it.
 - [x] **P2 — credentialed host posture / IOA** (`host_posture.py`): Defender off,
       missing critical KBs, suspicious service binaries, excessive admins, Linux
       rogue listeners/processes. CONFIRMED tier (authoritative). Traced sub-layer.
-- [ ] **P3 — TLS fingerprint IOC** (`fingerprint_intel.py`): JA4X/JA4S/JARM
+- [x] **P3 — TLS fingerprint IOC** (`fingerprint_intel.py`): JA4X/JA4S/JARM
       curated-registry matching on the manager path. SUSPECTED, tagged IOC.
 - [ ] **P4 — expand `_KEV_LINKS`** exploitability coverage for the high-signal
       posture rules.
