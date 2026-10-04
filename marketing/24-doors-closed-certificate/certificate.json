@@ -1,0 +1,13 @@
+{
+  "owner": "[Owner's full name]",
+  "business": "[Business name], [City]",
+  "partner": "[Partner firm name]",
+  "checkWindow": "[12–18 Oct 2026]",
+  "verifiedOn": "[19 Oct 2026]",
+  "reference": "[VD-2026-0001]",
+  "doors": [
+    "Remote desktop on the accounts PC: now reachable only through the VPN",
+    "Client files share: now open only to the people who need it",
+    "Billing database: now asks for a login"
+  ]
+}

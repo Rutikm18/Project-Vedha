@@ -1,6 +1,6 @@
 # #22 Launch Jugaad & Sons (Diwali Safai edition)
 
-**Launch:** Wed 28 Oct. **Targets in 14 days (to Wed 11 Nov):** **10 partner replies** and **100 Open Door checks** (people completing the Open Door share flow, #12, counted by `utm_campaign=open_door` in #6 analytics). Diwali is 8 Nov, so the series ends on the Thursday before.
+**Launch:** Wed 28 Oct. **Targets in 14 days (to Wed 11 Nov):** **10 partner replies** and **100 Open Door checks** (people completing the Open Door share flow, #12, counted by `utm_campaign=open_door` in #6 analytics). Diwali is Sun 8 Nov: items 1–6 run before it, and items 7–10 run the week after, while "Diwali Safai" is still in people's heads.
 
 ## Schedule (Mon–Thu only, one item a day; the plan's "send Mon to Thu" rule)
 

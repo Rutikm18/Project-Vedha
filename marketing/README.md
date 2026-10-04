@@ -29,7 +29,21 @@ Rules followed throughout (from the film brief and claims register):
 | 13 | P1 | CERT-In 15 controls: verified mapping | `13-certin-controls/MAPPING.md` + `mapping.csv` | Done (verify control order in PDF) |
 | 14 | P1 | WhatsApp channel with opt-in | `14-whatsapp-channel/` (SETUP.md, icon, poster builder, consent log) | Ready to create (needs the phone) |
 | 15 | P1 | "CERT-In's 15 controls, accurately" guide + one-page PDF | `15-certin-guide/` (index.html, PDF; built from #13's CSV) | Built (publish; verify control order) |
-| 16–29 | P1/P2 | See below | | In progress |
+| 16 | P1 | Partner Zero checks #1 + #2, hours logged | `16-partner-zero-checks/` (runbook, debrief format, hours_log.csv) | Ready to run |
+| 17 | P1 | Objection sheet | `17-objection-sheet/OBJECTIONS.md` | Drafted |
+| 18 | P1 | 15 Controls Awareness Poll | `18-awareness-poll/POLL.md` | Ready to build the form |
+| 19 | P1 | 10 Jugaad & Sons items + preview | `19-jugaad-and-sons/` (10 illustrated cards) | Built (send preview) |
+| 20 | P1 | Shadowserver data + licence | `20-shadowserver/REQUEST.md` | Email ready |
+| 21 | P1 | Recruit 15 Vedha Village members | `21-vedha-village/RECRUIT.md` | Ready |
+| 22 | P1 | Launch Jugaad & Sons | `22-jugaad-launch/LAUNCH.md` (Mon–Thu schedule, targets) | Planned |
+| 23 | P1 | Partner Kit v1 + Founding 10 page | `23-partner-kit/` (KIT.md, founding-10.html) | Built (fill the offer) |
+| 24 | P1 | Doors Closed certificate | `24-doors-closed-certificate/` (A4 PDF template) | Built |
+| 25 | P1 | Diwali Safai card EN + HI | `25-diwali-safai-card/` (partner-branded builder) | Built (Hindi review) |
+| 26 | P2 | DPDP explainer | `26-dpdp-explainer/DPDP_EXPLAINER.md` | Draft for counsel |
+| 27 | P2 | Poll results + 5 journalist pitches | `27-poll-results-press/PRESS.md` | Templates (needs poll data) |
+| 28 | P2 | Village kickoff + Open Door Clinic | `28-village-kickoff/RUNSHEET.md` | Ready |
+| 29 | P2 | Open Door Report Stage 1 | `29-open-door-report/` (8-page PDF template, data-driven charts) | Template (data pending) |
+| — | Weekly | Scoreboard, Signal/Noise, retro | `weekly/SCOREBOARD.md` | Ready |
 | — | Extra | Visiting card system (founder + partner, 2 sizes) | `cards/` (DESIGN.md, mockup, print PDFs in `cards/out/`) | Built (fill people.json, print proof) |
 
 ## Rendering assets
