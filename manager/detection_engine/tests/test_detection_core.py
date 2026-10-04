@@ -1136,6 +1136,43 @@ class TestEnrichFinding:
         result = enrich_finding(f, db, kev, epss)
         assert result.epss_score == 0.5
 
+    def test_e2e_dos_high_epss_is_high_not_critical(self):
+        # gap #6 end-to-end: a DoS CVE (A:H only) with high EPSS, even confirmed,
+        # enriches to priority HIGH — not critical.
+        records = {"nginx": [{
+            "id": "OSV-D", "upstream": ["CVE-2023-DOS"],
+            "severity": [{"type": "CVSS_V3",
+                          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"}]}]}
+        db = _mock_vuln_db(records)
+        epss = _mock_epss_db(scores={"CVE-2023-DOS": {"epss": 0.6, "percentile": 0.99}})
+        f = _finding(cve_id="CVE-2023-DOS", state=FindingState.confirmed,
+                     source_confidence=SourceConfidence.authoritative)
+        result = enrich_finding(f, db, _mock_kev_db(), epss)
+        assert result.priority == "high"
+
+    def test_e2e_high_impact_confirmed_high_epss_is_critical(self):
+        records = {"nginx": [{
+            "id": "OSV-R", "upstream": ["CVE-2023-RCE"],
+            "severity": [{"type": "CVSS_V3",
+                          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]}]}
+        db = _mock_vuln_db(records)
+        epss = _mock_epss_db(scores={"CVE-2023-RCE": {"epss": 0.6, "percentile": 0.99}})
+        f = _finding(cve_id="CVE-2023-RCE", state=FindingState.confirmed,
+                     source_confidence=SourceConfidence.authoritative)
+        result = enrich_finding(f, db, _mock_kev_db(), epss)
+        assert result.priority == "critical"
+
+    def test_e2e_high_impact_inferred_high_epss_capped_to_high(self):
+        records = {"nginx": [{
+            "id": "OSV-R", "upstream": ["CVE-2023-RCE"],
+            "severity": [{"type": "CVSS_V3",
+                          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]}]}
+        db = _mock_vuln_db(records)
+        epss = _mock_epss_db(scores={"CVE-2023-RCE": {"epss": 0.6, "percentile": 0.99}})
+        f = _finding(cve_id="CVE-2023-RCE")  # default: suspected / inferred
+        result = enrich_finding(f, db, _mock_kev_db(), epss)
+        assert result.priority == "high"
+
     def test_no_data_still_sets_priority(self):
         db = _mock_vuln_db()
         kev = _mock_kev_db()
