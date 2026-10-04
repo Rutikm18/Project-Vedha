@@ -86,3 +86,4 @@ dist/onprem/
 # Vedha film: render outputs and deps (commit source, not binaries)
 video/out/
 video/node_modules/
+marketing/node_modules/

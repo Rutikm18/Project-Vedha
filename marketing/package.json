@@ -1,0 +1,14 @@
+{
+  "name": "vedha-marketing",
+  "private": true,
+  "type": "module",
+  "description": "Vedha marketing assets rendered from code (cards, certificates, share images)",
+  "dependencies": {
+    "@fontsource/geist-mono": "^5.0.0",
+    "@fontsource/geist-sans": "^5.0.0",
+    "@fontsource/instrument-serif": "^5.0.0",
+    "@fontsource/tiro-devanagari-hindi": "^5.0.0",
+    "playwright-core": "^1.48.0",
+    "qrcode": "^1.5.4"
+  }
+}
