@@ -21,8 +21,8 @@ Rules followed throughout (from the film brief and claims register):
 | 7 | P0 | Price list + partner margin model | `07-pricing/margin_model.xlsx` (example numbers) | Ready for your numbers + sign-off |
 | 8 | P0 | Deck slide 8 + competitive analysis pricing | `08-deck-pricing/SLIDE_8.md` | Template (fill after #7) |
 | 9 | P0 | Data-use clause (for counsel) | `09-data-use-clause/DATA_USE_CLAUSE.md` + T7 line | Draft for counsel |
-| 10 | P0 | Partner Zero messages (T3) | `10-partner-zero-messages/` | Not started |
-| 11 | P0 | Discovery call script (T4 + unprompted recall) | `11-discovery-calls/` | Not started |
+| 10 | P0 | Partner Zero messages (T3) | `10-partner-zero-messages/MESSAGES.md` | Drafted (fill the offer) |
+| 11 | P0 | Discovery call script (T4 + unprompted recall) | `11-discovery-calls/CALL_SCRIPT.md` | Drafted |
 | 12 | P0 | Open Door share card | `12-open-door-card/` | Not started |
 | 13–29 | P1/P2 | See the action plan | Folders created as each starts | Not started |
 
