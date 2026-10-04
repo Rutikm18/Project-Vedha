@@ -1,0 +1,29 @@
+{
+  "hook": "Every office has one door nobody remembers.",
+  "list": ["A printer.", "A camera.", "A login that never changed."],
+  "path": "Together, they make a path.",
+  "name": "Vedha",
+  "gloss": "TO PIERCE THROUGH",
+  "devanagari": "वेध",
+  "what": "A 7-day network health check.",
+  "partner": "Delivered by a partner you already trust.",
+  "partnerNodeLabel": "YOUR IT PARTNER",
+  "find": "Find what's open.",
+  "prove": "Prove what's real.",
+  "fix": "Show the fix worked.",
+  "report": "A plain-language report. With proof.",
+  "cta": "Book your 7-day check",
+  "url": "vedhasec.com",
+  "scope": "For office networks. Not cloud networks.",
+  "illustrative": "Illustrative data",
+  "chips": { "proven": "Proven", "verified": "Verified" },
+  "devices": ["ROUTER", "PRINTER", "CAMERA", "LAPTOP", "ACCOUNTS"],
+  "ui": {
+    "tabs": ["Overview", "Findings", "Attack use cases", "Report"],
+    "findingsTitle": "FINDINGS",
+    "gradeLabel": "GRADE",
+    "reportTitle": "Network health check report",
+    "verifiedOn": "Verified 03 Oct 2026",
+    "holdToVerify": "Hold to verify"
+  }
+}

@@ -82,3 +82,7 @@ agent-releases/
 dist/agent-release/
 dist/onprem/
 *.release-key.pem
+
+# Vedha film: render outputs and deps (commit source, not binaries)
+video/out/
+video/node_modules/

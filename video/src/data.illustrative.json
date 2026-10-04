@@ -1,0 +1,9 @@
+{
+  "_note": "Illustrative data only. Addresses are RFC 5737 documentation ranges; hostnames are .example.",
+  "findings": [
+    { "title": "Printer admin page open to the office LAN", "host": "printer-2f.example · 192.0.2.24", "sev": "HIGH", "closed": "Printer admin page closed" },
+    { "title": "Camera still on its default login",          "host": "cam-lobby.example · 192.0.2.31",  "sev": "HIGH", "closed": "Camera login changed" },
+    { "title": "Router admin password never changed",       "host": "gw.example · 192.0.2.1",          "sev": "MEDIUM", "closed": "Router password rotated" }
+  ],
+  "fixItem": "Printer admin page closed by partner"
+}
