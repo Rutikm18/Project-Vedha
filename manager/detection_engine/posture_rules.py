@@ -1266,10 +1266,25 @@ RULES: list[PostureRule] = [
 ]
 
 
+# Credentialed inventory collectors read the host's OWN authoritative state
+# (installed packages, the real service table, Defender status, the process list)
+# over an authenticated session — the strongest evidence tier there is, stronger
+# than any network protocol observation. ingest.py already tags their facts
+# SourceConfidence.authoritative; a posture finding derived from them is therefore
+# CONFIRMED, exactly like a validated-scanner direct observation. Mirrors
+# ingest._AUTHORITATIVE_SCANNERS.
+CREDENTIALED_SCANNERS: frozenset = frozenset({"ssh_inventory", "windows_inventory"})
+
+
+def is_credentialed(scanner: str) -> bool:
+    return scanner in CREDENTIALED_SCANNERS
+
+
 # ── runner ────────────────────────────────────────────────────────────────────
 def _state_for(scanner: str) -> str:
-    return (FindingState.confirmed.value if is_validated(scanner)
-            else FindingState.suspected.value)
+    if is_validated(scanner) or is_credentialed(scanner):
+        return FindingState.confirmed.value
+    return FindingState.suspected.value
 
 
 def _evidence_ref(f: Fact) -> str:
@@ -1400,6 +1415,21 @@ def detect_posture_traced(
         ex_findings, ex_traces = detect_exposed_services_traced(asset, exposure)
         out.extend(ex_findings)
         traces.extend(ex_traces)
+    except Exception:  # noqa: BLE001 — must never sink core detection
+        pass
+
+    # 1a-ii) Credentialed host-posture / IOA layer: the authoritative Windows/Linux
+    #     inventory the probe collects over an authenticated session (Defender state,
+    #     the real service table, local admins, the process/listener list) that no
+    #     network scanner can see and no rule read until now. CONFIRMED tier. Returns
+    #     its findings already keyed and risk-scored; best-effort, never sinks core.
+    try:
+        from host_posture import detect_host_posture_traced   # local, no import cycle
+        hp_findings, hp_traces = detect_host_posture_traced(asset, exposure)
+        for pf in hp_findings:
+            reachable_by_id[id(pf)] = True   # credentialed = host confirmed reachable
+        out.extend(hp_findings)
+        traces.extend(hp_traces)
     except Exception:  # noqa: BLE001 — must never sink core detection
         pass
 

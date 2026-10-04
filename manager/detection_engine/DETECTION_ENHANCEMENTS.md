@@ -59,11 +59,11 @@ already prints this backlog; this plan works through it.
 
 ## Plan / task status
 
-- [ ] **P1 — service-layer posture rules** for the unconsumed network facts in §A
+- [x] **P1 — service-layer posture rules** for the unconsumed network facts in §A
       (TLS weak key/sig, web methods/headers, DNS version/DNSSEC, LDAP anon
       search, SMB sensitive shares, SNMP sysinfo/amplification, IoT MQTT/CoAP/
       RTSP/CWMP, mobile ADB, MCP/AI unauth). SUSPECTED tier. Corpus + unit tests.
-- [ ] **P2 — credentialed host posture / IOA** (`host_posture.py`): Defender off,
+- [x] **P2 — credentialed host posture / IOA** (`host_posture.py`): Defender off,
       missing critical KBs, suspicious service binaries, excessive admins, Linux
       rogue listeners/processes. CONFIRMED tier (authoritative). Traced sub-layer.
 - [ ] **P3 — TLS fingerprint IOC** (`fingerprint_intel.py`): JA4X/JA4S/JARM
