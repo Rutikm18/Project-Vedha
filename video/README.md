@@ -63,7 +63,7 @@ Uses the pre-installed Chromium at `/opt/pw-browsers`; set `CHROMIUM_PATH` to ov
 
 ## Needs human review before publishing
 
-1. **वेद्या and its gloss.** The owner set the Devanagari to वेद्या. The on-screen gloss "TO PIERCE THROUGH" came from the brief, where it described वेध. वेद्या comes from the root *vid*, "to know". Confirm the gloss, or change `gloss` in `src/copy.en.json`.
+1. **The name वेधा and its gloss.** The owner set the Devanagari name to **वेधा**. The on-screen gloss "TO PIERCE THROUGH" is kept from the brief. Have a Sanskrit/Marathi speaker confirm the gloss reads right with वेधा (the verb "to pierce" is वेध, from the root *vyadh*; the Sanskrit word वेधस्, nominative वेधाः, means "creator, wise one"). To change it, edit `gloss` in `src/copy.en.json`.
 2. **Product claims:** "7-day", "delivered by a partner", "office networks, not cloud" (see `claims.md`).
 3. **Hindi copy:** native-speaker review.
 4. **Cultural check:** Raag Bhupali / tanpura score (`MUSIC.md`); the dot lattice is a pulli-style visual reference only, with no religious iconography.

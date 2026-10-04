@@ -2,6 +2,8 @@
 
 Deliverables for the **Vedha Action Plan** (4 Oct 2026, @Hemang), one folder per task. Everything here is a **draft for a founder to review**: nothing is sent, published or signed from this repo.
 
+Name: **Vedha (वेधा)**. Use this Devanagari spelling everywhere it appears.
+
 Rules followed throughout (from the film brief and claims register):
 - No guarantees ("secure", "protected", "100%", "compliant", "certified").
 - No unsourced numbers. Every statistic carries its source, its date and the exact credit line.

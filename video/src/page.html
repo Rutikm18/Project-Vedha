@@ -34,7 +34,7 @@ const c = document.getElementById('c'); c.width = cfg.width; c.height = cfg.heig
 const ctx = c.getContext('2d');
 const faces = ['400 40px "Instrument Serif"', '400 40px "Geist Sans"', '500 40px "Geist Sans"', '600 40px "Geist Sans"',
   '400 40px "Geist Mono"', '500 40px "Geist Mono"', '400 40px "Tiro Devanagari Hindi"'];
-await Promise.all(faces.map(f => document.fonts.load(f, f.includes('Tiro') ? 'वेध' : 'Ag')));
+await Promise.all(faces.map(f => document.fonts.load(f, f.includes('Tiro') ? 'वेधा' : 'Ag')));
 await document.fonts.ready;
 window.renderFrame = n => { renderFrame(ctx, n, cfg); return true; };
 window.grab = n => { renderFrame(ctx, n, cfg); return c.toDataURL('image/png'); };
