@@ -28,6 +28,7 @@ Rules followed throughout (from the film brief and claims register):
 | 12 | P0 | Open Door share card | `12-open-door-card/` (page + OG image) | Built (deploy to site) |
 | 13 | P1 | CERT-In 15 controls: verified mapping | `13-certin-controls/MAPPING.md` + `mapping.csv` | Done (verify control order in PDF) |
 | 14–29 | P1/P2 | See the action plan | Folders created as each starts | Not started |
+| — | Extra | Visiting card system (founder + partner, 2 sizes) | `cards/` (DESIGN.md, mockup, print PDFs in `cards/out/`) | Built (fill people.json, print proof) |
 
 ## Rendering assets
 

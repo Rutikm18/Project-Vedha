@@ -8,7 +8,9 @@
     "@fontsource/geist-sans": "^5.0.0",
     "@fontsource/instrument-serif": "^5.0.0",
     "@fontsource/tiro-devanagari-hindi": "^5.0.0",
+    "jsqr": "^1.4.0",
     "playwright-core": "^1.48.0",
+    "pngjs": "^7.0.0",
     "qrcode": "^1.5.4"
   }
 }
