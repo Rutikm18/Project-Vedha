@@ -1,11 +1,10 @@
 {
   "hook": "Every office has one door nobody remembers.",
   "list": [
-    "A remote login left open.",
-    "A password never changed.",
-    "A backup on the same network."
+    "The accounts PC: remote login left open.",
+    "Client files: open to anyone on the Wi-Fi.",
+    "Billing data: readable without a password."
   ],
-  "path": "Together, they reach your accounts.",
   "name": "Vedha",
   "gloss": "TO PIERCE THROUGH",
   "devanagari": "वेद्या",
@@ -25,10 +24,9 @@
     "verified": "Verified"
   },
   "devices": [
-    "REMOTE LOGIN",
+    "ACCOUNTS PC",
     "FILE SERVER",
-    "ACCOUNTS",
-    "BACKUPS",
+    "BILLING DB",
     "LAPTOPS"
   ],
   "ui": {
@@ -42,15 +40,22 @@
     "gradeLabel": "GRADE",
     "reportTitle": "Network health check report",
     "verifiedOn": "Verified 03 Oct 2026",
-    "holdToVerify": "Hold to verify"
+    "holdToVerify": "Hold to verify",
+    "evidence": "EVIDENCE"
   },
   "checks": "It checks what your business runs on.",
   "checkpoints": [
+    "Everything on your network",
     "Remote logins",
     "Accounts & file servers",
-    "Backups",
-    "Passwords nobody changed",
-    "Old, unpatched systems",
     "What the internet can reach"
-  ]
+  ],
+  "checkpointNotes": [
+    "EVERY DEVICE · EVERY OPEN PORT",
+    "RDP · VNC · REMOTE ADMIN",
+    "FILE SHARES · DATABASES",
+    "SEEN FROM OUTSIDE"
+  ],
+  "internetLabel": "INTERNET",
+  "devicesFound": "DEVICES FOUND"
 }

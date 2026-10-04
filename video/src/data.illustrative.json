@@ -2,26 +2,30 @@
   "_note": "Illustrative data only. Addresses are RFC 5737 documentation ranges; hostnames are .example. Each finding maps to a shipped check in NETWORK_VA_USE_CASES.md.",
   "findings": [
     {
-      "title": "Remote desktop open without NLA",
+      "title": "Accounts PC: remote login open",
       "host": "accounts-pc.example · 192.0.2.24",
       "sev": "HIGH",
-      "closed": "Remote login locked down",
-      "check": "RDP without NLA (posture rule)"
+      "evidence": [
+        "3389/tcp answered from an outside vantage",
+        "Pre-login check (NLA): not required"
+      ],
+      "closed": "Accounts PC: remote login locked down",
+      "check": "RDP without NLA (posture rule) + internet-exposure mapping (UC 81)"
     },
     {
-      "title": "Backup share readable by anyone on the LAN",
-      "host": "backup-nas.example · 192.0.2.40",
-      "sev": "HIGH",
-      "closed": "Backup share restricted",
-      "check": "NFS world-readable export (posture rule)"
-    },
-    {
-      "title": "Admin password still the factory default",
+      "title": "Client files: open to anyone",
       "host": "fileserver.example · 192.0.2.10",
       "sev": "HIGH",
-      "closed": "Default password changed",
-      "check": "Default-credential candidate (posture rule)"
+      "closed": "Client file share restricted",
+      "check": "SMB null session / NFS world-readable export (posture rules)"
+    },
+    {
+      "title": "Billing data: no password needed",
+      "host": "billing-db.example · 192.0.2.40",
+      "sev": "CRITICAL",
+      "closed": "Billing database password set",
+      "check": "Unauthenticated database read (posture rule)"
     }
   ],
-  "fixItem": "Remote desktop locked down"
+  "fixItem": "Partner: NLA on, closed to the internet"
 }

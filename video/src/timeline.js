@@ -5,7 +5,7 @@ export const DURATION = 900;
 
 export const SCENES = [
   { id: 'hook',    name: '1 Hook',        from: 0,   to: 90 },
-  { id: 'path',    name: '2 The path',    from: 90,  to: 270 },
+  { id: 'path',    name: '2 Discovery',    from: 90,  to: 270 },
   { id: 'pierce',  name: '3 Pierce',      from: 270, to: 375 },
   { id: 'checks',  name: '3b Checkpoints', from: 375, to: 480 },
   { id: 'partner', name: '4 Partner',     from: 480, to: 540 },
@@ -20,10 +20,9 @@ export const T = {
   pulseAt: 40, pulseDur: 12,
   gapOpenAt: 66, gapOpenDur: 18,
   hookTextAt: 9, hookWordStagger: 3,
-  // 2 Path: each line lights its asset
-  contoursAt: 90, devicesAt: 96,
-  item1At: 90, item2At: 120, item3At: 150,
-  routeAt: 210, routeDur: 48,
+  // 2 Discovery: a scan finds everything, then the three things that matter light up
+  contoursAt: 90, scanAt: 96, scanDur: 50,
+  item1At: 120, item2At: 170, item3At: 220,
   // 3 Pierce
   sealAt: 270, sealScaleDur: 12,
   strikeAt: 282, strikeDur: 8,
@@ -32,11 +31,11 @@ export const T = {
   pupilAt: 306, pupilLockAt: 336, blinkAt: 352, blinkDur: 6,
   nameAt: 276, devaAt: 282, glossAt: 288, whatAt: 318,
   // 3b Checkpoints
-  checksAt: 375, checkItemsAt: 384, checkStagger: 6,
+  checksAt: 375, checkItemsAt: 380, checkStagger: 16, // one checkpoint per beat of the score (110 bpm)
   // 4 Partner
   partnerAt: 480, partnerLineAt: 490, partnerLineDur: 24,
   // 5 Console
-  consoleAt: 540, findingsAt: 540, attackAt: 595, fixAt: 645,
+  consoleAt: 540, findingsAt: 540, proveAt: 595, fixAt: 645,
   tickAt: 647, holdAt: 655, holdDur: 18, snapAt: 673,
   healAt: 673, healDur: 18, tealAt: 675, gradeAt: 679,
   washAt: 685, washDur: 20,
@@ -49,8 +48,9 @@ export const T = {
 // Captions: what the viewer must read, when (also the SRT source). `key` points into copy.*.json.
 export const CAPTIONS = [
   { from: 9,   to: 90,  key: 'hook' },
-  { from: 90,  to: 210, key: 'list' },
-  { from: 210, to: 270, key: 'path' },
+  { from: 120, to: 170, key: 'list', i: 0 },
+  { from: 170, to: 220, key: 'list', i: 1 },
+  { from: 220, to: 270, key: 'list', i: 2 },
   { from: 276, to: 375, key: 'name', also: 'what' },
   { from: 378, to: 480, key: 'checks' },
   { from: 484, to: 540, key: 'partner' },

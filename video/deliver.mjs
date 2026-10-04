@@ -94,12 +94,12 @@ try {
     };
     fs.writeFileSync(path.join(OUT, 'vedha_15s_en.srt'), buildSrt({ ...json('src/copy.en.json') }, mapCut));
 
-    // 5. Hook variants (first 3 s): A main hook, B the path list, C the promise.
+    // 5. Hook variants (first 3 s): A main hook, B the three findings, C the promise.
     const A = path.join(OUT, 'hook_variants', 'hook_A_door.mp4');
     await encode(MASTER, A, { audio: SCORE, seconds: 3 });
-    for (const [hook, file] of [['B', 'hook_B_path.mp4'], ['C', 'hook_C_promise.mp4']]) {
+    for (const [hook, file, px] of [['B', 'hook_B_findings.mp4', 60], ['C', 'hook_C_promise.mp4', 80]]) {
       const dir = path.join(FR, `hook_${hook}`);
-      await r.frames({ aspect: '4x5', w: 1080, h: 1350, hook, hookPx: 80 }, dir, { from: 0, to: 90 });
+      await r.frames({ aspect: '4x5', w: 1080, h: 1350, hook, hookPx: px }, dir, { from: 0, to: 90 });
       await encode(dir, path.join(OUT, 'hook_variants', file), { audio: SCORE, seconds: 3 });
     }
 

@@ -23,35 +23,31 @@ The first cut was built around a printer and a camera. Owners don't pay to prote
 3. **Close the front door:** remote logins and the firewall/VPN.
 4. **Proof for others:** a plain report for the insurer, the big customer's questionnaire, the board.
 
-## 2. The checkpoints (what the 7-day check looks at)
+## 2. The checkpoints (what the film says Vedha checks)
 
-Each checkpoint is an asset an owner recognises, mapped to checks the product **already ships** (✅ in `NETWORK_VA_USE_CASES.md`).
+**Owner ruling (2026-10-04):** Vedha does **not** offer backup, password or patching checks as part of this service. "Backups", "Passwords nobody changed" and "Old, unpatched systems" were removed from the film, even though some related rules exist in the codebase. Only what the owner confirms is offered is shown.
 
-| # | Checkpoint (owner's words) | Asset it protects | Vedha checks (shipped) |
+| # | Checkpoint (owner's words) | What it protects | Vedha checks (shipped) |
 |---|---|---|---|
-| 1 | **Remote logins** | The way in: RDP, VNC, remote management | RDP without NLA, RDP without TLS, VNC with no or weak auth, exposed WinRM/X11 (UC 30, posture rules) |
-| 2 | **Accounts and file servers** | Books, billing, client files on Windows shares | SMBv1 on (EternalBlue), SMB signing off (NTLM relay), null sessions; unauthenticated database reads |
-| 3 | **Backups** | The copy you recover from | World-readable NFS exports, anonymous rsync/FTP, exposed admin web UIs |
-| 4 | **Passwords nobody changed** | Admin access to network gear and servers | Default-credential candidates, SNMP default community, IPMI cipher-zero |
-| 5 | **Old, unpatched systems** | Everything still running on them | OS past end of support, known-exploited CVEs prioritised by CISA KEV and EPSS |
-| 6 | **What the internet can reach** | All of the above, seen from outside | Multi-vantage internet-exposure mapping (UC 81) |
+| 1 | **Everything on your network** | Knowing what you have | Network discovery and device inventory and classification (UC 1, UC 2); every open port |
+| 2 | **Remote logins** | The way in: RDP, VNC, remote management | RDP without NLA or TLS, VNC with no or weak auth, exposed WinRM/X11 |
+| 3 | **Accounts & file servers** | Books, billing, client files | SMB null session and signing, NFS world-readable exports, unauthenticated database reads, databases reachable |
+| 4 | **What the internet can reach** | All of the above, seen from outside | Multi-vantage internet-exposure mapping (UC 81, needs two probes) |
 
-Then the proof steps, which are what make it more than a scan:
-- **Prove:** attack-path correlation shows the chain, e.g. legacy Windows surface (SMBv1 + exposed RDP), NTLM-relay path.
-- **Fix, then verify:** "coverage-proven clean". A finding closes only when re-checks prove it, and a blind rule can't pass as clean.
-- **Report:** plain language; confirmed and suspected findings stay separate.
+## 3. How the film tells it (owner feedback: less attack path, more "what's vulnerable and why I care")
 
-## 3. How the film uses them
-
-- **Scene 2 (the path)** is now about assets that matter: *a remote login left open → a password never changed → the accounts server → the backups.*
-- **New beat (12.5 to 16.0 s):** the six checkpoints appear as a numbered list under the line "It checks what your business runs on."
-- **Scene 5 (console):** findings, attack path and fix all use checkpoints 1 to 3. The fix closes the **remote login**, which is the same door the hook opened, so the visual rhyme gets stronger.
-- **Report:** "Remote login locked down · Backup share restricted · Default password changed".
+- **Discovery (3.2–9 s):** a scan sweeps the office and counts the devices it finds (more than people expect). Then three things light up, each named for what's at stake, not for the technology:
+  - *The accounts PC: remote login left open.* (RDP without NLA, reachable from outside)
+  - *Client files: open to anyone on the Wi-Fi.* (an open file share)
+  - *Billing data: readable without a password.* (unauthenticated database read)
+- **Checkpoints (12.7–14.3 s):** the four above, one per beat of the music.
+- **Console:** **Find** lists the three, **Prove** opens the first to show its *evidence* (port 3389 answered from outside; NLA not required). **Fix**: the partner's change, re-checked and verified. There's no attack-path map.
+- **Report:** "Accounts PC: remote login locked down · Client file share restricted · Billing database password set".
 
 ## 4. Product gaps this exposed (not film work; for the roadmap)
 
 The film names assets by role ("accounts server", "backups"), not by product. The product doesn't yet:
-- recognise **Tally** (default port 9000 is labelled "dev app / SonarQube / Portainer" in `port_intel.py`)
+- recognise **Tally** by name (default port 9000 is labelled "dev app / SonarQube / Portainer" in `port_intel.py`)
 - classify a **NAS** (Synology 5000/5001 collides with "Docker registry")
 - recognise **firewall/VPN appliances** by model, the 2025 edge-device campaigns above
 

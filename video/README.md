@@ -4,7 +4,7 @@ A deterministic, code-rendered brand film. `src/film.js` exports a pure `renderF
 
 ## The film in one breath
 
-*Every office has one door nobody remembers.* A remote login left open, a password never changed, a backup on the same network: together they reach your accounts. The Vedha seal opens its eye and pierces through, followed by **six checkpoints**: what your business runs on. A partner you trust runs the check. The console finds what's open, proves the path, and shows the fix worked. That is the same door closing that opened in the first three seconds, and the music resolves at the same moment. Book your 7-day check.
+*Every office has one door nobody remembers.* A scan sweeps the office and keeps counting: there's more on your network than you think. Three things light up, each named for what's at stake: **the accounts PC with remote login left open, client files anyone on the Wi-Fi can open, billing data readable without a password**. The Vedha seal opens its eye and pierces through: **four checkpoints**, what your business runs on. A partner you trust runs the check. The console finds what's open, proves it with evidence, and shows the fix worked: the door from the first three seconds closes, and the music resolves at the same moment. Book your 7-day check.
 
 - Why these assets and checkpoints: `CHECKPOINTS.md` (research + product mapping)
 - What the music means: `MUSIC.md`
@@ -37,7 +37,7 @@ Uses the pre-installed Chromium at `/opt/pw-browsers`; set `CHROMIUM_PATH` to ov
 | `vedha_15s_4x5_1080x1350.mp4` + `vedha_15s_en.srt` | Cutdown: hook → seal → console → CTA |
 | `vedha_30s_en.srt` | Captions generated from the same timeline as the film |
 | `vedha_30s_hi_NEEDS_REVIEW.mp4` + `vedha_30s_hi.srt` | Hindi: **needs native-speaker review; do not publish unreviewed** |
-| `hook_variants/` | A (door), B (the path list), C (the promise): 3 s each |
+| `hook_variants/` | A (door), B (the three findings), C (the promise): 3 s each |
 | `poster_4x5.png`, `thumbnail_16x9.png` | Hook frame + seal + URL |
 | `qa/` | `report.md`, contact sheet, safe-zone sheets, 360 px readability sheet |
 

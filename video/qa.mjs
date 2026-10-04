@@ -136,7 +136,7 @@ md.push(`| Mid-wash caption, worst frame, ink on its halo | ${worstHalo.toFixed(
 // 7. Copy: guardrail words + caption-only comprehension
 const en = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/copy.en.json'), 'utf8'));
 const banned = /\b(secure|protected|safe|hack-?proof|100%|certified|cert-in approved|compliant|attack)\b/i;
-const strings = JSON.stringify(en.hook + en.list + en.path + en.what + en.checks + en.checkpoints + en.partner + en.find + en.prove + en.fix + en.report + en.cta + en.scope);
+const strings = CAPTIONS.map(c => captionText(c, en)).join(' ') + ' ' + (en.checkpointNotes || []).join(' ');
 const hit = strings.match(banned);
 md.push('\n## 7. Copy\n', `- Guardrail words in captions (secure, protected, safe, hack-proof, 100%, certified, compliant, attack): ${hit ? `found "${hit[0]}" ` : 'none '}${check(!hit)}`,
   '- Caption-only read-through (the story must make sense with no picture):\n', ...CAPTIONS.map((c, i) => `  ${i + 1}. ${captionText(c, en).replace(/\n/g, ' / ')}`));

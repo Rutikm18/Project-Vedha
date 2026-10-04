@@ -8,12 +8,13 @@ const ts = f => {
 
 export function captionText(c, copy) {
   switch (c.key) {
-    case 'list': return copy.list.join('\n');
+    case 'list': return c.i == null ? copy.list.join('\n') : copy.list[c.i];
     case 'name': return `${copy.name} (${copy.devanagari}): ${copy.gloss.toLowerCase()}.\n${copy.what}`;
     case 'checks': {
       const cp = copy.checkpoints;
       // two per line keeps every subtitle line short enough to read in one glance
-      return [copy.checks, ...[0, 2, 4].map(i => cp.slice(i, i + 2).join(' · '))].join('\n');
+      const pairs = []; for (let i = 0; i < cp.length; i += 2) pairs.push(cp.slice(i, i + 2).join(' · '));
+      return [copy.checks, ...pairs].join('\n');
     }
     case 'cta': return `${copy.cta}. ${copy.url}\n${copy.scope}`;
     default: return copy[c.key];

@@ -8,12 +8,12 @@ Every claim the film makes on screen, where it comes from, and its status. **Uns
 | 2 | "Delivered by a partner you already trust." | Not found | **Needs confirmation** |
 | 3 | "For office networks. Not cloud networks." | Probe runs inside the client network (`README.md`); not stated as copy | **Needs confirmation** |
 | 4 | Vedha, वेद्या, "TO PIERCE THROUGH" | Not found. Owner instruction: the Devanagari is वेद्या. **वेद्या (vedyā, from the root vid, "to know") does not mean "to pierce through"; that gloss belongs to वेध.** | **Needs confirmation of the gloss + cultural review** |
-| 5 | Checkpoint 1: "Remote logins" | RDP without NLA/TLS, VNC no or weak auth, exposed WinRM/X11 (posture rules, UC 30) | Sourced |
-| 6 | Checkpoint 2: "Accounts & file servers" | SMBv1, SMB signing, null session; unauthenticated database read | Sourced (as the file services those servers run; the product doesn't identify Tally by name) |
-| 7 | Checkpoint 3: "Backups" | NFS world-readable export, rsync/FTP anonymous, exposed admin UIs | Sourced (as the shares a backup sits on; no NAS device class yet) |
-| 8 | Checkpoint 4: "Passwords nobody changed" | Default-credential candidates, SNMP default community, IPMI cipher-zero | Sourced |
-| 9 | Checkpoint 5: "Old, unpatched systems" | OS past end of support (EOL catalog); KEV/EPSS-prioritised CVE correlation | Sourced |
-| 10 | Checkpoint 6: "What the internet can reach" | Multi-vantage internet-exposure mapping (UC 81, needs 2+ probes) | Sourced (note: needs a second vantage point) |
+| 5 | Scan + "DEVICES FOUND 16" | Network discovery and device inventory (UC 1, UC 2); the count is illustrative | Sourced capability, illustrative number |
+| 6 | "The accounts PC: remote login left open." | RDP without NLA / RDP reachable (posture rules) + internet-exposure mapping (UC 81) | Sourced (illustrative asset) |
+| 7 | "Client files: open to anyone on the Wi-Fi." | SMB null session, NFS world-readable export (posture rules) | Sourced (illustrative asset) |
+| 8 | "Billing data: readable without a password." | Unauthenticated database read (posture rule) | Sourced (illustrative asset) |
+| 9 | Checkpoints: Everything on your network · Remote logins · Accounts & file servers · What the internet can reach | UC 1/2; remote-access rules; file service + database rules; UC 81 | Sourced. **Backups, passwords and patching were removed on the owner's instruction (not offered)** |
+| 10 | "Prove what's real." shown as evidence on a finding | Confirmed-vs-suspected discipline; evidence recorded per finding | Sourced |
 | 11 | "Find what's open. Prove what's real. Show the fix worked." | Discovery and posture rules; attack-path correlation; coverage-proven clean before a finding auto-closes | Sourced |
 | 12 | "A plain-language report. With proof." | Report pipeline (`lib/report/*`, `prompts/report.ts`: confidence-matched language) | Sourced |
 | 13 | Grade C → B | Real scale A–F (`services/posture.py`); values illustrative | Sourced scale, illustrative values |

@@ -1,33 +1,47 @@
-# The score: what it means and how it is made
+# The score: the emotion it is built to create, and why
 
-An original piece, synthesized in code by `music.mjs`. It uses no samples, no stock or licensed music and no AI-generated audio, and the same code always writes the same file. It's normalised to **-16 LUFS integrated, true peak ≤ -1.5 dBTP**. A silent master is still delivered for every format (`out/silent/`).
+An original piece, synthesized in code by `music.mjs`. It uses no samples, no stock or licensed music and no AI-generated audio, and the same code always writes the same file. It's normalised to **-16 LUFS, true peak ≤ -1.5 dBTP**. Silent masters are still delivered for every format (`out/silent/`).
 
-## The idea
+## The emotion we want: curiosity → anticipation → excitement → confidence
 
-The music tells the same story as the picture, so it still makes sense with eyes closed.
+This is Vedha's first film. People should finish it **energised and sure**, not scared. In Russell's circumplex model of affect, the target is the **high-arousal, positive-valence** corner (excited, alert, confident), not the high-arousal, negative corner (tense, afraid). Security marketing usually goes for the second. We deliberately don't.
 
-- **Raag Bhupali** (S R G P D, a pentatonic scale with no Ma and no Ni). It is calm, open and traditionally associated with the evening, and every note in it is consonant. Nothing in the scale sounds like an alarm, which fits the brief: calm, exact, respectful, never frightening. It's familiar to an Indian ear without being a cliché.
-- **Tanpura drone on Sa (D) and Pa.** This is the "ground" of Indian music: the office, steady underneath everything.
-- **The open phrase and the closed phrase.** When the path forms, a flute climbs **S R G P D and stops on Dha**, one step short of home. The ear waits for a resolution that doesn't come. That unresolved note *is* the open door. When the fix is verified, **the same phrase returns and lands on high Sa**: the door is closed and the melody is complete. This is the musical version of the film's visual rhyme, where the gap opens in the hook and the same gap heals at the fix.
+| Principle (research) | What it says | How the score uses it |
+|---|---|---|
+| **Anticipation releases dopamine before the reward** (Salimpoor et al., *Nature Neuroscience* 2011) | The caudate releases dopamine while we *anticipate* a musical peak; the nucleus accumbens releases it *at* the peak | Two deliberate build-ups (riser + accelerating tabla roll + a beat of silence) before the two most important moments: the strike (9.4 s) and "Verified" (22.5 s) |
+| **Expectation → tension → reward** (Huron, *Sweet Anticipation*, ITPRA theory) | Tension before an expected event makes the resolution feel better (contrastive valence) | The "open phrase" climbs S R G P D and stops on Dha, unresolved. It only resolves to high Sa when the fix is verified |
+| **Tempo drives arousal, mode drives mood** (Husain, Thompson & Schellenberg, *Music Perception* 2002) | Faster tempo raises arousal; major mode lifts mood, independently | A 110 bpm groove from the strike onward, in Raag Bhupali. Its notes (S R G P D) sit on a bright, major-sounding pentatonic scale with no minor intervals |
+| **Peak-end rule** (Kahneman & Fredrickson, 1993) | We remember an experience by its most intense moment and its end, not its average | The single biggest moment is "Verified". The end is a clean, confident sonic logo that rings out, never a fade-down or a sting of fear |
+| **Sonic branding lifts recall and trust** (Audacy × Veritonic, 2023) | Ads with a sonic logo had higher recall and were rated more trustworthy | A three-note Vedha logo (Sa → Pa → high Sa, a rising fifth then a fourth: open, confident, complete), heard four times: as an unfinished question in the hook, in full at the strike, at the peak and at the end |
+| **Audio-visual synchrony** | Sound that lands with the picture reads as intentional and holds attention | A note for **every device the scan finds**, a weighted hit for each thing that matters, one bell per checkpoint, and the groove's beat 24 lands exactly on "Verified" |
 
-## Cue sheet (times come from `src/timeline.js`)
+## The arc, second by second (times from `src/timeline.js`)
 
-| Time | Picture | Music | Meaning |
+| Time | Picture | Music | Feeling |
 |---|---|---|---|
-| 0.0–3.0 | Lattice blooms; one dot pulses; the door opens | Tanpura fades in; a faint high ping on the pulse; a single flute **Re** as the gap opens, left hanging | A quiet office, and a question nobody has asked |
-| 3.0 / 4.0 / 5.0 | Remote login, password, backup appear | Three soft plucks: **Ga, Pa, Dha** | Small things, each adding up |
-| 7.0–8.6 | The route draws through to the accounts | Flute climbs **S R G P D**, stops on **Dha** | The path is real, and unresolved |
-| 9.4 | The seal's V-notch strikes | A low, round **thock** with a low Sa | Vedha pierces through |
-| 10.6 | "A 7-day network health check." | Flute glides Re → **Ga** | Warmth: this is help, not a threat |
-| 12.8–13.8 | Six checkpoints appear | Six plucks climbing **S R G P D Ṡ**, one per checkpoint | Methodical: each one counted |
-| 16.0 | "Delivered by a partner you already trust." | A second flute line, **Ga → Pa** | Someone joins you |
-| 18.0–22.4 | Console finds and proves | A steady soft pulse at 90 bpm | Work being done, unhurried |
-| 21.6–22.4 | Partner ticks the fix; hold-to-verify fills | Tick; flute swells on **Dha** | The held breath |
-| **22.5** | **Verified**: route snaps, door heals, teal | The path phrase returns and **resolves to high Sa**; two-note bell **Pa → Sa** | The door is closed, and the melody is complete |
-| 25.3–26.1 | Three doors close in the report; "Verified" | Descending plucks **Dha, Pa, Ga**; a quiet bell | Things settling |
-| 27.6–28.2 | CTA | Bhupali's signature cadence **Ga Re Sa**, landing with the drone | Home |
-| 29.0–30.0 | Last frames held still | Rings out to silence | Thumbnail-safe ending |
+| 0.0–3.0 | Lattice blooms; the door opens | Pad breathes in; the logo asks a question (Sa → Pa, unfinished); one held Re as the door opens | **Curiosity** |
+| 3.2–4.9 | The scan finds 16 devices | One rising pluck per device found | **Discovery**: there's more here than I knew |
+| 4.0 / 5.7 / 7.3 | Accounts PC, client files, billing data light up | A tabla bass stroke + pluck on each; a shaker, then a bass pulse join | **Stakes rising**: these are mine |
+| 7.8–9.4 | The three things hold | The open phrase climbs and stops on Dha; riser + accelerating roll; a breath of silence | **Anticipation** (dopamine before the reward) |
+| **9.4** | **The seal strikes** | **Impact + the full logo; the groove starts (half-time, then full)** | **Arrival, energy** |
+| 12.7–14.3 | Four checkpoints | One bright bell per checkpoint, climbing, on the beat | Momentum, order |
+| 16.0 | The partner | A warm flute line joins | Trust: someone with you |
+| 18.0–21.5 | Findings, then evidence | The groove drives; small accents on Find and Prove | Focus, progress |
+| 21.5–22.4 | The fix; hold-to-verify fills | Four on the floor, riser, roll, the flute swells on Dha… then a beat of silence | **Peak anticipation** |
+| **22.5** | **Verified: teal, door heals, grade improves** | **Impact; the open phrase resolves to high Sa; the logo rings in octaves; the groove returns fuller** | **The peak**: relief and triumph |
+| 25.3–26.1 | Report: three doors close | Descending plucks; a quiet bell | Satisfaction |
+| 27.4–30.0 | Book your 7-day check | Final hit + the full logo; the chord rings out; still frames are quiet | **Confidence** (a strong end) |
 
-## Cultural review
+## Why it stays respectful
 
-Raag Bhupali and the tanpura are used respectfully as a musical language, with no religious text or chant. A musician familiar with Hindustani music should listen once before release. It's on the "needs human review" list.
+- No minor keys, alarms, sirens, glitches or "hacker" sounds. The impacts are warm and low-passed: big, not threatening.
+- Indian identity comes from the raga, the tabla theka (*ge*, *na*) and the bansuri-like flute, used as musical language, without religious text or chant.
+- **Cultural review:** a musician familiar with Hindustani music should listen once. Bhupali is traditionally an evening raga; here it's used for its brightness, not its time of day.
+
+## Sources
+
+- Salimpoor et al. (2011), *Anatomically distinct dopamine release during anticipation and experience of peak emotion to music*, Nature Neuroscience: [summary](https://www.sciencedaily.com/releases/2011/01/110112111117.htm)
+- Huron (2006), *Sweet Anticipation: Music and the Psychology of Expectation*, MIT Press: [book](https://mitpressbookstore.mit.edu/book/9780262582780); [ITPRA overview](https://www.frontiersin.org/articles/10.3389/fpsyg.2015.00079/full)
+- Husain, Thompson & Schellenberg (2002), *Effects of musical tempo and mode on arousal, mood, and spatial abilities*, Music Perception 20(2): [paper](https://research.bond.edu.au/en/publications/effects-of-musical-tempo-and-mode-on-arousal-mood-and-spatial-abi/)
+- Fredrickson & Kahneman (1993), duration neglect and the peak-end rule: [paper](https://bear.warrington.ufl.edu/brenner/mar7588/Papers/fredr-kahneman-jpsp1993.pdf)
+- Audacy × Veritonic (2023), audio ad effectiveness and sonic branding: [press release](https://www.businesswire.com/news/home/20230213005383/en)

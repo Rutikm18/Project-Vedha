@@ -63,34 +63,25 @@ const DOOR = { c0: 4, c1: 6, r0: 19, r1: 22 };
 const DOOR_C = node((DOOR.c0 + DOOR.c1) / 2, (DOOR.r0 + DOOR.r1) / 2);
 const PULSE_DOT = [5, 21];
 
+// The three that matter (the story), plus the rest of the office the scan finds.
 const DEVICES = [
-  { id: 'REMOTE LOGIN', at: node(9, 14) },  // the way in (checkpoint 1)
-  { id: 'FILE SERVER',  at: node(15, 9) },  // shares + a password never changed (2, 4)
-  { id: 'ACCOUNTS',     at: node(21, 13) }, // the books (2)
-  { id: 'BACKUPS',      at: node(21, 19) }, // the copy you recover from (3)
-  { id: 'LAPTOPS',      at: node(4, 8) },
+  { id: 'ACCOUNTS PC',  at: node(9, 17) },  // remote login left open (fixed in the film)
+  { id: 'FILE SERVER',  at: node(15, 9) },  // client files open to anyone
+  { id: 'BILLING DB',   at: node(21, 13) }, // readable without a password
+  { id: 'LAPTOPS',      at: node(4, 7) },
 ];
+const KEY = ['ACCOUNTS PC', 'FILE SERVER', 'BILLING DB'];
+const OTHERS = [[7, 4], [12, 5], [17, 4], [23, 6], [11, 11], [18, 12], [6, 12], [13, 15], [19, 17], [23, 10], [16, 20], [22, 20]].map(([c, r]) => node(c, r));
 const dev = id => DEVICES.find(d => d.id === id).at;
-
-// Edge -> door -> REMOTE LOGIN -> FILE SERVER -> ACCOUNTS -> BACKUPS, orthogonal along the lattice.
-const ROUTE = [[-40, DOOR_C[1]], [dev('REMOTE LOGIN')[0], DOOR_C[1]], dev('REMOTE LOGIN'),
-  [dev('FILE SERVER')[0], dev('REMOTE LOGIN')[1]], dev('FILE SERVER'),
-  [dev('ACCOUNTS')[0], dev('FILE SERVER')[1]], dev('ACCOUNTS'), dev('BACKUPS')];
-// The fix closes the remote login: the route snaps at the way in, the same door the hook opened.
-const SNAP_IDX = 2;
-const ROUTE_LEN = []; // cumulative
-{ let L = 0; ROUTE_LEN.push(0); for (let i = 1; i < ROUTE.length; i++) { L += Math.hypot(ROUTE[i][0] - ROUTE[i - 1][0], ROUTE[i][1] - ROUTE[i - 1][1]); ROUTE_LEN.push(L); } }
-const ROUTE_TOTAL = ROUTE_LEN[ROUTE_LEN.length - 1];
-function routePoint(len) {
-  len = clamp(len, 0, ROUTE_TOTAL);
-  for (let i = 1; i < ROUTE.length; i++) {
-    if (len <= ROUTE_LEN[i]) {
-      const t = (len - ROUTE_LEN[i - 1]) / (ROUTE_LEN[i] - ROUTE_LEN[i - 1] || 1);
-      return [lerp(ROUTE[i - 1][0], ROUTE[i][0], t), lerp(ROUTE[i - 1][1], ROUTE[i][1], t)];
-    }
-  }
-  return ROUTE[ROUTE.length - 1];
-}
+// Scan sweeps left to right; everything appears as the line passes it.
+const SCAN_X0 = -40, SCAN_X1 = 1120;
+const foundAt = x => T.scanAt + (x - SCAN_X0) / (SCAN_X1 - SCAN_X0) * T.scanDur;
+const FOUND = [...DEVICES.map(d => d.at), ...OTHERS].map(p => foundAt(p[0])).sort((a, b) => a - b);
+// Exposure line: from the outside, through the door, to the accounts PC's remote login.
+const EXPOSE = [[-40, DOOR_C[1]], [dev('ACCOUNTS PC')[0], DOOR_C[1]], [dev('ACCOUNTS PC')[0], dev('ACCOUNTS PC')[1] + 22]];
+const EXPOSE_LEN = Math.abs(EXPOSE[1][0] - EXPOSE[0][0]) + Math.abs(EXPOSE[2][1] - EXPOSE[1][1]);
+const exposePoint = len => len <= EXPOSE[1][0] - EXPOSE[0][0]
+  ? [EXPOSE[0][0] + len, EXPOSE[0][1]] : [EXPOSE[1][0], EXPOSE[1][1] - (len - (EXPOSE[1][0] - EXPOSE[0][0]))];
 
 // Contours: seeded value noise + marching squares, computed once.
 const CONTOURS = (() => {
@@ -137,13 +128,13 @@ function story(f) {
     strength = f < T.displaceAt + 6 ? easeOut(a) : lerp(1, 0.35, easeOut(b));
     strength *= 1 - easeInOut(prog(f, T.partnerAt, 30));
   }
-  const routeDraw = easeInOut(prog(f, T.routeAt, T.routeDur));
+  const expose = easeInOut(prog(f, T.item1At, 24));
   const snap = easeOut(prog(f, T.snapAt, 10));
   // Text ink never interpolates (that would pass through zero contrast mid-wash):
   // each frame uses whichever of Day/Night text contrasts more with the current background.
   const bg = mix(C.night, C.day, wash);
   const ink = contrast(C.day, bg) >= contrast(C.night, bg) ? C.day : C.night;
-  return { wash, gap, heal, strength, routeDraw, snap, teal: f >= T.tealAt, ink, bg };
+  return { wash, gap, heal, strength, expose, snap, teal: f >= T.tealAt, ink, bg };
 }
 
 // Map camera: push-ins in scenes 1-2, hold, zoom out in scene 4.
@@ -273,52 +264,62 @@ function drawMap(ctx, f, S, { alpha = 1, mini = false, copy, pierce = [540, 560]
     ctx.fillStyle = rgba(C.blueOnNight, 0.9 * Math.sin(t * Math.PI)); ctx.fill();
   }
 
-  // devices
-  const devA = mini ? 1 : easeOut(prog(f, T.devicesAt, 12));
-  if (devA > 0) {
-    DEVICES.forEach(({ id, at }, i) => {
-      const a = mini ? 1 : easeOut(prog(f, T.devicesAt + i * 3, 10));
-      const [x, y] = displace(at[0], at[1]);
-      const lit = { 'REMOTE LOGIN': T.item1At, 'BACKUPS': T.item3At, 'ACCOUNTS': T.routeAt + T.routeDur - 6 }[id];
-      const hl = lit == null ? 0 : mini ? 1 : easeOut(prog(f, lit, 10));
-      ctx.save(); ctx.globalAlpha *= a;
-      rrect(ctx, x - 22, y - 22, 44, 44, 10); ctx.fillStyle = S.bg; ctx.fill();
-      ctx.lineWidth = 2; ctx.strokeStyle = hl > 0 ? mix(night ? '#F3F6FA' : '#060B14', blue, hl) : rgba(night ? C.day : C.night, 0.55); ctx.stroke();
-      if (id === 'FILE SERVER') { // key glyph: the password never changed
-        const k = mini ? 1 : easeOut(prog(f, T.item2At, 10));
-        if (k > 0) { // key glyph
-          ctx.save(); ctx.globalAlpha *= k; ctx.strokeStyle = blue; ctx.lineWidth = 2.5;
-          ctx.beginPath(); ctx.arc(x + 34, y - 30, 7, 0, Math.PI * 2); ctx.moveTo(x + 41, y - 30); ctx.lineTo(x + 60, y - 30); ctx.moveTo(x + 54, y - 30); ctx.lineTo(x + 54, y - 23); ctx.stroke(); ctx.restore();
-        }
-      }
-      ctx.restore();
-    });
+  // scan line (discovery)
+  const sp = prog(f, T.scanAt, T.scanDur);
+  if (!mini && sp > 0 && sp < 1) {
+    const sx = lerp(SCAN_X0, SCAN_X1, easeInOut(sp));
+    const g = ctx.createLinearGradient(sx - 120, 0, sx, 0);
+    g.addColorStop(0, rgba(C.blueOnNight, 0)); g.addColorStop(1, rgba(C.blueOnNight, 0.10));
+    ctx.fillStyle = g; ctx.fillRect(sx - 120, -100, 120, 1600);
+    ctx.fillStyle = rgba(C.blueOnNight, 0.7); ctx.fillRect(sx - 1, -100, 2, 1600);
   }
-
-  // route
-  const drawn = (mini ? 1 : S.routeDraw) * ROUTE_TOTAL;
-  if (drawn > 0) {
-    const cut = ROUTE_LEN[SNAP_IDX];
-    const stroke = (from, to, a) => {
-      if (to <= from || a <= 0) return;
-      ctx.beginPath(); const p0 = displace(...routePoint(from)); ctx.moveTo(...p0);
-      for (let i = 1; i < ROUTE.length; i++) if (ROUTE_LEN[i] > from && ROUTE_LEN[i] < to) ctx.lineTo(...displace(...ROUTE[i]));
-      ctx.lineTo(...displace(...routePoint(to)));
-      ctx.save(); ctx.globalAlpha *= a; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-      ctx.shadowColor = rgba(C.blue, 0.35); ctx.shadowBlur = 10; ctx.strokeStyle = blue; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
-    };
-    stroke(0, Math.min(drawn, cut - 18 * S.snap), 1);
-    stroke(cut + 18 * S.snap, drawn, 1 - S.snap * 0.85);
-  }
-
-  // device labels on top of the route, each on a small backing in the page colour
-  if (devA > 0) DEVICES.forEach(({ id, at }, i) => {
-    const a = mini ? 1 : easeOut(prog(f, T.devicesAt + i * 3, 10));
+  const seen = at => (mini ? 1 : easeOut(prog(f, foundAt(at[0]), 8)));
+  const ink = night ? C.day : C.night;
+  // the rest of the office: small unlabeled devices
+  OTHERS.forEach(at => {
+    const a = seen(at); if (a <= 0) return;
     const [x, y] = displace(at[0], at[1]);
-    ctx.save(); ctx.globalAlpha *= a; ctx.font = `500 28px ${FONT.mono}`;
-    const w = ctx.measureText(id).width;
-    rrect(ctx, x - w / 2 - 8, y + 30, w + 16, 36, 6); ctx.fillStyle = S.bg; ctx.fill(); ctx.restore();
-    text(ctx, id, x, y + 56, { font: `500 28px ${FONT.mono}`, color: night ? C.day : C.night, alpha: 0.78 * a, align: 'center' });
+    ctx.save(); ctx.globalAlpha *= a; rrect(ctx, x - 12, y - 12, 24, 24, 6); ctx.fillStyle = S.bg; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = rgba(ink, 0.45); ctx.stroke(); ctx.restore();
+  });
+  // exposure: outside -> door -> accounts PC; breaks at the door when the fix lands
+  const ex = (mini ? 1 : S.expose) * EXPOSE_LEN;
+  if (ex > 0) {
+    const brk = 30 * S.snap, a = 1 - 0.85 * S.snap;
+    ctx.save(); ctx.globalAlpha *= a; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.setLineDash([10, 8]);
+    ctx.shadowColor = rgba(C.blue, 0.35); ctx.shadowBlur = 10; ctx.strokeStyle = blue; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(...displace(...EXPOSE[0]));
+    if (ex > EXPOSE[1][0] - EXPOSE[0][0]) ctx.lineTo(...displace(...EXPOSE[1]));
+    ctx.lineTo(...displace(...exposePoint(ex))); ctx.stroke(); ctx.restore();
+    if (copy.internetLabel) text(ctx, copy.internetLabel, 130, DOOR_C[1] - 40 - brk * 0, { font: `500 28px ${FONT.mono}`, color: blue, alpha: alpha > 0 ? Math.min(1, S.expose * 2) * 0.9 * a : 0 });
+  }
+  // named devices: ring + label; the three that matter light up in turn
+  const litAt = { 'ACCOUNTS PC': T.item1At, 'FILE SERVER': T.item2At, 'BILLING DB': T.item3At };
+  DEVICES.forEach(({ id, at }) => {
+    const a = seen(at); if (a <= 0) return;
+    const [x, y] = displace(at[0], at[1]);
+    const hl = litAt[id] == null ? 0 : mini ? 1 : easeOut(prog(f, litAt[id], 10));
+    ctx.save(); ctx.globalAlpha *= a;
+    if (hl > 0 && !mini) { // a soft ring that pulses once when it lights up
+      const pr = prog(f, litAt[id], 24);
+      ctx.beginPath(); ctx.arc(x, y, 34 + 26 * pr, 0, Math.PI * 2); ctx.strokeStyle = rgba(C.blueOnNight, 0.5 * (1 - pr)); ctx.lineWidth = 2; ctx.stroke();
+    }
+    rrect(ctx, x - 22, y - 22, 44, 44, 10); ctx.fillStyle = S.bg; ctx.fill();
+    ctx.lineWidth = hl > 0 ? 2.5 : 2; ctx.strokeStyle = hl > 0 ? mix(night ? '#F3F6FA' : '#060B14', blue, hl) : rgba(ink, 0.55); ctx.stroke();
+    if (id === 'FILE SERVER' && hl > 0) { // open padlock: open to anyone
+      ctx.save(); ctx.globalAlpha *= hl; ctx.strokeStyle = blue; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+      ctx.strokeRect(x + 28, y - 36, 18, 14);
+      ctx.beginPath(); ctx.moveTo(x + 32, y - 36); ctx.lineTo(x + 32, y - 44); ctx.arc(x + 40, y - 44, 8, Math.PI, 0); ctx.stroke(); ctx.restore();
+    }
+    if (id === 'BILLING DB' && hl > 0) { // no-key mark: a key with a slash
+      ctx.save(); ctx.globalAlpha *= hl; ctx.strokeStyle = blue; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(x + 34, y - 30, 7, 0, Math.PI * 2); ctx.moveTo(x + 41, y - 30); ctx.lineTo(x + 58, y - 30);
+      ctx.moveTo(x + 28, y - 18); ctx.lineTo(x + 60, y - 42); ctx.stroke(); ctx.restore();
+    }
+    ctx.font = `500 28px ${FONT.mono}`; const w = ctx.measureText(id).width;
+    rrect(ctx, x - w / 2 - 8, y + 30, w + 16, 36, 6); ctx.fillStyle = S.bg; ctx.fill();
+    ctx.restore();
+    text(ctx, id, x, y + 56, { font: `500 28px ${FONT.mono}`, color: hl > 0 ? blue : ink, alpha: (hl > 0 ? 1 : 0.78) * a, align: 'center' });
   });
   ctx.restore();
 }
@@ -355,13 +356,14 @@ function sceneHook(ctx, f, S, L, copy) {
 }
 
 function scenePath(ctx, f, S, L, copy) {
-  const font = `500 ${L.capPx}px ${FONT.ui}`;
-  const starts = [T.item1At, T.item2At, T.item3At];
-  copy.list.forEach((s, i) => {
-    const { a, dy } = life(f, starts[i], T.routeAt);
-    text(ctx, s, L.capX, L.listBase + i * L.capLH, { font, color: C.day, alpha: a, dy });
-  });
-  caption(ctx, L, f, copy.path, T.routeAt, 270, C.day);
+  // live count of what the scan has found
+  const n = FOUND.filter(t => f >= t).length;
+  const ca = life(f, T.scanAt, T.sealAt);
+  text(ctx, copy.devicesFound, L.capX, L.counterY, { font: `500 30px ${FONT.mono}`, color: C.blueOnNight, alpha: ca.a });
+  text(ctx, String(n), L.capX, L.counterY + 84, { font: `400 88px ${FONT.display}`, color: C.day, alpha: ca.a });
+  // one thing that matters at a time
+  [T.item1At, T.item2At, T.item3At].forEach((at, i, all) =>
+    caption(ctx, L, f, copy.list[i], at, all[i + 1] ?? T.sealAt, C.day));
 }
 
 function scenePierceAndPartner(ctx, f, S, L, copy) {
@@ -377,20 +379,15 @@ function scenePierceAndPartner(ctx, f, S, L, copy) {
   let eye = easeOut(prog(f, T.eyeAt, T.eyeDur));
   if (f >= T.blinkAt && f < T.blinkAt + T.blinkDur) eye *= Math.abs(Math.cos((f - T.blinkAt) / T.blinkDur * Math.PI));
   const pupil = easeOut(prog(f, T.pupilAt, 8));
-  // pupil follows a comet that runs back along the route to the door (4-frame lag), then locks.
+  // the pupil looks at each of the three things that matter in turn, then locks on the door.
   const z = camera(f), toScreen = ([x, y]) => toWorldScreen(L, [PIVOT[0] + (x - PIVOT[0]) * z, PIVOT[1] + (y - PIVOT[1]) * z]);
-  const cometAt = ff => routePoint(ROUTE_TOTAL * (1 - easeInOut(prog(ff, T.pupilAt, T.pupilLockAt - T.pupilAt))));
-  let target = toScreen(cometAt(f - 4));
+  const seq = [dev('ACCOUNTS PC'), dev('FILE SERVER'), dev('BILLING DB'), DOOR_C];
+  const step = Math.min(3, Math.max(0, Math.floor((f - 4 - T.pupilAt) / ((T.pupilLockAt - T.pupilAt) / 3))));
+  let target = toScreen(seq[step]);
   if (f >= T.checksAt) target = [L.checkX + 40, L.checkY + 3 * L.checkLH];
   if (f >= T.partnerAt + 10) target = L.partnerNode;
   const dx = target[0] - cx, dy = target[1] - cy, d = Math.hypot(dx, dy) || 1;
   const look = [dx / d * Math.min(1, d / 300), dy / d * Math.min(1, d / 300)];
-  // comet
-  if (f >= T.pupilAt && f < T.pupilLockAt + 8) {
-    const [x, y] = toScreen(cometAt(f)), a = 1 - prog(f, T.pupilLockAt, 8);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, 22); g.addColorStop(0, rgba(C.blueOnNight, 0.9 * a)); g.addColorStop(1, rgba(C.blueOnNight, 0));
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.fill();
-  }
   const alpha = s3in * (1 - toConsole);
   drawSeal(ctx, cx, cy, size, { notch, eye, pupil, look, color: C.blueOnNight, alpha });
 
@@ -413,6 +410,7 @@ function scenePierceAndPartner(ctx, f, S, L, copy) {
       const y = L.checkY + i * L.checkLH;
       text(ctx, String(i + 1).padStart(2, '0'), L.checkX, y, { font: `500 30px ${FONT.mono}`, color: C.blueOnNight, alpha: a, dy });
       text(ctx, label, L.checkX + 64, y, { font: `500 ${L.checkPx}px ${FONT.ui}`, color: C.day, alpha: a, dy });
+      if (copy.checkpointNotes) text(ctx, copy.checkpointNotes[i], L.checkX + 66, y + Math.round(L.checkPx * 0.85), { font: `500 28px ${FONT.mono}`, color: C.blueOnNight, alpha: 0.9 * a, dy });
     });
   }
 
@@ -466,7 +464,7 @@ function sceneConsole(ctx, f, S, L, copy, cfg) {
   text(ctx, 'B', x + w - 64, y + 84, { font: `600 56px ${FONT.ui}`, color: tealCol, alpha: g, align: 'center', dy: (1 - g) * 10 });
 
   // tabs
-  const tab = f < T.attackAt ? 1 : f < T.reportAt ? 2 : 3;
+  const tab = f < T.reportAt ? 1 : 3;
   ctx.save(); ctx.font = `500 26px ${FONT.ui}`; let tx = x + 40;
   copy.ui.tabs.forEach((t, i) => {
     const tw = ctx.measureText(t).width;
@@ -478,61 +476,59 @@ function sceneConsole(ctx, f, S, L, copy, cfg) {
   ctx.fillStyle = mix('#2A2F3C', C.border, S.wash); ctx.fillRect(x, y + 181, w, 1.5);
 
   const bx = x + 40, by = y + 220, bw = w - 80;
-  const fFind = 1 - prog(f, T.attackAt - 4, 6);
-  const fAtk = prog(f, T.attackAt, 8) * (1 - prog(f, T.reportAt, 6));
+  const fFind = 1 - prog(f, T.reportAt, 6);
   const fRep = prog(f, T.reportAt + 4, 8);
+  const rowBg = mix('#1C1F28', '#F8FAFC', S.wash);
 
-  // Findings
+  // Findings: what on this network is vulnerable, in plain words.
+  // Prove: the first finding opens to show its evidence. Fix: the partner's change, verified by a re-check.
   if (fFind > 0) {
     ctx.save(); ctx.globalAlpha *= fFind;
+    const pP = easeInOut(prog(f, T.proveAt, 14)), fP = easeInOut(prog(f, T.fixAt, 12));
     const n = Math.min(3, Math.floor(prog(f, T.findingsAt + 8, 24) * 3.999));
-    text(ctx, String(n), bx, by + 90, { font: `400 110px ${FONT.display}`, color: ink });
-    text(ctx, copy.ui.findingsTitle, bx + 80, by + 84, { font: `500 26px ${FONT.mono}`, color: sub });
-    const rows = cfg.findings;
-    rows.forEach((r, i) => {
+    text(ctx, String(n), bx, by + 90, { font: `400 110px ${FONT.display}`, color: ink, alpha: 1 - pP });
+    text(ctx, copy.ui.findingsTitle, bx + 80, by + 84, { font: `500 26px ${FONT.mono}`, color: sub, alpha: 1 - pP });
+    let ry = lerp(by + 140, by + 20, pP);
+    cfg.findings.forEach((r, i) => {
       const { a, dy } = life(f, T.findingsAt + 8 + i * 8, null);
-      const ry = by + 140 + i * 140;
-      ctx.save(); ctx.globalAlpha *= a; ctx.translate(0, dy);
-      rrect(ctx, bx, ry, bw, 124, 14); ctx.fillStyle = mix('#1C1F28', '#F8FAFC', S.wash); ctx.fill();
-      ctx.save(); let tp = 32; ctx.font = `500 ${tp}px ${FONT.ui}`; while (tp > 22 && ctx.measureText(r.title).width > bw - 170) ctx.font = `500 ${--tp}px ${FONT.ui}`; ctx.restore();
-      text(ctx, r.title, bx + 28, ry + 54, { font: `500 ${tp}px ${FONT.ui}`, color: ink });
-      text(ctx, r.host, bx + 28, ry + 96, { font: `400 24px ${FONT.mono}`, color: sub });
-      text(ctx, r.sev, bx + bw - 28, ry + 54, { font: `500 22px ${FONT.mono}`, color: sub, align: 'right' });
+      const h = 116 + (i === 0 ? 124 * pP + 66 * fP : 0);
+      ctx.save(); ctx.globalAlpha *= a * (i === 0 ? 1 : lerp(1, 0.55, pP)); ctx.translate(0, dy);
+      rrect(ctx, bx, ry, bw, h, 14); ctx.fillStyle = rowBg; ctx.fill();
+      if (i === 0 && pP > 0) { rrect(ctx, bx, ry, bw, h, 14); ctx.strokeStyle = f >= T.tealAt ? tealCol : blue; ctx.globalAlpha *= pP; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha /= pP; }
+      ctx.save(); let tp = 32; ctx.font = `500 ${tp}px ${FONT.ui}`; while (tp > 22 && ctx.measureText(r.title).width > bw - 230) ctx.font = `500 ${--tp}px ${FONT.ui}`; ctx.restore();
+      text(ctx, r.title, bx + 28, ry + 50, { font: `500 ${tp}px ${FONT.ui}`, color: ink });
+      text(ctx, r.host, bx + 28, ry + 90, { font: `400 24px ${FONT.mono}`, color: sub });
+      const chipA = i === 0 ? pP : 0;
+      text(ctx, r.sev, bx + bw - 28, ry + 50, { font: `500 22px ${FONT.mono}`, color: sub, align: 'right', alpha: 1 - chipA });
+      if (i === 0 && pP > 0) {
+        // Proven (blue) becomes Verified (teal, with a check) at the verification beat
+        chip(ctx, bx + bw - 190, ry + 22, copy.chips.proven, blue, { alpha: pP * (1 - prog(f, T.tealAt, 6)) });
+        chip(ctx, bx + bw - 210, ry + 22, copy.chips.verified, tealCol, { check: true, alpha: easeOut(prog(f, T.tealAt, 8)) });
+        // evidence
+        ctx.save(); ctx.globalAlpha *= pP;
+        ctx.fillStyle = mix('#2A2F3C', C.border, S.wash); ctx.fillRect(bx + 28, ry + 116, bw - 56, 1.5);
+        text(ctx, copy.ui.evidence, bx + 28, ry + 154, { font: `500 22px ${FONT.mono}`, color: blue });
+        r.evidence.forEach((e, k) => text(ctx, e, bx + 28, ry + 192 + k * 34, { font: `400 24px ${FONT.mono}`, color: ink }));
+        ctx.restore();
+        // the fix, ticked by the partner, then hold-to-verify
+        if (fP > 0) {
+          ctx.save(); ctx.globalAlpha *= fP;
+          const ay = ry + 252;
+          rrect(ctx, bx + 28, ay, 36, 36, 8); ctx.strokeStyle = sub; ctx.lineWidth = 2; ctx.stroke();
+          const tick = easeOut(prog(f, T.tickAt, 8));
+          if (tick > 0) { ctx.save(); ctx.globalAlpha *= tick; rrect(ctx, bx + 28, ay, 36, 36, 8); ctx.fillStyle = blue; ctx.fill(); checkIcon(ctx, bx + 46, ay + 18, 22, '#FFFFFF'); ctx.restore(); }
+          text(ctx, cfg.fixItem, bx + 80, ay + 27, { font: `500 26px ${FONT.ui}`, color: ink });
+          const hx = bx + bw - 54, hy = ay + 18, hp = prog(f, T.holdAt, T.holdDur);
+          ctx.beginPath(); ctx.arc(hx, hy, 24, 0, Math.PI * 2); ctx.strokeStyle = rgba(S.wash < 0.5 ? C.day : C.night, 0.2); ctx.lineWidth = 5; ctx.stroke();
+          if (hp > 0) { ctx.beginPath(); ctx.arc(hx, hy, 24, -Math.PI / 2, -Math.PI / 2 + hp * Math.PI * 2); ctx.strokeStyle = f >= T.tealAt ? tealCol : blue; ctx.stroke(); }
+          if (f >= T.tealAt) checkIcon(ctx, hx, hy, 22, tealCol, 4);
+          text(ctx, copy.ui.holdToVerify, hx - 40, hy + 9, { font: `500 22px ${FONT.ui}`, color: sub, align: 'right' });
+          ctx.restore();
+        }
+      }
       ctx.restore();
+      ry += h + 12;
     });
-    ctx.restore();
-  }
-
-  // Attack use case: the map, inset, with the Proven chip; then the fix.
-  if (fAtk > 0) {
-    ctx.save(); ctx.globalAlpha *= fAtk;
-    const mx = bx, my = by, mw = bw, mh = 470;
-    rrect(ctx, mx, my, mw, mh, 14); ctx.fillStyle = mix('#0B111C', '#F8FAFC', S.wash); ctx.fill();
-    ctx.save(); rrect(ctx, mx, my, mw, mh, 14); ctx.clip();
-    const k = mh / 720, ox = (1080 - mw / k) / 2; // map window y 230..950 holds devices + door
-    ctx.translate(mx, my); ctx.scale(k, k); ctx.translate(-ox, -230);
-    drawMap(ctx, f, S, { mini: true, copy });
-    ctx.restore();
-    const proven = life(f, T.attackAt + 10, null);
-    const chipX = mx + mw - 200, chipY = my + 20;
-    chip(ctx, chipX, chipY, copy.chips.proven, blue, { alpha: proven.a * (1 - prog(f, T.snapAt, 6)) });
-    chip(ctx, chipX, chipY, copy.chips.verified, tealCol, { check: true, alpha: easeOut(prog(f, T.tealAt, 8)) });
-
-    // fix row
-    const ry = my + mh + 30;
-    const fx = life(f, T.fixAt, null);
-    ctx.save(); ctx.globalAlpha *= fx.a; ctx.translate(0, fx.dy);
-    rrect(ctx, bx, ry, 40, 40, 8); ctx.strokeStyle = sub; ctx.lineWidth = 2; ctx.stroke();
-    const tick = easeOut(prog(f, T.tickAt, 8));
-    if (tick > 0) { ctx.save(); ctx.globalAlpha *= tick; rrect(ctx, bx, ry, 40, 40, 8); ctx.fillStyle = blue; ctx.fill(); checkIcon(ctx, bx + 20, ry + 20, 24, '#FFFFFF'); ctx.restore(); }
-    text(ctx, cfg.fixItem, bx + 60, ry + 30, { font: `500 28px ${FONT.ui}`, color: ink });
-    // hold-to-verify ring
-    const hx = bx + bw - 44, hy = ry + 20, hp = prog(f, T.holdAt, T.holdDur);
-    ctx.beginPath(); ctx.arc(hx, hy, 30, 0, Math.PI * 2); ctx.strokeStyle = rgba(S.wash < 0.5 ? C.day : C.night, 0.2); ctx.lineWidth = 5; ctx.stroke();
-    if (hp > 0) { ctx.beginPath(); ctx.arc(hx, hy, 30, -Math.PI / 2, -Math.PI / 2 + hp * Math.PI * 2); ctx.strokeStyle = f >= T.tealAt ? tealCol : blue; ctx.stroke(); }
-    if (f >= T.tealAt) checkIcon(ctx, hx, hy, 26, tealCol, 4);
-    text(ctx, copy.ui.holdToVerify, hx - 50, hy + 9, { font: `500 24px ${FONT.ui}`, color: sub, align: 'right' });
-    ctx.restore();
     ctx.restore();
   }
 
@@ -570,8 +566,8 @@ function sceneConsole(ctx, f, S, L, copy, cfg) {
 
   // captions + illustrative tag (outside the drifting frame; text never moves while read)
   const capCol = S.ink;
-  caption(ctx, L, f, copy.find, T.findingsAt + 4, T.attackAt, capCol);
-  caption(ctx, L, f, copy.prove, T.attackAt, T.fixAt, capCol);
+  caption(ctx, L, f, copy.find, T.findingsAt + 4, T.proveAt, capCol);
+  caption(ctx, L, f, copy.prove, T.proveAt, T.fixAt, capCol);
   caption(ctx, L, f, copy.fix, T.fixAt, T.reportAt, capCol);
   caption(ctx, L, f, copy.report, T.reportAt, T.ctaAt, capCol);
   const tw = S.wash, tagHalo = tw > 0 && tw < 1 ? { color: capCol === C.day ? C.night : C.day, width: 6, alpha: Math.sin(tw * Math.PI) } : null;
@@ -651,3 +647,4 @@ export function renderPoster(ctx, cfg) {
   text(ctx, cfg.copy.url, L.capX, L.capBase, { font: `500 ${L.capPx * 0.75}px ${FONT.ui}`, color: C.day, alpha: 0.85 });
   ctx.restore();
 }
+export { FOUND };
