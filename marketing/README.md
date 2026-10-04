@@ -28,7 +28,8 @@ Rules followed throughout (from the film brief and claims register):
 | 12 | P0 | Open Door share card | `12-open-door-card/` (page + OG image) | Built (deploy to site) |
 | 13 | P1 | CERT-In 15 controls: verified mapping | `13-certin-controls/MAPPING.md` + `mapping.csv` | Done (verify control order in PDF) |
 | 14 | P1 | WhatsApp channel with opt-in | `14-whatsapp-channel/` (SETUP.md, icon, poster builder, consent log) | Ready to create (needs the phone) |
-| 15–29 | P1/P2 | See the action plan | Folders created as each starts | Not started |
+| 15 | P1 | "CERT-In's 15 controls, accurately" guide + one-page PDF | `15-certin-guide/` (index.html, PDF; built from #13's CSV) | Built (publish; verify control order) |
+| 16–29 | P1/P2 | See below | | In progress |
 | — | Extra | Visiting card system (founder + partner, 2 sizes) | `cards/` (DESIGN.md, mockup, print PDFs in `cards/out/`) | Built (fill people.json, print proof) |
 
 ## Rendering assets
