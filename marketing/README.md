@@ -15,8 +15,8 @@ Rules followed throughout (from the film brief and claims register):
 | 1 | P0 | c0c0n go/no-go | `01-c0c0n/DECISION.md`, `partner-zero-card.png/.pdf` (print 3.5×2 in) | Ready for decision |
 | 2 | P0 | Founder headlines + first post (T1) | `02-founder-linkedin/LINKEDIN.md` | Drafted (add names) |
 | 3 | P0 | 50 partner prospects | `03-partner-prospects/prospects.csv` (55) + README | Drafted (verify list) |
-| 4 | P0 | Replace stale site stats | `04-site-stats/` | Not started |
-| 5 | P0 | Signal/Noise #1 (DBIR) | `05-signal-noise-1/` | Not started |
+| 4 | P0 | Replace stale site stats | `04-site-stats/STATS.md` | Drafted (copy exact wording from reports) |
+| 5 | P0 | Signal/Noise #1 (DBIR) | `05-signal-noise-1/SIGNAL_NOISE_1.md` (LinkedIn, email, WhatsApp) | Drafted |
 | 6 | P0 | Analytics + "How did you hear about us?" | `06-analytics/` (needs the site repo) | Not started |
 | 7 | P0 | Price list + partner margin model | `07-pricing/` (your numbers) | Not started |
 | 8 | P0 | Deck slide 8 + competitive analysis pricing | `08-deck-pricing/` (after #7) | Not started |
