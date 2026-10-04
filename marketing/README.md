@@ -13,8 +13,8 @@ Rules followed throughout (from the film brief and claims register):
 | # | Pri | Task | What's here | Status |
 |---|---|---|---|---|
 | 1 | P0 | c0c0n go/no-go | `01-c0c0n/DECISION.md`, `partner-zero-card.png/.pdf` (print 3.5×2 in) | Ready for decision |
-| 2 | P0 | Founder headlines + first post (T1) | `02-founder-linkedin/` | In progress |
-| 3 | P0 | 50 partner prospects | `03-partner-prospects/` | Not started |
+| 2 | P0 | Founder headlines + first post (T1) | `02-founder-linkedin/LINKEDIN.md` | Drafted (add names) |
+| 3 | P0 | 50 partner prospects | `03-partner-prospects/prospects.csv` (55) + README | Drafted (verify list) |
 | 4 | P0 | Replace stale site stats | `04-site-stats/` | Not started |
 | 5 | P0 | Signal/Noise #1 (DBIR) | `05-signal-noise-1/` | Not started |
 | 6 | P0 | Analytics + "How did you hear about us?" | `06-analytics/` (needs the site repo) | Not started |
