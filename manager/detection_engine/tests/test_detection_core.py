@@ -1027,12 +1027,46 @@ class TestComputePriority:
         tier, reason = _compute_priority(f)
         assert tier == "critical"
 
-    def test_high_epss_critical(self):
-        f = _finding()
+    def test_high_epss_critical_requires_impact_and_confidence(self):
+        # gap #6: a high EPSS mints critical ONLY with serious impact AND a
+        # confirmed match. C:H + confirmed/authoritative qualifies.
+        f = _finding(state=FindingState.confirmed,
+                     source_confidence=SourceConfidence.authoritative)
         f.epss_score = 0.6
+        f.cvss_vector = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
         tier, reason = _compute_priority(f)
         assert tier == "critical"
         assert "EPSS" in reason
+
+    def test_high_epss_dos_capped_to_high(self):
+        # A DoS (C:N/I:N/A:H) with high EPSS is HIGH, not critical — even confirmed.
+        f = _finding(state=FindingState.confirmed,
+                     source_confidence=SourceConfidence.authoritative)
+        f.epss_score = 0.6
+        f.cvss_vector = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        tier, reason = _compute_priority(f)
+        assert tier == "high"
+        assert "capped to high" in reason
+        assert "DoS" in reason
+
+    def test_high_epss_inferred_match_capped_to_high(self):
+        # High impact but a banner-inferred (suspected) match → capped to high:
+        # EPSS is wild-exploitation probability, not proof this host has the CVE.
+        f = _finding(state=FindingState.suspected,
+                     source_confidence=SourceConfidence.inferred)
+        f.epss_score = 0.6
+        f.cvss_vector = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+        tier, reason = _compute_priority(f)
+        assert tier == "high"
+        assert "not confirmed" in reason
+
+    def test_high_epss_no_vector_capped_to_high(self):
+        # No impact evidence at all → EPSS cannot mint a critical.
+        f = _finding(state=FindingState.confirmed,
+                     source_confidence=SourceConfidence.authoritative)
+        f.epss_score = 0.6
+        tier, _ = _compute_priority(f)
+        assert tier == "high"
 
     def test_elevated_epss_high(self):
         f = _finding()
