@@ -1,6 +1,6 @@
 # #2 Founder LinkedIn: headlines + first post (T1)
 
-`[CONFIRM: founder names, roles, and which founder posts first]`. The repo doesn't record them.
+**Technical founder (CTO): Rutik Mangale.** `[CONFIRM: the other co-founder's name and role, and which founder posts first]`
 
 ## Headlines (LinkedIn limit: 220 characters)
 
@@ -13,7 +13,7 @@
 3. Co-founder, Vedha · Find what's open. Prove what's real. Show the fix worked. · For office networks, not cloud  
    *(110 characters)*
 
-### Technical founder (CTO)
+### Technical founder (CTO): Rutik Mangale
 
 1. Co-founder & CTO, Vedha · Building a network check that won't call a finding confirmed without evidence · vedhasec.com  
    *(118 characters)*
