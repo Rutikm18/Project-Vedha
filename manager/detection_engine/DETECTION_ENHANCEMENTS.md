@@ -76,6 +76,33 @@ Every phase keeps the `detection_engine` suite (431 baseline) and the backend
 detection tests green, and extends `tests/fixtures/probe_corpus/` so the
 fact-contract gate covers each new rule input.
 
+## Outcome (all phases shipped)
+
+- detection_engine suite: **488 passed** (was 431); backend detection tests:
+  **129 passed, 1 skipped**. The two backend collection errors
+  (`test_ai_openai_tools`, `test_llm_report_fallback`) are a pre-existing
+  `openai` optional-dependency gap, unrelated to detection.
+- **18 new detections** across network facts (P1 ×12), credentialed host / IOA
+  (P2 ×6) and TLS-fingerprint IOC (P3), plus **2 new attack-path composites**
+  (P5) and an **ATT&CK tactic/technique roll-up** for reporting.
+- `mcp_ai_scan` left `test_branch_rule_coverage.KNOWN_UNASSESSED` — a backlog
+  item turned into a resolution. Remaining exemption: `printer_scan`.
+- Honesty preserved: P4 added only genuinely-documented KEV preconditions and
+  deliberately left VNC/FTP/IPMI/DB/ADB/MQTT unlinked (direct weaknesses, not
+  CVE preconditions).
+
+### Still open (future work, not silent — tracked here)
+
+- `printer_scan` facts (PJL / IPP) remain unassessed — a rule for
+  unauthenticated PJL control / exposed printer admin is the next branch to
+  close.
+- JA4S / JA4X IOC registries ship empty seeds; populate from a signed
+  `tls_fingerprint_intel.json` feed as threat intel is curated.
+- Per-CVE missing-KB mapping (ZeroLogon/SMBGhost/ProxyShell patch state) was
+  deliberately NOT implemented in P2 — it needs the KB-supersedence chain to
+  avoid false "unpatched" accusations; the MS17-010 composite remains the one
+  case proven from data on hand.
+
 ## Design rules honoured (unchanged from the engine's existing discipline)
 
 - Absent required input → `MISSING_INPUT` drift, never a silent clean.
