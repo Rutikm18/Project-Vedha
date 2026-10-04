@@ -11,6 +11,18 @@ A deterministic, code-rendered brand film. `src/film.js` exports a pure `renderF
 - What every claim rests on: `claims.md`
 - Repo findings and conflicts with the brief: `RECON.md`
 
+## Improvement pass (2026-10-04)
+
+Reviewed against how the film is really watched: on a phone, mostly muted, with most viewers leaving early.
+
+| Problem found | Why it matters | Change |
+|---|---|---|
+| The evidence (the proof, Vedha's differentiator) was 24 px text in the console, about 8 px on a phone | If the proof can't be read, "Prove what's real" is just a claim | A 44 px **evidence callout** in plain words, which becomes a teal **Verified** card at the fix |
+| The brand appeared only at 9 s | Google's ABCD research: brand within the first 5 s for ad recall; most feed viewers leave early | A small seal in the safe corner from 0.5 s, handing over to the big reveal |
+| 1.2 s with no message between the hook and the first finding | Muted viewers need a continuous line of meaning | The hook line now stays until the scan starts finding devices |
+| The 15 s cutdown skipped the discovery, now the heart of the story | A cutdown has to tell the same story, shorter | Re-cut: hook → scan + first finding → seal → evidence + fix → CTA |
+| The device counter showed "0" over the hook | A zero reads as "nothing here", the opposite of the point | The counter appears with the first device found |
+
 ## Commands
 
 ```bash

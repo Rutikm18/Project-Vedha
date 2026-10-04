@@ -71,8 +71,9 @@ try {
       if (fs.statSync(wa).size <= 15 * 1024 * 1024) break;
     }
 
-    // 4. 15 s cutdown: hook -> seal + "7-day check" -> console in one pass -> CTA (held still).
-    const SEG = [[0, 90], [270, 360], [552, 732], [825, 900]];
+    // 4. 15 s cutdown: the whole story in miniature.
+    // hook -> scan + first finding -> seal + "7-day check" -> evidence + verified fix -> CTA (held still)
+    const SEG = [[0, 100], [104, 170], [304, 362], [600, 725], [825, 900]];
     const cut = path.join(FR, 'cutdown_15s');
     fs.rmSync(cut, { recursive: true, force: true }); fs.mkdirSync(cut, { recursive: true });
     let k = 0;

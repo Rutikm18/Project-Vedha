@@ -19,7 +19,7 @@ export const T = {
   bloomFrom: 0, bloomDur: 30,
   pulseAt: 40, pulseDur: 12,
   gapOpenAt: 66, gapOpenDur: 18,
-  hookTextAt: 9, hookWordStagger: 3,
+  hookTextAt: 9, hookWordStagger: 3, hookOutAt: 104, // the line stays until the scan starts finding things
   // 2 Discovery: a scan finds everything, then the three things that matter light up
   contoursAt: 90, scanAt: 96, scanDur: 50,
   item1At: 120, item2At: 170, item3At: 220,
@@ -47,7 +47,7 @@ export const T = {
 
 // Captions: what the viewer must read, when (also the SRT source). `key` points into copy.*.json.
 export const CAPTIONS = [
-  { from: 9,   to: 90,  key: 'hook' },
+  { from: 9,   to: 112, key: 'hook' },
   { from: 120, to: 170, key: 'list', i: 0 },
   { from: 170, to: 220, key: 'list', i: 1 },
   { from: 220, to: 270, key: 'list', i: 2 },

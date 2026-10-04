@@ -27,5 +27,13 @@
       "check": "Unauthenticated database read (posture rule)"
     }
   ],
-  "fixItem": "Partner: NLA on, closed to the internet"
+  "fixItem": "Partner: NLA on, closed to the internet",
+  "evidencePlain": [
+    "Answers from outside your office",
+    "No pre-login check (NLA)"
+  ],
+  "verifiedPlain": [
+    "Re-checked: closed to the internet",
+    "Pre-login check: on"
+  ]
 }

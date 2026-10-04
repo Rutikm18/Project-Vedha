@@ -342,7 +342,7 @@ function caption(ctx, L, f, s, from, to, color) {
 function sceneHook(ctx, f, S, L, copy) {
   const font = `400 ${copy.hookPx || L.hookPx}px ${FONT.display}`;
   const lines = copy.hook.split('\n').flatMap(t => wrap(ctx, t, font, L.hookMaxW));
-  let w = 0; const out = 1 - prog(f, 84, 6);
+  let w = 0; const out = 1 - prog(f, T.hookOutAt, 8);
   ctx.save(); ctx.font = font;
   lines.forEach((ln, li) => {
     let x = L.hookX; const y = L.hookY + li * L.hookLH;
@@ -358,7 +358,7 @@ function sceneHook(ctx, f, S, L, copy) {
 function scenePath(ctx, f, S, L, copy) {
   // live count of what the scan has found
   const n = FOUND.filter(t => f >= t).length;
-  const ca = life(f, T.scanAt, T.sealAt);
+  const ca = life(f, Math.floor(FOUND[0]), T.sealAt); // appears with the first device found, never shows 0
   text(ctx, copy.devicesFound, L.capX, L.counterY, { font: `500 30px ${FONT.mono}`, color: C.blueOnNight, alpha: ca.a });
   text(ctx, String(n), L.capX, L.counterY + 84, { font: `400 88px ${FONT.display}`, color: C.day, alpha: ca.a });
   // one thing that matters at a time
@@ -564,6 +564,27 @@ function sceneConsole(ctx, f, S, L, copy, cfg) {
   }
   ctx.restore();
 
+  // Evidence callout: the proof, in plain words, big enough to read on a phone (44 px at 1080).
+  // It becomes the Verified card at the verification beat (teal only from then on).
+  const coA = easeOut(prog(f, T.proveAt + 8, 10)) * (1 - prog(f, T.reportAt - 6, 6)) * out;
+  if (coA > 0) {
+    const ver = f >= T.tealAt, vk = easeOut(prog(f, T.tealAt, 8));
+    const col = ver ? (S.wash < 0.5 ? C.tealOnNight : C.teal) : blue;
+    const lines = ver ? cfg.verifiedPlain : cfg.evidencePlain;
+    const cx0 = 20, cy0 = 556, cw = 880, ch = 236;
+    ctx.save(); ctx.translate(L.console.x, L.console.y); ctx.scale(L.console.s, L.console.s);
+    ctx.globalAlpha *= coA; ctx.translate(0, (1 - easeOut(prog(f, T.proveAt + 8, 10))) * 24);
+    ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
+    rrect(ctx, cx0, cy0, cw, ch, 20); ctx.fillStyle = mix('#1E2330', '#FFFFFF', S.wash); ctx.fill();
+    ctx.shadowColor = 'transparent'; ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.stroke();
+    const lx = cx0 + 40;
+    if (ver) checkIcon(ctx, lx + 14, cy0 + 50, 28, col, 4);
+    text(ctx, ver ? copy.ui.verifiedLabel : copy.ui.evidence, lx + (ver ? 44 : 0), cy0 + 60, { font: `500 30px ${FONT.mono}`, color: col });
+    const textA = ver ? vk : 1;
+    lines.forEach((ln, k) => text(ctx, ln, lx, cy0 + 132 + k * 62, { font: `500 44px ${FONT.ui}`, color: ink, alpha: textA }));
+    ctx.restore();
+  }
+
   // captions + illustrative tag (outside the drifting frame; text never moves while read)
   const capCol = S.ink;
   caption(ctx, L, f, copy.find, T.findingsAt + 4, T.proveAt, capCol);
@@ -626,11 +647,14 @@ export function renderFrame(ctx, frame, cfg) {
   drawMap(ctx, f, S, { alpha: mapA, copy, pierce: fromScreen(L, [L.sealX, L.sealY]) });
   ctx.restore();
 
-  if (f < 90) sceneHook(ctx, f, S, L, copy);
+  if (f < T.hookOutAt + 8) sceneHook(ctx, f, S, L, copy);
   if (f >= 90 && f < 270) scenePath(ctx, f, S, L, copy);
   if (f >= T.sealAt && f < T.consoleAt + 12) scenePierceAndPartner(ctx, f, S, L, copy);
   if (f >= T.consoleAt) sceneConsole(ctx, f, S, L, copy, cfg);
   sceneCTA(ctx, f, S, L, copy);
+  // Brand early (Google ABCD, "B"): a small seal in the safe corner until the big reveal takes over.
+  const bA = life(f, 15, T.sealAt).a;
+  if (bA > 0) { const [sx, sy, sw] = L.safeRect, bs = Math.round(L.W * 0.06); drawSeal(ctx, sx + sw - bs / 2, sy + bs / 2, bs, { color: C.blueOnNight, alpha: 0.9 * bA }); }
 
   if (cfg.debug) overlay(ctx, f, L, S);
   ctx.restore();

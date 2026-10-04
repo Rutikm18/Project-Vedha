@@ -41,7 +41,8 @@
     "reportTitle": "Network health check report",
     "verifiedOn": "Verified 03 Oct 2026",
     "holdToVerify": "Hold to verify",
-    "evidence": "EVIDENCE"
+    "evidence": "EVIDENCE",
+    "verifiedLabel": "VERIFIED"
   },
   "checks": "It checks what your business runs on.",
   "checkpoints": [
