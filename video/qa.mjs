@@ -5,7 +5,7 @@ import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { openRenderer, ROOT } from './render.mjs';
 import { T } from './src/timeline.js';
-import { contrast } from './src/film.js';
+import { contrast, storyAt } from './src/film.js';
 import { C } from './src/brand.js';
 import { LAYOUTS } from './src/layouts.js';
 import { captionText } from './srt.mjs';
@@ -113,13 +113,25 @@ const pairs = [
   ['CTA button text', '#FFFFFF', C.blue], ['URL on Day', C.night, C.day], ['Scope line on Day', C.textSecondary, C.day],
   ['"Illustrative data" (60%) on Night', '#999da2', C.night], ['"Illustrative data" (60%) on Day', '#6b6f75', C.day],
   ['"Verified" teal on white panel', C.teal, '#FFFFFF'], ['Checkpoint numbers on Night', C.blueOnNight, C.night],
-  ['Mid-wash worst case (frame-picked ink)', C.day, '#7d8187'],
 ];
+// Mid-wash: measure every wash frame. Ink alone vs the grey background, and ink vs its halo.
+let worstInk = 99, worstHalo = 99, worstF = -1;
+for (let f = T.washAt; f <= T.washAt + T.washDur; f++) {
+  const s = storyAt(f), other = s.ink === C.day ? C.night : C.day, w = s.wash;
+  const ci = contrast(s.ink, s.bg);
+  if (ci < worstInk) { worstInk = ci; worstF = f; }
+  // the halo is drawn at alpha sin(pi*w) over the background
+  const hb = s.bg.slice(4, -1).split(',').map(Number), ho = other === C.day ? [243, 246, 250] : [6, 11, 20], k = Math.sin(w * Math.PI);
+  const haloRgb = `rgb(${hb.map((v, i) => Math.round(v * (1 - k) + ho[i] * k)).join(',')})`;
+  worstHalo = Math.min(worstHalo, Math.max(ci, contrast(s.ink, haloRgb)));
+}
 md.push('\n## 6. Contrast (WCAG 2.x)\n', '| Pair | Ratio | Check |', '|---|---|---|');
 for (const [name, fg, bg] of pairs) {
-  const cr = contrast(fg, bg), transitional = name.startsWith('Mid-wash');
-  md.push(`| ${name} | ${cr.toFixed(2)}:1 | ${transitional ? (cr >= 4 ? 'PASS (one transitional frame; ≥4:1)' : check(false)) : check(cr >= 4.5)} |`);
+  const cr = contrast(fg, bg);
+  md.push(`| ${name} | ${cr.toFixed(2)}:1 | ${check(cr >= 4.5)} |`);
 }
+md.push(`| Mid-wash caption, worst frame (${worstF}), ink on bare background | ${worstInk.toFixed(2)}:1 | (halo applies) |`);
+md.push(`| Mid-wash caption, worst frame, ink on its halo | ${worstHalo.toFixed(2)}:1 | ${check(worstHalo >= 4.5)} |`);
 
 // 7. Copy: guardrail words + caption-only comprehension
 const en = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/copy.en.json'), 'utf8'));

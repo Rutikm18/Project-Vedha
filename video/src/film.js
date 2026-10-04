@@ -164,10 +164,12 @@ function rrect(ctx, x, y, w, h, r) {
   ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
-function text(ctx, s, x, y, { font, color, alpha = 1, align = 'left', dy = 0 }) {
+function text(ctx, s, x, y, { font, color, alpha = 1, align = 'left', dy = 0, halo = null }) {
   if (alpha <= 0) return;
   ctx.save(); ctx.globalAlpha *= alpha; ctx.font = font; ctx.fillStyle = color;
-  ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, x, y + dy); ctx.restore();
+  ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+  if (halo) { ctx.save(); ctx.globalAlpha *= halo.alpha; ctx.strokeStyle = halo.color; ctx.lineWidth = halo.width; ctx.lineJoin = 'round'; ctx.strokeText(s, x, y + dy); ctx.restore(); }
+  ctx.fillText(s, x, y + dy); ctx.restore();
 }
 function wrap(ctx, s, font, maxW) {
   ctx.save(); ctx.font = font;
@@ -330,7 +332,9 @@ function caption(ctx, L, f, s, from, to, color) {
   let lines = wrap(ctx, s, font, L.capMaxW);
   const sentences = s.match(/[^.]+\.(\s|$)/g);
   if (lines.length > 1 && sentences && sentences.length > 1) lines = sentences.flatMap(t => wrap(ctx, t.trim(), font, L.capMaxW));
-  lines.forEach((ln, i) => text(ctx, ln, L.capX, L.capBase - (lines.length - 1 - i) * L.capLH, { font, color, alpha: a, dy }));
+  // Mid-wash the background passes through grey: a halo in the opposite ink keeps captions >= 4.5:1.
+  const w = story(f).wash, halo = w > 0 && w < 1 ? { color: color === C.day ? C.night : C.day, width: 8, alpha: Math.sin(w * Math.PI) } : null;
+  lines.forEach((ln, i) => text(ctx, ln, L.capX, L.capBase - (lines.length - 1 - i) * L.capLH, { font, color, alpha: a, dy, halo }));
 }
 
 // ---------- scenes ----------
@@ -570,7 +574,8 @@ function sceneConsole(ctx, f, S, L, copy, cfg) {
   caption(ctx, L, f, copy.prove, T.attackAt, T.fixAt, capCol);
   caption(ctx, L, f, copy.fix, T.fixAt, T.reportAt, capCol);
   caption(ctx, L, f, copy.report, T.reportAt, T.ctaAt, capCol);
-  text(ctx, copy.illustrative, L.capX, L.tagBase, { font: `500 34px ${FONT.ui}`, color: capCol, alpha: 0.6 * rise * out });
+  const tw = S.wash, tagHalo = tw > 0 && tw < 1 ? { color: capCol === C.day ? C.night : C.day, width: 6, alpha: Math.sin(tw * Math.PI) } : null;
+  text(ctx, copy.illustrative, L.capX, L.tagBase, { font: `500 34px ${FONT.ui}`, color: capCol, alpha: 0.6 * rise * out, halo: tagHalo });
 }
 
 function sceneCTA(ctx, f, S, L, copy) {
@@ -602,6 +607,7 @@ function overlay(ctx, f, L, S) {
 }
 
 // ---------- entry ----------
+export const storyAt = f => story(f);
 export function renderFrame(ctx, frame, cfg) {
   const f = clamp(Math.round(frame), 0, DURATION - 1);
   const L = LAYOUTS[cfg.aspect];

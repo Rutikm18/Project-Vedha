@@ -12,7 +12,8 @@ export function captionText(c, copy) {
     case 'name': return `${copy.name} (${copy.devanagari}): ${copy.gloss.toLowerCase()}.\n${copy.what}`;
     case 'checks': {
       const cp = copy.checkpoints;
-      return `${copy.checks}\n${cp.slice(0, 3).join(' · ')}\n${cp.slice(3).join(' · ')}`;
+      // two per line keeps every subtitle line short enough to read in one glance
+      return [copy.checks, ...[0, 2, 4].map(i => cp.slice(i, i + 2).join(' · '))].join('\n');
     }
     case 'cta': return `${copy.cta}. ${copy.url}\n${copy.scope}`;
     default: return copy[c.key];
