@@ -26,7 +26,8 @@ Rules followed throughout (from the film brief and claims register):
 | 10 | P0 | Partner Zero messages (T3) | `10-partner-zero-messages/MESSAGES.md` | Drafted (fill the offer) |
 | 11 | P0 | Discovery call script (T4 + unprompted recall) | `11-discovery-calls/CALL_SCRIPT.md` | Drafted |
 | 12 | P0 | Open Door share card | `12-open-door-card/` (page + OG image) | Built (deploy to site) |
-| 13–29 | P1/P2 | See the action plan | Folders created as each starts | Not started |
+| 13 | P1 | CERT-In 15 controls: verified mapping | `13-certin-controls/MAPPING.md` + `mapping.csv` | Done (verify control order in PDF) |
+| 14–29 | P1/P2 | See the action plan | Folders created as each starts | Not started |
 
 ## Rendering assets
 
