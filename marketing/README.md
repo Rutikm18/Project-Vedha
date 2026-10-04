@@ -17,10 +17,10 @@ Rules followed throughout (from the film brief and claims register):
 | 3 | P0 | 50 partner prospects | `03-partner-prospects/prospects.csv` (55) + README | Drafted (verify list) |
 | 4 | P0 | Replace stale site stats | `04-site-stats/STATS.md` | Drafted (copy exact wording from reports) |
 | 5 | P0 | Signal/Noise #1 (DBIR) | `05-signal-noise-1/SIGNAL_NOISE_1.md` (LinkedIn, email, WhatsApp) | Drafted |
-| 6 | P0 | Analytics + "How did you hear about us?" | `06-analytics/` (needs the site repo) | Not started |
-| 7 | P0 | Price list + partner margin model | `07-pricing/` (your numbers) | Not started |
-| 8 | P0 | Deck slide 8 + competitive analysis pricing | `08-deck-pricing/` (after #7) | Not started |
-| 9 | P0 | Data-use clause (for counsel) | `09-data-use-clause/` | Not started |
+| 6 | P0 | Analytics + "How did you hear about us?" | `06-analytics/` (ANALYTICS.md + tested heardFrom.js) | Drafted (apply in site repo) |
+| 7 | P0 | Price list + partner margin model | `07-pricing/margin_model.xlsx` (example numbers) | Ready for your numbers + sign-off |
+| 8 | P0 | Deck slide 8 + competitive analysis pricing | `08-deck-pricing/SLIDE_8.md` | Template (fill after #7) |
+| 9 | P0 | Data-use clause (for counsel) | `09-data-use-clause/DATA_USE_CLAUSE.md` + T7 line | Draft for counsel |
 | 10 | P0 | Partner Zero messages (T3) | `10-partner-zero-messages/` | Not started |
 | 11 | P0 | Discovery call script (T4 + unprompted recall) | `11-discovery-calls/` | Not started |
 | 12 | P0 | Open Door share card | `12-open-door-card/` | Not started |
