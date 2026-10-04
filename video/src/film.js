@@ -495,7 +495,7 @@ function sceneConsole(ctx, f, S, L, copy, cfg) {
       ctx.save(); ctx.globalAlpha *= a * (i === 0 ? 1 : lerp(1, 0.55, pP)); ctx.translate(0, dy);
       rrect(ctx, bx, ry, bw, h, 14); ctx.fillStyle = rowBg; ctx.fill();
       if (i === 0 && pP > 0) { rrect(ctx, bx, ry, bw, h, 14); ctx.strokeStyle = f >= T.tealAt ? tealCol : blue; ctx.globalAlpha *= pP; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha /= pP; }
-      ctx.save(); let tp = 32; ctx.font = `500 ${tp}px ${FONT.ui}`; while (tp > 22 && ctx.measureText(r.title).width > bw - 230) ctx.font = `500 ${--tp}px ${FONT.ui}`; ctx.restore();
+      ctx.save(); let tp = 32; ctx.font = `500 ${tp}px ${FONT.ui}`; while (tp > 22 && ctx.measureText(r.title).width > bw - 270) ctx.font = `500 ${--tp}px ${FONT.ui}`; ctx.restore();
       text(ctx, r.title, bx + 28, ry + 50, { font: `500 ${tp}px ${FONT.ui}`, color: ink });
       text(ctx, r.host, bx + 28, ry + 90, { font: `400 24px ${FONT.mono}`, color: sub });
       const chipA = i === 0 ? pP : 0;
@@ -581,7 +581,7 @@ function sceneConsole(ctx, f, S, L, copy, cfg) {
     if (ver) checkIcon(ctx, lx + 14, cy0 + 50, 28, col, 4);
     text(ctx, ver ? copy.ui.verifiedLabel : copy.ui.evidence, lx + (ver ? 44 : 0), cy0 + 60, { font: `500 30px ${FONT.mono}`, color: col });
     const textA = ver ? vk : 1;
-    lines.forEach((ln, k) => text(ctx, ln, lx, cy0 + 132 + k * 62, { font: `500 44px ${FONT.ui}`, color: ink, alpha: textA }));
+    lines.forEach((ln, k) => text(ctx, ln, lx, cy0 + 130 + k * 58, { font: `500 40px ${FONT.ui}`, color: ink, alpha: textA }));
     ctx.restore();
   }
 
