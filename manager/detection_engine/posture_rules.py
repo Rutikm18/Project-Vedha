@@ -611,6 +611,192 @@ def _ipmi_cipher_zero(f: Fact) -> Optional[dict]:
     return None
 
 
+# ── additional service-layer detectors (previously-unconsumed facts) ──────────
+# Each reads a field the probe already collects and ships but no rule assessed, so
+# every one of these weaknesses was a guaranteed silent false-negative. Every path
+# is read off the emitting scanner directly (probe/scanner/<x>_scanner.py). None of
+# these scanners is rig-validated, so findings land `suspected` (_state_for).
+
+# Minimum acceptable key sizes. RSA/DSA below 2048 bits is below every current
+# baseline (NIST SP 800-57, CA/Browser Forum); EC below 256 bits likewise.
+_MIN_RSA_DSA_BITS = 2048
+_MIN_EC_BITS = 256
+# Certificate signature algorithms that are collision-broken for TLS trust.
+_WEAK_SIG_ALGOS = {"md2", "md5", "sha1"}
+
+
+def _tls_weak_key(f: Fact) -> Optional[dict]:
+    """A server certificate whose public key is below the modern floor.
+
+    Reads the key type + bit size tls_scanner already parses from the DER. Only
+    fires when the probe POSITIVELY parsed both (the `cryptography` path); a
+    byte-count-only degraded parse emits neither field and this stays silent —
+    absent evidence must never become a weak-key accusation.
+    """
+    c = _cert(f)
+    ktype = str(c.get("public_key_type") or "").lower()
+    bits = c.get("public_key_bits")
+    if not isinstance(bits, int) or isinstance(bits, bool) or bits <= 0:
+        return None
+    if ktype in ("rsa", "dsa", "dh") and bits < _MIN_RSA_DSA_BITS:
+        floor = _MIN_RSA_DSA_BITS
+    elif ktype in ("ec", "ecdsa", "ellipticcurve") and bits < _MIN_EC_BITS:
+        floor = _MIN_EC_BITS
+    else:
+        return None
+    return {"public_key_type": ktype, "public_key_bits": bits, "minimum_bits": floor,
+            "subject": c.get("subject")}
+
+
+def _tls_weak_sig(f: Fact) -> Optional[dict]:
+    """A certificate signed with a collision-broken hash (MD5/SHA-1). Read from
+    the parsed `sig_algorithm`; a forged-chain / downgrade risk, not merely
+    cosmetic. Silent when the field was never parsed."""
+    c = _cert(f)
+    raw = str(c.get("sig_algorithm") or "").lower()
+    if not raw:
+        return None
+    hit = next((a for a in _WEAK_SIG_ALGOS if a in raw), None)
+    if not hit:
+        return None
+    return {"sig_algorithm": c.get("sig_algorithm"), "weak_hash": hit,
+            "self_signed": c.get("self_signed"), "subject": c.get("subject")}
+
+
+def _web_dangerous_methods(f: Fact) -> Optional[dict]:
+    """HTTP methods that write or probe state are enabled (PUT/DELETE/TRACE/
+    CONNECT/PATCH), read straight from the OPTIONS Allow header the web scanner
+    parsed. PUT can plant a webshell; TRACE enables Cross-Site Tracing; CONNECT
+    turns the server into an open proxy."""
+    d = _d(f)
+    methods = d.get("dangerous_methods")
+    if isinstance(methods, list) and methods:
+        return {"dangerous_methods": methods[:8],
+                "allowed_methods": (d.get("allowed_methods") or [])[:12],
+                "url": d.get("url") or d.get("final_url")}
+    return None
+
+
+def _web_missing_hsts(f: Fact) -> Optional[dict]:
+    """An HTTPS service that does not send HSTS — the response is downgradeable to
+    cleartext on the first request (sslstrip class). Scoped to TLS services and to
+    the single header that actually changes the threat model, so it stays a
+    low-noise finding rather than a blanket 'headers missing' lint."""
+    d = _d(f)
+    if d.get("tls") is not True:
+        return None
+    missing = d.get("security_headers_missing")
+    if not isinstance(missing, list) or "strict-transport-security" not in missing:
+        return None
+    return {"missing_header": "strict-transport-security",
+            "security_headers_missing": [m for m in missing if isinstance(m, str)][:8],
+            "url": d.get("url") or d.get("final_url")}
+
+
+def _dns_version_disclosure(f: Fact) -> Optional[dict]:
+    """The resolver answered a CHAOS TXT version.bind query, disclosing its exact
+    software/version to any client — recon that narrows the attacker's next move
+    to version-specific DNS CVEs. Read from the value dns_scanner already stores."""
+    d = _d(f)
+    if d.get("dns") is not True:
+        return None
+    ver = d.get("version_bind")
+    if isinstance(ver, str) and ver.strip() and ver.strip().lower() not in (
+            "unknown", "none", "refused"):
+        return {"version_bind": ver.strip()[:120], "hostname_bind": d.get("hostname_bind")}
+    return None
+
+
+def _ldap_anonymous_search(f: Fact) -> Optional[dict]:
+    """Anonymous LDAP SEARCH returned directory CONTENT (not merely a successful
+    bind to the RootDSE) — usernames, group membership and host objects readable
+    with no credentials. Higher severity than anon-bind-only, which discloses only
+    the RootDSE. Read from the scanner's own `anonymous_search_allowed`."""
+    d = _d(f)
+    if d.get("ldap") is True and d.get("anonymous_search_allowed") is True:
+        return {"sample_entry_count": d.get("sample_entry_count"),
+                "default_naming_context": d.get("default_naming_context"),
+                "naming_contexts": (d.get("naming_contexts") or [])[:8]}
+    return None
+
+
+# An amplification ratio at or above this is a usable reflective-DDoS source: a
+# small query yields a response this many times larger (US-CERT TA14-017A lists
+# SNMP GETBULK at ~6x+; we require a clear, measured multiple to avoid flagging
+# a near-1x responder).
+_SNMP_AMP_FACTOR = 5.0
+
+
+def _snmp_amplification(f: Fact) -> Optional[dict]:
+    """A readable SNMP agent whose MEASURED response/request size ratio makes it a
+    reflective-amplification DDoS source. Reads snmp_scanner's own GETBULK
+    amplification_factor — a measured multiple, stronger than a port-presence
+    guess. Silent when the walk did not measure it (field absent)."""
+    d = _d(f)
+    factor = d.get("amplification_factor")
+    if isinstance(factor, (int, float)) and not isinstance(factor, bool) \
+            and float(factor) >= _SNMP_AMP_FACTOR:
+        return {"amplification_factor": round(float(factor), 2),
+                "threshold": _SNMP_AMP_FACTOR, "community": d.get("community")}
+    return None
+
+
+def _iot_mqtt_unauth(f: Fact) -> Optional[dict]:
+    """An MQTT broker that accepted a CONNECT with no credentials (CONNACK rc=0),
+    read from iot_scanner's own flags. An unauthenticated broker lets any client
+    subscribe to '#' and read/inject every message — telemetry, commands, secrets."""
+    d = _d(f)
+    if d.get("mqtt_connack") is True and d.get("unauthenticated_access") is True:
+        return {"return_code_meaning": d.get("return_code_meaning"),
+                "subscribe_all_granted": d.get("subscribe_all_granted")}
+    return None
+
+
+def _iot_cwmp_exposed(f: Fact) -> Optional[dict]:
+    """A TR-069/CWMP (CPE WAN management) interface is reachable. CWMP on 7547 is
+    the documented Mirai/TR-064 worm vector; exposing it to untrusted networks is
+    a remote-management surface on the device's WAN side."""
+    d = _d(f)
+    if d.get("cwmp_indicators") is True:
+        return {"server": d.get("server"), "http_response": d.get("http_response")}
+    return None
+
+
+def _iot_rtsp_exposed(f: Fact) -> Optional[dict]:
+    """An RTSP streaming endpoint (IP camera / NVR) answered an OPTIONS with its
+    method list — a reachable camera control/stream surface, frequently shipped
+    with default or no credentials."""
+    d = _d(f)
+    methods = d.get("public_methods")
+    if d.get("rtsp_version") and isinstance(methods, str) and methods.strip():
+        return {"rtsp_version": d.get("rtsp_version"), "public_methods": methods[:120],
+                "server": d.get("server")}
+    return None
+
+
+def _adb_unauth_shell(f: Fact) -> Optional[dict]:
+    """Android Debug Bridge in TCP mode accepted a connection with NO auth
+    challenge — a full remote shell (adb shell / push / install) to anyone who can
+    reach the port. Read from mobile_scanner's own `unauthenticated_shell`."""
+    d = _d(f)
+    if d.get("unauthenticated_shell") is True:
+        return {"adb_version": d.get("adb_version"), "note": d.get("note")}
+    return None
+
+
+def _mcp_ai_unauth(f: Fact) -> Optional[dict]:
+    """An AI inference / MCP endpoint (Ollama, vLLM, LM Studio, an MCP server)
+    answered discovery with no authentication. Exposed inference is model/prompt
+    data exposure and, for MCP tool servers, reachable tool execution. Reads the
+    scanner's own `unauthenticated_access` plus its calibrated confidence."""
+    d = _d(f)
+    if d.get("unauthenticated_access") is True and d.get("auth_enforced") is False:
+        return {"kind": d.get("kind"), "path": d.get("path"),
+                "model_count": d.get("model_count"),
+                "evidence_reason": d.get("evidence_reason")}
+    return None
+
+
 # ── the rule pack ─────────────────────────────────────────────────────────────
 def _db_unauthenticated(f: Fact) -> Optional[dict]:
     """A database that served data to an UNAUTHENTICATED probe.
@@ -954,6 +1140,129 @@ RULES: list[PostureRule] = [
         # Same reasoning as above, mirrored: `ssl_supported` comes from MySQL,
         # Postgres and MSSQL, never from Redis or MongoDB.
         requires=("db",)),
+
+    # ── additional service-layer rules (previously-unconsumed facts) ──────────
+    # Collected by the probe, shipped, stored, and never assessed until now. None
+    # of these scanners is rig-validated, so findings land SUSPECTED (_state_for).
+    PostureRule(
+        "POSTURE-TLS-WEAK-KEY", "TLS certificate uses a weak public key",
+        "high", "CWE-326", "T1040", "weak_crypto", ("tls_scan",), _tls_weak_key,
+        "Reissue the certificate with a >=2048-bit RSA key (or a >=256-bit "
+        "elliptic-curve key). Keys below this are below every current CA/Browser "
+        "Forum and NIST baseline and are brute-forceable over the cert's lifetime.",
+        fp_notes="Fires only when the probe POSITIVELY parsed the key type and bit "
+                 "size (the full-cert-parse path). A degraded byte-count-only parse "
+                 "emits neither and this stays silent.",
+        requires=("certificate",)),
+    PostureRule(
+        "POSTURE-TLS-WEAK-SIGNATURE", "TLS certificate signed with a broken hash (MD5/SHA-1)",
+        "high", "CWE-327", "T1557", "weak_crypto", ("tls_scan",), _tls_weak_sig,
+        "Reissue the certificate with a SHA-256 (or stronger) signature. MD5 and "
+        "SHA-1 are collision-broken, so a signature over them no longer binds the "
+        "certificate to its CA — a forged chain becomes feasible.",
+        fp_notes="An internally-rooted self-signed cert may use a legacy hash by "
+                 "oversight; evidence.self_signed distinguishes that case.",
+        requires=("certificate",)),
+    PostureRule(
+        "POSTURE-WEB-DANGEROUS-METHODS", "Dangerous HTTP methods enabled",
+        "medium", "CWE-650", "T1505", "misconfiguration", ("web_scan",),
+        _web_dangerous_methods,
+        "Disable PUT/DELETE/TRACE/CONNECT/PATCH unless a documented API needs them; "
+        "PUT can upload a webshell, TRACE enables Cross-Site Tracing, and CONNECT "
+        "turns the server into an open forward proxy.",
+        fp_notes="Read from the OPTIONS Allow header the server itself returned. A "
+                 "REST API that legitimately uses PUT/PATCH/DELETE should be scoped "
+                 "to its authenticated routes — confirm before treating as a defect.",
+        requires=("dangerous_methods",)),
+    PostureRule(
+        "POSTURE-WEB-NO-HSTS", "HTTPS service does not set HSTS",
+        "low", "CWE-319", "T1040", "weak_crypto", ("web_scan",), _web_missing_hsts,
+        "Send Strict-Transport-Security with a long max-age (and preload where "
+        "appropriate) so the browser refuses to downgrade to cleartext after the "
+        "first visit.",
+        fp_notes="Scoped to TLS services and to the HSTS header specifically, so it "
+                 "does not fire as a blanket 'security headers missing' lint.",
+        requires=("security_headers_missing",)),
+    PostureRule(
+        "POSTURE-DNS-VERSION-DISCLOSURE", "DNS server discloses its version (version.bind)",
+        "low", "CWE-200", "T1590.002", "information_disclosure", ("dns_scan",),
+        _dns_version_disclosure,
+        "Override or suppress the CHAOS TXT version.bind response (BIND: "
+        "`version \"\";`) so the exact resolver software/version is not disclosed "
+        "to anonymous clients.",
+        fp_notes="Fires only when a non-empty, non-refused version string was "
+                 "returned — a server that answers 'refused'/empty never fires it.",
+        requires=("dns", "version_bind")),
+    PostureRule(
+        "POSTURE-LDAP-ANONYMOUS-SEARCH", "LDAP anonymous search returns directory content",
+        "medium", "CWE-200", "T1087.002", "information_disclosure", ("ldap_scan",),
+        _ldap_anonymous_search,
+        "Disable anonymous SEARCH (set dsHeuristics / require authentication) so "
+        "usernames, groups and host objects cannot be enumerated without "
+        "credentials — anonymous callers should at most read the RootDSE.",
+        fp_notes="Distinct from, and more serious than, POSTURE-LDAP-ANONYMOUS-BIND: "
+                 "this fires only when a search actually returned directory entries "
+                 "(anonymous_search_allowed), not merely a successful bind.",
+        requires=("ldap", "anonymous_search_allowed")),
+    PostureRule(
+        "POSTURE-SNMP-AMPLIFIER", "SNMP agent usable as a DDoS amplifier",
+        "medium", "CWE-406", "T1498.002", "amplification", ("snmp_scan",),
+        _snmp_amplification,
+        "Restrict SNMP to trusted managers by ACL, move to SNMPv3, and disable "
+        "GETBULK on large tables for untrusted sources — a readable agent with a "
+        "high response/request ratio is a reflective-DDoS source.",
+        fp_notes="Keyed off the MEASURED GETBULK amplification_factor, not a port "
+                 "guess; only fires at or above a clear multiple. snmp_scan is not "
+                 "validated, so SUSPECTED.",
+        requires=()),   # amplification_factor only present when the walk measured it
+    PostureRule(
+        "POSTURE-MQTT-UNAUTHENTICATED", "MQTT broker accepts unauthenticated clients",
+        "high", "CWE-306", "T1133", "misconfiguration", ("iot_scan",), _iot_mqtt_unauth,
+        "Require username/password (or mutual TLS) on the broker and deny anonymous "
+        "CONNECT. An open broker lets any client subscribe to '#' and read or inject "
+        "every message — telemetry, commands and often credentials.",
+        fp_notes="Fires on a CONNACK return code 0 (accepted) to an anonymous "
+                 "CONNECT; a broker that refuses (rc 4/5) never fires it.",
+        requires=()),   # iot_scan multiplexes protocols — no single required path
+    PostureRule(
+        "POSTURE-CWMP-EXPOSED", "TR-069/CWMP management interface exposed",
+        "medium", "CWE-284", "T1190", "exposure", ("iot_scan",), _iot_cwmp_exposed,
+        "Firewall TCP/7547 from untrusted networks and restrict CWMP to the ACS "
+        "management path. CWMP/TR-064 on the WAN side is the documented Mirai worm "
+        "vector and a remote device-management surface.",
+        fp_notes="Derived from CWMP/ACS indicators in the HTTP response; a plain web "
+                 "server on the port without those markers does not fire it.",
+        requires=()),
+    PostureRule(
+        "POSTURE-RTSP-EXPOSED", "RTSP camera/streaming endpoint exposed",
+        "medium", "CWE-284", "T1021", "exposure", ("iot_scan",), _iot_rtsp_exposed,
+        "Restrict RTSP (554/8554) to trusted networks or a VPN and enforce "
+        "authentication — IP cameras and NVRs frequently ship with default or no "
+        "credentials, making an exposed stream directly viewable.",
+        fp_notes="Fires on an RTSP OPTIONS method list returned by the device; the "
+                 "scanner never attempts to open a stream.",
+        requires=()),
+    PostureRule(
+        "POSTURE-ADB-UNAUTHENTICATED", "Android Debug Bridge exposes an unauthenticated shell",
+        "critical", "CWE-306", "T1021", "misconfiguration", ("mobile_scan",),
+        _adb_unauth_shell,
+        "Disable ADB over TCP (`adb tcpip` / setprop service.adb.tcp.port -1) or "
+        "firewall 5555. An open ADB daemon grants a full remote shell — app install, "
+        "file push/pull and command execution — to anyone who can reach the port.",
+        fp_notes="Fires only on a CNXN reply with no AUTH challenge "
+                 "(unauthenticated_shell). A device that answers AUTH never fires it.",
+        requires=()),
+    PostureRule(
+        "POSTURE-AI-ENDPOINT-UNAUTHENTICATED", "AI/MCP inference endpoint exposed without auth",
+        "high", "CWE-306", "T1133", "misconfiguration", ("mcp_ai_scan",), _mcp_ai_unauth,
+        "Put the inference/MCP endpoint behind authentication (API key / OAuth / a "
+        "reverse proxy) and bind it to the application network. An open endpoint is "
+        "model and prompt-data exposure, resource abuse, and — for MCP tool servers "
+        "— reachable tool execution.",
+        fp_notes="Fires only when the scanner confirmed an unauthenticated response "
+                 "(auth_enforced is False); an endpoint that returns a real auth "
+                 "challenge is reported auth_enforced and never fires this.",
+        requires=()),
 ]
 
 
