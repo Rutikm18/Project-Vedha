@@ -70,7 +70,7 @@ already prints this backlog; this plan works through it.
       curated-registry matching on the manager path. SUSPECTED, tagged IOC.
 - [x] **P4 — expand `_KEV_LINKS`** exploitability coverage for the high-signal
       posture rules.
-- [ ] **P5 — attack-path composites + ATT&CK roll-up** in the backend.
+- [x] **P5 — attack-path composites + ATT&CK roll-up** in the backend.
 
 Every phase keeps the `detection_engine` suite (431 baseline) and the backend
 detection tests green, and extends `tests/fixtures/probe_corpus/` so the
