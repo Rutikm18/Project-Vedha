@@ -1,5 +1,7 @@
 # Phase 0: recon
 
+> **Update (owner feedback):** the Devanagari is **वेद्या**, not वेध, and the film now focuses on the assets owners pay to protect (see `CHECKPOINTS.md`). The music is an original in-code score (see `MUSIC.md`).
+
 Repo inspected: `Rutikm18/Project-Vedha` (the product: probe + manager). Recon date: 2026-10-04.
 
 ## Conflicts between the brief and the repo (the repo wins)

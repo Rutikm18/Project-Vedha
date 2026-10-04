@@ -1,37 +1,59 @@
 # Vedha 30-second film
 
-A deterministic, code-rendered brand film. `src/film.js` exports a pure `renderFrame(ctx, frame, cfg)`: it uses no clock and no `Math.random()`, so the same frame always gives the same pixels. `render.mjs` serves this folder locally, drives Chromium with Playwright, pulls each frame off the canvas and stitches the frames with ffmpeg.
+A deterministic, code-rendered brand film. `src/film.js` exports a pure `renderFrame(ctx, frame, cfg)`: it uses no clock and no `Math.random()`, so the same frame always gives the same pixels. `render.mjs` drives headless Chromium with Playwright; `deliver.mjs` encodes everything with ffmpeg; `music.mjs` composes the score in code; `qa.mjs` runs the QA gate.
 
-## Status
+## The film in one breath
 
-- [x] Phase 0: recon (`RECON.md`, `claims.md`)
-- [x] Phase 1: animatic, 4:5 at 540×675, final captions and timing, placeholder console
-- [ ] Phase 2: scene polish and real console UI (blocked on the website repo; see RECON.md)
-- [ ] Phase 3: all formats, SFX, SRT, stills, hook variants, 15 s cutdown
-- [ ] Phase 4: QA gate
+*Every office has one door nobody remembers.* A remote login left open, a password never changed, a backup on the same network: together they reach your accounts. The Vedha seal opens its eye and pierces through, followed by **six checkpoints**: what your business runs on. A partner you trust runs the check. The console finds what's open, proves the path, and shows the fix worked. That is the same door closing that opened in the first three seconds, and the music resolves at the same moment. Book your 7-day check.
+
+- Why these assets and checkpoints: `CHECKPOINTS.md` (research + product mapping)
+- What the music means: `MUSIC.md`
+- What every claim rests on: `claims.md`
+- Repo findings and conflicts with the brief: `RECON.md`
 
 ## Commands
 
 ```bash
 cd video
-npm install                                   # fonts + playwright-core only
-node render.mjs --mode animatic               # out/vedha_animatic_4x5_540x675.mp4 + contact sheet
-node render.mjs --mode master                 # 1080x1350 master (silent)
-node render.mjs --mode master --still 450 --out out/f450.png   # one frame
+npm install                 # fonts + playwright-core only (no root-level deps)
+node deliver.mjs            # everything into out/ (~15 min)
+node deliver.mjs --only 4x5 # just the 4:5 master and what derives from it
+node qa.mjs                 # QA gate -> out/qa/report.md
+node music.mjs              # just the score -> out/audio/score.wav
+node render.mjs --aspect 9x16 --w 1080 --h 1920 --still 450 --file out/f450.png --debug
 ```
 
-Uses the pre-installed Chromium at `/opt/pw-browsers`; set `CHROMIUM_PATH` to override.
+Uses the pre-installed Chromium at `/opt/pw-browsers`; set `CHROMIUM_PATH` to override. Needs ffmpeg with libx264.
+
+## Outputs (`out/`, gitignored)
+
+| File | What |
+|---|---|
+| `vedha_30s_4x5_1080x1350.mp4` | Master (LinkedIn feed), with music |
+| `vedha_30s_9x16_1080x1920.mp4` | Reels / Shorts / WhatsApp Status, recomposed (not cropped) for app overlays |
+| `vedha_30s_1x1_1080x1080.mp4`, `vedha_30s_16x9_1920x1080.mp4` | Square; website / YouTube |
+| `silent/*_silent.mp4` | Silent masters for every format (silent AAC track included) |
+| `vedha_30s_4x5_whatsapp_720x900.mp4` | ≤ 15 MB for inline WhatsApp |
+| `vedha_15s_4x5_1080x1350.mp4` + `vedha_15s_en.srt` | Cutdown: hook → seal → console → CTA |
+| `vedha_30s_en.srt` | Captions generated from the same timeline as the film |
+| `vedha_30s_hi_NEEDS_REVIEW.mp4` + `vedha_30s_hi.srt` | Hindi: **needs native-speaker review; do not publish unreviewed** |
+| `hook_variants/` | A (door), B (the path list), C (the promise): 3 s each |
+| `poster_4x5.png`, `thumbnail_16x9.png` | Hook frame + seal + URL |
+| `qa/` | `report.md`, contact sheet, safe-zone sheets, 360 px readability sheet |
 
 ## Editing
 
-- **Copy:** `src/copy.en.json` (`src/copy.hi.json` needs native-speaker review). Scenes contain no strings.
-- **Timing:** `src/timeline.js`. Every beat is a frame number at 30 fps.
-- **Layout per format:** `src/layouts.js`
-- **Colours, fonts, the seal:** `src/brand.js` (seal path copied verbatim from `manager/frontend/public/brand/vedha-mark.svg`)
-- **Illustrative UI data:** `src/data.illustrative.json` (RFC 5737 IPs, `.example` hostnames)
+- **Copy:** `src/copy.en.json` (`src/copy.hi.json` overrides; missing keys fall back to English). Scenes contain no strings.
+- **Timing:** `src/timeline.js` drives the picture, the music cues and the SRT together.
+- **Layouts per format:** `src/layouts.js`
+- **Colours, fonts, the seal:** `src/brand.js` (seal copied verbatim from `manager/frontend/public/brand/vedha-mark.svg`)
+- **Illustrative UI data:** `src/data.illustrative.json` (RFC 5737 IPs, `.example` hostnames, each finding mapped to a shipped check)
 
-## Needs human review
+## Needs human review before publishing
 
-- Hindi copy (native speaker), and वेध / "to pierce through" (cultural check). The dot lattice is a pulli-style visual reference only.
-- Product claims: "7-day", "partner", "office networks" (see `claims.md`)
-- The console in scenes 5 and 6 is a placeholder, not the real marketing-site UI
+1. **वेद्या and its gloss.** The owner set the Devanagari to वेद्या. The on-screen gloss "TO PIERCE THROUGH" came from the brief, where it described वेध. वेद्या comes from the root *vid*, "to know". Confirm the gloss, or change `gloss` in `src/copy.en.json`.
+2. **Product claims:** "7-day", "delivered by a partner", "office networks, not cloud" (see `claims.md`).
+3. **Hindi copy:** native-speaker review.
+4. **Cultural check:** Raag Bhupali / tanpura score (`MUSIC.md`); the dot lattice is a pulli-style visual reference only, with no religious iconography.
+5. **Console UI** in scenes 5 and 6 is a faithful-to-the-brief replica, not a capture of the marketing site (not in this repo).
+6. **Partner co-branding:** none in the film; add only with the partner's approval.

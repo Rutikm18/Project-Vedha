@@ -10,4 +10,4 @@
 | Chromium (pre-installed) | build 1194 | BSD-3-Clause and others | Renders frames |
 | ffmpeg / libx264 (system) | n/a | GPL/LGPL | Encoding (not distributed) |
 
-Fonts are loaded from `node_modules`, never hot-linked. No samples, stock footage or music are used. Audio (Phase 3) is synthesized in code.
+Fonts are loaded from `node_modules`, never hot-linked. No samples, stock footage or licensed music are used. The score is an original composition synthesized in code (`music.mjs`); see `MUSIC.md`.

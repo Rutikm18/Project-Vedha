@@ -14,14 +14,22 @@ canvas { display: block; }
 </style></head>
 <body><canvas id="c"></canvas>
 <script type="module">
-import { renderFrame } from '/src/film.js';
+import { renderFrame, renderPoster } from '/src/film.js';
 const q = new URLSearchParams(location.search);
-const [copy, data] = await Promise.all([
-  fetch(`/src/copy.${q.get('lang') || 'en'}.json`).then(r => r.json()),
+const lang = q.get('lang') || 'en';
+const [en, data, local] = await Promise.all([
+  fetch('/src/copy.en.json').then(r => r.json()),
   fetch('/src/data.illustrative.json').then(r => r.json()),
+  lang === 'en' ? {} : fetch(`/src/copy.${lang}.json`).then(r => r.json()),
 ]);
+// Untranslated keys (name, URL, device labels, UI strings) fall back to English.
+const copy = { ...en, ...local };
+// Hook variants for testing: A = the main hook, B = the path list, C = the promise.
+const HOOKS = { B: copy.list.join('\n'), C: [copy.find, copy.prove, copy.fix].join('\n') };
+if (HOOKS[q.get('hook')]) copy.hook = HOOKS[q.get('hook')];
 const cfg = { aspect: q.get('aspect') || '4x5', width: +q.get('w') || 1080, height: +q.get('h') || 1350,
   debug: q.get('debug') === '1', copy, ...data };
+if (q.get('hookPx')) copy.hookPx = +q.get('hookPx');
 const c = document.getElementById('c'); c.width = cfg.width; c.height = cfg.height;
 const ctx = c.getContext('2d');
 const faces = ['400 40px "Instrument Serif"', '400 40px "Geist Sans"', '500 40px "Geist Sans"', '600 40px "Geist Sans"',
@@ -30,5 +38,6 @@ await Promise.all(faces.map(f => document.fonts.load(f, f.includes('Tiro') ? 'рд
 await document.fonts.ready;
 window.renderFrame = n => { renderFrame(ctx, n, cfg); return true; };
 window.grab = n => { renderFrame(ctx, n, cfg); return c.toDataURL('image/png'); };
+window.poster = () => { renderPoster(ctx, cfg); return c.toDataURL('image/png'); };
 window.ready = true;
 </script></body></html>

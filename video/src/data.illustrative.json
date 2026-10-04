@@ -1,9 +1,27 @@
 {
-  "_note": "Illustrative data only. Addresses are RFC 5737 documentation ranges; hostnames are .example.",
+  "_note": "Illustrative data only. Addresses are RFC 5737 documentation ranges; hostnames are .example. Each finding maps to a shipped check in NETWORK_VA_USE_CASES.md.",
   "findings": [
-    { "title": "Printer admin page open to the office LAN", "host": "printer-2f.example · 192.0.2.24", "sev": "HIGH", "closed": "Printer admin page closed" },
-    { "title": "Camera still on its default login",          "host": "cam-lobby.example · 192.0.2.31",  "sev": "HIGH", "closed": "Camera login changed" },
-    { "title": "Router admin password never changed",       "host": "gw.example · 192.0.2.1",          "sev": "MEDIUM", "closed": "Router password rotated" }
+    {
+      "title": "Remote desktop open without NLA",
+      "host": "accounts-pc.example · 192.0.2.24",
+      "sev": "HIGH",
+      "closed": "Remote login locked down",
+      "check": "RDP without NLA (posture rule)"
+    },
+    {
+      "title": "Backup share readable by anyone on the LAN",
+      "host": "backup-nas.example · 192.0.2.40",
+      "sev": "HIGH",
+      "closed": "Backup share restricted",
+      "check": "NFS world-readable export (posture rule)"
+    },
+    {
+      "title": "Admin password still the factory default",
+      "host": "fileserver.example · 192.0.2.10",
+      "sev": "HIGH",
+      "closed": "Default password changed",
+      "check": "Default-credential candidate (posture rule)"
+    }
   ],
-  "fixItem": "Printer admin page closed by partner"
+  "fixItem": "Remote desktop locked down"
 }

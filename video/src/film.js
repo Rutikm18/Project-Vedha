@@ -39,6 +39,12 @@ function mix(a, b, t) {
   const A = hex(a), B = hex(b);
   return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], t))).join(',')})`;
 }
+function lum(c) {
+  const v = c.startsWith('rgb(') ? c.slice(4, -1).split(',').map(Number) : hex(c);
+  const [r, g, b] = v.map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+export function contrast(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
 function rgba(c, a) { const [r, g, b] = hex(c); return `rgba(${r},${g},${b},${a})`; }
 
 function mulberry32(seed) {
@@ -58,19 +64,20 @@ const DOOR_C = node((DOOR.c0 + DOOR.c1) / 2, (DOOR.r0 + DOOR.r1) / 2);
 const PULSE_DOT = [5, 21];
 
 const DEVICES = [
-  { id: 'ROUTER',   at: node(4, 8) },
-  { id: 'PRINTER',  at: node(15, 9) },
-  { id: 'CAMERA',   at: node(9, 14) },
-  { id: 'LAPTOP',   at: node(20, 7) },
-  { id: 'ACCOUNTS', at: node(21, 15) },
+  { id: 'REMOTE LOGIN', at: node(9, 14) },  // the way in (checkpoint 1)
+  { id: 'FILE SERVER',  at: node(15, 9) },  // shares + a password never changed (2, 4)
+  { id: 'ACCOUNTS',     at: node(21, 13) }, // the books (2)
+  { id: 'BACKUPS',      at: node(21, 19) }, // the copy you recover from (3)
+  { id: 'LAPTOPS',      at: node(4, 8) },
 ];
 const dev = id => DEVICES.find(d => d.id === id).at;
 
-// Edge -> door -> CAMERA -> PRINTER -> ACCOUNTS, orthogonal along the lattice.
-const ROUTE = [[-40, DOOR_C[1]], [dev('CAMERA')[0], DOOR_C[1]], dev('CAMERA'),
-  [dev('PRINTER')[0], dev('CAMERA')[1]], dev('PRINTER'),
-  [dev('ACCOUNTS')[0], dev('PRINTER')[1]], dev('ACCOUNTS')];
-const PRINTER_IDX = 4;
+// Edge -> door -> REMOTE LOGIN -> FILE SERVER -> ACCOUNTS -> BACKUPS, orthogonal along the lattice.
+const ROUTE = [[-40, DOOR_C[1]], [dev('REMOTE LOGIN')[0], DOOR_C[1]], dev('REMOTE LOGIN'),
+  [dev('FILE SERVER')[0], dev('REMOTE LOGIN')[1]], dev('FILE SERVER'),
+  [dev('ACCOUNTS')[0], dev('FILE SERVER')[1]], dev('ACCOUNTS'), dev('BACKUPS')];
+// The fix closes the remote login: the route snaps at the way in, the same door the hook opened.
+const SNAP_IDX = 2;
 const ROUTE_LEN = []; // cumulative
 { let L = 0; ROUTE_LEN.push(0); for (let i = 1; i < ROUTE.length; i++) { L += Math.hypot(ROUTE[i][0] - ROUTE[i - 1][0], ROUTE[i][1] - ROUTE[i - 1][1]); ROUTE_LEN.push(L); } }
 const ROUTE_TOTAL = ROUTE_LEN[ROUTE_LEN.length - 1];
@@ -132,8 +139,11 @@ function story(f) {
   }
   const routeDraw = easeInOut(prog(f, T.routeAt, T.routeDur));
   const snap = easeOut(prog(f, T.snapAt, 10));
-  return { wash, gap, heal, strength, routeDraw, snap,
-    teal: f >= T.tealAt, ink: mix(C.day, C.night, wash), bg: mix(C.night, C.day, wash) };
+  // Text ink never interpolates (that would pass through zero contrast mid-wash):
+  // each frame uses whichever of Day/Night text contrasts more with the current background.
+  const bg = mix(C.night, C.day, wash);
+  const ink = contrast(C.day, bg) >= contrast(C.night, bg) ? C.day : C.night;
+  return { wash, gap, heal, strength, routeDraw, snap, teal: f >= T.tealAt, ink, bg };
 }
 
 // Map camera: push-ins in scenes 1-2, hold, zoom out in scene 4.
@@ -144,6 +154,9 @@ function camera(f) {
   return lerp(1.12, 1.0, easeInOut(prog(f, T.partnerAt, 30)));
 }
 const PIVOT = [540, 620];
+// Each layout places the 1080x1350 map world on its canvas: screen = world.xy + p * world.s.
+const toWorldScreen = (L, [x, y]) => [L.world.x + x * L.world.s, L.world.y + y * L.world.s];
+const fromScreen = (L, [x, y]) => [(x - L.world.x) / L.world.s, (y - L.world.y) / L.world.s];
 
 // ---------- drawing primitives ----------
 function rrect(ctx, x, y, w, h, r) {
@@ -208,7 +221,7 @@ function chip(ctx, x, y, label, color, { check = false, alpha = 1, fontPx = 26 }
 }
 
 // ---------- the map (lattice + contours + devices + route), reused full-frame and in the console ----------
-function drawMap(ctx, f, S, { alpha = 1, mini = false, copy }) {
+function drawMap(ctx, f, S, { alpha = 1, mini = false, copy, pierce = [540, 560] }) {
   if (alpha <= 0) return;
   ctx.save(); ctx.globalAlpha *= alpha;
   const dotCol = S.wash > 0 ? mix('#F3F6FA', '#060B14', S.wash) : C.day;
@@ -216,7 +229,6 @@ function drawMap(ctx, f, S, { alpha = 1, mini = false, copy }) {
   const night = S.wash < 0.5;
   const blue = night ? C.blueOnNight : C.blue;
   const center = [540, 675], maxD = Math.hypot(540, 675);
-  const pierce = [540, 560];
   const displace = (x, y) => {
     if (S.strength <= 0 || mini) return [x, y];
     const dx = x - pierce[0], dy = y - pierce[1], d = Math.hypot(dx, dy) || 1, sg = 220;
@@ -265,14 +277,13 @@ function drawMap(ctx, f, S, { alpha = 1, mini = false, copy }) {
     DEVICES.forEach(({ id, at }, i) => {
       const a = mini ? 1 : easeOut(prog(f, T.devicesAt + i * 3, 10));
       const [x, y] = displace(at[0], at[1]);
-      const hl = mini ? (id === 'PRINTER' || id === 'CAMERA' ? 1 : 0)
-        : id === 'PRINTER' ? easeOut(prog(f, T.printerAt, 10)) : id === 'CAMERA' ? easeOut(prog(f, T.cameraAt, 10)) : 0;
+      const lit = { 'REMOTE LOGIN': T.item1At, 'BACKUPS': T.item3At, 'ACCOUNTS': T.routeAt + T.routeDur - 6 }[id];
+      const hl = lit == null ? 0 : mini ? 1 : easeOut(prog(f, lit, 10));
       ctx.save(); ctx.globalAlpha *= a;
       rrect(ctx, x - 22, y - 22, 44, 44, 10); ctx.fillStyle = S.bg; ctx.fill();
       ctx.lineWidth = 2; ctx.strokeStyle = hl > 0 ? mix(night ? '#F3F6FA' : '#060B14', blue, hl) : rgba(night ? C.day : C.night, 0.55); ctx.stroke();
-      if (!mini || true) text(ctx, id, x, y + 56, { font: `500 28px ${FONT.mono}`, color: night ? C.day : C.night, alpha: 0.72, align: 'center' });
-      if (id === 'ROUTER') {
-        const k = mini ? 1 : easeOut(prog(f, T.keyAt, 10));
+      if (id === 'FILE SERVER') { // key glyph: the password never changed
+        const k = mini ? 1 : easeOut(prog(f, T.item2At, 10));
         if (k > 0) { // key glyph
           ctx.save(); ctx.globalAlpha *= k; ctx.strokeStyle = blue; ctx.lineWidth = 2.5;
           ctx.beginPath(); ctx.arc(x + 34, y - 30, 7, 0, Math.PI * 2); ctx.moveTo(x + 41, y - 30); ctx.lineTo(x + 60, y - 30); ctx.moveTo(x + 54, y - 30); ctx.lineTo(x + 54, y - 23); ctx.stroke(); ctx.restore();
@@ -285,7 +296,7 @@ function drawMap(ctx, f, S, { alpha = 1, mini = false, copy }) {
   // route
   const drawn = (mini ? 1 : S.routeDraw) * ROUTE_TOTAL;
   if (drawn > 0) {
-    const cut = ROUTE_LEN[PRINTER_IDX];
+    const cut = ROUTE_LEN[SNAP_IDX];
     const stroke = (from, to, a) => {
       if (to <= from || a <= 0) return;
       ctx.beginPath(); const p0 = displace(...routePoint(from)); ctx.moveTo(...p0);
@@ -297,6 +308,16 @@ function drawMap(ctx, f, S, { alpha = 1, mini = false, copy }) {
     stroke(0, Math.min(drawn, cut - 18 * S.snap), 1);
     stroke(cut + 18 * S.snap, drawn, 1 - S.snap * 0.85);
   }
+
+  // device labels on top of the route, each on a small backing in the page colour
+  if (devA > 0) DEVICES.forEach(({ id, at }, i) => {
+    const a = mini ? 1 : easeOut(prog(f, T.devicesAt + i * 3, 10));
+    const [x, y] = displace(at[0], at[1]);
+    ctx.save(); ctx.globalAlpha *= a; ctx.font = `500 28px ${FONT.mono}`;
+    const w = ctx.measureText(id).width;
+    rrect(ctx, x - w / 2 - 8, y + 30, w + 16, 36, 6); ctx.fillStyle = S.bg; ctx.fill(); ctx.restore();
+    text(ctx, id, x, y + 56, { font: `500 28px ${FONT.mono}`, color: night ? C.day : C.night, alpha: 0.78 * a, align: 'center' });
+  });
   ctx.restore();
 }
 
@@ -314,8 +335,8 @@ function caption(ctx, L, f, s, from, to, color) {
 
 // ---------- scenes ----------
 function sceneHook(ctx, f, S, L, copy) {
-  const font = `400 ${L.hookPx}px ${FONT.display}`;
-  const lines = wrap(ctx, copy.hook, font, L.hookMaxW);
+  const font = `400 ${copy.hookPx || L.hookPx}px ${FONT.display}`;
+  const lines = copy.hook.split('\n').flatMap(t => wrap(ctx, t, font, L.hookMaxW));
   let w = 0; const out = 1 - prog(f, 84, 6);
   ctx.save(); ctx.font = font;
   lines.forEach((ln, li) => {
@@ -331,7 +352,7 @@ function sceneHook(ctx, f, S, L, copy) {
 
 function scenePath(ctx, f, S, L, copy) {
   const font = `500 ${L.capPx}px ${FONT.ui}`;
-  const starts = [T.printerAt, T.cameraAt, T.keyAt];
+  const starts = [T.item1At, T.item2At, T.item3At];
   copy.list.forEach((s, i) => {
     const { a, dy } = life(f, starts[i], T.routeAt);
     text(ctx, s, L.capX, L.listBase + i * L.capLH, { font, color: C.day, alpha: a, dy });
@@ -341,19 +362,22 @@ function scenePath(ctx, f, S, L, copy) {
 
 function scenePierceAndPartner(ctx, f, S, L, copy) {
   const s3in = easeOut(prog(f, T.sealAt, T.sealScaleDur));
-  const toPartner = easeInOut(prog(f, T.partnerAt, 30));
+  const toChecks = easeInOut(prog(f, T.checksAt, 18));
+  const toPartner = easeInOut(prog(f, T.partnerAt, 24));
   const toConsole = easeInOut(prog(f, T.consoleAt, 12));
   if (toConsole >= 1) return;
-  const cx = lerp(L.sealX, L.partnerSealX, toPartner), cy = lerp(L.sealY, L.partnerSealY, toPartner);
-  const size = lerp(L.sealSize, L.partnerSealSize, toPartner) * lerp(0.85, 1, s3in);
+  const at3 = (a, b, c) => lerp(lerp(a, b, toChecks), c, toPartner);
+  const cx = at3(L.sealX, L.checkSealX, L.partnerSealX), cy = at3(L.sealY, L.checkSealY, L.partnerSealY);
+  const size = at3(L.sealSize, L.checkSealSize, L.partnerSealSize) * lerp(0.85, 1, s3in);
   const notch = easeOut(prog(f, T.strikeAt, T.strikeDur));
   let eye = easeOut(prog(f, T.eyeAt, T.eyeDur));
   if (f >= T.blinkAt && f < T.blinkAt + T.blinkDur) eye *= Math.abs(Math.cos((f - T.blinkAt) / T.blinkDur * Math.PI));
   const pupil = easeOut(prog(f, T.pupilAt, 8));
   // pupil follows a comet that runs back along the route to the door (4-frame lag), then locks.
-  const z = camera(f), toScreen = ([x, y]) => [PIVOT[0] + (x - PIVOT[0]) * z, PIVOT[1] + (y - PIVOT[1]) * z];
+  const z = camera(f), toScreen = ([x, y]) => toWorldScreen(L, [PIVOT[0] + (x - PIVOT[0]) * z, PIVOT[1] + (y - PIVOT[1]) * z]);
   const cometAt = ff => routePoint(ROUTE_TOTAL * (1 - easeInOut(prog(ff, T.pupilAt, T.pupilLockAt - T.pupilAt))));
   let target = toScreen(cometAt(f - 4));
+  if (f >= T.checksAt) target = [L.checkX + 40, L.checkY + 3 * L.checkLH];
   if (f >= T.partnerAt + 10) target = L.partnerNode;
   const dx = target[0] - cx, dy = target[1] - cy, d = Math.hypot(dx, dy) || 1;
   const look = [dx / d * Math.min(1, d / 300), dy / d * Math.min(1, d / 300)];
@@ -367,15 +391,26 @@ function scenePierceAndPartner(ctx, f, S, L, copy) {
   drawSeal(ctx, cx, cy, size, { notch, eye, pupil, look, color: C.blueOnNight, alpha });
 
   // name block
-  const nOut = 1 - prog(f, T.partnerAt - 6, 6);
+  const nOut = 1 - prog(f, T.checksAt - 6, 6);
   const nm = life(f, T.nameAt, null), dv = life(f, T.devaAt, null), gl = life(f, T.glossAt, null);
-  text(ctx, copy.name, 540, L.nameBase, { font: `400 ${L.namePx}px ${FONT.display}`, color: C.day, alpha: nm.a * nOut, dy: nm.dy, align: 'center' });
+  text(ctx, copy.name, L.nameX, L.nameBase, { font: `400 ${L.namePx}px ${FONT.display}`, color: C.day, alpha: nm.a * nOut, dy: nm.dy, align: 'center' });
   ctx.save(); ctx.font = `400 ${L.devaPx}px ${FONT.deva}`; const dw = ctx.measureText(copy.devanagari).width;
   ctx.font = `500 ${L.glossPx}px ${FONT.mono}`; const gw = ctx.measureText(copy.gloss).width; ctx.restore();
-  const gx = 540 - (dw + 28 + gw) / 2;
+  const gx = L.nameX - (dw + 28 + gw) / 2;
   text(ctx, copy.devanagari, gx, L.devaBase, { font: `400 ${L.devaPx}px ${FONT.deva}`, color: C.day, alpha: dv.a * nOut, dy: dv.dy });
   text(ctx, copy.gloss, gx + dw + 28, L.devaBase - 14, { font: `500 ${L.glossPx}px ${FONT.mono}`, color: C.day, alpha: 0.8 * gl.a * nOut, dy: gl.dy });
-  caption(ctx, L, f, copy.what, T.whatAt, T.partnerAt, C.day);
+  caption(ctx, L, f, copy.what, T.whatAt, T.checksAt, C.day);
+
+  // 3b: the checkpoints, numbered, one every 6 frames (examined, not yet verified: blue, never teal)
+  if (f >= T.checksAt && f < T.partnerAt) {
+    caption(ctx, L, f, copy.checks, T.checksAt + 3, T.partnerAt, C.day);
+    copy.checkpoints.forEach((label, i) => {
+      const { a, dy } = life(f, T.checkItemsAt + i * T.checkStagger, T.partnerAt);
+      const y = L.checkY + i * L.checkLH;
+      text(ctx, String(i + 1).padStart(2, '0'), L.checkX, y, { font: `500 30px ${FONT.mono}`, color: C.blueOnNight, alpha: a, dy });
+      text(ctx, label, L.checkX + 64, y, { font: `500 ${L.checkPx}px ${FONT.ui}`, color: C.day, alpha: a, dy });
+    });
+  }
 
   // partner
   if (f >= T.partnerAt) {
@@ -403,15 +438,18 @@ function sceneConsole(ctx, f, S, L, copy, cfg) {
   const rise = easeOut(prog(f, T.consoleAt, 12));
   const out = 1 - easeInOut(prog(f, T.ctaAt, 8));
   if (rise <= 0 || out <= 0) return;
-  const { x, y, w, h } = L.console;
+  const x = 0, y = 0, w = 920, h = 830;
   const dy = (1 - rise) * 60;
-  const ink = S.ink, sub = mix('#94A3B8', C.textSecondary, S.wash);
+  const panelBg = mix('#161820', C.panel, S.wash);
+  const ink = contrast('#F1F5F9', panelBg) >= contrast(C.textPrimary, panelBg) ? '#F1F5F9' : C.textPrimary;
+  const sub = contrast('#94A3B8', panelBg) >= contrast(C.textSecondary, panelBg) ? '#94A3B8' : C.textSecondary;
   const blue = S.wash < 0.5 ? C.blueOnNight : C.blue;
-  ctx.save(); ctx.globalAlpha *= rise * out; ctx.translate(0, dy);
+  ctx.save(); ctx.globalAlpha *= rise * out;
+  ctx.translate(L.console.x, L.console.y); ctx.scale(L.console.s, L.console.s); ctx.translate(0, dy);
   // gentle 2% drift
   const drift = 1 + 0.02 * easeInOut(prog(f, T.consoleAt, 240));
   ctx.translate(x + w / 2, y + h / 2); ctx.scale(drift, drift); ctx.translate(-(x + w / 2), -(y + h / 2));
-  rrect(ctx, x, y, w, h, 22); ctx.fillStyle = mix('#161820', C.panel, S.wash); ctx.fill();
+  rrect(ctx, x, y, w, h, 22); ctx.fillStyle = panelBg; ctx.fill();
   ctx.strokeStyle = mix('#2A2F3C', C.border, S.wash); ctx.lineWidth = 1.5; ctx.stroke();
 
   // header: grade seal + grade
@@ -452,7 +490,8 @@ function sceneConsole(ctx, f, S, L, copy, cfg) {
       const ry = by + 140 + i * 140;
       ctx.save(); ctx.globalAlpha *= a; ctx.translate(0, dy);
       rrect(ctx, bx, ry, bw, 124, 14); ctx.fillStyle = mix('#1C1F28', '#F8FAFC', S.wash); ctx.fill();
-      text(ctx, r.title, bx + 28, ry + 54, { font: `500 32px ${FONT.ui}`, color: ink });
+      ctx.save(); let tp = 32; ctx.font = `500 ${tp}px ${FONT.ui}`; while (tp > 22 && ctx.measureText(r.title).width > bw - 170) ctx.font = `500 ${--tp}px ${FONT.ui}`; ctx.restore();
+      text(ctx, r.title, bx + 28, ry + 54, { font: `500 ${tp}px ${FONT.ui}`, color: ink });
       text(ctx, r.host, bx + 28, ry + 96, { font: `400 24px ${FONT.mono}`, color: sub });
       text(ctx, r.sev, bx + bw - 28, ry + 54, { font: `500 22px ${FONT.mono}`, color: sub, align: 'right' });
       ctx.restore();
@@ -471,7 +510,7 @@ function sceneConsole(ctx, f, S, L, copy, cfg) {
     drawMap(ctx, f, S, { mini: true, copy });
     ctx.restore();
     const proven = life(f, T.attackAt + 10, null);
-    const chipX = mx + mw - 200, chipY = my + mh - 66;
+    const chipX = mx + mw - 200, chipY = my + 20;
     chip(ctx, chipX, chipY, copy.chips.proven, blue, { alpha: proven.a * (1 - prog(f, T.snapAt, 6)) });
     chip(ctx, chipX, chipY, copy.chips.verified, tealCol, { check: true, alpha: easeOut(prog(f, T.tealAt, 8)) });
 
@@ -539,14 +578,14 @@ function sceneCTA(ctx, f, S, L, copy) {
   const st = i => life(f, T.ctaAt + 6 + i * T.ctaStagger, null, 12);
   const a0 = st(0), a1 = st(1), a2 = st(2), a3 = st(3), a4 = st(4);
   drawSeal(ctx, L.ctaSealX, L.ctaSealY + a0.dy, L.ctaSealSize, { color: C.blue, alpha: a0.a });
-  text(ctx, copy.name, 540, L.ctaNameBase, { font: `400 ${L.ctaNamePx}px ${FONT.display}`, color: C.night, alpha: a1.a, dy: a1.dy, align: 'center' });
+  text(ctx, copy.name, L.cx, L.ctaNameBase, { font: `400 ${L.ctaNamePx}px ${FONT.display}`, color: C.night, alpha: a1.a, dy: a1.dy, align: 'center' });
   const b = L.ctaBtn;
   ctx.save(); ctx.globalAlpha *= a2.a; ctx.translate(0, a2.dy);
   rrect(ctx, b.x, b.y, b.w, b.h, b.h / 2); ctx.fillStyle = C.blue; ctx.fill();
-  text(ctx, copy.cta, 540, b.y + b.h / 2 + 17, { font: `500 ${L.ctaBtnPx}px ${FONT.ui}`, color: '#FFFFFF', align: 'center' });
+  text(ctx, copy.cta, L.cx, b.y + b.h / 2 + 17, { font: `500 ${L.ctaBtnPx}px ${FONT.ui}`, color: '#FFFFFF', align: 'center' });
   ctx.restore();
-  text(ctx, copy.url, 540, L.ctaUrlBase, { font: `500 ${L.ctaUrlPx}px ${FONT.ui}`, color: C.night, alpha: a3.a, dy: a3.dy, align: 'center' });
-  text(ctx, copy.scope, 540, L.ctaScopeBase, { font: `400 ${L.ctaScopePx}px ${FONT.ui}`, color: C.textSecondary, alpha: a4.a, dy: a4.dy, align: 'center' });
+  text(ctx, copy.url, L.cx, L.ctaUrlBase, { font: `500 ${L.ctaUrlPx}px ${FONT.ui}`, color: C.night, alpha: a3.a, dy: a3.dy, align: 'center' });
+  text(ctx, copy.scope, L.cx, L.ctaScopeBase, { font: `400 ${L.ctaScopePx}px ${FONT.ui}`, color: C.textSecondary, alpha: a4.a, dy: a4.dy, align: 'center' });
 }
 
 // ---------- animatic overlay ----------
@@ -555,9 +594,8 @@ function overlay(ctx, f, L, S) {
   const tc = `${String(Math.floor(f / 30)).padStart(2, '0')}:${String(f % 30).padStart(2, '0')}`;
   ctx.save();
   ctx.setLineDash([8, 8]); ctx.strokeStyle = 'rgba(255,80,160,.55)'; ctx.lineWidth = 2;
-  ctx.strokeRect(L.safe, L.safe, L.W - 2 * L.safe, L.H - 2 * L.safe);
-  ctx.strokeStyle = 'rgba(255,80,160,.3)'; ctx.beginPath(); ctx.moveTo(0, L.H - 120); ctx.lineTo(L.W, L.H - 120); ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.strokeRect(...L.safeRect);
+    ctx.setLineDash([]);
   ctx.fillStyle = 'rgba(255,80,160,.9)'; ctx.font = `500 24px ${FONT.mono}`; ctx.textAlign = 'right';
   ctx.fillText(`ANIMATIC · ${sc.name.toUpperCase()} · ${tc} · F${String(f).padStart(3, '0')}`, L.W - 24, 36);
   ctx.restore();
@@ -575,13 +613,15 @@ export function renderFrame(ctx, frame, cfg) {
 
   // map layer, under the camera
   const mapA = f < T.sealAt ? 1
-    : f < T.partnerAt ? lerp(1, 0.3, easeOut(prog(f, T.sealAt, 12)))
-    : f < T.consoleAt ? lerp(0.3, 0.5, easeOut(prog(f, T.partnerAt, 20)))
+    : f < T.checksAt ? lerp(1, 0.3, easeOut(prog(f, T.sealAt, 12)))
+    : f < T.partnerAt ? lerp(0.3, 0.06, easeOut(prog(f, T.checksAt, 12)))
+    : f < T.consoleAt ? lerp(0.06, 0.5, easeOut(prog(f, T.partnerAt, 20)))
     : lerp(0.5, 0.35, easeOut(prog(f, T.consoleAt, 12))) * (1 - prog(f, T.ctaAt, 8));
   ctx.save();
   const z = camera(f);
+  ctx.translate(L.world.x, L.world.y); ctx.scale(L.world.s, L.world.s);
   ctx.translate(PIVOT[0], PIVOT[1]); ctx.scale(z, z); ctx.translate(-PIVOT[0], -PIVOT[1]);
-  drawMap(ctx, f, S, { alpha: mapA, copy });
+  drawMap(ctx, f, S, { alpha: mapA, copy, pierce: fromScreen(L, [L.sealX, L.sealY]) });
   ctx.restore();
 
   if (f < 90) sceneHook(ctx, f, S, L, copy);
@@ -591,5 +631,17 @@ export function renderFrame(ctx, frame, cfg) {
   sceneCTA(ctx, f, S, L, copy);
 
   if (cfg.debug) overlay(ctx, f, L, S);
+  ctx.restore();
+}
+
+// Poster / thumbnail: the hook frame (door open, line fully read) plus the seal and the URL.
+export function renderPoster(ctx, cfg) {
+  const L = LAYOUTS[cfg.aspect];
+  renderFrame(ctx, 80, { ...cfg, debug: false });
+  ctx.save();
+  ctx.setTransform(cfg.width / L.W, 0, 0, cfg.height / L.H, 0, 0);
+  const sz = Math.round(L.W * 0.13), [sx, sy, sw] = L.safeRect;
+  drawSeal(ctx, sx + sw - sz / 2, sy + sz / 2, sz, { color: C.blueOnNight });
+  text(ctx, cfg.copy.url, L.capX, L.capBase, { font: `500 ${L.capPx * 0.75}px ${FONT.ui}`, color: C.day, alpha: 0.85 });
   ctx.restore();
 }

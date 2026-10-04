@@ -16,9 +16,10 @@ export const C = {
 };
 
 export const FONT = {
-  display: '"Instrument Serif", serif',
-  ui: '"Geist Sans", sans-serif',
-  mono: '"Geist Mono", monospace',
+  // Tiro Devanagari Hindi sits second so Devanagari glyphs (वेद्या, the Hindi cut) fall back to it.
+  display: '"Instrument Serif", "Tiro Devanagari Hindi", serif',
+  ui: '"Geist Sans", "Tiro Devanagari Hindi", sans-serif',
+  mono: '"Geist Mono", "Tiro Devanagari Hindi", monospace',
   deva: '"Tiro Devanagari Hindi", serif',
 };
 
