@@ -33,6 +33,7 @@ Central docs map. All documentation now lives here — the repo root is clean.
 
 ### Deployment
 - [AWS Deployment](deployment/aws-deployment.md) — EC2 + Docker Compose + Caddy auto-TLS
+- [AI on AWS](deployment/aws-ai-setup.md) — where the AI API keys go, network checklist, live AI check, symptom → fix table
 - [Client Prerequisites](deployment/CLIENT_PREREQUISITES.md) — what a client provides before an engagement
 
 ### Operations
