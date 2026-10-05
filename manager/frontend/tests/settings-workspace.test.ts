@@ -11,6 +11,6 @@ test("customer Settings renders the manager Settings workspace", () => {
 });
 
 test("portal Settings exposes only engagement-scoped shared sections", () => {
-  const source = readFileSync(join(process.cwd(), "app/settings/page.tsx"), "utf8");
+  const source = readFileSync(join(process.cwd(), "app/settings/workspace.tsx"), "utf8");
   assert.match(source, /\["workspace", "probe-fleet", "ai", "audit-log"\]/);
 });

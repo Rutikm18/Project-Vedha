@@ -786,10 +786,10 @@ export function FindingReport({ finding, ordinal }: { finding: ReportFinding; or
         <dl className="cr-meta-grid">
           <div><dt>Severity</dt><dd>{finding.severity}</dd></div>
           <div><dt>Status</dt><dd>{finding.status}</dd></div>
-          <div><dt>CVSS score</dt><dd>{finding.cvss_score ?? "Not recorded"}</dd></div>
+          <div><dt>CVSS · 0–10, higher is worse</dt><dd>{finding.cvss_score ?? "Not recorded"}</dd></div>
           <div><dt>CVSS vector</dt><dd>{finding.cvss_vector ?? "Not recorded"}</dd></div>
-          <div><dt>EPSS score</dt><dd>{finding.epss_score ?? "Not recorded"}</dd></div>
-          <div><dt>Risk score</dt><dd>{finding.risk_score ?? "Not recorded"}</dd></div>
+          <div><dt>EPSS · 0–1, higher likelihood</dt><dd>{finding.epss_score ?? "Not recorded"}</dd></div>
+          <div><dt>Manager risk · 0–1000, higher is worse</dt><dd>{finding.risk_score ?? "Not recorded"}</dd></div>
           <div><dt>Exploitable</dt><dd>{finding.exploitable ? "Yes" : "No"}</dd></div>
           <div><dt>Exploit validated</dt><dd>{finding.exploit_validated ? "Yes" : "No"}</dd></div>
           <div><dt>Detection status</dt><dd>{finding.detection_status}</dd></div>
@@ -1050,6 +1050,8 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
             This view is generated from the current read model. It is not an approved, published, or immutable report record.
           </div>
         </div>
+        <details className="cr-generation-details">
+          <summary>Generation details &amp; document metadata</summary>
         <dl>
           <div><dt>Engagement ID</dt><dd>{report.engagement.id}</dd></div>
           <div><dt>Schema version</dt><dd>{report.document.schema_version}</dd></div>
@@ -1059,7 +1061,18 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
           <div><dt>Display timezone</dt><dd>{configuredDisplayTimeZone}{displayTimeZone !== configuredDisplayTimeZone ? ` (rendered as ${displayTimeZone})` : ""}</dd></div>
           <div><dt>Snapshot</dt><dd>{report.document.snapshot_kind} · guarantee: {report.document.snapshot_guarantee} · persisted: {String(report.document.persisted)}</dd></div>
         </dl>
+        </details>
       </header>
+
+      <section className="cr-handoff no-print" aria-label="Report handoff readiness">
+        <strong>Review before delivery</strong>
+        <p>Live draft · approval and publication are not established by this view.</p>
+        <div>
+          <a href="#document-control">{report.engagement.metadata_gaps.length} document metadata gap{report.engagement.metadata_gaps.length === 1 ? "" : "s"}</a>
+          <a href="#scope-readiness">Review scope and evidence coverage</a>
+          <a href="#closure-register">Verify retest and closure records</a>
+        </div>
+      </section>
 
       <nav className="cr-section-nav no-print" aria-label="Report sections">
         <a href="#document-control">Document control</a>

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText, Download, Loader2, ShieldAlert, BarChart3, FileArchive,
   Printer, ExternalLink, CheckCircle, AlertTriangle, Clock, X,
 } from "lucide-react";
+import { useModalFocus } from "../../../hooks/useModalFocus";
 import { PortalShell } from "../../../components/portal/PortalShell";
 import { LockedFindingsTeaser, PlanLockNotice, PlanLockPanel } from "../../../components/portal/PlanLock";
 import { WRITTEN_REPORTS_NOTICE, isFeatureLocked } from "../../../lib/entitlements";
@@ -228,7 +229,7 @@ function FindingsTable({ findings, max }: { findings: PortalFinding[]; max?: num
               </td>
               <td data-label="Risk" style={{ padding: "11px 12px", textAlign: "right",
                 fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-secondary)" }}>
-                {f.risk_score ?? "—"}
+                {f.risk_score == null ? "—" : `${f.risk_score} / 1000`}
               </td>
               <td data-label="Status" style={{ padding: "11px 12px", textAlign: "right",
                 fontSize: 11, textTransform: "capitalize", color: "var(--text-muted)" }}>
@@ -315,7 +316,7 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
       }}>
         {[
           { label: "CVSS", value: f.cvss_score ?? "—", color: f.cvss_score !== null ? sevColor : "var(--text-muted)" },
-          { label: "Risk score", value: f.risk_score ?? "—", color: f.risk_score !== null ? sevColor : "var(--text-muted)" },
+          { label: "Risk · 0–1000", value: f.risk_score ?? "—", color: f.risk_score !== null ? sevColor : "var(--text-muted)" },
           { label: "Status", value: f.status, color: "var(--text-secondary)" },
         ].map((item, i) => (
           <div key={item.label} style={{
@@ -661,6 +662,7 @@ function DocumentsTab({ reports, onView, loadingId }: {
             onClick={(e) => onView(r.id, e.currentTarget)}
             disabled={loadingId === r.id}
             className="btn btn-secondary"
+            data-report-id={r.id}
             aria-label={`View ${r.output_type.replace(/_/g, " ")}`}
             style={{ flexShrink: 0 }}
           >
@@ -677,14 +679,9 @@ function DocumentsTab({ reports, onView, loadingId }: {
 
 // ── Report viewer modal ───────────────────────────────────────────────────────
 
-function ReportModal({ report, onClose }: { report: ReportContent; onClose: () => void }) {
+function ReportModal({ report, onClose, invoker }: { report: ReportContent; onClose: () => void; invoker: React.RefObject<HTMLElement | null> }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    ref.current?.focus();
-    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", h);
-    return () => document.removeEventListener("keydown", h);
-  }, [onClose]);
+  useModalFocus(ref, true, onClose, `[data-report-id=${JSON.stringify(report.id)}]`, invoker);
 
   return (
     <div onClick={onClose} style={{
@@ -738,7 +735,9 @@ export function PortalReportsWorkspace() {
   const [tab, setTab] = useState<Tab>("executive");
   const [modal, setModal] = useState<ReportContent | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [documentError, setDocumentError] = useState<{ id: string; message: string } | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
+  const closeReport = useCallback(() => setModal(null), []);
 
   const eng     = usePortalEngagement();
   const summary = useQuery({ queryKey: ["portal", "summary"],  queryFn: () => portalApi<PortalSummary>("/summary") });
@@ -755,7 +754,9 @@ export function PortalReportsWorkspace() {
   async function viewDoc(id: string, el: HTMLElement) {
     triggerRef.current = el;
     setLoadingId(id);
+    setDocumentError(null);
     try { setModal(await portalApi<ReportContent>(`/reports/${id}`)); }
+    catch (cause) { setDocumentError({ id, message: cause instanceof Error ? cause.message : "Request failed" }); }
     finally { setLoadingId(null); }
   }
 
@@ -795,7 +796,7 @@ export function PortalReportsWorkspace() {
           const active = tab === id;
           return (
             <button
-              key={id} role="tab" aria-selected={active}
+              key={id} role="tab" aria-label={label} aria-selected={active}
               onClick={() => setTab(id)}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 7,
@@ -819,6 +820,7 @@ export function PortalReportsWorkspace() {
       )}
       {tab === "documents" && !writtenWithheld && (
         <div className="no-print">
+          {documentError && <div role="alert" className="ui-recovery">Could not open the report: {documentError.message} <button type="button" className="btn btn-secondary" disabled={Boolean(loadingId)} onClick={(event) => void viewDoc(documentError.id, event.currentTarget)}>Retry document</button></div>}
           <DataState
             loading={reports.isLoading} error={reports.error}
             isEmpty={(reports.data ?? []).length === 0}
@@ -909,7 +911,7 @@ export function PortalReportsWorkspace() {
         </DataState>
       </div>
 
-      {modal && <ReportModal report={modal} onClose={() => { setModal(null); triggerRef.current?.focus(); }} />}
+      {modal && <ReportModal report={modal} onClose={closeReport} invoker={triggerRef} />}
     </PortalShell>
   );
 }

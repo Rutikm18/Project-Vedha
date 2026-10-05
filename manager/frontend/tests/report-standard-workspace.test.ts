@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-const reportsPage = readFileSync(join(process.cwd(), "app/reports/page.tsx"), "utf8");
+const reportsPage = readFileSync(join(process.cwd(), "app/reports/workspace.tsx"), "utf8");
 
 test("manager reports render the complete canonical document", () => {
   assert.match(reportsPage, /CanonicalReportDocument/);

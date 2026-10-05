@@ -4,7 +4,7 @@ import { describe, test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { PortalReportTabContent } from "../app/portal/reports/page";
+import { PortalReportTabContent } from "../app/portal/reports/workspace";
 import type {
   PortalFinding,
   PortalSummary,
