@@ -212,6 +212,12 @@ fi
 # release; empty in the repository copy (development installs skip the check).
 VEDHA_RELEASE_SPKI=""
 VEDHA_RELEASE_VERSION=""
+# Matches scripts/agent_release.py key_id(): SHA-256 of the raw Ed25519 key, 16 hex.
+release_key_id() {
+  printf '%s' "$VEDHA_RELEASE_SPKI" | { base64 -d 2>/dev/null || openssl base64 -d -A; } \
+    | tail -c 32 | { sha256sum 2>/dev/null || shasum -a 256; } | cut -c1-16
+}
+
 _IMAGE_EXPLICIT="${PROBE_IMAGE:+yes}"
 IMAGE="${PROBE_IMAGE:-vedha-agent:local}"       # local tag or registry path
 NAME="${PROBE_CONTAINER:-vedha-agent}"
@@ -226,18 +232,25 @@ PROBE_ALLOW_INSECURE="${PROBE_ALLOW_INSECURE:-false}"
 PROBE_PROXY="${PROBE_PROXY:-}"
 PROBE_NO_PROXY="${PROBE_NO_PROXY:-}"
 PROBE_CA_BUNDLE_FILE="${PROBE_CA_BUNDLE_FILE:-}"
+# A signed release (key embedded above) always requires a verified signature;
+# only a development installer from the repository runs without one.
+if [ -n "$VEDHA_RELEASE_SPKI" ]; then PROBE_REQUIRE_SIGNATURE=true; fi
 PROBE_REQUIRE_SIGNATURE="${PROBE_REQUIRE_SIGNATURE:-false}"
+PROBE_TOKEN_FILE=""
 
 usage() {
   say "Usage: $0 --manager https://api.example.com --token vet_... [options]"
   say "  --token, --enroll-token  Install token from Fleet → Add agent: downloads the agent and"
   say "                           enrols it with no approval step (single use, expires)."
+  say "  --token-file FILE        Read the install token from FILE instead (keeps it out of shell"
+  say "                           history and the process list)."
   say "  --name NAME              Agent host name shown in Fleet (default: this hostname)."
   say "  --proxy URL              Outbound HTTP(S) proxy, e.g. http://proxy.corp:3128 — used by"
   say "                           this installer and by the agent."
   say "  --no-proxy LIST          Hosts that bypass the proxy (comma-separated)."
   say "  --ca-bundle FILE         Extra CA certificates (PEM) for a TLS-inspecting proxy."
-  say "  --require-signature      Fail if the release signature cannot be checked on this host."
+  say "  --require-signature      Fail if the release signature cannot be checked (always on for a"
+  say "                           signed release)."
   say "  --insecure               Allow an http:// manager (testing only; production requires https)."
   say "  --uninstall              Remove the agent container (PROBE_PURGE=true also deletes its identity)."
   say "Only the Manager endpoint is deployment-specific; scope comes from the token or Fleet."
@@ -253,6 +266,11 @@ while [ "$#" -gt 0 ]; do
     --enroll-token|--token)
       [ "$#" -ge 2 ] || { say "ERROR: $1 requires a value."; usage; exit 2; }
       PROBE_ENROLL_TOKEN=$2
+      shift 2
+      ;;
+    --token-file)
+      [ "$#" -ge 2 ] || { say "ERROR: --token-file requires a file."; usage; exit 2; }
+      PROBE_TOKEN_FILE=$2
       shift 2
       ;;
     --name)
@@ -308,6 +326,12 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+if [ -n "$PROBE_TOKEN_FILE" ]; then
+  [ -r "$PROBE_TOKEN_FILE" ] || { say "ERROR: --token-file '$PROBE_TOKEN_FILE' is not readable."; exit 2; }
+  PROBE_ENROLL_TOKEN="$(tr -d ' \t\r\n' < "$PROBE_TOKEN_FILE")"
+  [ -n "$PROBE_ENROLL_TOKEN" ] || { say "ERROR: --token-file '$PROBE_TOKEN_FILE' is empty."; exit 2; }
+fi
+
 PLATFORM_URL="${PLATFORM_URL:-}"
 PROBE_NAME="${PROBE_NAME:-$(hostname)}"
 PROBE_LOCATION="${PROBE_LOCATION:-}"
@@ -322,6 +346,7 @@ if [ "${PROBE_INSTALL_DRY_RUN:-false}" = "true" ]; then
     say "Image: $IMAGE"
   elif [ -n "$PROBE_ENROLL_TOKEN" ]; then
     say "Image: signed agent release from $PLATFORM_URL/agent (verified before loading)"
+    [ -n "$VEDHA_RELEASE_SPKI" ] && say "Release signing key: $(release_key_id) (signature required)"
   else
     say "Image: $IMAGE if present locally, else the signed release from the manager (needs --token)"
   fi
@@ -456,30 +481,54 @@ verify_manifest_signature() {
     say "NOTE: development installer (no release key embedded) — skipping the signature check."
     return 0
   fi
+  tr -d '\n\r ' < "$STAGE_DIR/manifest.json.sig" > "$STAGE_DIR/manifest.sig.b64"
+  _verified=""
   _ossl="$(openssl version 2>/dev/null || true)"
   case "$_ossl" in
-    "OpenSSL 3."*|"OpenSSL 4."*) ;;
-    *)
-      if [ "$PROBE_REQUIRE_SIGNATURE" = "true" ]; then
-        say "ERROR: OpenSSL 3 is needed to verify the release signature (found: ${_ossl:-none})."
-        exit 1
+    "OpenSSL 3."*|"OpenSSL 4."*)
+      printf -- '-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----\n' "$VEDHA_RELEASE_SPKI" > "$STAGE_DIR/release.pub"
+      if openssl base64 -d -A -in "$STAGE_DIR/manifest.sig.b64" -out "$STAGE_DIR/manifest.sig.bin" 2>/dev/null \
+        && openssl pkeyutl -verify -pubin -inkey "$STAGE_DIR/release.pub" -rawin \
+             -in "$STAGE_DIR/manifest.json" -sigfile "$STAGE_DIR/manifest.sig.bin" >/dev/null 2>&1; then
+        _verified=openssl
+      else
+        _verified=bad
       fi
-      say "WARNING: OpenSSL 3 not found (${_ossl:-none}); the release signature can't be checked on"
-      say "  this host. The image is still checked against the manifest's SHA-256 over HTTPS."
-      return 0
       ;;
   esac
-  printf -- '-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----\n' "$VEDHA_RELEASE_SPKI" > "$STAGE_DIR/release.pub"
-  tr -d '\n\r ' < "$STAGE_DIR/manifest.json.sig" > "$STAGE_DIR/manifest.sig.b64"
-  if ! openssl base64 -d -A -in "$STAGE_DIR/manifest.sig.b64" -out "$STAGE_DIR/manifest.sig.bin" 2>/dev/null \
-    || ! openssl pkeyutl -verify -pubin -inkey "$STAGE_DIR/release.pub" -rawin \
-         -in "$STAGE_DIR/manifest.json" -sigfile "$STAGE_DIR/manifest.sig.bin" >/dev/null 2>&1; then
+  # Older OpenSSL (RHEL 8, Ubuntu 20.04, Amazon Linux 2) cannot do Ed25519;
+  # Python's cryptography package can, when it is installed.
+  if [ -z "$_verified" ] && have python3 && python3 -c 'import cryptography' >/dev/null 2>&1; then
+    if python3 - "$VEDHA_RELEASE_SPKI" "$STAGE_DIR/manifest.json" "$STAGE_DIR/manifest.sig.b64" <<'PYEOF'
+import base64, sys
+from cryptography.hazmat.primitives.serialization import load_der_public_key
+spki, manifest, sig = sys.argv[1:4]
+key = load_der_public_key(base64.b64decode(spki))
+key.verify(base64.b64decode(open(sig).read().strip()), open(manifest, "rb").read())
+PYEOF
+    then _verified=python
+    else _verified=bad
+    fi
+  fi
+  if [ "$_verified" = "bad" ]; then
     say "ERROR: the agent release signature does NOT verify. Refusing to install."
     say "  The release on $PLATFORM_URL was not signed by the key this installer trusts."
     say "  Tell your Vedha contact; do not work around this."
     exit 1
   fi
-  say "Release signature verified."
+  if [ -z "$_verified" ]; then
+    if [ "$PROBE_REQUIRE_SIGNATURE" = "true" ]; then
+      say "ERROR: this host cannot check the release signature: it needs OpenSSL 3 (found:"
+      say "  ${_ossl:-none}) or python3 with the 'cryptography' package."
+      say "  Use a supported host (Ubuntu 22.04+, Debian 12, RHEL 9, Amazon Linux 2023), or install"
+      say "  python3-cryptography, then run the installer again."
+      exit 1
+    fi
+    say "WARNING: OpenSSL 3 not found (${_ossl:-none}); the release signature can't be checked on"
+    say "  this host. The image is still checked against the manifest's SHA-256 over HTTPS."
+    return 0
+  fi
+  say "Release signature verified (signing key $(release_key_id))."
 }
 
 load_image_from_manager() {
@@ -887,8 +936,17 @@ if docker container inspect "$NAME" >/dev/null 2>&1; then
     say "Refusing to move an enrolled identity implicitly; revoke/re-enroll explicitly."
     exit 78
   fi
-  docker start "$NAME" >/dev/null
-  say "Existing probe installation preserved and started."
+  existing_image="$(docker inspect -f '{{.Config.Image}}' "$NAME" 2>/dev/null || true)"
+  if [ "$existing_image" != "$IMAGE" ]; then
+    # Upgrade: a new image needs a new container. The identity and enrolment live
+    # in the state volume, so the agent keeps its place in Fleet.
+    say "Upgrading the agent: $existing_image -> $IMAGE (identity kept)."
+    docker rm -f "$NAME" >/dev/null
+    run_probe_container
+  else
+    docker start "$NAME" >/dev/null
+    say "Existing probe installation preserved and started."
+  fi
 else
   run_probe_container
   say "Probe container started. It is creating a device identity and enrollment request."
