@@ -178,7 +178,14 @@ def _rule_tls(facts: list[dict]) -> Iterable[Finding]:
             continue
         d = _data(f)
         target, port = f.get("target"), f.get("port")
-        accepted = [v.upper().replace(" ", "") for v in (d.get("accepted_versions") or [])]
+        # Normalize BOTH the stdlib underscore form the TLS scanner emits
+        # ("TLSv1_0", from ssl.TLSVersion labels) AND the dotted form ("TLSv1.0")
+        # to one token. Without the "_"->"." fold, a real tls_scan fact (always
+        # underscore) never matched the dotted legacy set, so TLS 1.0/1.1 went
+        # ungraded on every port — the exact SSL2/3/TLS1.0/1.1 gap this closes,
+        # and what lets the SCHANNEL-behind-RDP facts be graded too.
+        accepted = [v.upper().replace(" ", "").replace("_", ".")
+                    for v in (d.get("accepted_versions") or [])]
 
         obsolete = [v for v in accepted if v in ("SSLV2", "SSLV3")]
         legacy = [v for v in accepted if v in ("TLSV1", "TLSV1.0", "TLSV1.1")]

@@ -39,7 +39,10 @@ from app.models.detection_run_finding import (
     DetectionRunFinding, RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED,
     RUN_FINDING_RESOLVED,
 )
-from app.discovery.finding_translator import _resolve_asset, _find_open_duplicate
+from app.discovery.finding_translator import (
+    _resolve_asset, _find_open_duplicate, exposed_service_condition,
+    condition_index_key, DEDUP_KEY,
+)
 from app.detection.attack_paths import attack_path_findings
 from app.detection.prioritization import _posture_risk_on_manager_scale
 from app.detection.resolution import (
@@ -48,7 +51,11 @@ from app.detection.resolution import (
 from app.ai.verification_graph import run_verification
 from app.config import get_settings
 from app.services.finding_events import record_event
-from app.services.finding_scan_provenance import preserve_trusted_scan_provenance
+from app.services.finding_scan_provenance import (
+    CUSTODY_CAPTURED_BY_MANAGER,
+    preserve_trusted_scan_provenance,
+    stamp_chain_of_custody,
+)
 
 logger = structlog.get_logger()
 
@@ -297,7 +304,13 @@ def detect_all_from_facts_traced(
         except ImportError:                          # older engine: CVE-only
             from pipeline import run_pipeline  # type: ignore
             findings, _ = run_pipeline([tmp])
-            return [f.to_dict() for f in findings], [], empty_meta
+            # Mirror run_full_detection's gap #4 partition: a `range-open` match
+            # is product-presence (open-ended range, no version signal), not a
+            # customer-facing CVE — withhold it here too so this degraded path
+            # cannot reintroduce the banner-host flood.
+            cve = [f.to_dict() for f in findings
+                   if getattr(f, "match_basis", None) != "range-open"]
+            return cve, [], empty_meta
     except Exception as exc:  # noqa: BLE001
         # The CVE track can fail on its own (e.g. a missing/oversized NVD snapshot);
         # the POSTURE track must NOT go down with it — config-exposure findings need
@@ -475,8 +488,19 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             asset = await _resolve_asset(db, engagement_id, p.get("asset_ip"), cache=cache)
             asset_id = asset.id if asset else None
 
+            # gap #2: an exposed-service posture finding (POSTURE-EXPOSED-*) carries
+            # a per-port condition key so it is the SAME issue as any other
+            # producer's exposed-service finding on that port, merging instead of
+            # adding a second, differently-titled row. Dedicated-scanner findings
+            # (SMB/RDP/TLS) are not keyed by port — two real issues can share one.
+            condition = (exposed_service_condition(p.get("port"))
+                         if str(p.get("rule_id") or "").startswith("POSTURE-EXPOSED-")
+                         else None)
+            if condition:
+                p[DEDUP_KEY] = condition
+
             dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
-                                             index=open_index)
+                                             condition=condition, index=open_index)
             if dup is not None:
                 dup.evidence = preserve_trusted_scan_provenance(
                     p,
@@ -509,6 +533,8 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                     remediated_index.pop((asset_id, title), None)
                 if open_index is not None:
                     open_index[(asset_id, title)] = regressed
+                    if condition:
+                        open_index[condition_index_key(asset_id, condition)] = regressed
                 continue
 
             state = p.get("state")
@@ -536,6 +562,8 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             db.add(f)
             touched.append(f)
             created += 1
+            if open_index is not None and condition:
+                open_index[condition_index_key(asset_id, condition)] = f
             # The dedup lookup no longer autoflushes into a query, so a second
             # finding with this identity in the SAME run only collapses onto
             # this row if the index knows about it.
@@ -545,6 +573,30 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             logger.warning("posture_finding.create_failed",
                            rule_id=p.get("rule_id"), error=str(exc))
     return created, reaffirmed
+
+
+def _stamp_chain_of_custody(findings, now) -> None:
+    """Stamp integrity custody on every finding this detection run touched.
+
+    These rows (CVE, posture, attack-path) record their scan lineage in DB
+    columns, not an evidence ``scan_provenance`` block, so they never passed
+    through ``record_scan_observation`` and would otherwise reach the report with
+    no integrity hash. ``captured_by`` is the manager (it computed the digest);
+    ``source_host`` is the asset IP the rule fired on when the evidence carries
+    one. A failure on one finding must not sink the batch or the run.
+    """
+    for f in findings:
+        try:
+            evidence = f.evidence if isinstance(f.evidence, dict) else {}
+            f.evidence = stamp_chain_of_custody(
+                evidence,
+                source_host=evidence.get("asset_ip") or evidence.get("target"),
+                captured_by=CUSTODY_CAPTURED_BY_MANAGER,
+                tool=evidence.get("scanner") or evidence.get("engine"),
+                captured_at=now,
+            )
+        except Exception as exc:  # noqa: BLE001 — custody must never break the run
+            logger.warning("custody.stamp_failed", error=str(exc))
 
 
 async def _stamp_verification(findings, llm=None) -> None:
@@ -901,6 +953,12 @@ async def create_findings_from_facts(
             created += corr_new
         except Exception as exc:  # noqa: BLE001 — correlation must not sink the run
             logger.warning("detection_run.correlation_failed", error=str(exc))
+
+        # Chain of custody: stamp an integrity digest on every finding this run
+        # touched BEFORE resolution reads them, so the engagement report can prove
+        # the recorded evidence is unchanged. Unconditional (unlike verification)
+        # and best-effort; the final flush persists it.
+        _stamp_chain_of_custody(touched, now)
 
         # Coverage ledger + coverage-gated auto-resolution (Phase 0/1). Best-effort:
         # never let resolution failure sink an otherwise-good detection run.

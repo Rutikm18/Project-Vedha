@@ -27,6 +27,7 @@ from .scanner_base import (
     parse_ports, resolve, resolve_ip_candidates, setup_logging, base_argparser,
     main_entrypoint,
 )
+from .tls_scanner import _scan_tls_sync   # reuse the TLS enumeration engine (gap #3)
 
 # RDP security protocols (rdpNegReq/rdpNegRsp `requestedProtocols`/`selectedProtocol`)
 PROTOCOL_RDP = 0x00          # standard RDP security — no NLA (weakest)
@@ -132,6 +133,34 @@ def probe_rdp_posture(ip: str, port: int, timeout: float) -> dict | None:
     return a
 
 
+def _rdp_tls_connect(host: str, port: int, timeout: float):
+    """A tls_scanner `connect` hook that drives the RDP X.224 negotiation to a
+    TLS-capable security protocol, then hands back the LIVE socket positioned
+    where the server expects a TLS ClientHello (gap #3: measure SCHANNEL behind
+    RDP).
+
+    Works for both SSL (0x01) and HYBRID/HYBRID_EX (CredSSP/NLA): in every
+    TLS-capable RDP mode the TLS handshake runs first, before any CredSSP, so the
+    ordinary version/cipher/cert enumeration applies unchanged. Raises if the peer
+    is not RDP or did not select a TLS-capable protocol — tls_scanner's hook
+    contract treats a raising connect as "version refused", so a non-TLS RDP
+    server simply yields no SCHANNEL facts. Read-only: one negotiation, no
+    credentials, no CredSSP/NTLM exchange.
+    """
+    sock = socket.create_connection((host, port), timeout=timeout)
+    try:
+        sock.settimeout(timeout)
+        sock.sendall(build_connection_request(
+            PROTOCOL_SSL | PROTOCOL_HYBRID | PROTOCOL_HYBRID_EX))
+        info = parse_connection_confirm(sock.recv(1024))
+        if not info or not info.get("tls"):
+            raise OSError("RDP did not select a TLS-capable security protocol")
+        return sock                      # caller (ctx.wrap_socket) owns it now
+    except Exception:
+        sock.close()
+        raise
+
+
 class RDPScanner(BaseScanner):
     name = "rdp_scan"
 
@@ -139,7 +168,7 @@ class RDPScanner(BaseScanner):
         super().__init__(*args, **kwargs)
         self.ports = ports or [3389]
 
-    async def _scan_port(self, target: str, port: int) -> ScanResult | None:
+    async def _scan_port(self, target: str, port: int) -> list[ScanResult]:
         await self.limiter.wait()
         loop = asyncio.get_running_loop()
         async with self.sem:
@@ -147,27 +176,51 @@ class RDPScanner(BaseScanner):
             # dual-stack host with a black-holed IPv6 path would otherwise be
             # reported as having no RDP at all.
             info = None
+            chosen_ip = None
             for ip in resolve_ip_candidates(target, port, proto="tcp"):
                 info = await loop.run_in_executor(
                     None, probe_rdp_posture, ip, port, self.timeout)
                 if info:
+                    chosen_ip = ip
                     break
         if not info:
-            return None
+            return []
         sp = info.get("selected_protocol")
         sec = ("NLA" if info.get("nla") else "TLS" if info.get("tls")
                else "standard-rdp" if info.get("standard_rdp_security") else "?")
         req = info.get("nla_required")
         req_txt = ("; NLA required" if req is True
                    else "; NLA NOT required" if req is False else "")
-        return ScanResult(
+        results = [ScanResult(
             self.name, target, port=port, proto="tcp", status="open", data=info,
             evidence=f"RDP confirmed; security={sec}" + req_txt
-            + (f" (selected_protocol={sp})" if sp is not None else ""))
+            + (f" (selected_protocol={sp})" if sp is not None else ""))]
+
+        # Gap #3: when RDP negotiates a TLS-capable security protocol, measure the
+        # SCHANNEL TLS behind it by running the ordinary TLS enumeration over the
+        # RDP-negotiated socket. Emitted as a `tls_scan`-typed fact so findings.py's
+        # existing TLS rules grade it (deprecated version / weak cipher / cert),
+        # which the deep-scan router never does for 3389. transport="rdp" keeps it
+        # distinguishable from a plain 443 TLS finding.
+        if info.get("tls") and chosen_ip is not None:
+            async with self.sem:
+                tls_info = await loop.run_in_executor(
+                    None, _scan_tls_sync, chosen_ip, port, self.timeout,
+                    _rdp_tls_connect)
+            if tls_info:
+                tls_info["transport"] = "rdp"
+                results.append(ScanResult(
+                    "tls_scan", target, port=port, proto="tcp", status="open",
+                    data=tls_info,
+                    evidence=(f"SCHANNEL (RDP) grade {tls_info['posture']['grade']}; "
+                              "accepts: " + ", ".join(tls_info["accepted_versions"]))))
+        return results
 
     async def scan_target(self, target: str) -> list[ScanResult]:
-        results = [await self._scan_port(target, p) for p in self.ports]
-        return [r for r in results if r is not None]
+        results: list[ScanResult] = []
+        for p in self.ports:
+            results.extend(await self._scan_port(target, p))
+        return results
 
 
 def main() -> None:
