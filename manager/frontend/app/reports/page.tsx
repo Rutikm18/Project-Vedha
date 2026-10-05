@@ -22,6 +22,22 @@ interface EngagementList {
   engagements: EngagementOption[];
 }
 
+/**
+ * Print the report as the customer copy (complete records collapsed, operator
+ * readiness check left out) or as the complete record (every disclosure open).
+ * Large reports render records on first open, so give React a moment.
+ */
+function printReport(mode: "customer" | "full") {
+  const root = document.querySelector<HTMLElement>(".rr-report");
+  if (!root) return;
+  root.dataset.print = mode;
+  root.querySelectorAll<HTMLDetailsElement>("details").forEach((d) => {
+    // Every affected asset prints; complete records only in the full copy.
+    d.open = mode === "full" || d.classList.contains("rr-more-assets");
+  });
+  window.setTimeout(() => window.print(), mode === "full" ? 400 : 50);
+}
+
 function CanonicalReportsWorkspace() {
   const [selectedId, setSelectedId] = useState("");
 
@@ -49,16 +65,26 @@ function CanonicalReportsWorkspace() {
   return (
     <PageShell
       title="Reports"
-      subtitle="Canonical evidence report — complete live operator draft"
+      subtitle="Vulnerability assessment report — live operator draft"
       headerActions={
         <div className="report-export-control no-print">
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => window.print()}
+            onClick={() => printReport("customer")}
             disabled={!report}
+            title="The reading view: summary, findings, roadmap and closure, without the operator record-readiness check"
           >
-            <Printer size={14} />Print complete draft
+            <Printer size={14} />Print customer copy
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => printReport("full")}
+            disabled={!report}
+            title="Everything, including the complete canonical record of every finding"
+          >
+            <Printer size={14} />Print complete record
           </button>
           <ReportExportMenu engagementId={report?.engagement.id} disabled={!report || loading} />
         </div>
