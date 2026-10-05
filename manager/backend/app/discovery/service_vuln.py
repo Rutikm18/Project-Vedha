@@ -183,6 +183,7 @@ async def create_service_vuln_findings(
                     recorded_at=now,
                     initial=False,
                     previous_evidence=duplicate.evidence,
+                    source_host=target,
                 )
                 duplicate.last_seen = now
                 updated += 1
@@ -197,6 +198,7 @@ async def create_service_vuln_findings(
                 tool=tool,
                 recorded_at=now,
                 initial=True,
+                source_host=target,
             )
             db.add(_new_finding(
                 engagement_id, asset, observed_at=now, **candidate

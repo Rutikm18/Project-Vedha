@@ -316,6 +316,7 @@ async def create_findings_from_probe_result(
                     recorded_at=now,
                     initial=False,
                     previous_evidence=dup.evidence,
+                    source_host=f.get("target"),
                 )
                 dup.last_seen = now
                 continue
@@ -337,6 +338,7 @@ async def create_findings_from_probe_result(
                 tool=result.get("engine") or result.get("scanner"),
                 recorded_at=now,
                 initial=True,
+                source_host=f.get("target"),
             )
             db.add(Finding(
                 engagement_id=engagement_id,

@@ -16,10 +16,53 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.finding import Finding
+from app.services.evidence_integrity import (
+    CANONICAL_SHA256_BASIS,
+    item_content_sha256,
+)
 
 SCAN_PROVENANCE_KEY = "scan_provenance"
 SCAN_PROVENANCE_RECORDER = "vedha_manager"
 SCAN_PROVENANCE_VERSION = 1
+
+CUSTODY_CAPTURED_BY_PROBE = "vedha_probe"
+CUSTODY_CAPTURED_BY_MANAGER = SCAN_PROVENANCE_RECORDER
+
+
+def stamp_chain_of_custody(
+    evidence: dict | None,
+    *,
+    source_host: str | None,
+    captured_by: str,
+    tool: str | None = None,
+    captured_at: datetime | None = None,
+) -> dict:
+    """Stamp integrity custody (who/where/when + a content digest) onto evidence.
+
+    The digest covers only the OBSERVED content: custody and provenance keys are
+    excluded (see ``content_for_integrity``) so advancing the scan_provenance
+    block, re-stamping on reaffirmation, or linking a detection run never
+    invalidates it. A re-stamp over identical content therefore yields the same
+    hash; new scanner content yields a new one, which is the intended signal.
+
+    Content that cannot be canonicalized (non-JSON) leaves no hash behind rather
+    than a false one, so the report flags it ``evidence_integrity_hash_absent``.
+    """
+    out = dict(evidence) if isinstance(evidence, dict) else {}
+    out["captured_by"] = captured_by
+    if source_host is not None:
+        out["source_host"] = source_host
+    if tool is not None and not out.get("tool"):
+        out["tool"] = tool
+    out["captured_at"] = (captured_at or datetime.now(timezone.utc)).isoformat()
+    digest = item_content_sha256(out)
+    if digest is not None:
+        out["sha256"] = digest
+        out["sha256_basis"] = CANONICAL_SHA256_BASIS
+    else:
+        out.pop("sha256", None)
+        out.pop("sha256_basis", None)
+    return out
 
 
 def preserve_trusted_scan_provenance(
@@ -57,6 +100,8 @@ def record_scan_observation(
     recorded_at: datetime | None,
     initial: bool,
     previous_evidence: dict | None = None,
+    source_host: str | None = None,
+    captured_by: str = CUSTODY_CAPTURED_BY_PROBE,
 ) -> dict:
     """Return evidence with immutable initial and advancing latest scan context.
 
@@ -64,6 +109,11 @@ def record_scan_observation(
     evidence on reaffirmation.  Only the prior provenance block is retained;
     stale scanner-specific fields keep their existing replacement semantics.
     Missing identifiers stay explicit ``None`` rather than being inferred.
+
+    Chain of custody is stamped last: ``source_host`` (the scanned target) and
+    ``captured_by`` (the probe by default — these paths persist probe-submitted
+    evidence) plus a content digest, so the engagement report can prove the
+    recorded evidence is unchanged instead of flagging its integrity hash absent.
     """
     # Raw scanner evidence is untrusted and may itself contain a provenance
     # key. Reuse the same trust boundary as every evidence-replacement path.
@@ -90,7 +140,13 @@ def record_scan_observation(
         provenance["initial"] = dict(observation)
     provenance["latest"] = dict(observation)
     out[SCAN_PROVENANCE_KEY] = provenance
-    return out
+    return stamp_chain_of_custody(
+        out,
+        source_host=source_host,
+        captured_by=captured_by,
+        tool=tool,
+        captured_at=timestamp,
+    )
 
 
 async def attach_detection_run_to_scan_findings(

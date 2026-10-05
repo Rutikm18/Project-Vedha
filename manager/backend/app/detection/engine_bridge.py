@@ -51,7 +51,11 @@ from app.detection.resolution import (
 from app.ai.verification_graph import run_verification
 from app.config import get_settings
 from app.services.finding_events import record_event
-from app.services.finding_scan_provenance import preserve_trusted_scan_provenance
+from app.services.finding_scan_provenance import (
+    CUSTODY_CAPTURED_BY_MANAGER,
+    preserve_trusted_scan_provenance,
+    stamp_chain_of_custody,
+)
 
 logger = structlog.get_logger()
 
@@ -571,6 +575,30 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
     return created, reaffirmed
 
 
+def _stamp_chain_of_custody(findings, now) -> None:
+    """Stamp integrity custody on every finding this detection run touched.
+
+    These rows (CVE, posture, attack-path) record their scan lineage in DB
+    columns, not an evidence ``scan_provenance`` block, so they never passed
+    through ``record_scan_observation`` and would otherwise reach the report with
+    no integrity hash. ``captured_by`` is the manager (it computed the digest);
+    ``source_host`` is the asset IP the rule fired on when the evidence carries
+    one. A failure on one finding must not sink the batch or the run.
+    """
+    for f in findings:
+        try:
+            evidence = f.evidence if isinstance(f.evidence, dict) else {}
+            f.evidence = stamp_chain_of_custody(
+                evidence,
+                source_host=evidence.get("asset_ip") or evidence.get("target"),
+                captured_by=CUSTODY_CAPTURED_BY_MANAGER,
+                tool=evidence.get("scanner") or evidence.get("engine"),
+                captured_at=now,
+            )
+        except Exception as exc:  # noqa: BLE001 — custody must never break the run
+            logger.warning("custody.stamp_failed", error=str(exc))
+
+
 async def _stamp_verification(findings, llm=None) -> None:
     """Best-effort: compute + stamp each finding's verification verdict. A failure
     on one finding must not sink the batch or the detection run."""
@@ -925,6 +953,12 @@ async def create_findings_from_facts(
             created += corr_new
         except Exception as exc:  # noqa: BLE001 — correlation must not sink the run
             logger.warning("detection_run.correlation_failed", error=str(exc))
+
+        # Chain of custody: stamp an integrity digest on every finding this run
+        # touched BEFORE resolution reads them, so the engagement report can prove
+        # the recorded evidence is unchanged. Unconditional (unlike verification)
+        # and best-effort; the final flush persists it.
+        _stamp_chain_of_custody(touched, now)
 
         # Coverage ledger + coverage-gated auto-resolution (Phase 0/1). Best-effort:
         # never let resolution failure sink an otherwise-good detection run.

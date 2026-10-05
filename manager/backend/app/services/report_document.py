@@ -73,7 +73,10 @@ from app.schemas.report_document import (
     ReportVerification,
 )
 from app.services import finding_events, sla
-from app.services.evidence_integrity import verify_canonical_sha256
+from app.services.evidence_integrity import (
+    content_for_integrity,
+    verify_canonical_sha256,
+)
 from app.services.finding_compliance import (
     compliance_for,
     compliance_mapping_basis,
@@ -228,8 +231,14 @@ def _artifact(
             break
     sha256 = _text(item.get("sha256"))
     sha256_basis = _text(item.get("sha256_basis"))
+    # Verify over the content the digest actually covers: the custody block the
+    # manager stamps (hash, capture identity, provenance, dedup key) is excluded
+    # so a verified hash means the OBSERVED evidence is unchanged, and advancing
+    # provenance or re-stamping custody never reads as a mismatch.
     sha256_verified = (
-        verify_canonical_sha256(content, sha256, sha256_basis)
+        verify_canonical_sha256(
+            content_for_integrity(content), sha256, sha256_basis
+        )
         if sha256 is not None
         else None
     )
