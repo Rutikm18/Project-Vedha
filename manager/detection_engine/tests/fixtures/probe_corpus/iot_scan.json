@@ -1,0 +1,10 @@
+[
+  {"scanner": "iot_scan", "target": "192.168.1.90", "timestamp": "2026-09-01T00:00:00Z", "port": 1883, "proto": "tcp", "status": "open",
+   "data": {"mqtt_connack": true, "return_code": 0, "unauthenticated_access": true, "return_code_meaning": "Connection Accepted", "subscribe_all_granted": true}},
+  {"scanner": "iot_scan", "target": "192.168.1.90", "timestamp": "2026-09-01T00:00:00Z", "port": 7547, "proto": "tcp", "status": "open",
+   "data": {"http_response": "HTTP/1.1 200 OK", "server": "RomPager/4.07", "cwmp_indicators": true}},
+  {"scanner": "iot_scan", "target": "192.168.1.90", "timestamp": "2026-09-01T00:00:00Z", "port": 554, "proto": "tcp", "status": "open",
+   "data": {"rtsp_version": "RTSP/1.0", "status": "200", "public_methods": "OPTIONS, DESCRIBE, SETUP, PLAY, TEARDOWN", "server": "Hipcam RealServer/V1.0"}},
+  {"scanner": "iot_scan", "target": "192.168.1.90", "timestamp": "2026-09-01T00:00:00Z", "port": 1900, "proto": "udp", "status": "open",
+   "data": {"upnp": true, "server": "Linux/3.14 UPnP/1.0", "st": "upnp:rootdevice", "location": "http://192.168.1.90:80/desc.xml"}}
+]
