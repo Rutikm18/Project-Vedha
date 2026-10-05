@@ -40,8 +40,8 @@ from app.models.detection_run_finding import (
     RUN_FINDING_RESOLVED,
 )
 from app.discovery.finding_translator import (
-    _resolve_asset, _find_open_duplicate, exposed_service_condition,
-    condition_index_key, DEDUP_KEY,
+    AssetCache, _resolve_asset, _find_open_duplicate, prime_asset_cache,
+    exposed_service_condition, condition_index_key, DEDUP_KEY,
 )
 from app.detection.attack_paths import attack_path_findings
 from app.detection.prioritization import _posture_risk_on_manager_scale
@@ -764,6 +764,81 @@ async def _record_run_membership(db: AsyncSession, run: DetectionRun) -> None:
             run_id=run.id, finding_id=fid, outcome=RUN_FINDING_RESOLVED))
 
 
+async def _notify_new_findings(db: AsyncSession, engagement_id: uuid.UUID, run_id: uuid.UUID) -> None:
+    """Tell the tenant about the Critical / High findings this run opened (one
+    message per severity, per run), if their notification rules say so. Never
+    raises, and runs in a savepoint so even a database error here cannot spoil the
+    detection run's own transaction."""
+    try:
+        from app.models.engagement import Engagement
+        from app.services.notification_rules import notify_event_safe
+
+        async with db.begin_nested():
+            opened = (await db.execute(
+                select(Finding.severity, Finding.title).where(
+                    Finding.initial_detection_run_id == run_id,
+                    Finding.severity.in_([FindingSeverity.critical, FindingSeverity.high]),
+                )
+            )).all()
+            if not opened:
+                return
+            eng = (await db.execute(
+                select(Engagement.tenant_id, Engagement.name).where(Engagement.id == engagement_id)
+            )).one_or_none()
+            if eng is None:
+                return
+            tenant_id, name = eng
+            for severity, label, event in (
+                (FindingSeverity.critical, "Critical", "critical_finding"),
+                (FindingSeverity.high, "High", "high_finding"),
+            ):
+                titles = [t for s, t in opened if s == severity]
+                if not titles:
+                    continue
+                shown = "\n".join(f"- {t}" for t in titles[:5])
+                more = f"\n…and {len(titles) - 5} more" if len(titles) > 5 else ""
+                await notify_event_safe(
+                    db, tenant_id, event,
+                    f"Vedha: {len(titles)} new {label} finding{'s' if len(titles) != 1 else ''} in {name}",
+                    f"A scan of '{name}' opened {len(titles)} {label} finding{'s' if len(titles) != 1 else ''}:\n"
+                    f"{shown}{more}")
+    except Exception as exc:  # noqa: BLE001 — notification must not fail the run
+        logger.warning("detection_run.notify_failed", run_id=str(run_id), error=str(exc))
+
+
+async def _notify_coverage_gap(db: AsyncSession, engagement_id: uuid.UUID, ingest: dict | None) -> None:
+    """Tell the tenant when a scan's facts were partly or wholly rejected: the checks
+    for those facts never ran, so a quiet result is not a clean one. Same guarantees
+    as _notify_new_findings: a savepoint, and it never raises."""
+    try:
+        census = ingest if isinstance(ingest, dict) else {}
+        quarantined = int(census.get("quarantined") or 0)
+        if quarantined <= 0:
+            return
+        from app.models.engagement import Engagement
+        from app.services.notification_rules import notify_event_safe
+
+        submitted = int(census.get("submitted") or 0)
+        ingested = int(census.get("ingested") or 0)
+        reasons = census.get("reasons") if isinstance(census.get("reasons"), dict) else {}
+        async with db.begin_nested():
+            eng = (await db.execute(
+                select(Engagement.tenant_id, Engagement.name).where(Engagement.id == engagement_id)
+            )).one_or_none()
+            if eng is None:
+                return
+            tenant_id, name = eng
+            why = "; ".join(f"{str(k)[:80]} ({int(v)})" for k, v in list(reasons.items())[:3]) or "no reason recorded"
+            await notify_event_safe(
+                db, tenant_id, "coverage_gap",
+                f"Vedha: detection coverage gap in {name}",
+                f"A scan of '{name}' submitted {submitted} facts but {quarantined} could not be "
+                f"understood ({ingested} checked), so those hosts and services were not "
+                f"assessed. Top reasons: {why}.")
+    except Exception as exc:  # noqa: BLE001 — notification must not fail the run
+        logger.warning("detection_run.coverage_notify_failed", error=str(exc))
+
+
 async def create_findings_from_facts(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
     *, scan_result_id: uuid.UUID | None = None, job_id: uuid.UUID | None = None,
@@ -833,7 +908,7 @@ async def create_findings_from_facts(
         touched: list = []
         # One asset cache shared by the CVE, posture and attack-path loops: the same
         # host is resolved ONCE per run instead of once per finding (kills the N+1).
-        asset_cache: dict = {}
+        asset_cache: AssetCache = AssetCache()
         # The same treatment for the dedup/regression lookups, which were the
         # other N+1 in these loops: TWO queries load this engagement's existing
         # findings, instead of one or two per finding produced (~12 per host, so
@@ -848,6 +923,14 @@ async def create_findings_from_facts(
         # plus the detection-trace coverage roll-up (which rules were blind/clean/
         # not-assessed) so a non-finding can explain itself.
         cve_dicts, posture_dicts, detect_meta = await _run_detection_engine(facts)
+        # Every host this run can touch, looked up in ONE query per 1,000 instead of
+        # one per host (the remaining per-host N+1: ~1 SELECT per distinct host).
+        await prime_asset_cache(
+            db, engagement_id,
+            [f.get("target") for f in facts if isinstance(f, dict)]
+            + [d.get("asset_ip") for d in cve_dicts]
+            + [p.get("asset_ip") for p in posture_dicts],
+            asset_cache)
         for d in cve_dicts:
             try:
                 cve = d.get("cve_id") or "finding"
@@ -1017,6 +1100,9 @@ async def create_findings_from_facts(
         run.findings_reaffirmed = reaffirmed
         run.findings_current = int(current or 0)
         await db.flush()
+        if created:
+            await _notify_new_findings(db, engagement_id, run.id)
+        await _notify_coverage_gap(db, engagement_id, (run.stats or {}).get("ingest"))
         logger.info("detection_run.completed", run_id=str(run.id),
                     engagement_id=str(engagement_id), new=created,
                     reaffirmed=reaffirmed, resolved=resolved,

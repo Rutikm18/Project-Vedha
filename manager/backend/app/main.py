@@ -41,6 +41,8 @@ from app.routers.findings import router as findings_router
 from app.routers.health import router as health_router
 from app.routers.probe_enrollment import router as probe_enrollment_router
 from app.routers.integrations import router as integrations_router
+from app.routers.notification_rules import router as notification_rules_router
+from app.routers.org_settings import router as org_settings_router
 from app.routers.remediation import router as remediation_router
 from app.routers.remediation import bundles_router as remediation_bundles_router
 from app.routers.report_document import router as report_document_router
@@ -117,6 +119,13 @@ async def lifespan(app: FastAPI):
 
 # ── App factory ───────────────────────────────────────────────────────────────
 
+def api_docs_urls(production: bool) -> dict[str, str | None]:
+    """The interactive API docs are a map of every route: off in production."""
+    if production:
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
+
+
 app = FastAPI(
     title="Vedha VAPT Platform API",
     description=(
@@ -125,9 +134,7 @@ app = FastAPI(
         "attack path analysis, and detection coverage."
     ),
     version=get_version(),
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    **api_docs_urls(get_settings().is_production),
     lifespan=lifespan,
 )
 
@@ -249,6 +256,8 @@ app.include_router(engagement_report_router)
 app.include_router(sla_policy_router)
 app.include_router(engagement_sla_policy_router)
 app.include_router(integrations_router)
+app.include_router(notification_rules_router)
+app.include_router(org_settings_router)
 app.include_router(agents_router)
 app.include_router(probe_enrollment_router)
 app.include_router(agent_distribution_router)

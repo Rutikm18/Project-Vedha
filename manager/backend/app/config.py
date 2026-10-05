@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # exceed the probe heartbeat interval (~30s); reaper runs on its own cadence.
     job_lease_seconds: int = 300
     reaper_interval_seconds: int = 60
+    # How often the worker checks open findings for SLA transitions to announce
+    # (0 disables the watcher).
+    sla_watch_interval_seconds: int = 900
 
     # Neo4j (attack-path graph store — optional; engine falls back to in-memory NetworkX)
     neo4j_uri: str = "bolt://localhost:7687"

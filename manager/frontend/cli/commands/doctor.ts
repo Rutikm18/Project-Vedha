@@ -238,7 +238,6 @@ export function buildDoctorCommand(): Command {
 
       // Configuration
       checks.push(checkEnvFile());
-      checks.push(checkEnvKey('AUTH_SECRET'));
       checks.push(checkEnvKey('SCOPE_SECRET'));
       checks.push(checkEnvKey('AGENT_SECRET'));
       checks.push(checkEnvKey('ANTHROPIC_API_KEY', false));

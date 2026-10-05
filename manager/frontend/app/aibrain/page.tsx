@@ -19,6 +19,10 @@ import { usePortalEntitlement } from "../../lib/portal-client";
 import { AssistantText } from "../../components/assistant/AssistantText";
 import type { FactCardVM } from "../../lib/assistant";
 import { newId } from "../../lib/uuid";
+import {
+  TIER_LABEL, chainStateText, nextUp, providerLabel,
+  type ChainEntry, type ProviderId,
+} from "../../lib/ai-chain";
 
 interface Message {
   id: string;
@@ -34,20 +38,6 @@ interface Message {
   jurisdictions?: string[];
   /** Regulatory citations the Manager could not find in its compliance packs. */
   unverifiedCitations?: string[];
-}
-
-type ProviderId = "ollama" | "local_openai" | "openrouter" | "anthropic" | "openai" | "gemini" | "groq";
-
-/** One provider in the Manager's automatic chain, in the order it is tried. */
-interface ChainEntry {
-  provider: ProviderId;
-  model: string;
-  tier: "premium" | "budget" | "free" | "local";
-  state: "healthy" | "cooling" | "blocked" | "probing";
-  reason?: string | null;
-  retry_in_s?: number | null;
-  spend_today_usd?: number | null;
-  daily_cap_usd?: number | null;
 }
 
 interface AiStatus {
@@ -100,33 +90,6 @@ const WELCOME: Message = {
   content: "Ask about any published CVE or select an engagement for organization-specific analysis. Public CVE metadata is never presented as proof that your organization is affected.",
 };
 
-function providerLabel(provider?: string | null) {
-  if (provider === "openai") return "OpenAI";
-  if (provider === "openrouter") return "OpenRouter";
-  if (provider === "anthropic") return "Anthropic";
-  if (provider === "gemini") return "Google Gemini";
-  if (provider === "local_openai") return "In-house model";
-  if (provider === "groq") return "Groq";
-  return "Ollama";
-}
-
-const TIER_LABEL: Record<ChainEntry["tier"], string> = {
-  premium: "Premium", budget: "Budget", free: "Free · masked", local: "Local",
-};
-
-const REASON_LABEL: Record<string, string> = {
-  rate_limit: "rate limited", headroom: "limit reached", overloaded: "overloaded",
-  timeout: "timed out", network: "unreachable", spend_cap: "monthly spend cap",
-  billing: "out of credit", auth: "key rejected", probe_in_flight: "recovering",
-};
-
-function chainStateText(entry: ChainEntry): string {
-  if (entry.state === "healthy") return "ready";
-  if (entry.state === "probing") return "recovering";
-  const reason = REASON_LABEL[entry.reason ?? ""] ?? entry.reason ?? entry.state;
-  return entry.retry_in_s ? `${reason} · ${Math.ceil(entry.retry_in_s / 60)} min` : reason;
-}
-
 export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWorkspaceSurface }) {
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
@@ -152,7 +115,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
   const chain = status?.chain ?? [];
   // The Manager routes every request automatically; the first entry that is not
   // cooling down is what will most likely answer next.
-  const nextUp = chain.find((entry) => entry.state === "healthy" || entry.state === "probing") ?? chain[0];
+  const nextUpEntry = nextUp(chain);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -206,7 +169,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
 
   const selectedEngagement = engagements.find((engagement) => engagement.id === effectiveEngagementId);
   const ready = chain.length > 0 || (status?.configured ?? false);
-  const selectedPrivacy = nextUp ? (nextUp.tier === "local" ? "local" : "cloud") : status?.privacy;
+  const selectedPrivacy = nextUpEntry ? (nextUpEntry.tier === "local" ? "local" : "cloud") : status?.privacy;
 
   const Shell = surface === "portal" ? PortalShell : PageShell;
   // Portal: the customer's plan can lock the assistant (the server refuses too).
@@ -220,7 +183,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
       statusItems={[
         {
           label: "RUNTIME",
-          value: status ? (nextUp ? `AUTO · ${providerLabel(nextUp.provider).toUpperCase()}` : "NOT CONFIGURED") : "CHECKING",
+          value: status ? (nextUpEntry ? `AUTO · ${providerLabel(nextUpEntry.provider).toUpperCase()}` : "NOT CONFIGURED") : "CHECKING",
           color: ready ? "var(--nominal-color)" : "var(--sev-high-color)",
         },
         {

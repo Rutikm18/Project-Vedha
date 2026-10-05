@@ -47,9 +47,9 @@ Two apps share this frontend:
 
 ### 2. Login
 - Page: `app/login/page.tsx`
-- API: `app/api/auth/login/route.ts`, `auth/request/route.ts`, `auth/verify/route.ts`,
-  `auth/me/route.ts`, `auth/logout/route.ts`, `auth/dev-hint/route.ts`
-- Store: `lib/auth-store.ts`, `lib/auth-middleware.ts`, `lib/security-context.ts`
+- API: `app/api/auth/login/route.ts`, `auth/me/route.ts`, `auth/logout/route.ts`,
+  `auth/pats/route.ts`, `auth/dev-hint/route.ts`
+- Store: `lib/security-context.ts`
 
 ### 3. Engagements (list)
 - Page: `app/engagements/page.tsx`
@@ -121,7 +121,6 @@ Two apps share this frontend:
 - Page: `app/settings/page.tsx`
 - API: `app/api/settings/status/route.ts`, `app/api/sla-policy/route.ts`,
   `app/api/integrations/route.ts` (+ `[kind]`, `test`)
-- Store: `lib/permissions-store.ts`
 
 ---
 

@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Eye, EyeOff, Zap } from "lucide-react";
 import { VedhaLogoStacked } from "../../../components/brand/VedhaMark";
+import { MfaStep, type MfaMode } from "../../../components/auth/MfaStep";
+
+/** null: signed in. A string: the sentence to show. {mfa}: a code step is needed. */
+type LoginResult = string | null | { mfa: MfaMode };
 
 /* /portal/login#e=<email>&p=<password> — the fragment never reaches a server,
    and it is erased from the address bar and history on first read. */
@@ -23,16 +27,17 @@ function takeAccessLinkCredentials(): { e: string; p: string } | null {
   return creds;
 }
 
-/** POST the credentials; resolves to null on success or a sentence to show. */
-async function requestLogin(email: string, password: string): Promise<string | null> {
+/** POST the credentials; resolves to null on success, a code step, or a sentence to show. */
+async function requestLogin(email: string, password: string): Promise<LoginResult> {
   try {
     const res = await fetch("/api/portal/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-    if (res.ok) return null;
     const data = await res.json().catch(() => ({}));
+    if (res.ok && (data.mfa === "verify" || data.mfa === "enroll")) return { mfa: data.mfa };
+    if (res.ok) return null;
     return data.code === "invalid_credentials" ? "Invalid email or password."
       : data.code === "not_a_client" ? "This login is not a customer portal account."
       : data.code === "rate_limited" ? "Too many attempts — please wait a moment and try again."
@@ -48,7 +53,7 @@ async function requestLogin(email: string, password: string): Promise<string | n
 // fragment makes Next remount this page (and dev mode double-runs effects), so
 // its result — success or the error to show — is delivered to whichever
 // instance is mounted when it settles, not to the one that sent it.
-let accessLinkAttempt: Promise<string | null> | null = null;
+let accessLinkAttempt: Promise<LoginResult> | null = null;
 
 export default function PortalLoginPage() {
   const router = useRouter();
@@ -58,25 +63,31 @@ export default function PortalLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [autoSigning, setAutoSigning] = useState(false);
+  const [mfa, setMfa] = useState<MfaMode | null>(null);
+
+  const settle = useCallback((result: LoginResult) => {
+    if (result === null) router.push("/portal");
+    else if (typeof result === "string") setError(result);
+    else { setPassword(""); setMfa(result.mfa); }
+  }, [router]);
 
   const doLogin = useCallback(async (em: string, pw: string) => {
     setLoading(true);
     setError(null);
-    const problem = await requestLogin(em, pw);
+    const result = await requestLogin(em, pw);
     setLoading(false);
-    if (problem) setError(problem);
-    else router.push("/portal");
-  }, [router]);
+    settle(result);
+  }, [settle]);
 
   useEffect(() => {
     let live = true;
-    const follow = (attempt: Promise<string | null>) => {
+    const follow = (attempt: Promise<LoginResult>) => {
       setAutoSigning(true);
-      void attempt.then((problem) => {
+      void attempt.then((result) => {
         if (!live) return;
         if (accessLinkAttempt === attempt) accessLinkAttempt = null;
-        if (problem) { setAutoSigning(false); setError(problem); }
-        else router.push("/portal");
+        if (result !== null) setAutoSigning(false);
+        settle(result);
       });
     };
     // Also on hashchange: opening a link while this page is already showing is
@@ -89,7 +100,7 @@ export default function PortalLoginPage() {
     consume();
     window.addEventListener("hashchange", consume);
     return () => { live = false; window.removeEventListener("hashchange", consume); };
-  }, [router]);
+  }, [settle]);
 
   async function submit(ev: React.FormEvent) {
     ev.preventDefault();
@@ -115,6 +126,12 @@ export default function PortalLoginPage() {
           </p>
         </div>
 
+        {mfa ? (
+          <MfaStep compact mode={mfa} endpoint="/api/portal/login"
+            onDone={() => router.push("/portal")}
+            onRestart={(message) => { setMfa(null); setError(message ?? null); }} />
+        ) : (
+        <>
         {/* Auto-sign-in banner */}
         {autoSigning && (
           <div style={{
@@ -166,6 +183,8 @@ export default function PortalLoginPage() {
             Sign in
           </button>
         </form>
+        </>
+        )}
       </div>
     </div>
   );

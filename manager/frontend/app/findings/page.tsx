@@ -43,6 +43,8 @@ import {
   Search, Server, Shield, SlidersHorizontal, Tag, Terminal, Wrench, X,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
+import { RemediationWorkspaceDialog } from "../../components/findings/RemediationWorkspaceDialog";
+import { previewRemediationWorkspace } from "../../lib/remediation-workspace";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { consoleQueryKey } from "../../lib/console-source";
 import { useAssistant } from "../../components/assistant/AssistantProvider";
@@ -1908,7 +1910,7 @@ function spotlight(e: React.MouseEvent<HTMLElement>) {
 function FixFirstStrip({
   findings, slaFor, total, loading, failed, onRetry, onSelect,
   exploitedActive, slaActive, onToggleExploited, onToggleSla,
-  severityCounts, severityActive, onSelectSeverity, countsUnavailable,
+  severityCounts, severityActive, onSelectSeverity, countsUnavailable, someLocked = false,
 }: {
   findings: Finding[];
   slaFor: (f: Finding) => Sla;
@@ -1918,6 +1920,8 @@ function FixFirstStrip({
   severityActive: Severity | "ALL";
   onSelectSeverity: (s: Severity) => void;
   countsUnavailable: boolean;
+  /** Portal plan hides some severities: counts then cover only what the plan includes. */
+  someLocked?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -1996,7 +2000,7 @@ function FixFirstStrip({
               ? "Vedha could not verify the current queue, so it makes no claim about safety."
               : loading
                 ? "Waiting on finding and SLA signals."
-                : `Counts cover every open finding in scope. The queue below shows ${findings.length} of ${total} matching findings.`}
+                : `${someLocked ? "Counts cover the severities included in your plan; locked severities are listed separately." : "Counts cover every open finding in scope."} The queue below shows ${findings.length} of ${total} matching findings.`}
           </p>
           {failed && (
             <button type="button" className="findings-inline-action" onClick={onRetry}>
@@ -2217,9 +2221,11 @@ const FindingGroupRow = React.memo(function FindingGroupRow({
  * Memoised: a 30s poll re-renders the page, and re-rendering twenty rows that
  * did not change is the difference between a snappy list and a janky one. */
 const FindingRow = React.memo(function FindingRow({
-  f, sla, selected, onSelect,
+  f, sla, selected, onSelect, bulkSelectable = false, bulkSelected = false, onToggleBulk,
 }: {
   f: Finding; sla: Sla; selected: boolean; onSelect: (id: string) => void;
+  /** Manager queue only: tick findings to build one remediation workspace. */
+  bulkSelectable?: boolean; bulkSelected?: boolean; onToggleBulk?: (id: string) => void;
 }) {
   const drivers = decisionDrivers(f, sla).slice(0, 3);
   const chips = signalChips(f);
@@ -2229,19 +2235,27 @@ const FindingRow = React.memo(function FindingRow({
       className="finding-card"
       style={{ ["--rail" as string]: SEV_COLOR[f.severity] }}
       data-selected={selected || undefined}
-      role="button"
-      tabIndex={0}
-      aria-current={selected || undefined}
-      aria-expanded={selected}
-      aria-label={`${f.title}. ${f.affectedHost}. ${f.severity}. ${f.aiTriage.priority} ${PRIORITY_LABEL[f.aiTriage.priority]}. Risk ${f.riskScore} of 1000.`}
-      onClick={() => onSelect(f.id)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onSelect(f.id);
-        }
-      }}
+      data-bulk-selectable={bulkSelectable || undefined}
+      data-bulk-selected={bulkSelected || undefined}
     >
+      <button
+        type="button"
+        className="finding-card-open"
+        aria-current={selected || undefined}
+        aria-expanded={selected}
+        aria-label={`${f.title}. ${f.affectedHost}. ${f.severity}. ${f.aiTriage.priority} ${PRIORITY_LABEL[f.aiTriage.priority]}. Risk ${f.riskScore} of 1000.`}
+        onClick={() => onSelect(f.id)}
+      />
+      {bulkSelectable && onToggleBulk && (
+        <input
+          className="finding-card-checkbox"
+          type="checkbox"
+          checked={bulkSelected}
+          onChange={() => onToggleBulk(f.id)}
+          aria-label={`${bulkSelected ? "Remove" : "Add"} ${f.title} ${bulkSelected ? "from" : "to"} the remediation selection`}
+        />
+      )}
+      <div className="finding-card-body">
       <div className="finding-card-header">
         <div className="finding-card-badges">
           <SevBadge s={f.severity} />
@@ -2312,6 +2326,7 @@ const FindingRow = React.memo(function FindingRow({
           <dd>{f.verificationState ? f.verificationState : "Not verified"}</dd>
         </div>
       </dl>
+      </div>
     </article>
   );
 });
@@ -2322,6 +2337,9 @@ const FindingRow = React.memo(function FindingRow({
  * responsive. Every colour, face, radius and space resolves to an existing
  * design token; nothing new is introduced here.
  * ───────────────────────────────────────────────────────────────────────── */
+/** The most findings one remediation workspace may cover (the API enforces the same). */
+const MAX_BULK_FINDINGS = 20;
+
 const FINDINGS_CSS = `
 /* ── 0. Primitives ───────────────────────────────────────────────────── */
 .findings-sr-only {
@@ -2691,6 +2709,114 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   .finding-group-member-title { display: none; }
 }
 .findings-list[data-refreshing="true"] { opacity: .72; transition: opacity 160ms var(--ease-out); }
+.findings-bulk-bar {
+  display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  border: var(--hairline) solid var(--border-default); border-radius: 9px; padding: 8px 10px;
+  background: var(--bg-panel);
+}
+.findings-bulk-bar > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.findings-bulk-bar span { color: var(--text-muted); font: 550 10.5px/1.3 var(--font-ui); }
+.findings-bulk-bar span strong { color: var(--text-primary); font: 700 11px/1 var(--font-mono); }
+.findings-bulk-bar button {
+  display: inline-flex; min-height: 30px; align-items: center; justify-content: center; gap: 5px;
+  border: var(--hairline) solid var(--border-subtle); border-radius: 7px; padding: 0 9px;
+  color: var(--text-secondary); background: transparent; font: 650 10.5px/1 var(--font-ui); cursor: pointer;
+}
+.findings-bulk-bar button:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-primary); background: var(--bg-hover); }
+.findings-bulk-bar button:disabled { opacity: .45; cursor: not-allowed; }
+.findings-bulk-bar .findings-bulk-select-page[aria-pressed="true"] { color: var(--accent); border-color: var(--border-accent); background: var(--accent-ghost); }
+.remediation-workspace-layer {
+  position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 18px;
+}
+.remediation-workspace-backdrop {
+  position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+  background: var(--modal-backdrop); backdrop-filter: blur(7px); cursor: default;
+}
+.remediation-workspace-dialog {
+  position: relative; z-index: 1; width: min(980px, 100%); max-height: calc(100dvh - 36px);
+  display: flex; flex-direction: column; overflow: hidden;
+  border: var(--hairline) solid var(--border-default); border-radius: 14px;
+  background: var(--bg-panel); box-shadow: var(--shadow-lg);
+}
+.remediation-workspace-header {
+  display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 16px;
+  border-bottom: var(--hairline) solid var(--border-subtle); padding: 16px 18px;
+}
+.remediation-workspace-header > div { display: flex; align-items: center; gap: 10px; }
+.remediation-workspace-header > div > span {
+  display: grid; width: 36px; height: 36px; place-items: center; border-radius: 9px;
+  color: var(--accent); background: var(--accent-ghost); border: var(--hairline) solid var(--border-accent);
+}
+.remediation-workspace-header h2 { margin: 0; color: var(--text-primary); font: 650 16px/1.3 var(--font-display); }
+.remediation-workspace-header p { margin: 3px 0 0; color: var(--text-muted); font: 500 10.5px/1.3 var(--font-ui); }
+.remediation-workspace-header > button {
+  display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 7px;
+  color: var(--text-muted); background: transparent; cursor: pointer;
+}
+.remediation-workspace-header > button:hover { color: var(--text-primary); background: var(--bg-hover); }
+.remediation-workspace-body { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 20px; }
+.remediation-workspace-safety,
+.remediation-workspace-error {
+  display: flex; align-items: flex-start; gap: 10px; border: var(--hairline) solid var(--border-accent);
+  border-radius: 9px; padding: 11px 12px; background: var(--accent-ghost);
+}
+.remediation-workspace-safety > svg { flex: 0 0 auto; margin-top: 1px; color: var(--accent); }
+.remediation-workspace-safety strong,
+.remediation-workspace-error strong { color: var(--text-primary); font: 650 12px/1.35 var(--font-ui); }
+.remediation-workspace-safety p,
+.remediation-workspace-error p { margin: 3px 0 0; color: var(--text-secondary); font: 450 11px/1.5 var(--font-ui); }
+.remediation-workspace-error { border-color: color-mix(in srgb, var(--sev-high-color) 45%, var(--border-default)); background: color-mix(in srgb, var(--sev-high-color) 8%, var(--bg-panel)); }
+.remediation-workspace-error > svg { flex: 0 0 auto; color: var(--sev-high-color); }
+.remediation-workspace-controls {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  border-bottom: var(--hairline) solid var(--border-subtle); padding-bottom: 12px;
+}
+.remediation-workspace-controls label { display: inline-flex; align-items: center; gap: 7px; color: var(--text-secondary); font: 600 11px/1.3 var(--font-ui); cursor: pointer; }
+.remediation-workspace-controls label span { display: inline-flex; align-items: center; gap: 5px; }
+.remediation-workspace-controls input { accent-color: var(--accent); }
+.remediation-workspace-controls button,
+.remediation-workspace-artifacts article header button {
+  display: inline-flex; min-height: 32px; align-items: center; justify-content: center; gap: 6px;
+  border: var(--hairline) solid var(--border-default); border-radius: 7px; padding: 0 10px;
+  color: var(--text-secondary); background: var(--bg-panel); font: 650 10.5px/1 var(--font-ui); cursor: pointer;
+}
+.remediation-workspace-controls button:hover:not(:disabled),
+.remediation-workspace-artifacts article header button:hover { color: var(--text-primary); border-color: var(--border-strong); background: var(--bg-hover); }
+.remediation-workspace-controls button:disabled { opacity: .5; cursor: wait; }
+.remediation-workspace-loading { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 100px; color: var(--text-muted); font: 550 11.5px/1.4 var(--font-ui); }
+.remediation-workspace-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.remediation-workspace-summary > div { border: var(--hairline) solid var(--border-subtle); border-radius: 8px; padding: 10px; background: var(--bg-surface); }
+.remediation-workspace-summary dt { color: var(--text-muted); font: 600 9.5px/1 var(--font-ui); }
+.remediation-workspace-summary dd { margin: 5px 0 0; color: var(--text-primary); font: 700 16px/1 var(--font-mono); }
+.remediation-workspace-identity { display: flex; gap: 12px; flex-wrap: wrap; color: var(--text-muted); font: 500 10px/1.4 var(--font-ui); }
+.remediation-workspace-identity code,
+.remediation-workspace-hash code,
+.remediation-workspace-blockers code { color: var(--accent); font-family: var(--font-mono); }
+.remediation-workspace-advisory,
+.remediation-workspace-blockers { border: var(--hairline) solid var(--border-subtle); border-radius: 9px; padding: 12px; background: var(--bg-surface); }
+.remediation-workspace-advisory h3,
+.remediation-workspace-blockers h3 { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text-primary); font: 650 12px/1.3 var(--font-ui); }
+.remediation-workspace-advisory h3 svg { color: var(--accent); }
+.remediation-workspace-blockers h3 svg { color: var(--sev-medium-color); }
+.remediation-workspace-advisory p,
+.remediation-workspace-blockers p { margin: 7px 0 0; color: var(--text-secondary); font: 450 11px/1.55 var(--font-ui); white-space: pre-wrap; }
+.remediation-workspace-advisory small { display: block; margin-top: 6px; color: var(--text-muted); font: 500 9.5px/1.4 var(--font-ui); }
+.remediation-workspace-artifacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.remediation-workspace-artifacts article { min-width: 0; border: var(--hairline) solid var(--border-default); border-radius: 10px; background: var(--bg-surface); overflow: hidden; }
+.remediation-workspace-artifacts article > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 12px; }
+.remediation-workspace-artifacts article header > div { display: grid; min-width: 0; gap: 3px; }
+.remediation-workspace-artifacts article header span { color: var(--accent); font: 700 9px/1 var(--font-ui); text-transform: uppercase; letter-spacing: .06em; }
+.remediation-workspace-artifacts article header strong { overflow: hidden; color: var(--text-primary); font: 650 11.5px/1.35 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.remediation-workspace-artifacts article header small { color: var(--text-muted); font: 500 9.5px/1.3 var(--font-ui); }
+.remediation-workspace-hash { border-top: var(--hairline) solid var(--border-subtle); padding: 7px 12px; color: var(--text-muted); font: 550 9px/1.3 var(--font-ui); }
+.remediation-workspace-artifacts details { border-top: var(--hairline) solid var(--border-subtle); }
+.remediation-workspace-artifacts summary { padding: 9px 12px; color: var(--text-secondary); font: 600 10px/1.3 var(--font-ui); cursor: pointer; }
+.remediation-workspace-artifacts pre { max-height: 300px; margin: 0; overflow: auto; border-top: var(--hairline) solid var(--border-subtle); padding: 12px; background: var(--bg-app); color: var(--text-secondary); font: 10px/1.5 var(--font-mono); white-space: pre; }
+@media (max-width: 720px) {
+  .remediation-workspace-layer { padding: 0; }
+  .remediation-workspace-dialog { width: 100%; height: 100dvh; max-height: none; border-radius: 0; }
+  .remediation-workspace-summary, .remediation-workspace-artifacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 /* The rail is the scan target: severity is read down the left edge without
    parsing a single word. It replaces nothing — the badge stays for the
@@ -2699,6 +2825,17 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   position: relative; border: var(--hairline) solid var(--border-subtle); border-left-color: var(--rail);
   border-radius: 10px; padding: 13px 14px; background: var(--bg-panel); cursor: pointer;
   transition: border-color 140ms var(--ease-out), background 140ms var(--ease-out);
+}
+.finding-card[data-bulk-selected] { box-shadow: inset 3px 0 0 var(--accent); }
+.finding-card-open {
+  position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%;
+  border: 0; border-radius: inherit; padding: 0; background: transparent; cursor: pointer;
+}
+.finding-card-body { position: relative; z-index: 0; pointer-events: none; }
+.finding-card[data-bulk-selectable] .finding-card-body { padding-left: 29px; }
+.finding-card-checkbox {
+  position: absolute; top: 14px; left: 14px; z-index: 2; width: 17px; height: 17px;
+  margin: 0; accent-color: var(--accent); cursor: pointer;
 }
 .finding-card:hover { border-color: var(--border-strong); background: var(--bg-hover); }
 .finding-card[data-selected] { border-color: var(--accent); border-left-color: var(--accent); background: var(--accent-ghost); }
@@ -3248,6 +3385,9 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   const deepLinkParams = new URLSearchParams(locationSearch);
 
   const [selectedOverride, setSelectedId] = useState<string | null | undefined>();
+  const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<string>>(() => new Set());
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [workspaceAdvisory, setWorkspaceAdvisory] = useState(false);
   const selectedId = selectedOverride === undefined ? deepLinkParams.get("finding") : selectedOverride;
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search.trim());
@@ -3499,6 +3639,30 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     onSettled: invalidateFindingData,
   });
 
+  const remediationWorkspaceMutation = useMutation({
+    mutationFn: ({ ids, includeAdvisory }: { ids: string[]; includeAdvisory: boolean }) =>
+      previewRemediationWorkspace(ids, { includeAdvisory }),
+  });
+  const toggleBulkFinding = useCallback((id: string) => {
+    setBulkSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) { next.delete(id); return next; }
+      if (next.size >= MAX_BULK_FINDINGS) return current;
+      next.add(id);
+      return next;
+    });
+  }, [setBulkSelectedIds]);
+  const generateRemediationWorkspace = () => {
+    remediationWorkspaceMutation.mutate({ ids: [...bulkSelectedIds], includeAdvisory: workspaceAdvisory });
+  };
+  const openRemediationWorkspace = () => {
+    setWorkspaceAdvisory(false);
+    setWorkspaceOpen(true);
+    remediationWorkspaceMutation.reset();
+    remediationWorkspaceMutation.mutate({ ids: [...bulkSelectedIds], includeAdvisory: false });
+  };
+  const closeRemediationWorkspace = useCallback(() => setWorkspaceOpen(false), [setWorkspaceOpen]);
+
   const handleStatusChange = useCallback(async (id: string, newStatus: FindingStatus, reason: string) => {
     await statusMutation.mutateAsync({ id, status: newStatus, reason });
   }, [statusMutation]);
@@ -3512,11 +3676,13 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
    * rejects outright, and it costs nothing here because every reader is an
    * event handler or an effect — both of which run after this has flushed. */
   const selectedRef = useRef<string | null>(null);
+  const workspaceOpenRef = useRef(false);
   const findingsRef = useRef<Finding[]>(findings);
   const pageCountRef = useRef(1);
   const queueViewRef = useRef<QueueView>(queueView);
   useEffect(() => {
     selectedRef.current = selectedId;
+    workspaceOpenRef.current = workspaceOpen;
     findingsRef.current = findings;
     pageCountRef.current = pageCount;
     queueViewRef.current = queueView;
@@ -3560,6 +3726,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
    * collide with typing. */
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (workspaceOpenRef.current) return;
       const el = event.target as HTMLElement | null;
       const typing = Boolean(el && (
         el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable
@@ -3598,6 +3765,27 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   const summaryUnavailable = summaryQuery.isLoading || Boolean(summaryQuery.error);
   const summaryValue = (value: number) => summaryUnavailable ? "—" : value.toLocaleString();
 
+  const currentPageIds = findings.map((finding) => finding.id);
+  const currentPageSelected = currentPageIds.length > 0
+    && currentPageIds.every((id) => bulkSelectedIds.has(id));
+  const toggleCurrentPageSelection = () => {
+    setBulkSelectedIds((current) => {
+      const next = new Set(current);
+      if (currentPageSelected) {
+        currentPageIds.forEach((id) => next.delete(id));
+        return next;
+      }
+      for (const id of currentPageIds) {
+        if (next.size >= MAX_BULK_FINDINGS) break;
+        next.add(id);
+      }
+      if (next.size === MAX_BULK_FINDINGS && currentPageIds.some((id) => !next.has(id))) {
+        showError("Selection limit reached", `The first ${MAX_BULK_FINDINGS} findings were selected. Refine the queue for a different batch.`);
+      }
+      return next;
+    });
+  };
+
   const clearFilters = () => {
     setSearch("");
     setFilterSev("ALL");
@@ -3630,6 +3818,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     setSelectedId(null);
     storeQueueView("list");
   }, [setSearch, setPage, setSelectedId]);
+  const lockedPlan = usePortalEntitlement(surface === "portal");
   const Shell = surface === "portal" ? PortalShell : PageShell;
 
   return (
@@ -3722,6 +3911,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
         severityCounts={severityCounts}
         severityActive={filterSev}
         countsUnavailable={summaryUnavailable}
+        someLocked={surface === "portal" && (lockedPlan.data?.locked_severities?.length ?? 0) > 0}
         onSelectSeverity={(s) => applyFilter(() => setFilterSev((current) => current === s ? "ALL" : s))}
       />
 
@@ -4096,6 +4286,33 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
             </DataState>
           </div>
           ) : (
+          <>
+          {surface === "manager" && findings.length > 0 && (
+            <section className="findings-bulk-bar" aria-label="Batch finding actions">
+              <div>
+                <button
+                  type="button"
+                  className="findings-bulk-select-page"
+                  onClick={toggleCurrentPageSelection}
+                  aria-pressed={currentPageSelected}
+                >
+                  <Check size={13} aria-hidden />
+                  {currentPageSelected ? "Unselect page" : "Select page"}
+                </button>
+                <span aria-live="polite">
+                  <strong>{bulkSelectedIds.size}</strong> selected · maximum {MAX_BULK_FINDINGS}
+                </span>
+              </div>
+              <div>
+                <button type="button" onClick={openRemediationWorkspace} disabled={bulkSelectedIds.size === 0}>
+                  <Terminal size={14} aria-hidden /> Build remediation files
+                </button>
+                <button type="button" onClick={() => setBulkSelectedIds(new Set())} disabled={bulkSelectedIds.size === 0}>
+                  <X size={14} aria-hidden /> Clear
+                </button>
+              </div>
+            </section>
+          )}
           <div className="findings-list" data-refreshing={isFetching && !isLoading ? "true" : undefined}>
             <DataState
               loading={isLoading}
@@ -4120,10 +4337,14 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                   sla={slaFor(f)}
                   selected={selectedId === f.id}
                   onSelect={toggleFinding}
+                  bulkSelectable={surface === "manager"}
+                  bulkSelected={bulkSelectedIds.has(f.id)}
+                  onToggleBulk={toggleBulkFinding}
                 />
               ))}
             </DataState>
           </div>
+          </>
           )}
 
           {queueView === "grouped" && (groupsQuery.data?.pages ?? 1) > 1 && (
@@ -4213,6 +4434,20 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
           </aside>
         )}
       </div>
+      {workspaceOpen && (
+        <RemediationWorkspaceDialog
+          preview={remediationWorkspaceMutation.data ?? null}
+          loading={remediationWorkspaceMutation.isPending}
+          error={remediationWorkspaceMutation.error
+            ? errorMessage(remediationWorkspaceMutation.error)
+            : null}
+          selectedCount={bulkSelectedIds.size}
+          includeAdvisory={workspaceAdvisory}
+          onIncludeAdvisoryChange={setWorkspaceAdvisory}
+          onGenerate={generateRemediationWorkspace}
+          onClose={closeRemediationWorkspace}
+        />
+      )}
       </div>
     </Shell>
   );

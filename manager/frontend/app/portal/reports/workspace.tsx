@@ -478,17 +478,18 @@ function FindingCard({ issue, index }: { issue: PortalIssue; index: number }) {
 
 // ── Executive tab ─────────────────────────────────────────────────────────────
 
-function ExecutiveTab({ summary, trends, findings }: {
-  summary: PortalSummary; trends: PortalTrends; findings: PortalFinding[];
+function ExecutiveTab({ summary, trends, findings, someLocked }: {
+  summary: PortalSummary; trends: PortalTrends; findings: PortalFinding[]; someLocked: boolean;
 }) {
   const p = summary.posture;
   const openCrit = summary.severity_counts?.critical ?? 0;
   const openHigh = summary.severity_counts?.high ?? 0;
-
+  // Locked severities are hidden by the server, so "no findings" would overclaim.
+  
   const riskStatement = openCrit > 0 ? "Immediate action required"
     : openHigh > 0 ? "Elevated risk — action recommended"
     : summary.open_findings > 0 ? "Managed — remediation in progress"
-    : "Secure posture — no open findings";
+    : (someLocked ? "No open findings in your plan's severities" : "Secure posture — no open findings");
 
   const riskColor = openCrit > 0 ? "var(--sev-critical-color)"
     : openHigh > 0 ? "var(--sev-high-color)"
@@ -507,7 +508,7 @@ function ExecutiveTab({ summary, trends, findings }: {
       : null,
     summary.open_findings > 0
       ? { text: "Retest each remediated finding and verify the fix before closure.", tone: "var(--accent)" }
-      : { text: "No open findings — maintain posture with periodic scheduled scans.", tone: "var(--nominal-color)" },
+      : { text: `${someLocked ? "No open findings in your plan's severities" : "No open findings"} — maintain posture with periodic scheduled scans.`, tone: "var(--nominal-color)" },
   ].filter(Boolean) as Array<{ text: string; tone: string }>;
 
   const topFindings = [...findings]
@@ -655,11 +656,13 @@ function FindingsTab({ findings }: { findings: PortalFinding[] }) {
 
 /** Keep both live-data sections mounted so print/PDF output includes the whole
  * report, while the interactive view still presents one section at a time. */
-export function PortalReportTabContent({ tab, summary, trends, findings }: {
+export function PortalReportTabContent({ tab, summary, trends, findings, someLocked = false }: {
   tab: Exclude<Tab, "documents">;
   summary: PortalSummary;
   trends: PortalTrends;
   findings: PortalFinding[];
+  /** The plan hides some severities, so "no findings" wording must say so. */
+  someLocked?: boolean;
 }) {
   return (
     <>
@@ -669,7 +672,7 @@ export function PortalReportTabContent({ tab, summary, trends, findings }: {
         data-active={tab === "executive"}
         aria-hidden={tab !== "executive"}
       >
-        <ExecutiveTab summary={summary} trends={trends} findings={findings} />
+        <ExecutiveTab summary={summary} trends={trends} findings={findings} someLocked={someLocked} />
       </div>
       <div
         className="portal-report-tab-pane"
@@ -966,6 +969,7 @@ export function PortalReportsWorkspace() {
                   summary={summary.data}
                   trends={trends.data}
                   findings={findings.data ?? []}
+                  someLocked={(plan.data?.locked_severities?.length ?? 0) > 0}
                 />
               </div>
 

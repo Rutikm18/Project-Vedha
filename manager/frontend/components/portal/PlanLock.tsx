@@ -12,7 +12,7 @@ import { Lock } from "lucide-react";
 import {
   type LockFeature, type LockSeverity, type LockedTeaser, LOCK_FEATURES, teaserRows,
 } from "../../lib/entitlements";
-import { portalApi } from "../../lib/portal-client";
+import { portalApi, usePortalEntitlement } from "../../lib/portal-client";
 
 const SEVERITY: Record<LockSeverity, { label: string; color: string }> = {
   critical: { label: "Critical", color: "var(--sev-critical-color)" },
@@ -25,13 +25,16 @@ const SEVERITY: Record<LockSeverity, { label: string; color: string }> = {
 /** A locked feature: replaces the section's content. */
 export function PlanLockPanel({ feature, title }: { feature: LockFeature; title?: string }) {
   const meta = LOCK_FEATURES.find((f) => f.id === feature)!;
+  const contact = usePortalEntitlement().data?.support_contact;
   return (
     <section className="plk-panel" aria-labelledby={`plk-${feature}`}>
       <style>{STYLES}</style>
       <span className="plk-icon"><Lock size={18} aria-hidden /></span>
       <h3 id={`plk-${feature}`}>{title ?? meta.label}</h3>
       <p>{meta.lockedMessage}</p>
-      <p className="plk-sub">Contact your security team to upgrade your plan.</p>
+      <p className="plk-sub">
+        {contact ? `Contact ${contact} to upgrade your plan.` : "Contact your security team to upgrade your plan."}
+      </p>
     </section>
   );
 }
