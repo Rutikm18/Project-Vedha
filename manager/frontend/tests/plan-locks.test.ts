@@ -56,8 +56,8 @@ test("teaser rows: one per locked severity with findings, in severity order", ()
 });
 
 test("every portal surface honours the locks", () => {
-  assert.match(read("app/findings/page.tsx"), /<LockedFindingsTeaser/);
-  assert.match(read("app/aibrain/page.tsx"), /isFeatureLocked\([^)]*"ai_assistant"\)/);
+  assert.match(read("app/findings/workspace.tsx"), /<LockedFindingsTeaser/);
+  assert.match(read("app/aibrain/workspace.tsx"), /isFeatureLocked\([^)]*"ai_assistant"\)/);
   const reports = read("app/portal/reports/workspace.tsx");
   assert.match(reports, /isFeatureLocked\([^)]*"reports"\)/);
   assert.match(reports, /written_reports_withheld/);       // free-text reports withheld while severities are locked

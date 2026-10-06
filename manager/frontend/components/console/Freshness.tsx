@@ -37,7 +37,7 @@ export function Freshness({
       }} />
       <span className="sr-only">Data last updated </span>
       {isFetching ? "Updating…" : label}
-      {stale && !isFetching && <span className="sr-only"> — this may be out of date</span>}
+      {stale && !isFetching && <span> · Stale</span>}
     </span>
   );
 }

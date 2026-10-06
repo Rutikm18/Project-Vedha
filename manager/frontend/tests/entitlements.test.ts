@@ -76,7 +76,7 @@ test("UI scan types map to the backend's scan types and probe presets", () => {
 });
 
 test("the scanner dial is restricted on the portal", () => {
-  const page = readFileSync(join(process.cwd(), "app/scan/page.tsx"), "utf8");
+  const page = readFileSync(join(process.cwd(), "app/scan/workspace.tsx"), "utf8");
   assert.match(page, /allowed=\{isPortal \? portalDial : undefined\}/);
   assert.match(page, /DeepScanCard/);
 });
