@@ -4,6 +4,7 @@
  * Browser authentication is carried by HttpOnly, same-site cookies. On a 401,
  * the client asks the BFF to rotate the session once and retries the request.
  */
+import { clearSessionState } from "./session-state";
 export class ApiError extends Error {
   status: number;
   detail?: string;
@@ -23,6 +24,7 @@ export function clearAuth(redirect = true): void {
   localStorage.removeItem("vedha_token");
   localStorage.removeItem("vedha_refresh_token");
   sessionStorage.removeItem("vedha_token");
+  clearSessionState(); // drop saved AI Brain conversations with the session
   if (redirect) window.location.href = "/login";
 }
 

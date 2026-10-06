@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Brain, CheckCircle2, ChevronRight, Cloud, Database, Eraser,
@@ -19,6 +19,7 @@ import { usePortalEntitlement } from "../../lib/portal-client";
 import { AssistantText } from "../../components/assistant/AssistantText";
 import type { FactCardVM } from "../../lib/assistant";
 import { newId } from "../../lib/uuid";
+import { useSessionState } from "../../lib/session-state";
 
 interface Message {
   id: string;
@@ -127,12 +128,18 @@ function chainStateText(entry: ChainEntry): string {
   return entry.retry_in_s ? `${reason} · ${Math.ceil(entry.retry_in_s / 60)} min` : reason;
 }
 
+const INITIAL_MESSAGES: Message[] = [WELCOME];
+const MAX_STORED_MESSAGES = 60;
+
 export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWorkspaceSurface }) {
-  const [messages, setMessages] = useState<Message[]>([WELCOME]);
-  const [input, setInput] = useState("");
-  const [engagementId, setEngagementId] = useState("");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Shared store, not component state: the conversation, draft and engagement survive
+  // navigating to another page (and a reload of this tab), and a reply that arrives
+  // after you left lands in the store instead of being lost.
+  const [messages, setMessages] = useSessionState<Message[]>(`aibrain.${surface}.messages`, INITIAL_MESSAGES);
+  const [input, setInput] = useSessionState(`aibrain.${surface}.input`, "");
+  const [engagementId, setEngagementId] = useSessionState(`aibrain.${surface}.engagement`, "");
+  const [sending, setSending] = useSessionState(`aibrain.${surface}.sending`, false, { persist: false });
+  const [error, setError] = useSessionState<string | null>(`aibrain.${surface}.error`, null, { persist: false });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const api = React.useMemo(() => createAIBrainWorkspaceApi(surface), [surface]);
@@ -169,7 +176,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
     if (!content || sending) return;
     const user: Message = { id: newId(), role: "user", content };
     const conversation = [...messages.filter((message) => message.id !== "welcome"), user];
-    setMessages((current) => [...current, user]);
+    setMessages((current) => [...current, user].slice(-MAX_STORED_MESSAGES));
     setInput("");
     setSending(true);
     setError(null);
@@ -195,7 +202,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
         skillLabel: response.skillLabel ?? response.skill_label ?? null,
         jurisdictions: response.jurisdictions ?? [],
         unverifiedCitations: response.unverifiedCitations ?? response.unverified_citations ?? [],
-      }]);
+      }].slice(-MAX_STORED_MESSAGES));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "The AI runtime could not complete this request.");
     } finally {
@@ -249,7 +256,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
             <button
               type="button"
               className="brain-clear"
-              onClick={() => { setMessages([WELCOME]); setError(null); }}
+              onClick={() => { setMessages(INITIAL_MESSAGES); setError(null); }}
               title="Clear this conversation"
             >
               <Eraser size={14} /> Clear

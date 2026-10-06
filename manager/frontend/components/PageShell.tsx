@@ -6,6 +6,7 @@ import { Sidebar } from "./Sidebar";
 import { useTheme } from "./ThemeProvider";
 import { RefreshButton } from "./RefreshButton";
 import { clearAuth } from "../lib/fetcher";
+import { clearSessionState } from "../lib/session-state";
 
 interface PageShellProps {
   title: string;
@@ -57,6 +58,7 @@ export function PageShell({
   }, [surface]);
 
   const handleLogout = useCallback(async () => {
+    clearSessionState();
     if (surface === "portal") {
       await fetch("/api/portal/login", { method: "DELETE" }).catch(() => {});
       window.location.href = "/portal/login";
