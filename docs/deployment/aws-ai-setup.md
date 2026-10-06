@@ -10,7 +10,7 @@
 > and [ADR-0003](../adr/0003-bfsi-deployment-and-ai-gateway.md) (deployment profiles,
 > pseudonymisation).
 
-**Contents:** [0 Short version](#0-the-short-version) · [1 How it works](#1-how-the-ai-connection-works) ·
+**Contents:** [Quick start](#quick-start--already-deployed-just-add-the-key) · [0 Short version](#0-the-short-version) · [1 How it works](#1-how-the-ai-connection-works) ·
 [Step 0 Which install](#step-0--which-install-do-you-have) · [Step 1 Create keys](#step-1--create-the-api-keys) ·
 [Step 2 Put keys on the host](#step-2--put-the-keys-on-the-instance) · [Step 3 Settings](#step-3--routing-and-privacy-settings-optional) ·
 [Step 4 Network](#step-4--let-the-instance-reach-the-providers) · [Step 5 Apply](#step-5--apply-the-change) ·
@@ -37,6 +37,34 @@
 6. **"configured" is not "working".** `/ai/status` reports `configured: true` for any
    non-empty key, including a placeholder. Prove the connection with the live check in
    [Step 6](#step-6--verify-in-four-levels).
+
+---
+
+## Quick start — already deployed, just add the key
+
+Run on the EC2 host as root (`sudo -i`). Substitute your folder for `<APP_DIR>`.
+
+| # | Purpose | Command |
+|---|---|---|
+| 1 | Find your folder | `ls -d /opt/vedha /opt/Project-Vedha 2>/dev/null` |
+| 2 | Go there | `cd <APP_DIR>` |
+| 3 | Add `ANTHROPIC_API_KEY=<your key>` (edit the existing line if there is one; leave `LLM_PROVIDER=` empty) | `nano .env` |
+| 4 | Re-create containers (`restart` does not reload `.env`) | `docker compose --env-file .env -f manager/docker-compose.yml up -d --force-recreate api worker` |
+| 5 | Confirm the key reached the container (expect `sk-ant-`) | `docker compose --env-file .env -f manager/docker-compose.yml exec -T api printenv ANTHROPIC_API_KEY \| cut -c1-7` |
+| 6 | Clear remembered failures (only if the key was wrong before) | see [Clear the remembered failures](#clear-the-remembered-failures) |
+| 7 | Check logs | `docker compose --env-file .env -f manager/docker-compose.yml logs --since 10m api \| grep -E 'ai\.(attempt\|provider)'` |
+
+Production installer (`/opt/vedha`) with `deploy/aws/docker-compose.prod.yml` present: add
+`-f deploy/aws/docker-compose.prod.yml` after the first `-f`. Then open **AI Brain**; `RUNTIME AUTO · ANTHROPIC`
+means it works. The sections below explain each step and every failure.
+
+| Provider | Variable | Key starts with | Billing |
+|---|---|---|---|
+| Anthropic | `ANTHROPIC_API_KEY` | `sk-ant-` | Required |
+| OpenAI | `OPENAI_API_KEY` | `sk-` | Required |
+| Gemini | `GEMINI_API_KEY` | `AIza` | Free key works |
+| Groq | `GROQ_API_KEY` | `gsk_` | Free tier |
+| OpenRouter | `OPENROUTER_API_KEY` | `sk-or-` | Free models |
 
 ---
 
