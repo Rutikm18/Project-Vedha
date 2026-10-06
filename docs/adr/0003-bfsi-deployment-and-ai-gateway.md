@@ -88,6 +88,58 @@ keeps the same expertise; only the model changes.
                                  Vedha (vendor): NO inbound path
 ```
 
+> **Rendered view** — GitHub, GitLab and VS Code render the Mermaid below; the ASCII
+> art above is the plain-text fallback. Both describe the same `sovereign` topology.
+
+```mermaid
+flowchart TB
+  classDef mgmt fill:#eef4ff,stroke:#5b8def,color:#1b2a4a;
+  classDef probe fill:#fff6e6,stroke:#e0a13c,color:#5a3b00;
+  classDef ext fill:#f3f4f6,stroke:#9aa3af,color:#1f2937;
+  classDef block fill:#fdecee,stroke:#d6455a,color:#5a0b16;
+
+  subgraph BANK["BANK DATA CENTRE — sovereign profile - no internet egress"]
+    direction TB
+    IDP["Bank IdP<br/>SAML / OIDC + MFA"]:::ext
+    SIEM["Bank SIEM"]:::ext
+    subgraph MGMT["Management zone"]
+      MGR["Vedha Manager<br/>FastAPI - Postgres - Redis - Neo4j - Caddy TLS"]:::mgmt
+      GW["AI egress gateway<br/>decide - pseudonymise - rehydrate"]:::mgmt
+      AUD["Append-only audit log +<br/>hash-chained AI-call ledger"]:::mgmt
+    end
+    subgraph AIZONE["AI zone — bank GPUs"]
+      LLM["Open-weight model<br/>vLLM / Ollama (local_openai)"]:::mgmt
+    end
+    subgraph ZONES["Security zones — one sealed probe each"]
+      P1["Probe - CDE"]:::probe
+      P2["Probe - SWIFT"]:::probe
+      P3["Probe - Core banking"]:::probe
+      P4["Probe - Corp LAN"]:::probe
+      P5["Probe - DMZ"]:::probe
+    end
+  end
+
+  VIB["Signed offline intel bundle (.vib)<br/>Ed25519-verified"]:::ext
+  VENDOR["Vedha (vendor)"]:::block
+
+  P1 -- "mTLS 443 - outbound-only (facts)" --> MGR
+  P2 -- "mTLS 443" --> MGR
+  P3 -- "mTLS 443" --> MGR
+  P4 -- "mTLS 443" --> MGR
+  P5 -- "mTLS 443" --> MGR
+  IDP -- "SSO" --> MGR
+  MGR --> GW
+  GW -- "local - raw context" --> LLM
+  MGR -- "syslog" --> SIEM
+  MGR --- AUD
+  VENDOR -. "builds offline - no live link" .- VIB
+  VIB -. "carried on one-way media" .-> MGR
+```
+
+> **Hybrid profile** is the same picture with one change: the *AI zone* is replaced by an
+> outbound-only egress proxy to a **regional cloud model**, and the gateway sends
+> **pseudonymised** context (never raw) across that boundary.
+
 ### 3.1 Probe (agent) placement and hardening
 * **One probe per security zone** (cardholder-data environment (CDE), SWIFT secure zone,
   core banking, corporate LAN, DMZ, branch WAN hub). A probe never bridges zones: it scans
