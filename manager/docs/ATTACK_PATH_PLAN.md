@@ -1,6 +1,9 @@
 # Engagement-wide, multi-subnet attack-path generation — plan (for review)
 
 Status: **PLAN ONLY — not implemented.** Awaiting approval before any code.
+Revised 2026-10-06 with a failure-mode analysis (§9): 32 failure modes found,
+4 of which make the feature silently empty in production today. Phasing (§7)
+now starts with a **P0 engine-correctness** phase.
 
 Goal (user's words): *create attack paths based on the findings in the
 infrastructure, across multiple subnets of the same org, by choosing the
@@ -205,19 +208,21 @@ the end of a detection run in `engine_bridge` so paths are fresh after each scan
 - `/chokepoints`, `/blast-radius/{asset}` — already there, now meaningful.
 - Report + ATT&CK matrix integration.
 
-## 7. Phasing (small, reviewable PRs; each green before the next)
-- **P1 — subnet model + topology derivation** (`reachability.py` core): subnet
-  nodes, intra-subnet edges, inter-subnet observed/assumed edges, gateways; wire
-  into `build_from_db`. Pure-logic unit tests on fixtures. *Biggest single unlock —
-  paths become non-empty across subnets.*
-- **P2 — finding→capability map**: misconfig/IOA/posture findings as foothold/
-  lateral/priv-esc edges with ATT&CK + state-weighted cost (fix gap #3).
-- **P3 — credential & relay edges** (shared admin, NTLM relay, default SNMP,
-  reused keys) — the cross-subnet movers (fix gap #4).
-- **P4 — entry-point derivation** from fused exposure + footholds (fix gap #5);
-  crown-jewel selection.
-- **P5 — scoring/pruning/choke-point upgrades**, observed-vs-assumed weighting,
-  recompute-after-scan hook, subnet-grouped D3 output + report wiring.
+## 7. Phasing — REVISED after the failure-mode analysis (§9)
+
+The failure-mode analysis showed the existing engine has correctness defects that
+would corrupt any path built on top of it, and that the original P1 design (pairwise
+`SAME_SEGMENT` mesh + `all_simple_paths`) cannot scale past ~11 hosts per subnet.
+So a **P0 correctness phase** now comes first, and P1/P5 designs changed.
+
+| Phase | Delivers | Fixes failure modes (§9) |
+|---|---|---|
+| **P0 — engine correctness** | Filter findings to live statuses; **monotonic compromise** (pivot only FROM a compromised node); replace `all_simple_paths` with **Yen k-shortest / Dijkstra**; **multiplicative likelihood** scoring; stable path IDs (upsert by deterministic hash, `refresh=False` default); **explain-empty** result; drop/scope dead Neo4j Cypher. | FM-04, 07, 10, 11, 12, 13, 17, 18, 19, 22, 23 |
+| **P1 — subnet model + topology** | Subnet **hub** nodes (asset→subnet→asset, O(n) not O(n²)); inter-subnet edges labelled `observed`/`assumed`; gateways as pivots; **(site, ip) identity**. Wire into `build_from_db`. | FM-01, 14, 15, 16, 20 |
+| **P2 — finding→capability map** | Posture/IOA/misconfig findings as foothold/lateral/priv-esc steps with ATT&CK + per-step success likelihood (confidence × EPSS/KEV × state). | FM-03, 05, 06 |
+| **P3 — credential & relay edges** | Relay edges with **full precondition checks** (target signing off + coercion source + protocol); shared-admin edges **only when LAPS absent**, labelled `possible`. | FM-08, 09 |
+| **P4 — entry points + crown jewels** | Sources from fused `Service.exposure=="external"`; crown-jewel auto-fallback (DC/hypervisor/DB) + operator override. | FM-02, 21 |
+| **P5 — choke points, output, validation** | **Min-cut / betweenness** choke points (not path-frequency); subnet-grouped D3; recompute-after-scan (async, not on GET); **validation harness** with ground-truth fixtures + cascade-failure path validity metric. | FM-24, 25, 26 |
 
 Each phase ships with unit tests (pure functions, fixture graphs) and keeps the
 backend detection suite green; no probe changes (detection stays on the manager).
@@ -235,6 +240,101 @@ backend detection suite green; no probe changes (detection stays on the manager)
 4. Keep this engagement-scoped (one tenant's engagement). "Same org, multiple
    subnets" = the subnets in that engagement's `scope_cidrs`. Cross-engagement
    correlation is out of scope unless you want it.
+5. **NEW (from §9):** two sites of one org can both use `10.0.0.0/24`. Should
+   asset identity become **(probe site, IP)**? Recommend **yes** — without it,
+   distinct hosts merge and paths cross sites that are not connected (FM-14).
+
+---
+
+## 9. Failure-mode analysis (FMEA) — accuracy and other areas
+
+Method: read every component the plan builds on, then **reproduce** the suspected
+defects against the real code (`manager/backend/scripts/attack_path_fm_probe.py` drives the actual
+`PathAnalyzer`), and cross-check against published attack-graph research and
+vendor documentation. Evidence column cites `file:line` (relative to
+`manager/backend/app/`) or a measurement. "Phase" = where the mitigation lands (§7).
+
+### 9.0 Headline — the feature is silently empty in production today
+
+Four **independent** conditions each produce zero attack paths on a normal
+network-VA engagement. Any one is sufficient; all four hold today. And an empty
+result is **indistinguishable from "no attack paths exist"** — the exact
+silent-false-clean class the detection engine fights everywhere else.
+
+| # | Condition | Evidence | Consequence |
+|---|---|---|---|
+| FM-01 | No lateral edges: topology/credentials never passed to the builder | `graph/builder.py:287` calls `build_asset_graph(...)` without `network_topology`/`credentials` | Movement graph has no `SAME_SEGMENT`/`CONNECTS_TO`/`CREDENTIAL_REUSE` edges |
+| FM-02 | No sources: entry points read fields nothing sets | `is_internet_exposed` (`graph/builder.py:83`) reads `asset.environment` / `tags.internet_exposed`; **no production code sets either**. The real signal, `Service.exposure=="external"`, **is** stamped (`services/job_result_service.py:796`, `exposure_fusion_service`) but unread | `_source_assets("internet_exposed")` returns `[]` |
+| FM-03 | No exploit steps: only `Finding.exploitable` creates `EXPLOITS` edges | `exploitable=True` is set **only** in `ad/*.py` (AD modules) — never by the network-VA detection path | Every hop is `dest_compromisable=False` |
+| FM-04 | No targets: crown jewels require `criticality=critical`, nothing assigns it | `routers/attack_paths.py:181-185`; no code sets `Asset.criticality` beyond the default `medium` | `_all_paths_to_critical([])` → `[]` |
+
+### 9.1 Accuracy — false-POSITIVE paths (paths that are not real)
+
+| ID | Failure mode | Evidence / cause | Impact | Mitigation | Phase |
+|---|---|---|---|---|---|
+| FM-05 | **Pass-through pivot**: path continues *from* a host the attacker never compromised | `graph/analyzer.py:118` adds a movement edge even when `dest_compromisable=False`; reproduced: path `A→B→C` where B has no exploit | Fabricated chains; violates MulVAL's **monotonic privilege** model (you only act from privileges you hold) | Pivot only from compromised states; model `(host, privilege)` state nodes | P0 |
+| FM-06 | Resolved / accepted / false-positive findings still form steps | `graph/builder.py:280` loads **all** findings, no status filter | Paths built on already-fixed weaknesses | Filter to live statuses (open/confirmed); weight `suspected` lower | P0 |
+| FM-07 | CVE false positives propagate into steps | Banner-inferred CVEs are `suspected, backport-possible` (verifier); any step built on them inherits the FP | Distro-backported hosts shown as exploitable pivots | Step likelihood = finding confidence × EPSS/KEV; never treat `suspected` as certain | P2 |
+| FM-08 | **Shared-admin ≠ shared-password** | Same local-admin *name* on many hosts says nothing if **LAPS** randomises each password | False `CREDENTIAL_REUSE` edges across every Windows host | Emit only when LAPS absent; label `possible`, never `observed` | P3 |
+| FM-09 | **Relay edges without preconditions** | NTLM relay needs: target signing not required **and** a coercion/poisoning source **and** a protocol that accepts it (LDAP signing / channel binding / EPA off). Signing-off alone is not a path; reflection to the same host is blocked | Over-connected relay edges, especially to DCs | Check each precondition from facts; missing evidence → edge `assumed` with low likelihood | P3 |
+| FM-10 | Honeypot / deception hosts become juicy pivots | Deception host advertises many vulns (verifier already scores `deception`) | Paths route through a decoy | Down-weight or exclude assets with high deception score | P0/P2 |
+| FM-11 | Flat-internal assumption over-connects segmented networks | No firewall ACLs available; default assumes subnets reach each other | Paths across a real firewall | Label `assumed`, down-weight, show "verify segmentation"; segmented mode toggle | P1 |
+
+### 9.2 Accuracy — false-NEGATIVE paths (real paths missed)
+
+| ID | Failure mode | Evidence / cause | Impact | Mitigation | Phase |
+|---|---|---|---|---|---|
+| FM-12 | Misconfig/posture findings are not steps at all | FM-03; XM Cyber: **~80% of real exposures are misconfig/identity, <1% CVEs** | The majority of real chains are invisible | Capability map (§3.3) independent of `exploitable` | P2 |
+| FM-13 | Unscanned hosts / partial coverage | A host missed by the scan has no node; a path through it cannot exist | Under-reports reachability; "clean" overstated | Coverage annotation per subnet (scan_summary completeness); flag paths that end at coverage gaps | P5 |
+| FM-14 | **Overlapping RFC1918 across sites** collapse into one asset | Identity = `(engagement, ip)` (`discovery/finding_translator.py:73`). Agents carry `site_id` and two sites may both use `10.0.0.0/24` | Two real hosts merge: false edges across unconnected sites *and* missed paths | Identity `(site, ip)` via `ScanResult.agent_id → Agent.site_id` (Rapid7/Tenable "asset linking" practice) | P1 |
+| FM-15 | **Multi-homed** hosts appear as two assets | One host, two NICs/IPs, no merge (hostname/MAC/NTLM name not used to link) | Misses the most important cross-subnet pivot: the dual-homed host | Link assets by stable identifiers (MAC, NetBIOS/NTLM target name, cert SAN) | P1 |
+| FM-16 | DHCP churn / stale assets | Asset by IP; a re-leased IP inherits old findings | Wrong host attributed to a step | Use `last_seen`; age out stale assets; prefer MAC-linked identity | P1 |
+
+### 9.3 Scoring & prioritisation
+
+| ID | Failure mode | Evidence | Impact | Mitigation | Phase |
+|---|---|---|---|---|---|
+| FM-17 | **Longer paths score higher** | `graph/analyzer.py:210-211` adds `2×CVSS` per hop, subtracts `1.5` per hop. Measured: 4-hop CVSS 7.0 chain = **50.0**; 1-hop CVSS 9.8 = **18.1** | Ranking inverted: a long, unlikely chain outranks a one-step critical | Multiplicative likelihood `Π p(step)` (0.98 vs 0.24 in the same case) × target impact | P0 |
+| FM-18 | **CVSS used as probability** | FIRST: *"CVSS measures severity, not risk"*; EPSS measures exploitation probability | Mis-calibrated step costs | Step likelihood from EPSS/KEV + finding confidence + state; CVSS only for impact | P0/P2 |
+| FM-19 | Misconfig-only paths score **0** | Posture findings carry no CVSS → measured `score_path = 0.0` | Real misconfig chains ranked last or hidden | Capability-based likelihood per step (FM-12) | P0/P2 |
+| FM-20 | Path dependence ignored (shared steps) | NIST metric-aggregation work: paths **rarely independent**, they share exploits; naive OR/AND of path probabilities distorts results. Cyclic Bayesian graphs break standard inference | Over-/under-stated aggregate host risk | Report per-path likelihood; aggregate per target with shared-step-aware min-cut, not naive sum | P5 |
+
+### 9.4 Scale & performance
+
+| ID | Failure mode | Evidence | Impact | Mitigation | Phase |
+|---|---|---|---|---|---|
+| FM-21 | **Path explosion** with `all_simple_paths` | Measured on a flat subnet mesh: 8 hosts → 1,957 paths; 10 → 109,601 (0.8s); **11 → 986,410 (7.1s)**, ~9× per host. A /24 (200 hosts) → 39,800 pairwise edges, infeasible. Same lesson as state explosion (Sheyner) and NetSPA (original version: ~17 machines) | Request hangs; worker timeout | **Yen k-shortest** (`shortest_simple_paths`, measured 0.001s on 60 nodes); subnet **hub** nodes O(n) not O(n²); logical graph (Ou CCS'06, polynomial) | P0/P1 |
+| FM-22 | Recompute on **every GET** | `routers/attack_paths.py:46` `refresh=True` default | Heavy compute on the read path | Compute async after detection run; GET reads stored result | P0/P5 |
+| FM-23 | Enumerate-then-truncate | `graph/analyzer.py:161-169` enumerates **all** paths then keeps 5 | Cost paid before the cut | Generator-based k-shortest stops at k | P0 |
+
+### 9.5 Consistency, staleness, security, explainability
+
+| ID | Failure mode | Evidence | Impact | Mitigation | Phase |
+|---|---|---|---|---|---|
+| FM-24 | **Path IDs churn**; concurrent GETs race | `routers/attack_paths.py:212` deletes all paths then re-inserts | A shared `/attack-paths/{id}` link 404s after the next list call; two concurrent refreshes interleave delete/insert | Deterministic path ID = hash(node sequence); upsert; engagement-level lock (as `engine_bridge` already does for detection) | P0 |
+| FM-25 | Choke points = path-frequency over a truncated set | `graph/analyzer.py:218-243`: share of the (≤5-per-source) enumerated paths, threshold 0.5 | Biased by enumeration order and dense subnets; can miss the true bottleneck | **Minimum s–t cut** / betweenness on the movement graph (min-cost hardening literature) | P5 |
+| FM-26 | Chokepoint list stored on **every** path | `routers/attack_paths.py:219` writes all choke ids to each row | Misleading per-path data | Store engagement-level choke set separately | P5 |
+| FM-27 | **Cypher queries have no engagement/tenant filter** | `graph/analyzer.py` `CYPHER_*` match any `internet_exposed` node; unused today, a latent cross-tenant leak if wired to a shared Neo4j | Data from other tenants in results | Remove or add `engagement_id` filter + test before any use | P0 |
+| FM-28 | Neo4j indexes on a label never written | `graph/neo4j_client.py:41-44` index `:Asset`/`:Finding`; sync writes `:GraphNode` (`graph/builder.py:307`) | Full scans at scale | Index `:GraphNode(engagement_id, type)` | P5 |
+| FM-29 | Neo4j never deletes stale nodes; parallel edges collapse | Sync only `MERGE`s; edges `MERGE` on `(a,b,type)` | Fixed weaknesses linger in the mirror; distinct edges merge | Per-engagement delete-then-write in a transaction | P5 |
+| FM-30 | **No explanation for an empty result** | Router returns `{"total": 0}` with no reason | Operator cannot tell "safe" from "not computed" (FM-01..04) | Return `why_empty`: missing sources / targets / topology / coverage gaps, mirroring posture trace verdicts | P0 |
+| FM-31 | No ground truth to measure accuracy | No fixture or rig asserts expected paths. Research: LLM-generated attack graphs showed up to **83.9% noise paths**; node-counting metrics miss structural errors | Regressions invisible | Validation harness: labelled topology fixtures with expected paths; **cascade-failure** validity metric (a path is valid only up to its first invalid step) | P5 |
+| FM-32 | Data staleness across subnets | Findings from scans at different times are mixed into one graph | A path mixes a fixed host (scanned yesterday) with today's state | Carry `last_seen`; flag steps older than the engagement's freshness window | P5 |
+
+### 9.6 What this changes in the design
+
+1. **P0 is mandatory** before any new edges: building multi-subnet topology on the
+   current analyzer would multiply FM-05/17/21 rather than fix the feature.
+2. **Hub, not mesh**: subnets as hub nodes keep the graph O(n); pairwise
+   `SAME_SEGMENT` (what `add_network_edges` does today) is O(n²) and explodes.
+3. **State-based, monotonic model** (MulVAL): nodes are `(host, privilege)`; an
+   edge exists only from a privilege the attacker already holds.
+4. **Likelihood, not CVSS sum**: per-step success = finding confidence × exploit
+   evidence (KEV/EPSS) × reachability basis (`observed` > `assumed`); path =
+   product; rank by likelihood × crown-jewel impact.
+5. **Identity = (site, IP)** with linking on MAC / NTLM target name / cert SAN.
+6. **Every edge carries basis + preconditions** (`observed` / `assumed` /
+   `possible`), and every empty result carries `why_empty`.
 
 ---
 
@@ -250,3 +350,39 @@ backend detection suite green; no probe changes (detection stays on the manager)
   <https://thehackernews.com/2024/05/new-xm-cyber-research-80-of-exposures.html>,
   <https://xmcyber.com/platform/external-attack-surface-management/>
 - Attack path management: <https://en.wikipedia.org/wiki/Attack_path_management>
+
+**Failure-mode research (§9)**
+- Scalable logical attack graphs, polynomial size, monotonicity (Ou et al., CCS'06):
+  <https://cse.usf.edu/~xou/publications/ccs06.pdf>; MulVAL extensions survey
+  <https://arxiv.org/pdf/2208.05750>; state explosion in scenario graphs
+  <https://onlinelibrary.wiley.com/doi/10.1155/2014/818957>
+- NetSPA (MIT Lincoln Lab), reachability through firewall rules, early scale limit:
+  <https://news.mit.edu/2008/security-0827>
+- CVSS measures severity, not risk; EPSS: <https://arxiv.org/pdf/1908.04856>,
+  <https://brandefense.io/blog/why-cvss-scores-are-lying-to-your-security-team/>
+- Bayesian attack graphs, cycles and the independence assumption:
+  <https://arxiv.org/pdf/2005.06350>, NIST metric aggregation
+  <https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=926022>,
+  approximate inference <https://arxiv.org/pdf/1606.07025>
+- Min-cut / betweenness for hardening and choke points:
+  <https://www.pnnl.gov/publications/minimizing-expected-maximum-risk-cyber-attacks-probabilistic-attack-success>,
+  <https://www.dline.info/jisr/fulltext/v4n1/3.pdf>
+- BloodHound data staleness / collection limits:
+  <https://thehacker.recipes/ad/recon/bloodhound/>,
+  <https://blog.compass-security.com/author/sdefatsc>
+- Asset identity across sites with overlapping IP ranges:
+  <https://docs.rapid7.com/insightvm/linking-assets-across-sites/>,
+  <https://docs.tenable.com/exposure-management/Content/getting-started/asset-deduping.htm>,
+  multi-NIC <https://docs.rapid7.com/nexpose/enhanced-vulnerability-detection-for-multinic-assets/>
+- LAPS and shared local-admin credentials:
+  <https://www2.paloaltonetworks.com/cyberpedia/what-are-shared-local-admin-credentials>
+- NTLM relay preconditions (signing, LDAP channel binding, EPA):
+  <https://legacy.thehacker.recipes/a-d/movement/ntlm/relay>,
+  <https://tesseract.academy/how-to-defend-against-ntlm-relay-attacks-in-active-directory/>
+- Attack-graph validation: noise paths (GARAGE) <https://arxiv.org/pdf/2607.18108>;
+  cascade-failure path validity <https://arxiv.org/pdf/2609.07344>
+- Microsoft Security Exposure Management (paths incomplete if critical assets are
+  not defined): <https://learn.microsoft.com/en-us/security-exposure-management/review-attack-paths>
+
+Measurements in §9 were reproduced with `manager/backend/scripts/attack_path_fm_probe.py` against the real
+`app/graph/analyzer.py` (networkx), 2026-10-06.
