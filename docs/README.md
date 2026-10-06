@@ -41,6 +41,7 @@ Central docs map. All documentation now lives here — the repo root is clean.
 - [Agent distribution runbook](operations/AGENT_DISTRIBUTION.md) — sign + publish agent releases from the build machine, how Fleet → Add agent works, on-prem encrypted bundles
 - [Debugging the Agent](operations/DEBUGGING_THE_AGENT.md) — log verbosity, where logs/state are stored per platform, diagnostic subcommands, symptom→fix table, Windows agent
 - [Troubleshooting](operations/TROUBLESHOOTING.md) — scanner error codes and operator actions
+- [AI sector expertise](operations/AI_SECTOR_EXPERTISE.md) — sectors and frameworks the AI knows, how to set them, which features use them
 - [VA Runbook](operations/VA_RUNBOOK.md)
 
 ### Probe
