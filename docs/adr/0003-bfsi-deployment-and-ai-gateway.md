@@ -80,8 +80,8 @@ keeps the same expertise; only the model changes.
                  │     │ mTLS 443 │          │ (hybrid only) egress proxy ──► regional│
                  │     │ outbound │          │      allow-list      cloud model ─────┼──► (pseudonymized)
                  │  ┌──┴───┐  ┌───┴──┐  ┌────┴──┐  ┌───────┐  ┌────────┐            │
-                 │  │Probe │  │Probe │  │Probe  │  │Probe  │  │Probe   │  one sealed│
-                 │  │ CDE  │  │SWIFT │  │ Core  │  │ Corp  │  │ DMZ    │  probe per │
+                 │  │Agent │  │Agent │  │Agent  │  │Agent  │  │Agent   │  one sealed│
+                 │  │ CDE  │  │SWIFT │  │ Core  │  │ Corp  │  │ DMZ    │  agent per │
                  │  │ zone │  │ zone │  │banking│  │  LAN  │  │        │  zone      │
                  │  └──────┘  └──────┘  └───────┘  └───────┘  └────────┘            │
                  └──────────────────────────────────────────────────────────────────┘
@@ -110,12 +110,12 @@ flowchart TB
     subgraph AIZONE["AI zone — bank GPUs"]
       LLM["Open-weight model<br/>vLLM / Ollama (local_openai)"]:::mgmt
     end
-    subgraph ZONES["Security zones — one sealed probe each"]
-      P1["Probe - CDE"]:::probe
-      P2["Probe - SWIFT"]:::probe
-      P3["Probe - Core banking"]:::probe
-      P4["Probe - Corp LAN"]:::probe
-      P5["Probe - DMZ"]:::probe
+    subgraph ZONES["Security zones — one sealed Vedha agent each"]
+      P1["Vedha agent - CDE"]:::probe
+      P2["Vedha agent - SWIFT"]:::probe
+      P3["Vedha agent - Core banking"]:::probe
+      P4["Vedha agent - Corp LAN"]:::probe
+      P5["Vedha agent - DMZ"]:::probe
     end
   end
 
@@ -139,6 +139,59 @@ flowchart TB
 > **Hybrid profile** is the same picture with one change: the *AI zone* is replaced by an
 > outbound-only egress proxy to a **regional cloud model**, and the gateway sends
 > **pseudonymised** context (never raw) across that boundary.
+
+```mermaid
+flowchart TB
+  classDef mgmt fill:#eef4ff,stroke:#5b8def,color:#1b2a4a;
+  classDef probe fill:#fff6e6,stroke:#e0a13c,color:#5a3b00;
+  classDef ext fill:#f3f4f6,stroke:#9aa3af,color:#1f2937;
+  classDef cloud fill:#e9f9ee,stroke:#369e5a,color:#06351a;
+
+  subgraph BANK["BANK DATA CENTRE / PRIVATE CLOUD — hybrid profile (BFSI default)"]
+    direction TB
+    IDP["Bank IdP<br/>SAML / OIDC + MFA"]:::ext
+    SIEM["Bank SIEM"]:::ext
+    subgraph MGMT["Management zone"]
+      MGR["Vedha Manager<br/>FastAPI - Postgres - Redis - Neo4j - Caddy TLS"]:::mgmt
+      GW["AI egress gateway<br/>decide - pseudonymise - rehydrate"]:::mgmt
+      AUD["Append-only audit log +<br/>hash-chained AI-call ledger"]:::mgmt
+    end
+    subgraph ZONES["Security zones — one sealed Vedha agent each"]
+      P1["Vedha agent - CDE"]:::probe
+      P2["Vedha agent - SWIFT"]:::probe
+      P3["Vedha agent - Core banking"]:::probe
+      P4["Vedha agent - Corp LAN"]:::probe
+      P5["Vedha agent - DMZ"]:::probe
+    end
+    PROXY["Egress proxy<br/>outbound-only - allow-listed"]:::ext
+  end
+
+  subgraph REGION["Provider region, in-country — DPA - zero retention - no training"]
+    CLOUD["Regional cloud model"]:::cloud
+  end
+
+  INTEL["Threat-intel endpoint<br/>allow-listed"]:::ext
+  VENDOR["Vedha (vendor) - no inbound path"]:::ext
+
+  P1 -- "mTLS 443 - outbound-only (facts)" --> MGR
+  P2 -- "mTLS 443" --> MGR
+  P3 -- "mTLS 443" --> MGR
+  P4 -- "mTLS 443" --> MGR
+  P5 -- "mTLS 443" --> MGR
+  IDP -- "SSO" --> MGR
+  MGR -- "syslog" --> SIEM
+  MGR --- AUD
+  MGR --> GW
+  GW -- "PSEUDONYMISED context only" --> PROXY
+  PROXY -- "TLS outbound" --> CLOUD
+  CLOUD -. "answer rehydrated on-prem" .-> GW
+  PROXY -- "pull updates" --> INTEL
+  VENDOR -. "operates - bank pulls outbound only" .- INTEL
+```
+
+> **Residual-data note (hybrid):** finding titles, CVE IDs, product/versions, severities and
+> compliance text still reach the cloud model (it cannot reason without them) — they say *what*
+> is weak, not *where* or *whose*. A bank that cannot accept that uses `sovereign`.
 
 ### 3.1 Probe (agent) placement and hardening
 * **One probe per security zone** (cardholder-data environment (CDE), SWIFT secure zone,
