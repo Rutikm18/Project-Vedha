@@ -108,12 +108,12 @@ class LLMReportGenerator:
     @property
     def available(self) -> bool:
         """Claude via the SDK, or any provider the report task may use in the
-        manager's chain (premium floor)."""
+        manager's chain (premium floor). Without the SDK (lean image) Anthropic is
+        reached over plain HTTPS through that chain, so it counts too."""
         if self._client is not None:
             return True
         from app.services.llm import ManagerLlmService
-        return any(c.provider != "anthropic"
-                   for c in ManagerLlmService(self._settings)._candidates("report"))
+        return bool(ManagerLlmService(self._settings)._candidates("report"))
 
     # ── low-level completion with retry/backoff ──────────────────────────────────
 
@@ -147,7 +147,10 @@ class LLMReportGenerator:
             text, runtime, _ = await svc.complete_raw(
                 task="report", system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}],
-                max_tokens=max_tokens or self._max_tokens, exclude={"anthropic"})
+                max_tokens=max_tokens or self._max_tokens,
+                # The SDK already tried (or skipped) Anthropic; without the SDK the
+                # chain is the only way to reach it, so it must stay eligible.
+                exclude={"anthropic"} if self._client is not None else frozenset())
         except AiRuntimeError as exc:
             raise LLMUnavailableError(f"{primary}; fallback chain: {exc}") from exc
         finally:
