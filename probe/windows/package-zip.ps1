@@ -11,10 +11,14 @@
 [CmdletBinding()]
 param(
   [Parameter(Mandatory = $true)][string]$Manager,
-  [string]$AgentDir = "$PSScriptRoot\dist\vedha-agent",
-  [string]$OutZip  = "$PSScriptRoot\dist\vedha-probe-win.zip"
+  [string]$AgentDir = '',
+  [string]$OutZip  = ''
 )
 $ErrorActionPreference = 'Stop'
+
+# $PSScriptRoot can be empty inside a param() default (see build-agent-exe.ps1); resolve here.
+if (-not $AgentDir) { $AgentDir = Join-Path $PSScriptRoot 'dist\vedha-agent' }
+if (-not $OutZip)   { $OutZip   = Join-Path $PSScriptRoot 'dist\vedha-probe-win.zip' }
 
 if (-not (Test-Path (Join-Path $AgentDir 'vedha-agent.exe'))) { throw "compiled agent not found in $AgentDir  (run build-agent-exe.ps1 first)" }
 

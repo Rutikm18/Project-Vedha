@@ -47,8 +47,26 @@ jobs:
             Write-Host "ok  $f"
           }
 
+      # Nuitka downloads its own gcc and keeps a ccache of compiled C objects here.
+      # Restoring it makes a re-run minutes instead of ~35. Saved even if a later
+      # step fails, so a fix to a late step does not pay for the compile again.
+      - name: Restore Nuitka cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~\AppData\Local\Nuitka\Nuitka\Cache
+          key: nuitka-win-${{ hashFiles('probe/requirements-runtime.txt') }}-${{ github.run_id }}
+          restore-keys: |
+            nuitka-win-${{ hashFiles('probe/requirements-runtime.txt') }}-
+
       - name: Build the compiled agent (Nuitka)
         run: powershell -ExecutionPolicy Bypass -File windows\build-agent-exe.ps1
+
+      - name: Save Nuitka cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ~\AppData\Local\Nuitka\Nuitka\Cache
+          key: nuitka-win-${{ hashFiles('probe/requirements-runtime.txt') }}-${{ github.run_id }}
 
       - name: Smoke test the compiled agent
         run: |

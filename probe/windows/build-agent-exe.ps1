@@ -17,9 +17,14 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$OutDir = "$PSScriptRoot\dist"
+  [string]$OutDir = ''
 )
 $ErrorActionPreference = 'Stop'
+
+# $PSScriptRoot is empty inside a param() default under some Windows PowerShell hosts,
+# which turned this into "\dist" (the drive root). Resolve it here, as an absolute path.
+if (-not $OutDir) { $OutDir = Join-Path $PSScriptRoot 'dist' }
+$OutDir = [System.IO.Path]::GetFullPath($OutDir)
 
 $probeRoot = Split-Path $PSScriptRoot -Parent      # ...\probe
 Set-Location $probeRoot
