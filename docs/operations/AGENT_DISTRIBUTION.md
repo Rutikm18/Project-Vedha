@@ -156,7 +156,7 @@ customer sees the date read-only in the portal.
 
 ## What ships to the customer (code boundary)
 
-The agent contains **only its own code**: the 75 modules in its import closure
+The agent contains **only its own code**: the 77 modules in its import closure
 (`probe/tools/agent_closure.py`). The vulnerability judgement rules
 (`scanner/findings.py`), the campaign runner, accuracy gates, `main_scripts/`,
 `cve/` and tests never leave the repository, and detection stays on the manager.
@@ -171,8 +171,10 @@ The agent contains **only its own code**: the 75 modules in its import closure
   lists, banner patterns) are still readable with tools; hiding those needs
   Nuitka's commercial tier (pipeline).
 - The Windows compiled build (`probe/windows/build-agent-exe.ps1`, CI job
-  `agent-windows-build.yml`) uses the same closure-only recipe. **It has not been
-  run yet** — it runs on a Windows runner once the branch is pushed.
+  `agent-windows-build.yml`) uses the same closure-only recipe and builds on a
+  `windows-latest` runner (MinGW gcc; MSVC runs out of memory on impacket's
+  generated modules). The same job packages the customer zip and installs it for
+  real. How to build, send and support it: `docs/probe/WINDOWS_AGENT_INSTALL.md`.
 
 ## On-prem customers (on request only)
 
