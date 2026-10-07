@@ -1,6 +1,6 @@
 # Engagement-wide, multi-subnet attack-path generation — plan (for review)
 
-Status: **P0 implemented** (2026-10-07); P1–P5 pending. Decisions: §8 recommendations accepted
+Status: **P0 and P1a implemented** (2026-10-07); P1b and P2–P5 pending. Decisions: §8 recommendations accepted
 (flat-internal labelled `assumed`, crown-jewel auto-fallback with override, engagement-scoped,
 (site, IP) identity).
 Revised 2026-10-06 with a failure-mode analysis (§9): 32 failure modes found,
@@ -114,8 +114,11 @@ plus a **foothold map** (asset → how an attacker first lands there).
   builder already supports segments). This is the safe, defensible default:
   hosts on one L2/L3 subnet generally reach each other.
 - **Inter-subnet reachability** = `CONNECTS_TO`, **inferred and labelled**:
-  - `observed` when a probe vantage actually saw the cross-subnet service open
-    (from `exposure_matrix` / a probe sitting in subnet A seeing B's port).
+  - `observed` when there is real evidence that subnet A reaches subnet B. NOTE
+    (P1a finding): a probe that reaches both A and B is **not** such evidence —
+    scanners are routinely firewall-whitelisted, and `Agent.network_segments` is
+    the probe's declared dispatch scope, not where it sits. P1a therefore emits
+    no `observed` inter-subnet links; only `same_subnet` and `assumed`.
   - `assumed` otherwise, with a **reachability confidence** and a configurable
     posture: default **flat-internal** (org subnets mutually reachable unless
     evidence of segmentation), with a **segmented** mode that only connects
@@ -220,7 +223,8 @@ So a **P0 correctness phase** now comes first, and P1/P5 designs changed.
 | Phase | Delivers | Fixes failure modes (§9) |
 |---|---|---|
 | **P0 — engine correctness** ✅ done | Filter findings to live statuses; **monotonic compromise** (pivot only FROM a compromised node); replace `all_simple_paths` with **Yen k-shortest / Dijkstra**; **multiplicative likelihood** scoring; stable path IDs (upsert by deterministic hash, `refresh=False` default); **explain-empty** result; drop/scope dead Neo4j Cypher. | FM-04, 07, 10, 11, 12, 13, 17, 18, 19, 22, 23 |
-| **P1 — subnet model + topology** | Subnet **hub** nodes (asset→subnet→asset, O(n) not O(n²)); inter-subnet edges labelled `observed`/`assumed`; gateways as pivots; **(site, ip) identity**. Wire into `build_from_db`. | FM-01, 14, 15, 16, 20 |
+| **P1a — subnet model + topology** ✅ done | `app/detection/reachability.py`: subnet per scope CIDR (/24 or /64 buckets for broad scopes, marked `inferred`); subnet **hub** nodes (O(n) edges); inter-subnet links `assumed` (flat posture) or only via a compromised gateway (segmented, `rules_of_engagement.attack_path_reachability`); hops count hosts; each hop carries `via` subnets, `basis`, likelihood. Wired into `build_from_db`. | FM-01, 11, 21 |
+| **P1b — site-aware identity** | `(site, ip)` asset identity (migration + the 5 asset-creation paths), multi-NIC linking, stale-asset ageing. Split out of P1: it changes asset identity across discovery, job results, findings and two routers, so it gets its own review. | FM-14, 15, 16 |
 | **P2 — finding→capability map** | Posture/IOA/misconfig findings as foothold/lateral/priv-esc steps with ATT&CK + per-step success likelihood (confidence × EPSS/KEV × state). | FM-03, 05, 06 |
 | **P3 — credential & relay edges** | Relay edges with **full precondition checks** (target signing off + coercion source + protocol); shared-admin edges **only when LAPS absent**, labelled `possible`. | FM-08, 09 |
 | **P4 — entry points + crown jewels** | Sources from fused `Service.exposure=="external"`; crown-jewel auto-fallback (DC/hypervisor/DB) + operator override. | FM-02, 21 |

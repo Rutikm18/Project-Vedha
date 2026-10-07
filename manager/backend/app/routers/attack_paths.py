@@ -116,6 +116,9 @@ async def get_attack_path(
             "weight": edge.get("weight"),
             "exploited": edge.get("exploited"),
             "cvss": edge.get("cvss"),
+            "via": edge.get("via") or [],
+            "basis": edge.get("basis"),
+            "likelihood": edge.get("likelihood"),
             "explanation": _explain_hop(edge, labels),
         })
 
@@ -306,10 +309,18 @@ def _explain_hop(edge: dict, labels: dict[str, str]) -> str:
     src = labels.get(str(edge.get("source")), edge.get("source"))
     dst = labels.get(str(edge.get("target")), edge.get("target"))
     technique = edge.get("technique", "movement")
+    via = edge.get("via") or []
     verb = {
         "CONNECTS_TO": "pivots over the network to",
         "SAME_SEGMENT": "moves laterally within the same segment to",
         "CREDENTIAL_REUSE": "reuses captured credentials to access",
+        "SAME_SUBNET": f"moves laterally within subnet {via[0] if via else ''} to",
+        "CROSS_SUBNET": f"crosses from subnet {via[0] if via else '?'} into "
+                        f"{via[-1] if via else '?'} to reach",
+        "GATEWAY_ROUTE": f"routes through the compromised gateway into "
+                         f"{via[-1] if via else 'another subnet'} to reach",
     }.get(technique, "reaches")
     suffix = f" and exploits it (CVSS {edge.get('cvss')})" if edge.get("exploited") else ""
-    return f"From {src}, the attacker {verb} {dst}{suffix}."
+    caveat = (" Reachability between these subnets is assumed, not observed — "
+              "verify segmentation." if edge.get("basis") == "assumed" else "")
+    return f"From {src}, the attacker {verb} {dst}{suffix}.{caveat}"

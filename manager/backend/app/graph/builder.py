@@ -49,6 +49,10 @@ def finding_node_id(finding_id: Any) -> str:
     return f"finding:{finding_id}"
 
 
+def segment_node_id(key: Any) -> str:
+    return f"segment:{key}"
+
+
 def _enum_value(v: Any, default: str = "") -> str:
     """Normalise a value that may be an Enum, str, or None to a lowercase str."""
     if v is None:
@@ -267,6 +271,49 @@ class GraphBuilder:
                 added += 1
         return added
 
+    def add_segment_topology(self, topology: dict[str, Any]) -> int:
+        """
+        Add subnet HUB nodes from reachability.derive_topology (P1a).
+
+          asset  -IN_SEGMENT->   segment        membership (O(n), not O(n²))
+          segment -SEGMENT_LINK-> segment       inter-subnet link (basis, confidence)
+          asset  -ROUTES->       segment        a gateway routing into another subnet
+
+        Hosts on one subnet reach each other THROUGH the hub; the analyzer turns
+        hub hops into movement only toward hosts the attacker can compromise.
+        Returns edges added.
+        """
+        added = 0
+        segments = topology.get("segments") or {}
+        for key, seg in segments.items():
+            node = segment_node_id(key)
+            self.graph.add_node(
+                node, type="NetworkSegment", entity_id=key, label=seg.get("cidr", key),
+                cidr=seg.get("cidr", key), inferred=bool(seg.get("inferred")),
+                scoped=bool(seg.get("scoped", True)),
+                gateways=list(seg.get("gateways") or []))
+            for member in seg.get("members") or []:
+                aid = asset_node_id(member)
+                if self.graph.has_node(aid):
+                    self.graph.add_edge(aid, node, type="IN_SEGMENT")
+                    self.graph.nodes[aid]["segment"] = key
+                    added += 1
+        for link in topology.get("links") or []:
+            src, dst = segment_node_id(link["src"]), segment_node_id(link["dst"])
+            if self.graph.has_node(src) and self.graph.has_node(dst):
+                self.graph.add_edge(src, dst, type="SEGMENT_LINK", basis=link.get("basis"),
+                                    reachability_confidence=link.get("confidence", 1.0))
+                added += 1
+        for route in topology.get("routes") or []:
+            gw, dst = asset_node_id(route["gateway"]), segment_node_id(route["segment"])
+            if self.graph.has_node(gw) and self.graph.has_node(dst):
+                self.graph.add_edge(gw, dst, type="ROUTES", basis=route.get("basis"),
+                                    reachability_confidence=route.get("confidence", 1.0))
+                added += 1
+        self.graph.graph["reachability_posture"] = topology.get("posture")
+        self.graph.graph["unplaced_assets"] = list(topology.get("unplaced") or [])
+        return added
+
     def _add_credential_edges(self, credentials: Iterable[dict[str, Any]]) -> int:
         """
         CREDENTIAL_REUSE edges between assets sharing a credential.
@@ -315,6 +362,20 @@ class GraphBuilder:
             )).scalars().all())
 
         graph = self.build_asset_graph(engagement_id, assets, services, findings)
+
+        # P1a: derive the subnet topology from the engagement scope and assets.
+        # Before this, no topology was ever supplied, so no lateral movement
+        # existed and every multi-host path was impossible (FM-01).
+        from app.detection.reachability import derive_topology, posture_from_roe
+        from app.models.engagement import Engagement
+        engagement = await db.get(Engagement, engagement_id)
+        topology = derive_topology(
+            assets,
+            getattr(engagement, "scope_cidrs", None) or [],
+            posture_from_roe(getattr(engagement, "rules_of_engagement", None)),
+        )
+        self.add_segment_topology(topology)
+
         if self._neo4j is not None:
             self.sync_to_neo4j(engagement_id)
         return graph

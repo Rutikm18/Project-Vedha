@@ -94,6 +94,11 @@ _P_SEVERITY = {"critical": 0.65, "high": 0.5, "medium": 0.35, "low": 0.2, "info"
 P_FLOOR = 0.1                 # a known weakness is never "impossible" (FM-19)
 P_UNKNOWN_HOP = 0.5           # a hop counted in `hops` but not described by an edge
 
+# Subnet hubs (P1a). Reaching a member through its subnet's hub costs the
+# member's exploit likelihood scaled by the same-subnet adjacency confidence.
+CONF_SAME_SUBNET = 0.9
+_HUB_RELS = frozenset({"IN_SEGMENT", "SEGMENT_LINK", "ROUTES"})
+
 # Business impact of reaching the target, by criticality.
 _IMPACT = {"critical": 1.0, "high": 0.8, "medium": 0.6, "low": 0.4, "info": 0.2}
 
@@ -196,6 +201,8 @@ class PathAnalyzer:
                 cur["reach"] = max(cur["reach"], reach)
                 cur["basis"] = _better_basis(basis, cur["basis"])
 
+        self._add_hub_edges(mv)
+
         for (u, v), info in best.items():
             dest_exploit = self._exploit_info(v)
             if info["rel"] == "CREDENTIAL_REUSE":
@@ -222,14 +229,49 @@ class PathAnalyzer:
         self._movement = mv
         return mv
 
+    def _add_hub_edges(self, mv: nx.DiGraph) -> None:
+        """Project subnet hubs (NetworkSegment nodes) into the movement graph.
+
+          asset  → hub     joining your own subnet costs nothing (p = 1)
+          hub    → asset   ONLY when the member can be compromised (monotonic
+                           control): p = exploit likelihood × same-subnet confidence
+          hub    → hub     inter-subnet link, p = its reachability confidence
+          gateway→ hub     a (controlled) gateway routes into another subnet
+
+        Edges stay O(members + links): a /24 of 200 hosts adds ~400 edges here,
+        where the old pairwise SAME_SEGMENT mesh needed 39,800."""
+        g = self.graph
+        hubs = [n for n, d in g.nodes(data=True) if d.get("type") == "NetworkSegment"]
+        for h in hubs:
+            mv.add_node(h, **g.nodes[h])
+        for u, v, d in g.edges(data=True):
+            rel = d.get("type")
+            if rel not in _HUB_RELS or not (mv.has_node(u) and mv.has_node(v)):
+                continue
+            if rel == "IN_SEGMENT" and _is_asset(mv, u):
+                _hub_edge(mv, u, v, 1.0, "IN_SEGMENT", "same_subnet")
+                exploit = self._exploit_info(u)
+                if exploit:      # member is compromisable → reachable FROM its hub
+                    p = _clamp_p(exploit["likelihood"] * CONF_SAME_SUBNET)
+                    _hub_edge(mv, v, u, p, "SEGMENT_MEMBER", "same_subnet",
+                              dest_compromisable=True, dest_cvss=exploit.get("cvss", 0.0),
+                              dest_finding=exploit.get("finding"))
+            elif rel == "SEGMENT_LINK":
+                _hub_edge(mv, u, v, _clamp_reach(d.get("reachability_confidence", 1.0)),
+                          "SEGMENT_LINK", d.get("basis") or "assumed")
+            elif rel == "ROUTES" and _is_asset(mv, u):
+                _hub_edge(mv, u, v, _clamp_reach(d.get("reachability_confidence", 1.0)),
+                          "ROUTES", d.get("basis") or "assumed")
+
     def _source_assets(self, source_type: str) -> list[str]:
         mv = self.movement_graph()
+        assets = [(n, d) for n, d in mv.nodes(data=True) if d.get("type") == "Asset"]
         if source_type == "internet_exposed":
-            return [n for n, d in mv.nodes(data=True) if d.get("internet_exposed")]
+            return [n for n, d in assets if d.get("internet_exposed")]
         if source_type == "any":
-            return list(mv.nodes)
+            return [n for n, _ in assets]
         # treat source_type as an explicit asset entity_id
-        return [n for n, d in mv.nodes(data=True) if d.get("entity_id") == source_type]
+        return [n for n, d in assets if d.get("entity_id") == source_type]
 
     # ── find_paths_to_target ──────────────────────────────────────────────────────
 
@@ -261,9 +303,12 @@ class PathAnalyzer:
             try:
                 gen = nx.shortest_simple_paths(mv, src, target_node, weight="weight")
                 kept = 0
+                seen_seq: set[tuple] = set()
                 for node_path in itertools.islice(gen, scan_cap):
-                    if len(node_path) - 1 > max_hops:
-                        continue
+                    asset_seq = tuple(n for n in node_path if _is_asset(mv, n))
+                    if len(asset_seq) - 1 > max_hops or asset_seq in seen_seq:
+                        continue      # too long, or same hosts via another subnet route
+                    seen_seq.add(asset_seq)
                     paths.append(self._materialise_path(mv, node_path))
                     kept += 1
                     if kept >= max_paths_per_source:
@@ -276,26 +321,48 @@ class PathAnalyzer:
         return paths
 
     def _materialise_path(self, mv: nx.DiGraph, node_path: list[str]) -> dict[str, Any]:
+        """Turn a raw node path (assets AND subnet hubs) into an asset-level path.
+        Each hop between two hosts records the subnets it crossed (`via`), its
+        combined likelihood, and its WEAKEST reachability basis — so a hop that
+        relied on an assumed inter-subnet link is labelled `assumed`."""
+        asset_idx = [i for i, n in enumerate(node_path) if _is_asset(mv, n)]
         edges = []
-        for a, b in zip(node_path, node_path[1:]):
-            ed = mv.edges[a, b]
+        for i, j in zip(asset_idx, asset_idx[1:]):
+            seg = node_path[i:j + 1]
+            parts = [mv.edges[a, b] for a, b in zip(seg, seg[1:])]
+            via = [mv.nodes[n].get("entity_id") for n in seg[1:-1]]
+            p = 1.0
+            for ed in parts:
+                p *= ed.get("likelihood", 1.0)
+            last = parts[-1]
+            first_rel = parts[0].get("rel")
+            if not via:
+                technique = first_rel
+            elif first_rel == "ROUTES":
+                technique = "GATEWAY_ROUTE"
+            else:
+                technique = "SAME_SUBNET" if len(via) == 1 else "CROSS_SUBNET"
+            basis = min((ed.get("basis", "observed") for ed in parts),
+                        key=lambda b: _BASIS_RANK.get(b, 0))
             edges.append({
-                "source": mv.nodes[a].get("entity_id"),
-                "target": mv.nodes[b].get("entity_id"),
-                "technique": ed.get("rel"),
-                "weight": round(ed.get("weight", 0.0), 4),
-                "likelihood": ed.get("likelihood"),
-                "basis": ed.get("basis", "observed"),
-                "exploited": ed.get("dest_compromisable", False),
-                "finding": ed.get("dest_finding"),
-                "cvss": ed.get("dest_cvss", 0.0),
+                "source": mv.nodes[node_path[i]].get("entity_id"),
+                "target": mv.nodes[node_path[j]].get("entity_id"),
+                "technique": technique,
+                "via": via,
+                "weight": round(sum(ed.get("weight", 0.0) for ed in parts), 4),
+                "likelihood": round(_clamp_p(p), 4),
+                "basis": basis,
+                "exploited": last.get("dest_compromisable", False),
+                "finding": last.get("dest_finding"),
+                "cvss": last.get("dest_cvss", 0.0),
             })
         tgt = mv.nodes[node_path[-1]]
         path = {
             "source": mv.nodes[node_path[0]].get("entity_id"),
             "target": tgt.get("entity_id"),
-            "hops": len(node_path) - 1,
-            "nodes": [mv.nodes[n].get("entity_id") for n in node_path],
+            "hops": len(asset_idx) - 1,
+            "nodes": [mv.nodes[node_path[i]].get("entity_id") for i in asset_idx],
+            "segments": sorted({v for e in edges for v in e["via"]}),
             "edges": edges,
             "target_criticality": tgt.get("criticality", "medium"),
         }
@@ -387,12 +454,16 @@ class PathAnalyzer:
         if not mv.has_node(origin):
             return {"origin": str(compromised_asset_id), "reachable": [], "count": 0, "by_distance": {}}
 
-        lengths = nx.single_source_shortest_path_length(mv, origin, cutoff=max_hops)
+        # Distance in HOSTS: entering an asset costs 1, entering a subnet hub 0.
+        lengths = nx.single_source_dijkstra_path_length(
+            mv, origin, cutoff=max_hops,
+            weight=lambda _u, v, _d: 1 if _is_asset(mv, v) else 0)
         by_distance: dict[int, list[str]] = {}
         reachable: list[str] = []
         for node, dist in sorted(lengths.items(), key=lambda kv: (kv[1], kv[0])):
-            if node == origin:
+            if node == origin or not _is_asset(mv, node):
                 continue
+            dist = int(dist)
             entity = mv.nodes[node].get("entity_id")
             reachable.append(entity)
             by_distance.setdefault(dist, []).append(entity)
@@ -417,7 +488,8 @@ class PathAnalyzer:
         assets = sum(1 for _, d in g.nodes(data=True) if d.get("type") == "Asset")
         findings = [d for _, d in g.nodes(data=True) if d.get("type") == "Finding"]
         exploitable = sum(1 for d in findings if d.get("exploitable") or d.get("exploit_validated"))
-        movement_rels = sum(1 for _, _, d in g.edges(data=True) if d.get("type") in _MOVEMENT_RELS)
+        movement_rels = sum(1 for _, _, d in g.edges(data=True)
+                            if d.get("type") in _MOVEMENT_RELS | _HUB_RELS)
         sources = len(self._source_assets(source_type))
         targets = [t for t in (target_asset_ids or []) if mv.has_node(f"asset:{t}")]
 
@@ -436,7 +508,8 @@ class PathAnalyzer:
         if exploitable == 0:
             reasons.append({"code": "no_exploitable_steps",
                             "detail": "no finding is marked exploitable, so no host can be compromised"})
-        elif mv.number_of_edges() == 0 and movement_rels:
+        control_edges = sum(1 for _, v in mv.edges() if _is_asset(mv, v))
+        if exploitable and control_edges == 0 and movement_rels:
             reasons.append({"code": "no_control_edges",
                             "detail": "hosts are reachable but none reachable host can be compromised"})
         return {
@@ -446,12 +519,24 @@ class PathAnalyzer:
             "entry_points": sources,
             "targets": len(targets),
             "reachability_edges": movement_rels,
-            "control_edges": mv.number_of_edges(),
+            "control_edges": control_edges,
+            "segments": sum(1 for _, d in g.nodes(data=True) if d.get("type") == "NetworkSegment"),
+            "reachability_posture": g.graph.get("reachability_posture"),
+            "unplaced_assets": len(g.graph.get("unplaced_assets") or []),
             "reasons": reasons,
         }
 
 
-_BASIS_RANK = {"observed": 3, "assumed": 2, "possible": 1}
+_BASIS_RANK = {"observed": 4, "same_subnet": 3, "assumed": 2, "possible": 1}
+
+
+def _is_asset(mv: nx.DiGraph, n: str) -> bool:
+    return mv.nodes[n].get("type") == "Asset"
+
+
+def _hub_edge(mv: nx.DiGraph, u: str, v: str, p: float, rel: str, basis: str, **extra: Any) -> None:
+    p = 1.0 if p >= 1.0 else _clamp_p(p)
+    mv.add_edge(u, v, weight=_cost(p), likelihood=round(p, 4), rel=rel, basis=basis, **extra)
 
 
 def _better_basis(a: str, b: str) -> str:
