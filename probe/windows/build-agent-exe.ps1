@@ -43,6 +43,9 @@ if ($LASTEXITCODE -ne 0) { throw 'agent closure export failed' }
 
 # 2) Compile to a standalone folder. Docstrings and asserts are stripped; the
 #    optional credential collectors (paramiko, winrm) are left out on purpose.
+#    impacket is NOT compiled whole: --include-package=impacket pulls in huge generated
+#    modules (e.g. dcerpc.v5.tsts) that run MSVC out of heap space (C1002). Only the
+#    modules the scanners import are built; `vedha-agent runtime-check` verifies them.
 $dist = Join-Path $OutDir 'vedha-agent'
 if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
 
@@ -56,7 +59,13 @@ try {
   & $py -m nuitka --standalone --assume-yes-for-downloads --follow-imports `
       --python-flag=no_docstrings --python-flag=no_asserts `
       --include-package=agent --include-package=scanner --include-package=workflow `
-      --include-package=impacket --include-package=ldap3 --include-package=dns `
+      --include-package=ldap3 --include-package=dns `
+      --include-module=impacket.smbconnection --include-module=impacket.uuid `
+      --include-module=impacket.dcerpc.v5.transport --include-module=impacket.dcerpc.v5.samr `
+      --include-module=impacket.dcerpc.v5.lsat --include-module=impacket.dcerpc.v5.lsad `
+      --include-module=impacket.dcerpc.v5.rrp --include-module=impacket.dcerpc.v5.epm `
+      --include-module=impacket.dcerpc.v5.rpcrt --include-module=impacket.dcerpc.v5.dtypes `
+      --nofollow-import-to=impacket.examples --nofollow-import-to=impacket.dcerpc.v5.tsts `
       --nofollow-import-to=paramiko --nofollow-import-to=winrm `
       --nofollow-import-to=pytest --nofollow-import-to=unittest `
       --windows-console-mode=force --company-name=Vedha --product-name='Vedha Agent' `
