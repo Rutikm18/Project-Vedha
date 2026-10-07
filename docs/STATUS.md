@@ -1,6 +1,6 @@
 # Vedha Project Status
 
-As of **2026-10-03** (all unmerged work combined on `integrate/all-to-main`, awaiting your push). This is the single place for what is done, what is open, and what needs the owner.
+As of **2026-10-07** (`main` at `c2d000f`, VERSION 1.0.375: the 3 Oct integration and the 4 Oct report work are both on it). This is the single place for what is done, what is open, and what needs the owner.
 Claude updates it at the end of every finished piece of work: a change-log row, then the sections above it.
 
 ## At a glance
@@ -9,18 +9,18 @@ Claude updates it at the end of every finished piece of work: a change-log row, 
 
 | Area | State |
 | --- | --- |
-| `origin/main` | `4c78573`. **Everything not yet on it is combined on `integrate/all-to-main`, tested, not yet pushed**: agent install, portal plan locks, report export fix, new logo, Technical Findings report, operator Deep scan, design system doc |
+| `origin/main` | `c2d000f`, VERSION 1.0.375. Since 1 Oct it gained agent install (P0-3), portal plan locks, the report export fix, the new logo and favicon, the Technical Findings report, the operator Deep scan, the design system doc, the new report presentation layer (4 Oct) and `make prod-diagnose` |
 | Production | [app.vedhasec.com](https://app.vedhasec.com) / [api.vedhasec.com](https://api.vedhasec.com) — **stopped for a redeploy on 1 Oct** (owner). Was healthy on 1.0.325 on 30 Sep |
-| Tests | On `integrate/all-to-main` (3 Oct): backend 2,276 passed, 8 skipped · frontend 375 of 377 (the 2 = missing `pdfkit`) · probe 2,512 (no probe change since the agent-install run) · lint 0 errors · one Alembic head (`0054`) |
+| Tests | Last full run on the 3 Oct integration: backend 2,276 passed, 8 skipped · frontend 375 of 377 (the 2 = missing `pdfkit`) · probe 2,512 · lint 0 errors · one Alembic head (`0054`). The 4 Oct report work: frontend 393 tests pass once `pdfkit` is installed. Not re-run together on `c2d000f` |
 | AI providers | Anthropic: no API credit · OpenAI: key rejected on AWS · Gemini: works, but its key was not on the AWS server |
-| Unmerged branches | `integrate/all-to-main` (everything below, ready to publish) · `codex/customer-portal-engagement-parity` (not merged: 52 conflicts, only its remediation workspace is missing, see [the assessment](planning/2026-10-03-branch-merge-assessment.md)) · `probe-standalone` (never merge) |
+| Unmerged branches | `codex/customer-portal-engagement-parity` (not merged: 52 conflicts, only its remediation workspace is missing, see [the assessment](planning/2026-10-03-branch-merge-assessment.md)) · the rest of `claude/adoring-maxwell-uz71b2` (two-step sign-in, organisation policies, notification rules, security and CSP changes, settings UI: left there on 4 Oct, see the change log) · `probe-standalone` (never merge) |
 
 The things that matter most right now:
 
-1. Push `integrate/all-to-main` to `main` and redeploy. It fixes the production report export and brings agent install, plan locks and the new logo.
+1. Redeploy production from `main`. It fixes the production report export and brings agent install, plan locks, the new logo and the new report layout. Migrations `0052`–`0054` run on deploy.
 2. Finish the production redeploy; attach an Elastic IP so the DNS record (`13.127.147.205`) stays valid across restarts.
 3. Fix the AWS `.env` (Gemini key, OpenAI key, blank `LLM_PROVIDER`), then `make full`. This restores AI Brain and report generation.
-4. Agent install in client environments (P0-3) is done and documented. To go live: publish the integration branch, create the release key, publish a release, and get `vedhasec.com` categorised by web filters (see *Needs you*).
+4. Agent install in client environments (P0-3) is done and documented. To go live: create the release key, publish a release, and get `vedhasec.com` categorised by web filters (see *Needs you*).
 
 ## Done
 
@@ -28,6 +28,13 @@ Merged and pushed to `origin/main`, newest first.
 
 | Shipped | Area | What | Ref |
 | --- | --- | --- | --- |
+| 4 Oct 2026 | Reports | New report presentation layer behind the web, PDF, Word and Excel report (one shared field model; every field carries its meaning; missing data handled once); portal no longer claims "no findings" when plan locks hide severities | `c4468dd`, `6ac414c`, `2ddcb03` |
+| 3–4 Oct 2026 | Deploy | `make prod-diagnose`: detects and heals common production issues, including all three migration-mismatch cases; Caddy overlay auto-included | `58f1a5d`–`88c8044` |
+| 3 Oct 2026 | Agent | Agent install (P0-3): manager-served signed agent, single-use engagement install tokens, Fleet → Add agent, access expiry, on-prem encrypted bundles (migrations `0052`, `0053`) | `integrate/all-to-main` |
+| 3 Oct 2026 | Portal | Portal plan locks: per customer, lock finding severities (new POC: Critical + High) and features (AI assistant, Reports, Remediation & fix bundles, Compliance briefs); one server-side guard filters every customer query; teaser rows and lock panels (migration `0054`). [Design](superpowers/specs/2026-10-02-portal-plan-locks-design.md) | `35581b4`–`72d6bea` |
+| 3 Oct 2026 | Reports | Production Export menu fixed (it opened inside a header box that hides overflow); Technical Findings report; boardroom reporting spec | `c4161aa`, `1305ff2` |
+| 3 Oct 2026 | Brand | New logo and favicon (sidebar, both login pages, SVG / ICO / Apple icon); design system doc | `1ab403d`, `f575cbf` |
+| 3 Oct 2026 | Settings | Settings page research and design doc (build not started; defects D1–D3 listed below). [Design](superpowers/specs/2026-10-03-settings-page-design.md) | `66341aa` |
 | 1 Oct 2026 | Scanner | Operator Scanner gets the single-asset Deep scan card (every TCP port on one IP); never charged to the customer's Deep allowance | `feat/operator-deep-scan` |
 | 1 Oct 2026 | Reports | Complete customer security reporting: canonical report document, scan provenance (ported from the Codex branch, migrations renumbered to 0050 / 0051, no model picker) | `82492a7`, `b6a3b60` |
 | 30 Sep 2026 | UI | Responsive dashboard and canonical reporting | `f70f392` |
@@ -60,23 +67,13 @@ Priority order from the [next-8 workstreams plan](planning/2026-09-29-next-8-wor
 | --- | --- | --- | --- | --- |
 | P0-1 | Security review + software testing | Done | L | Done per owner (1 Oct); P0 hardening bundle `security/p0-fixes` + master test plan on `main`. The hardening items below are still present in the code |
 | P0-2 | Fix the AI integration | Blocked on you | S–M | Code done on `main`; server `.env` + API credit needed (see *Needs you*) |
-| P0-3 | Agent install in client environments | Done | M | Built, tested and documented: the manager serves a signed agent containing only the agent's own code; Fleet → Add agent issues a single-use install token (1 h / 24 h / 7 d); access expiry is set from Fleet and enforced by the manager; on-prem customers get encrypted bundles. Docs: [operator runbook](operations/AGENT_DISTRIBUTION.md), [customer guide](probe/CUSTOMER_AGENT_INSTALL.md), [approach §10–11](planning/2026-10-01-agent-install-approach.md). On `integrate/agent-install-to-main`, awaiting publish |
+| P0-3 | Agent install in client environments | Done | M | Built, tested and documented: the manager serves a signed agent containing only the agent's own code; Fleet → Add agent issues a single-use install token (1 h / 24 h / 7 d); access expiry is set from Fleet and enforced by the manager; on-prem customers get encrypted bundles. Docs: [operator runbook](operations/AGENT_DISTRIBUTION.md), [customer guide](probe/CUSTOMER_AGENT_INSTALL.md), [approach §10–11](planning/2026-10-01-agent-install-approach.md). On `main` since 3 Oct |
 | P0-3b | Agent install, next phase | Not started | M | Pipeline, needs a Windows runner/VM: Windows download route + PowerShell installer + Fleet OS switch, a real Windows install, licence at enrolment for the sealed agent, Podman/RHEL, an amd64 live test, auto-update, support bundle ([plan](planning/2026-10-02-agent-code-fixes-plan.md)) |
 | P1-1 | Deep scan (all 65,535 ports, one host) in the operator Scanner | Done | S | Card on the operator Scanner; the ≤3-host Deep Port Sweep stays in the catalog (hidden while `SHOW_EXTENDED_USE_CASES = false`) |
 | P1-2 | Mobile-friendly UI + dashboard polish | Done | L | Done per owner (3 Oct); responsive dashboard landed in `f70f392`, layout overlaps fixed on `origin/main` |
+| P1-3 | Attack chain (added 3 Oct; priority to confirm) | In pipeline: engine partly built, no screen yet | M–L | **Already built:** composite attack chains per host from the scan facts (`app/detection/attack_paths.py`), saved as findings that cite the weaknesses they join, with ATT&CK techniques and device-role amplification (e.g. SMB signing off on a domain controller); chain corroboration that raises confidence when ≥2 independent signals form one path on a host (`ntlm_relay_surface`, `rdp_preauth_surface`, `weak_tls_cluster`, `exposed_windows_infra`); an attack-graph engine (`app/graph/`, in-memory NetworkX, Neo4j optional and off by default) with APIs for attack paths, path detail, chokepoints, blast radius and the full graph, plus the dashboard proxy routes. **Missing:** (1) an Attack Chain page that uses those APIs: paths ranked by risk, hop-by-hop view, chokepoints to fix first, blast radius per asset; (2) real cross-host chains: the graph already models movement between hosts (same segment, host-to-host reachability, shared credentials), but only the demo data feeds it segments and credentials, so real scan results must be mapped into that topology; (3) an attack-chain section in the customer report and portal, respecting plan locks; (4) checking the graph APIs against a real engagement. Spec needed first |
 | P2-1 | Website content | Not started | S | Platform choice needed |
 | P2-2 | Platform walkthrough + feature videos | Not started | M | After P1, so recordings show the final UI |
-
-### Done on `integrate/all-to-main`, waiting for push
-
-| Item | Area | Notes |
-| --- | --- | --- |
-| Agent install (P0-3) | Agent | See the roadmap row above and the change log. Migrations `0052`, `0053` |
-| Report export did nothing in production | Reports | The Export menu opened inside a page-header box that hides overflow, so nothing showed. It now opens in a layer above the page, closes on Escape, an outside click or scroll, and fits a phone screen. Reproduced in the production image; checked on desktop and mobile; PDF download verified |
-| Portal plan locks (POC vs licensed) | Portal | Per customer, at any time, on POC or licensed plans, the operator locks finding severities (a new POC starts with Critical + High locked) and features (AI assistant, Reports, Remediation & fix bundles, Compliance briefs). Locked findings never leave the server: one database-level guard filters every customer query. The portal shows them as "N locked findings · Available on a licensed plan"; locked features show a lock panel; written reports are withheld while any severity is locked. Migration **`0054`** (renumbered from `0052` to follow agent install). [Design](superpowers/specs/2026-10-02-portal-plan-locks-design.md) |
-| New logo and favicon | Brand | The new mark replaces the shield in the sidebar and on both login pages; the stacked logo heads the customer portal login. Favicon as SVG (follows light/dark), ICO and Apple touch icon. Brand files in `manager/frontend/public/brand/` |
-| Technical Findings report, boardroom reporting spec, operator Deep scan, design system doc | Reports / Scanner / Design | Merged from their branches and local `main` |
-| Settings page redesign: research and design | Settings | Doc only; build not started. Draws on GitHub, Vercel, Datadog, Stripe, Tenable, Rapid7, Snyk, Salesforce and Checkmarx; gives every field its meaning, default, owner, effect and backend status; found 4 defects in today's page (below). [Design](superpowers/specs/2026-10-03-settings-page-design.md) |
 
 ### Other open items
 
@@ -140,9 +137,8 @@ These need your accounts, your server or your decision.
 - [ ] Run `npm install` in `manager/frontend` (adds `pdfkit` and `@playwright/test`, which the reporting work needs). Other sessions share that `node_modules`, so I left it to you
 - [ ] Optional: add a free `GROQ_API_KEY` as a second free fallback, and set `AI_DAILY_CAP_USD` (e.g. `anthropic=20,openai=10`)
 - [ ] **Today:** submit `vedhasec.com` for web-filter categorisation (Palo Alto, Zscaler, Fortinet, Cisco Talos, Broadcom, Check Point). Domains under about 32 days old are commonly blocked as "newly registered", which would stop customer agents reaching the manager
-- [ ] Land everything on `main`. Claude can't publish (safety hook), so run `git push origin integrate/all-to-main:main`. It is a fast-forward of `origin/main` `4c78573`. Then, in the primary checkout, commit or set aside its uncommitted changes and pull. Local `main` is a strict subset of the integration branch
 - [ ] After deploying, the migrations run `0052` and `0053` (agent install) and `0054` (plan locks). Existing customers keep full access until you lock something
-- [ ] Clean up the plan-locks / export test leftovers: containers `vedha-export-before`, `vedha-export-after`, `vedha-export-ui-before`, `vedha-export-ui-after`, `vedha-locks-pg`; images `vedha-frontend:exporttest`, `:exportfix`, `:menufix`; and, once pushed, the merged branches and worktrees listed in the change log row for 2026-10-03 (merge all)
+- [ ] Clean up the plan-locks / export test leftovers: containers `vedha-export-before`, `vedha-export-after`, `vedha-export-ui-before`, `vedha-export-ui-after`, `vedha-locks-pg`; images `vedha-frontend:exporttest`, `:exportfix`, `:menufix`. The merged local branches are now on `main` and safe to delete: `feat/portal-plan-locks`, `fix/report-export`, `feat/operator-deep-scan`, `docs/status-refresh`, `integrate/agent-install-to-main`, `feat/agent-install`, `docs/agent-install-approach`, `feat/technical-finding-report`, `feat/reporting-boardroom-redesign`, `integrate/all-to-main` (Claude's safety hook blocks branch deletion)
 - [ ] On your build machine, run `make agent-keygen`. Keep `~/.vedha/agent-release-key.pem` off the server and back it up offline. Put the printed `AGENT_RELEASE_PUBLIC_KEY=…` in the AWS `.env`
 - [ ] Once the merge is deployed (it runs migration 0052): `make agent-release`, then `make agent-publish TO=ubuntu@<server>:/opt/Project-Vedha/manager/agent-releases`. Fleet → Add agent then shows the release ([runbook](operations/AGENT_DISTRIBUTION.md))
 - [ ] Remove the agent-install test leftovers on your Mac (Claude's safety hook blocks container removal): the `vedha-agentinst` compose project, the containers `vedha-agent-e2e`, `-e2e2`, `-e2e3`, `-round0`, `-round1`, `-round2` and their `-state` volumes, and the images `vedha-e2e-customer-host:local`, `vedha-e2e-vendor-host:local`, `vedha-backend:9.9.9`, `vedha-frontend:9.9.9`, `vedha-backend:agentinst`
@@ -156,6 +152,7 @@ One row per finished piece of work, newest first.
 
 | Date | Change | Ref |
 | --- | --- | --- |
+| 2026-10-07 | Status refreshed: the 3 Oct integration is on `main`, so its "waiting for push" section moved into Done; header, tests and branch rows updated. Attack chain added to the roadmap as P1-3, recording what is built (per-host composite chains, corroboration, graph APIs) and what is missing (a page, real topology for cross-host chains, a report and portal section, a real-data check) | `docs/status-attack-chain` |
 | 2026-10-04 | Report work only, taken from `claude/adoring-maxwell-uz71b2` (4 commits cherry-picked onto `main`, nothing else from that branch): the new presentation layer behind the web, PDF, Word and Excel report (one shared field model, every field carries its meaning, missing data handled once; IBM Plex fonts bundled; docs plan `planning/2026-10-03-report-formatting-plan.md`), plus two portal-report fixes (the plan-lock flag is a prop; the portal no longer claims "no findings" when plan locks hide severities). Left on that branch, not merged: two-step sign-in, organisation policies, notification rules, the remediation workspace, the AI recommendation check, the security and CSP changes, settings UI and the deployment review. Frontend only: 393 tests pass once `pdfkit` is installed (it is declared in `package.json` but missing from the shared `node_modules`, which is why 2 report-export tests fail on this machine), tsc and lint clean | `integrate/reports-to-main` |
 | 2026-10-03 | Merged all unmerged work onto `integrate/all-to-main` (from `integrate/agent-install-to-main` + `feat/portal-plan-locks` + local `main`'s design-system doc). Conflicts: `VERSION` (kept the highest), `docs/STATUS.md` (combined by hand), and migration id `0052`, which both branches used: plan locks renumbered to `0054`, one Alembic head. Not merged: the Codex branch (see the assessment) and `probe-standalone` (never). Branches now fully contained and safe to delete after the push: `feat/portal-plan-locks`, `fix/report-export`, `feat/operator-deep-scan`, `docs/status-refresh`, `integrate/agent-install-to-main`, `feat/agent-install`, `docs/agent-install-approach`, `feat/technical-finding-report`, `feat/reporting-boardroom-redesign` | `integrate/all-to-main` |
 | 2026-10-03 | New logo and favicon: shared `VedhaMark` / `VedhaLogoStacked` components, favicon SVG + ICO + Apple icon, brand files in `public/brand/`; both login pages checked in the browser | `1ab403d` |
