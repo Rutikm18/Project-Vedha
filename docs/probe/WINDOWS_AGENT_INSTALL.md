@@ -8,6 +8,13 @@ not. This page is for **you** (the operator). The customer's own instructions ar
 What the customer needs: Windows 10 / Server 2016 or newer (64-bit), administrator
 rights, outbound HTTPS (TCP 443) to your manager. No Python, no downloads.
 
+See also: [reference](WINDOWS_AGENT_REFERENCE.md) (files, settings, commands, states) ·
+[CI and the real-install test](../testing/windows-agent-ci-and-e2e.md) ·
+[decisions](../adr/0005-windows-agent-delivery.md) ·
+[version management](../design/agent-version-management.md) ·
+[bring-up report](../reports/2026-10-07-windows-agent-bringup-report.md) ·
+[pipeline](../planning/2026-10-07-windows-agent-pipeline.md).
+
 ## 1. Build the package (once per release)
 
 1. GitHub → **Actions** → **vedha-agent-windows-build** → **Run workflow**.
@@ -30,14 +37,57 @@ installer refuses to use it.
 
 ## 2. Create the customer's install token
 
-In the portal: **Fleet → Add agent → Generate install command**. The command
-contains `--token vet_…`; copy **only the `vet_…` value**. It works once and
-expires after the lifetime you choose (shortest that works: 1 hour to 7 days). You
-can revoke it in the same panel.
+The token is the existing single-use, engagement-bound `vet_...` token. It works once,
+expires after the lifetime you choose (5 minutes to 7 days), carries the engagement's
+scope, and can be revoked. There are two ways to create it.
 
-Set the engagement scope in the portal as usual. The Windows installer also sets
-what the agent *may* scan on the machine itself (default: the machine's own
-network; `-Scope 10.0.5.0/24` changes it).
+**A. In the portal** - **Fleet -> Add agent -> Generate install command**. The command
+shown is the Linux one; copy **only the `vet_...` value** after `--token`.
+
+> **Gate:** the **Generate** button is disabled until the manager can serve a signed
+> *Linux* agent release. If the panel says "The agent installer is not available yet"
+> (and `curl https://<manager>/agent/install.sh` prints "the agent installer is not
+> available on this manager right now"), either publish a release
+> (`make agent-release`, `make agent-publish`, `AGENT_RELEASE_PUBLIC_KEY` on the manager;
+> see [AGENT_DISTRIBUTION](../operations/AGENT_DISTRIBUTION.md)) or use route B. The
+> Windows package does not use that release.
+
+**B. Through the API** (works without a published release; admin or manager login). From a
+Mac or Linux shell, bash:
+
+```bash
+# 1. log in (the password is not echoed or kept in the shell history)
+read -p "Vedha email: " EMAIL
+read -s -p "Vedha password: " PW; echo
+TOKEN=$(curl -s https://api.example.com/auth/login -H 'Content-Type: application/json' \
+  -d "$(EMAIL="$EMAIL" PW="$PW" python3 -c 'import json,os; print(json.dumps({"email":os.environ["EMAIL"],"password":os.environ["PW"]}))')" \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin).get("access_token",""))')
+unset PW
+
+# 2. find the engagement (needs scope ranges and no agent assigned yet)
+curl -s "https://api.example.com/engagements?page_size=100" -H "Authorization: Bearer $TOKEN" \
+ | python3 -c 'import json,sys; [print(e["id"],"|",e["name"],"|",e["status"],"|",e["scope_cidrs"]) for e in json.load(sys.stdin)["items"]]'
+
+# 3. create the token (60 minutes here); the line starting vet_ is the install token
+ENG_ID="paste-the-engagement-id"
+curl -s https://api.example.com/probe-enrollment/enroll-tokens \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d "{\"name\":\"windows-test\",\"engagement_id\":\"$ENG_ID\",\"expires_in_minutes\":60}" \
+ | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("token") or d)'
+unset TOKEN
+```
+
+Replace `api.example.com` with your manager. The reply also contains a Linux install
+command; ignore it. Limits the manager enforces: at most 5 unused tokens per engagement
+("revoke one before creating another"); an engagement with an agent already assigned, or
+with no scope ranges, is refused. Keep the token out of chat and tickets.
+
+(These commands were written from the code; the first run against the live manager is
+the real check. See the [bring-up report](../reports/2026-10-07-windows-agent-bringup-report.md).)
+
+The engagement's scope is what the agent gets when it enrols. The Windows installer also
+sets what the agent *may* scan on the machine itself (default: the machine's own /24;
+`-Scope 10.0.5.0/24` changes it). A job outside either is rejected.
 
 ## 3. Send it
 
@@ -106,6 +156,45 @@ On the machine (Administrator prompt), `"C:\Program Files\Vedha Agent\vedha-agen
 
 The agent keeps retrying by itself, so once the customer fixes the cause (firewall,
 proxy, CA) it connects without reinstalling.
+
+### "It says ONLINE on the machine but it is not in Fleet"
+
+Local `status` says ONLINE once the agent has **registered** and received its identity,
+so the manager has seen it at least once. Find out what happened after that.
+
+1. On the machine, as Administrator:
+   ```
+   "C:\Program Files\Vedha Agent\vedha-agent.exe" status
+   "C:\Program Files\Vedha Agent\vedha-agent.exe" doctor
+   powershell -Command "Get-Content 'C:\ProgramData\vedha-agent\logs\agent.log' -Tail 80"
+   ```
+   In `status`, check **Manager** is the address you are looking at, and note the agent's
+   name (default `<computername>-probe`).
+2. Read the log:
+
+   | Log line | Meaning |
+   |---|---|
+   | `Registered as '<name>'` / `Resumed as '<name>'` | the manager accepted it; enrolment worked |
+   | `WebSocket connected. Push mode active` | healthy: it is talking to the manager |
+   | `WebSocket ... falling back to HTTP poll`, then `Waiting for scan jobs (HTTP polling)` | WebSocket is blocked (firewall / proxy); polling still works |
+   | `WebSocket auth rejected` / `auth keeps failing` | the manager refuses the credential |
+   | `Device credential was revoked, expired, or disabled` | revoked on the manager |
+   | `This agent's access has expired` | an access expiry set in Fleet has passed |
+   | `Manager not reachable [n/6]` | network problem: `doctor` says what |
+3. Ask the manager what it sees (`GET /agents`, admin or manager login; log in as in
+   section 2B):
+   ```bash
+   curl -s https://api.example.com/agents -H "Authorization: Bearer $TOKEN" \
+    | python3 -c 'import json,sys; [print(a["name"],"| status",a["status"],"| online",a["online"],"| last_heartbeat",a["last_heartbeat"],"| lifecycle",a["lifecycle_status"],"| v",a["agent_version"]) for a in json.load(sys.stdin)]'
+   ```
+   - **Name not listed:** it registered at a different manager address or tenant.
+   - **Listed, `online False`, old or empty `last_heartbeat`:** registered but not
+     heartbeating; the log lines above say why.
+   - **Listed, `online True`:** the manager is fine; the Fleet page is filtering
+     (engagement) or needs a refresh. `online` means a heartbeat in the last 90 s.
+   - Also check Fleet -> Add agent -> recent install commands: the token should read
+     **agent enrolled**.
+4. If still unclear: `vedha-agent.exe support-bundle`, and send the zip.
 
 Self-help is **diagnose, explain and safe self-heal only**. The installer and the
 agent never change the customer's firewall, antivirus, proxy, certificate store or
