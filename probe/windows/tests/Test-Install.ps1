@@ -81,6 +81,7 @@ $cfg = Read-VedhaConfig -Text $text
 Assert-Equal $cfg['PLATFORM_URL'] 'https://m.example.com' 'config: manager'
 Assert-Equal $cfg['VERIFY_TLS'] 'true' 'config: TLS verification is on'
 Assert-Equal $cfg['LICENSE_ENFORCED'] 'false' 'config: licence setting for the unsealed build'
+Assert-Equal $cfg['PROBE_KEEP_RETRYING'] 'true' 'config: the agent keeps retrying an unreachable manager instead of exiting'
 Assert-Equal $cfg['PROBE_NAME'] 'PC1-probe' 'config: name'
 Assert-Equal $cfg['PROBE_NETWORK_SEGMENTS'] '192.168.1.0/24' 'config: scope'
 Assert-Equal $cfg['STATE_FILE'] 'C:\ProgramData\vedha-agent\state.json' 'config: identity file location'

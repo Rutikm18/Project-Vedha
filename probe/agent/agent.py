@@ -328,31 +328,66 @@ def _preflight_scope_check(network_segments: list[str]) -> None:
         f"(or the exact range you intend to scan) and restart.", 1)
 
 
+def _keep_retrying() -> bool:
+    """PROBE_KEEP_RETRYING=true: wait for an unreachable Manager instead of exiting.
+    The Windows installer sets it - there the agent is a Scheduled Task and a reboot or a
+    network blip must not leave it stopped. Container hosts leave it off: their restart
+    policy supervises the process, so exiting with a diagnosis is the right behaviour."""
+    return os.environ.get("PROBE_KEEP_RETRYING", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+KEEP_RETRYING_MAX_WAIT = 300.0      # seconds between rounds once the agent has settled into waiting
+
+
+def _retry_wait(streak: int, *, cap: float = 30.0) -> float:
+    return min(KEEP_RETRYING_MAX_WAIT if _keep_retrying() else cap, 5.0 * streak)
+
+
+def _reason_and_fix(detail: str) -> tuple[str, str]:
+    """_manager_reachable reports 'reason — fix'; status.json keeps them apart."""
+    reason, sep, fix = detail.partition(" — ")
+    return reason, (fix if sep else "Run `vedha-agent doctor` to see what is blocking the connection.")
+
+
 def _wait_for_manager(transport, *, attempts: int = 6, base_delay: float = 5.0) -> None:
-    """Bounded reachability preflight. Proceeds the moment the Manager answers
-    /health; after `attempts` failures prints a boxed diagnosis and EXITS(2) —
-    never an infinite silent retry."""
+    """Reachability preflight. Proceeds the moment the Manager answers /health.
+    Normally, after `attempts` failures it prints a boxed diagnosis and EXITS(2) - never an
+    infinite silent retry. With PROBE_KEEP_RETRYING it records the diagnosis in the status file
+    and tries again, with a growing pause, until the Manager answers."""
     url = getattr(transport, "_base_url", "?")
-    last = ""
-    for i in range(1, attempts + 1):
-        ok, detail = _manager_reachable(transport)
-        if ok:
-            say(f"✓ Manager reachable at {url}")
-            return
-        last = detail
-        say(f"✗ Manager not reachable [{i}/{attempts}]: {detail}")
-        _dbg(f"preflight /health failed: {detail}")
-        if i < attempts:
-            time.sleep(min(30.0, base_delay * i))
-    say("")
-    say("═" * 60)
-    say("  CANNOT CONNECT TO THE MANAGER — stopping")
-    say("═" * 60)
-    say(f"  URL   : {url}")
-    say(f"  Why   : {last}")
-    say("  Then re-run install.sh. (set PROBE_DEBUG=1 for verbose tracing)")
-    say("═" * 60)
-    raise SystemExit(2)
+    keep = _keep_retrying()
+    rounds = 0
+    while True:
+        last = ""
+        for i in range(1, attempts + 1):
+            ok, detail = _manager_reachable(transport)
+            if ok:
+                say(f"✓ Manager reachable at {url}")
+                return
+            last = detail
+            reason, fix = _reason_and_fix(detail)
+            _status("retrying", reason=reason, remediation=fix, detail=f"manager check {i}/{attempts}")
+            say(f"✗ Manager not reachable [{i}/{attempts}]: {detail}")
+            _dbg(f"preflight /health failed: {detail}")
+            if i < attempts:
+                time.sleep(min(30.0, base_delay * i))
+        if not keep:
+            reason, fix = _reason_and_fix(last)
+            _status("failed", reason=reason, remediation=fix)
+            say("")
+            say("═" * 60)
+            say("  CANNOT CONNECT TO THE MANAGER — stopping")
+            say("═" * 60)
+            say(f"  URL   : {url}")
+            say(f"  Why   : {last}")
+            say("  Then re-run install.sh. (set PROBE_DEBUG=1 for verbose tracing)")
+            say("═" * 60)
+            raise SystemExit(2)
+        rounds += 1
+        wait = min(KEEP_RETRYING_MAX_WAIT, 30.0 * 2 ** (rounds - 1))
+        say(f"Cannot reach the manager at {url} yet. The agent keeps trying; next check in {int(wait)} s. "
+            f"Run `vedha-agent doctor` to see what is blocking it.")
+        time.sleep(wait)
 
 
 _LOG_LEVELS = ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG")
@@ -1931,7 +1966,7 @@ def _enroll_device(
         except Exception as exc:
             net_fail_streak += 1
             reason, fix = _classify_connection_error(exc, transport._base_url)
-            if net_fail_streak >= NET_FAIL_LIMIT:
+            if net_fail_streak >= NET_FAIL_LIMIT and not _keep_retrying():
                 say("")
                 say("═" * 58)
                 say("  ENROLLMENT FAILED — Manager unreachable")
@@ -1941,12 +1976,11 @@ def _enroll_device(
                 say("═" * 58)
                 _status("failed", reason=reason, remediation=fix)
                 raise SystemExit(2) from exc
-            _status("retrying", reason=reason, remediation=fix,
-                    detail=f"enrolment attempt {net_fail_streak}/{NET_FAIL_LIMIT}")
-            say(f"Enrollment manager unavailable ({reason}) — retrying "
-                f"[{net_fail_streak}/{NET_FAIL_LIMIT}].")
+            progress = f"{net_fail_streak}" if _keep_retrying() else f"{net_fail_streak}/{NET_FAIL_LIMIT}"
+            _status("retrying", reason=reason, remediation=fix, detail=f"enrolment attempt {progress}")
+            say(f"Enrollment manager unavailable ({reason}) — retrying [{progress}].")
             _dbg(f"enrollment poll failure: {exc!r}")
-            time.sleep(min(30, 5 * net_fail_streak))
+            time.sleep(_retry_wait(net_fail_streak))
 
 
 def _obtain_identity(
@@ -2222,7 +2256,7 @@ def _obtain_identity(
         except Exception as exc:
             reg_fail_streak += 1
             reason, fix = _classify_connection_error(exc, transport._base_url)
-            if reg_fail_streak >= REG_FAIL_LIMIT:
+            if reg_fail_streak >= REG_FAIL_LIMIT and not _keep_retrying():
                 say("")
                 say("═" * 58)
                 say("  REGISTRATION FAILED — Manager unreachable")
@@ -2232,12 +2266,11 @@ def _obtain_identity(
                 say("═" * 58)
                 _status("failed", reason=reason, remediation=fix)
                 raise SystemExit(2) from exc
-            _status("retrying", reason=reason, remediation=fix,
-                    detail=f"registration attempt {reg_fail_streak}/{REG_FAIL_LIMIT}")
-            say(f"Can't reach manager yet ({reason}) — retrying "
-                f"[{reg_fail_streak}/{REG_FAIL_LIMIT}].")
+            progress = f"{reg_fail_streak}" if _keep_retrying() else f"{reg_fail_streak}/{REG_FAIL_LIMIT}"
+            _status("retrying", reason=reason, remediation=fix, detail=f"registration attempt {progress}")
+            say(f"Can't reach manager yet ({reason}) — retrying [{progress}].")
             _dbg(f"registration failure: {exc!r}")
-            time.sleep(min(30, 5 * reg_fail_streak))
+            time.sleep(_retry_wait(reg_fail_streak))
 
 
 

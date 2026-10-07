@@ -657,6 +657,91 @@ class TestAgentIntegration:
         rec = rs.read(tmp_path / "status.json")
         assert rec["state"] == "retrying" and rec["version"] == AGENT_VERSION and rec["manager"] == "https://m.example.com"
 
+    # -- an unreachable manager at start-up --------------------------------------------
+
+    @staticmethod
+    def _transport(fail_times):
+        import httpx
+
+        class Response:
+            status_code = 200
+
+        class Client:
+            calls = 0
+
+            def get(self, *_a, **_k):
+                Client.calls += 1
+                if Client.calls <= fail_times:
+                    raise httpx.ConnectError("[Errno 111] Connection refused")
+                return Response()
+
+        class T:
+            _base_url = "https://m.example.com"
+            _client = Client()
+
+        return T(), Client
+
+    def test_default_mode_gives_up_with_a_diagnosis_and_records_failed(self, tmp_path, monkeypatch):
+        import agent.agent as ag
+        monkeypatch.delenv("PROBE_KEEP_RETRYING", raising=False)
+        monkeypatch.setattr(ag, "_STATUS_PATH", tmp_path / "status.json")
+        monkeypatch.setattr(ag.time, "sleep", lambda *_: None)
+        transport, _ = self._transport(fail_times=99)
+        with pytest.raises(SystemExit) as stop:
+            ag._wait_for_manager(transport, attempts=3, base_delay=0)
+        assert stop.value.code == 2
+        rec = rs.read(tmp_path / "status.json")
+        assert rec["state"] == "failed" and rec["reason"] and rec["remediation"]
+
+    def test_status_shows_retrying_after_the_first_failed_attempt(self, tmp_path, monkeypatch):
+        import agent.agent as ag
+        monkeypatch.delenv("PROBE_KEEP_RETRYING", raising=False)
+        monkeypatch.setattr(ag, "_STATUS_PATH", tmp_path / "status.json")
+        seen = []
+        monkeypatch.setattr(ag.time, "sleep", lambda *_: seen.append(rs.read(tmp_path / "status.json")["state"]))
+        transport, _ = self._transport(fail_times=99)
+        with pytest.raises(SystemExit):
+            ag._wait_for_manager(transport, attempts=2, base_delay=0)
+        assert seen == ["retrying"]
+
+    def test_keep_retrying_waits_for_the_manager_instead_of_exiting(self, tmp_path, monkeypatch):
+        import agent.agent as ag
+        monkeypatch.setenv("PROBE_KEEP_RETRYING", "true")
+        monkeypatch.setattr(ag, "_STATUS_PATH", tmp_path / "status.json")
+        sleeps = []
+        monkeypatch.setattr(ag.time, "sleep", lambda s: sleeps.append(s))
+        transport, client = self._transport(fail_times=7)      # two full rounds of 3, then one more failure, then success
+        ag._wait_for_manager(transport, attempts=3, base_delay=0)    # returns instead of raising SystemExit
+        assert client.calls == 8
+        assert 30.0 in sleeps and 60.0 in sleeps              # the pause between rounds grows
+        assert max(sleeps) <= ag.KEEP_RETRYING_MAX_WAIT
+
+    def test_keep_retrying_pause_is_capped(self, tmp_path, monkeypatch):
+        import agent.agent as ag
+        monkeypatch.setenv("PROBE_KEEP_RETRYING", "1")
+        monkeypatch.setattr(ag, "_STATUS_PATH", tmp_path / "status.json")
+        sleeps = []
+        monkeypatch.setattr(ag.time, "sleep", lambda s: sleeps.append(s))
+        transport, _ = self._transport(fail_times=30)
+        ag._wait_for_manager(transport, attempts=1, base_delay=0)
+        assert max(sleeps) == ag.KEEP_RETRYING_MAX_WAIT
+
+    def test_keep_retrying_is_off_unless_asked_for(self, monkeypatch):
+        import agent.agent as ag
+        monkeypatch.delenv("PROBE_KEEP_RETRYING", raising=False)
+        assert ag._keep_retrying() is False
+        for value in ("true", "1", "YES", "on"):
+            monkeypatch.setenv("PROBE_KEEP_RETRYING", value)
+            assert ag._keep_retrying() is True
+        monkeypatch.setenv("PROBE_KEEP_RETRYING", "false")
+        assert ag._keep_retrying() is False
+
+    def test_reason_and_fix_are_split_for_the_status_file(self):
+        import agent.agent as ag
+        assert ag._reason_and_fix("connection refused — Nothing is listening") == ("connection refused", "Nothing is listening")
+        reason, fix = ag._reason_and_fix("something odd")
+        assert reason == "something odd" and "doctor" in fix
+
     def test_a_crash_is_recorded_in_the_log_and_the_status(self, tmp_path, monkeypatch, caplog):
         import logging
         import agent.agent as ag

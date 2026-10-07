@@ -136,6 +136,7 @@ function New-VedhaAgentConfig {
     "PLATFORM_URL=$ManagerUrl",
     'VERIFY_TLS=true',
     'LICENSE_ENFORCED=false',
+    'PROBE_KEEP_RETRYING=true',
     "PROBE_NAME=$AgentName",
     "PROBE_NETWORK_SEGMENTS=$ScopeValue",
     "STATE_FILE=$DataDir\state.json",
