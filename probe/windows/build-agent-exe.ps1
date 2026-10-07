@@ -50,6 +50,10 @@ if ($LASTEXITCODE -ne 0) { throw 'agent closure export failed' }
 #    optional credential collectors (paramiko, winrm) are left out on purpose.
 #    MinGW gcc (--mingw64), not MSVC: cl.exe dies with C1002 "out of heap space" on
 #    impacket's large generated RPC modules (srvs, tsts, ...); gcc handles them.
+#    websockets IS compiled whole: it loads websockets.asyncio.client lazily by name, which
+#    Nuitka cannot follow, so without this the agent registers and then cannot open its live
+#    connection (seen on the first real install). `runtime-check` now exercises that path.
+#
 #    impacket is NOT compiled whole: --include-package=impacket pulls in huge generated
 #    modules (e.g. dcerpc.v5.tsts) that run MSVC out of heap space (C1002). Only the
 #    modules the scanners import are built; `vedha-agent runtime-check` verifies them.
@@ -67,6 +71,7 @@ try {
       --python-flag=no_docstrings --python-flag=no_asserts `
       --include-package=agent --include-package=scanner --include-package=workflow `
       --include-package=ldap3 --include-package=dns `
+      --include-package=websockets `
       --include-module=impacket.smbconnection --include-module=impacket.uuid `
       --include-module=impacket.dcerpc.v5.transport --include-module=impacket.dcerpc.v5.samr `
       --include-module=impacket.dcerpc.v5.lsat --include-module=impacket.dcerpc.v5.lsad `

@@ -168,6 +168,15 @@ def _record_crash(exc: BaseException) -> None:
                         "the details are in the agent log.")
 
 
+def _status_connection_lost(what: str) -> None:
+    """`status` must not keep saying ONLINE after a live connection is lost: record it, so
+    the installer, `status`, `doctor` and the support bundle show the truth."""
+    _status("retrying", reason=what[:200],
+            remediation="Run `vedha-agent doctor`. If it does not recover, run "
+                        "`vedha-agent support-bundle` and send the file to Vedha support.",
+            detail="reconnecting to the manager")
+
+
 # ── DEBUG (temporary) — set PROBE_DEBUG=1 to trace the connection handshake ────
 # Prints the URL, HTTP status, and short response body of every Manager call plus
 # the enrollment/refresh state transitions, so a stuck "can't connect" is
@@ -808,6 +817,8 @@ def main() -> None:
             else:
                 jobs = _poll_jobs_or_empty(transport, JOB_LIMIT)
 
+            if poll_fail_streak:
+                _status("online", detail="connected to the manager (polling); waiting for jobs")
             poll_fail_streak = 0  # a clean pass clears the outage counter
 
         except AccessExpiredError:
@@ -835,6 +846,8 @@ def main() -> None:
             # sustained streak print a diagnosed reason so it's not silent.
             poll_fail_streak += 1
             reason, fix = _classify_connection_error(exc, transport._base_url)
+            _status("retrying", reason=reason, remediation=fix,
+                    detail=f"manager unreachable (streak {poll_fail_streak})")
             if poll_fail_streak in (1, 5) or poll_fail_streak % 20 == 0:
                 say(f"Manager unreachable ({reason}) — retrying "
                     f"[streak {poll_fail_streak}]. {fix}")
@@ -1246,10 +1259,20 @@ async def _ws_connection_loop(
         except websockets.exceptions.ConnectionClosed as exc:
             close_code = exc.rcvd.code if exc.rcvd is not None else None
             say(f"WebSocket closed (code={close_code}) — reconnecting in {backoff:.0f}s...")
+            _status_connection_lost(f"live connection closed (code {close_code})")
         except (OSError, asyncio.TimeoutError) as exc:
             say(f"WebSocket unavailable ({exc}) — reconnecting in {backoff:.0f}s...")
+            _status_connection_lost(f"live connection unavailable ({type(exc).__name__})")
         except TransportError as exc:
             say(f"WebSocket auth error: {exc} — falling back to HTTP poll.")
+            return False
+        except ImportError as exc:
+            # The WebSocket library (or a part of it) is missing from this build. Retrying can
+            # never fix that, and the agent must not sit silent: polling over HTTPS does the
+            # same job (heartbeats, jobs), so say so and fall back to it.
+            say(f"Push mode is not available in this build ({type(exc).__name__}: {exc}) "
+                "— falling back to HTTP poll.")
+            LOG.error("WebSocket support is missing from this build: %s", exc)
             return False
         except Exception as exc:
             # A 403/401 on the WS upgrade means the manager REJECTED our token —
@@ -1286,6 +1309,7 @@ async def _ws_connection_loop(
                 # Retry immediately with the fresh token — don't sit on the backoff.
                 continue
             say(f"WebSocket error: {type(exc).__name__}: {exc} — reconnecting in {backoff:.0f}s...", 1)
+            _status_connection_lost(f"live connection error ({type(exc).__name__})")
         finally:
             await _end_ws_session(hb_task, stop_polling)
 
@@ -2274,6 +2298,47 @@ def _obtain_identity(
 
 
 
+def _library_entry_point_failures() -> list[str]:
+    """Use the real entry points of the libraries the agent relies on.
+
+    A library that loads parts of itself lazily, by name, is invisible to a compiler: importing
+    the package succeeds and the missing part shows up only when it is used (a compiled agent once
+    registered fine and then could not open its WebSocket: websockets.asyncio was absent). So this
+    does not just import: it opens a connection to a closed local port and signs with the real keys.
+    Anything except a missing module counts as the library having loaded and tried. Offline."""
+    failures: list[str] = []
+
+    def probe(label: str, action) -> None:
+        try:
+            action()
+        except ImportError as exc:
+            failures.append(f"{label}: {type(exc).__name__}: {exc}")
+        except Exception:  # noqa: BLE001 - refused / timed out: the library loaded and tried
+            pass
+
+    def websocket_connect() -> None:
+        import websockets
+
+        async def attempt() -> None:
+            await asyncio.wait_for(websockets.connect("ws://127.0.0.1:9", open_timeout=2), timeout=5)
+
+        asyncio.run(attempt())
+
+    def https_request() -> None:
+        import httpx
+        httpx.get("https://127.0.0.1:9", timeout=2)
+
+    def identity_keys() -> None:
+        from cryptography.hazmat.primitives.asymmetric import ed25519, x25519
+        x25519.X25519PrivateKey.generate().public_key()
+        ed25519.Ed25519PrivateKey.generate().sign(b"vedha")
+
+    probe("websockets (live connection)", websocket_connect)
+    probe("httpx (HTTPS client)", https_request)
+    probe("cryptography (identity keys)", identity_keys)
+    return failures
+
+
 USAGE = """Vedha agent {version}
 
 Usage: vedha-agent [command]
@@ -2367,10 +2432,12 @@ if __name__ == "__main__":
                     importlib.import_module(lib)  # agent-closure: verified-names
                 except Exception as exc:  # noqa: BLE001
                     failed.append(f"{lib}: {type(exc).__name__}: {exc}")
+            failed.extend(_library_entry_point_failures())
             if failed:
                 print("runtime-check FAILED:\n  " + "\n  ".join(failed))
                 sys.exit(1)
-            print(f"runtime-check OK: {len(MODULES)} agent modules and 6 libraries load")
+            print(f"runtime-check OK: {len(MODULES)} agent modules and 6 libraries load "
+                  "(connection, HTTPS and key entry points exercised)")
         elif arg == "manifest":
             # Deterministic capability surface — printed as raw JSON (no logging
             # prefix) so CI can diff the SEALED binary against the plaintext build.
