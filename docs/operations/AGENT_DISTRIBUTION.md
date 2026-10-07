@@ -68,6 +68,21 @@ The manager notices on the next request.
 **Local development:** `make agent-publish TO=manager/agent-releases`; leave
 `AGENT_RELEASE_PUBLIC_KEY` empty to serve unsigned releases outside production.
 
+## Windows agents
+
+The manager does **not** serve the Windows agent yet. You build a zip in GitHub Actions and send it
+(how: [Sending the Windows agent to a customer](../probe/WINDOWS_AGENT_INSTALL.md); reference:
+[Windows agent reference](../probe/WINDOWS_AGENT_REFERENCE.md); decisions: [ADR-0005](../adr/0005-windows-agent-delivery.md)).
+The install token is the same single-use `vet_...` token as for Linux. Two things to know:
+
+- **Fleet -> Add agent shows the Linux command only, and its Generate button is disabled while no
+  signed Linux release can be served** (`GET /agent/install.sh` then prints "the agent installer is not
+  available on this manager right now"). The backend does not require a release to mint a token, so
+  until the button is unblocked mint it through the API (`POST /probe-enrollment/enroll-tokens`;
+  commands in the operator guide, section 2).
+- A Windows agent that has enrolled shows up in Fleet like any other, with its agent version
+  (`GET /agents` -> `agent_version`).
+
 ## Agent versions and the update check
 
 There are **two version numbers**, on purpose:

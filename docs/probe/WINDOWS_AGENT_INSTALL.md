@@ -82,8 +82,8 @@ command; ignore it. Limits the manager enforces: at most 5 unused tokens per eng
 ("revoke one before creating another"); an engagement with an agent already assigned, or
 with no scope ranges, is refused. Keep the token out of chat and tickets.
 
-(These commands were written from the code; the first run against the live manager is
-the real check. See the [bring-up report](../reports/2026-10-07-windows-agent-bringup-report.md).)
+(Run for real on 7 Oct 2026: the token they produced enrolled an agent from a real Windows
+PC and was auto-approved. See the [bring-up report](../reports/2026-10-07-windows-agent-bringup-report.md).)
 
 The engagement's scope is what the agent gets when it enrols. The Windows installer also
 sets what the agent *may* scan on the machine itself (default: the machine's own /24;
