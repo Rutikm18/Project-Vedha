@@ -223,6 +223,8 @@ PowerShell execution policy (a unit test enforces this).
 
 ## 8. Verified vs. not yet verified
 
+**Current build: agent 2.2.1** (CI run 19, commit `e854f03`; all steps green, 22 of 22 install checks). The first field install ran **2.2.0**, which registered but could not open its live connection (a missing `websockets` module; fixed in 2.2.1). **2.2.1 has not yet been confirmed on a real machine**: install it with `install.cmd -Repair` from the new package (keeps the agent's identity), then check `status` shows 2.2.1 and Fleet lists the agent.
+
 **Verified** - on a GitHub `windows-latest` runner, in the run that built the zip you
 download (all 22 install checks and every build step green):
 

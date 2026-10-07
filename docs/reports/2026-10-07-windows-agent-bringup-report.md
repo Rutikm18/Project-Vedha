@@ -40,7 +40,7 @@ everything else stays in the pipeline.
 | Run 17 | 21 of 22; the last failure showed the agent giving up after six manager checks (#6) |
 | Run 18 | **22 of 22**; artifact uploaded |
 | Field install by the owner (agent 2.2.0) | registered, never connected (#7, #8) |
-| Run 19 (agent 2.2.1) | the `websockets` fix; the result is recorded in the [operator guide](../probe/WINDOWS_AGENT_INSTALL.md) when it is confirmed |
+| Run 19 (agent 2.2.1, commit `e854f03`) | **green**: build (a 16-minute first compile of the whole `websockets` package), smoke test with the new `runtime-check`, troubleshooting, packaging, **22 of 22** install checks; artifact 31.9 MB. **Not yet confirmed on the owner's machine** (a repair install from this build) |
 
 ## 4. Defects found, and what each taught
 
