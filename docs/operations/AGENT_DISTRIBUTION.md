@@ -68,6 +68,51 @@ The manager notices on the next request.
 **Local development:** `make agent-publish TO=manager/agent-releases`; leave
 `AGENT_RELEASE_PUBLIC_KEY` empty to serve unsigned releases outside production.
 
+## Agent versions and the update check
+
+There are **two version numbers**, on purpose:
+
+| Number | Where it lives | What it means |
+|---|---|---|
+| Platform release | repo-root `VERSION` | Names a release directory under `AGENT_RELEASE_DIR`. Bumped by the commit hook. |
+| **Agent version** | `probe/agent/version.py` (`AGENT_VERSION`) | The agent's own number. **Bumped by hand** when the agent's code changes. This is what Fleet shows and what updates compare. |
+
+A manager release that does not touch the agent keeps the same agent version, so it
+never looks like an agent update.
+
+**Keeping it honest.** `.github/workflows/agent-version-gate.yml` runs
+`probe/tools/check_agent_version.py` on every pull request. If anything the agent ships
+(its import closure, or `requirements-runtime.txt`) changed and `AGENT_VERSION` did not go
+up, the pull request fails. Run it locally with
+`python probe/tools/check_agent_version.py --base origin/main`.
+
+**What the release carries.** `make agent-release` reads `AGENT_VERSION` and writes it into
+the signed manifest as `agent_version` (optional, so older releases still load). The
+manager refuses a malformed value, and because the manifest is signed an edited value
+breaks the release. Fleet's release panel reports it (`GET /agent/release`).
+
+**What the agent does** (`probe/agent/update_check.py`):
+
+| When | What | Who sees it |
+|---|---|---|
+| Every start | Asks the manager `POST /agents/update-check` (agent credential) | If a newer agent exists **and a person is at the terminal**: "Update now? [y/N]" (30 s, default no). A service or container only logs it. |
+| Every 6 h while running | Same question, jittered ±10 % | Logged once per new version. Never prompts. |
+| Every heartbeat (REST and WebSocket) | Sends `agent_version` | Fleet shows what is really running, even after an upgrade. |
+
+The check is best effort: it never raises into the agent, never delays a scan, and the agent
+re-validates the reply (a version that is not strictly newer is ignored, so a stale or
+hostile reply cannot cause a downgrade). Turn it off with `PROBE_UPDATE_CHECK=off`; change
+the interval with `PROBE_UPDATE_CHECK_INTERVAL_HOURS` (1–168).
+
+**Not built yet: the download.** Answering yes today prints the manual step (re-run the
+installer / `install.cmd`, which upgrades in place and keeps the agent's identity). The
+single place to add the automatic download is `request_update` in `update_check.py`.
+Before that, the manager needs an update download route authenticated by the **agent's own
+credential** (an enrolled agent has no enrolment token left, and `/agent/image/{arch}`
+accepts only a live `vet_` token). Also still open: per-OS artifacts in the manifest,
+channels, a hold switch and staged rollout, and a release pipeline that builds and
+publishes without a manual copy.
+
 ## What the customer gets
 
 Fleet → **Add agent** (operator: pick the engagement; portal: the customer's own
@@ -111,7 +156,7 @@ customer sees the date read-only in the portal.
 
 ## What ships to the customer (code boundary)
 
-The agent contains **only its own code**: the 73 modules in its import closure
+The agent contains **only its own code**: the 75 modules in its import closure
 (`probe/tools/agent_closure.py`). The vulnerability judgement rules
 (`scanner/findings.py`), the campaign runner, accuracy gates, `main_scripts/`,
 `cve/` and tests never leave the repository, and detection stays on the manager.
