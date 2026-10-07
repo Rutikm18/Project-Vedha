@@ -43,6 +43,8 @@ if ($LASTEXITCODE -ne 0) { throw 'agent closure export failed' }
 
 # 2) Compile to a standalone folder. Docstrings and asserts are stripped; the
 #    optional credential collectors (paramiko, winrm) are left out on purpose.
+#    MinGW gcc (--mingw64), not MSVC: cl.exe dies with C1002 "out of heap space" on
+#    impacket's large generated RPC modules (srvs, tsts, ...); gcc handles them.
 #    impacket is NOT compiled whole: --include-package=impacket pulls in huge generated
 #    modules (e.g. dcerpc.v5.tsts) that run MSVC out of heap space (C1002). Only the
 #    modules the scanners import are built; `vedha-agent runtime-check` verifies them.
@@ -56,7 +58,7 @@ if ($agentVersion -notmatch '^\d+(\.\d+){0,3}$') { $agentVersion = '0.0.0' }
 
 Push-Location $stage
 try {
-  & $py -m nuitka --standalone --assume-yes-for-downloads --follow-imports `
+  & $py -m nuitka --standalone --mingw64 --assume-yes-for-downloads --follow-imports `
       --python-flag=no_docstrings --python-flag=no_asserts `
       --include-package=agent --include-package=scanner --include-package=workflow `
       --include-package=ldap3 --include-package=dns `
