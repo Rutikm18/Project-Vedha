@@ -45,6 +45,12 @@ if ($LASTEXITCODE -ne 0) { throw 'agent closure export failed' }
 #    optional credential collectors (paramiko, winrm) are left out on purpose.
 $dist = Join-Path $OutDir 'vedha-agent'
 if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
+
+# Nuitka rejects any version info unless a numeric file/product version is given too.
+$versionFile = Join-Path (Split-Path $probeRoot -Parent) 'VERSION'
+$agentVersion = if (Test-Path $versionFile) { (Get-Content $versionFile -TotalCount 1).Trim() } else { '' }
+if ($agentVersion -notmatch '^\d+(\.\d+){0,3}$') { $agentVersion = '0.0.0' }
+
 Push-Location $stage
 try {
   & $py -m nuitka --standalone --assume-yes-for-downloads --follow-imports `
@@ -54,6 +60,7 @@ try {
       --nofollow-import-to=paramiko --nofollow-import-to=winrm `
       --nofollow-import-to=pytest --nofollow-import-to=unittest `
       --windows-console-mode=force --company-name=Vedha --product-name='Vedha Agent' `
+      "--file-version=$agentVersion" "--product-version=$agentVersion" `
       --file-description='Vedha network assessment agent' `
       "--output-dir=$OutDir" --output-filename=vedha-agent.exe --remove-output `
       agent\agent.py
