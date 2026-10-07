@@ -8,6 +8,10 @@ Read-only diagnostic: builds small in-memory graphs, touches no DB or network.
   FM-21  all_simple_paths explosion on a flat subnet mesh vs Yen k-shortest
   FM-05  pass-through pivot from a never-compromised host
 
+After P0 the scoring and pass-through cases show the FIXED behaviour; the
+all_simple_paths explosion is kept as a reference measurement (the analyzer no
+longer uses it).
+
 Run from manager/backend:  python scripts/attack_path_fm_probe.py
 Pass --full to include the 11-host mesh case (~7s on a laptop-class CPU).
 """
@@ -58,7 +62,10 @@ def pass_through() -> None:
     g.add_edge("finding:c", "asset:C", type="EXPLOITS", weight=1.0)
     g.add_edge("asset:A", "asset:B", type="CONNECTS_TO", weight=1.0)
     g.add_edge("asset:B", "asset:C", type="CONNECTS_TO", weight=1.0)
-    for p in PathAnalyzer(g).find_paths_to_target("C"):
+    paths = PathAnalyzer(g).find_paths_to_target("C")
+    if not paths:
+        print("FM-05 no path A->B->C: B cannot be compromised, so the attacker cannot pivot from it (fixed in P0)")
+    for p in paths:
         print("FM-05 path:", p["nodes"], "| A->B dest_compromisable:",
               p["edges"][0]["exploited"], "-> pivots FROM B without compromising it")
 

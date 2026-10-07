@@ -14,12 +14,13 @@ only when enabled.
 """
 from __future__ import annotations
 
+import hashlib
 import uuid
 from decimal import Decimal
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import DB, AuthUser
@@ -43,29 +44,46 @@ async def list_attack_paths(
     engagement_id: uuid.UUID,
     db: DB,
     current_user: AuthUser,
-    refresh: bool = Query(default=True, description="Recompute paths from current data"),
+    refresh: bool = Query(
+        default=False,
+        description="Recompute paths from current data. Off by default: reading "
+                    "the list must not rewrite it (stable ids, no compute on GET).",
+    ),
     target_asset_id: uuid.UUID | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ):
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
-    if refresh:
-        await _recompute_and_store(db, engagement_id, target_asset_id)
+    stored = (await db.execute(
+        select(AttackPath.id).where(AttackPath.engagement_id == engagement_id).limit(1)
+    )).first()
+    diagnostics = None
+    if refresh or stored is None:
+        # First read of a never-computed engagement still produces a result.
+        diagnostics = await _recompute_and_store(db, engagement_id, target_asset_id)
 
     q = select(AttackPath).where(AttackPath.engagement_id == engagement_id)
-    q = q.order_by(AttackPath.risk_score.desc().nullslast())
+    q = q.order_by(AttackPath.risk_score.desc().nullslast(), AttackPath.id)
     rows = (await db.execute(q.offset((page - 1) * page_size).limit(page_size))).scalars().all()
     total = len((await db.execute(
         select(AttackPath.id).where(AttackPath.engagement_id == engagement_id)
     )).all())
 
-    return {
+    body = {
         "total": total,
         "page": page,
         "page_size": page_size,
         "items": [_path_summary(r) for r in rows],
     }
+    if total == 0:
+        # An empty list must say WHY (FM-30): "no paths" and "nothing to compute
+        # from" look identical otherwise.
+        if diagnostics is None:
+            analyzer, _graph = await _build_analyzer(db, engagement_id)
+            diagnostics = analyzer.diagnose(await _target_ids(db, engagement_id, target_asset_id))
+        body["why_empty"] = diagnostics
+    return body
 
 
 # ── GET /attack-paths/{path_id} ───────────────────────────────────────────────
@@ -196,30 +214,72 @@ def _all_paths_to_critical(analyzer: PathAnalyzer, critical_ids: list[str]) -> l
     return paths
 
 
+def path_id_for(engagement_id: uuid.UUID, nodes: list[str]) -> uuid.UUID:
+    """Deterministic path id: the same node sequence in the same engagement always
+    gets the same id, so a shared /attack-paths/{id} link survives a recompute
+    (FM-24). Hash, not uuid5, so the id space stays engagement-scoped."""
+    raw = f"{engagement_id}|{'>'.join(str(n) for n in nodes)}".encode()
+    return uuid.UUID(bytes=hashlib.sha256(raw).digest()[:16], version=4)
+
+
+async def _lock_engagement_paths(db: AsyncSession, engagement_id: uuid.UUID) -> None:
+    """Serialise path recomputes per engagement for the rest of the transaction,
+    so two concurrent refreshes cannot interleave their delete/insert (FM-24).
+    Postgres advisory lock; a no-op on databases without it (unit tests)."""
+    key = (engagement_id.int ^ (engagement_id.int >> 64)) & 0x7FFFFFFFFFFFFFFF
+    try:
+        await db.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": key ^ 0x5A5A})
+    except Exception as exc:  # noqa: BLE001 — non-Postgres backends
+        logger.debug("graph.paths.lock_unavailable", error=str(exc))
+
+
+async def _target_ids(db: AsyncSession, engagement_id: uuid.UUID,
+                      target_asset_id: uuid.UUID | None) -> list[str]:
+    if target_asset_id:
+        return [str(target_asset_id)]
+    return await _critical_asset_ids(db, engagement_id)
+
+
 async def _recompute_and_store(
     db: AsyncSession, engagement_id: uuid.UUID, target_asset_id: uuid.UUID | None
-) -> None:
+) -> dict:
+    """Recompute and UPSERT the engagement's paths. Returns the analyzer's
+    diagnostics so the caller can explain an empty result."""
+    await _lock_engagement_paths(db, engagement_id)
     analyzer, _graph = await _build_analyzer(db, engagement_id)
-    if target_asset_id:
-        paths = analyzer.find_paths_to_target(str(target_asset_id))
-    else:
-        paths = _all_paths_to_critical(analyzer, await _critical_asset_ids(db, engagement_id))
+    targets = await _target_ids(db, engagement_id, target_asset_id)
+    paths = _all_paths_to_critical(analyzer, targets)
 
     chokepoints = analyzer.identify_chokepoints(paths)
     choke_ids = [c["asset_id"] for c in chokepoints]
 
-    # Refresh: replace existing computed paths for this engagement.
-    await db.execute(delete(AttackPath).where(AttackPath.engagement_id == engagement_id))
+    # Upsert by deterministic id: unchanged paths keep their id, vanished paths
+    # are removed, new ones inserted. Never a blanket delete-then-insert.
+    wanted: dict[uuid.UUID, dict] = {}
     for p in paths:
-        db.add(AttackPath(
-            engagement_id=engagement_id,
-            path_nodes=[str(n) for n in p["nodes"]],
-            path_edges=p["edges"],
-            risk_score=Decimal(str(p["risk_score"])),
-            chokepoints=choke_ids,
-        ))
+        wanted.setdefault(path_id_for(engagement_id, p["nodes"]), p)
+    existing = {
+        r.id: r for r in (await db.execute(
+            select(AttackPath).where(AttackPath.engagement_id == engagement_id)
+        )).scalars().all()
+    }
+    stale = [pid for pid in existing if pid not in wanted]
+    if stale:
+        await db.execute(delete(AttackPath).where(
+            AttackPath.engagement_id == engagement_id, AttackPath.id.in_(stale)))
+    for pid, p in wanted.items():
+        row = existing.get(pid)
+        if row is None:
+            row = AttackPath(id=pid, engagement_id=engagement_id)
+            db.add(row)
+        row.path_nodes = [str(n) for n in p["nodes"]]
+        row.path_edges = p["edges"]
+        row.risk_score = Decimal(str(p["risk_score"]))
+        row.chokepoints = choke_ids
     await db.flush()
-    logger.info("graph.paths.stored", engagement=str(engagement_id), count=len(paths))
+    logger.info("graph.paths.stored", engagement=str(engagement_id), count=len(wanted),
+                removed=len(stale))
+    return analyzer.diagnose(targets)
 
 
 async def _asset_labels(db: AsyncSession, engagement_id: uuid.UUID) -> dict[str, str]:

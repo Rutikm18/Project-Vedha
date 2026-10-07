@@ -4,15 +4,37 @@ analysis over the GraphBuilder graph.
 
 The analyzer works on an attacker *movement projection* of the full multi-type
 graph: a directed edge Asset_A → Asset_B means an attacker who controls A can
-reach and compromise B. B is "compromisable" when it carries an exploitable
-finding; the movement edge inherits the cost of B's easiest exploit so that
-NetworkX shortest-path uses real attack complexity as edge weight.
+reach B AND gain control of it. Three properties make the result trustworthy
+(each fixes a failure mode in manager/docs/ATTACK_PATH_PLAN.md §9):
 
-Equivalent Neo4j Cypher (used when a Neo4jClient is connected — see
-``CYPHER_SHORTEST_PATH``) runs the same query server-side for >10k-node graphs.
+  * MONOTONIC CONTROL (FM-05). An attacker can only act from a host they control.
+    A movement edge exists only when it *grants control* of the destination: the
+    destination carries an exploitable step, or the hop is credential reuse
+    (valid credentials grant access without an exploit). Merely reaching a host
+    the attacker cannot compromise is not a foothold, so no path continues from it.
+    This is the monotonic-privilege model of MulVAL / Ou et al. (CCS'06).
+
+  * LIKELIHOOD, NOT CVSS SUM (FM-17/18/19). Each step has a success likelihood in
+    (0, 1]: exploit evidence (validated > EPSS > attack complexity > severity),
+    scaled by the finding's verification confidence and the hop's reachability
+    confidence. A path's likelihood is the PRODUCT of its steps, so longer chains
+    are less likely, never more. CVSS measures severity, not probability (FIRST);
+    it only enters as a fallback estimate when nothing better is known, and a
+    misconfiguration with no CVSS still gets a non-zero floor.
+
+  * BOUNDED SEARCH (FM-21/23). Paths are enumerated most-likely-first with Yen's
+    k-shortest-paths (``nx.shortest_simple_paths``) over cost = -ln(likelihood),
+    and the generator is stopped after k. ``all_simple_paths`` enumerated every
+    simple path before truncating, which explodes combinatorially on a flat
+    subnet (≈1M paths at 11 hosts).
+
+Equivalent Neo4j Cypher (used only when a Neo4jClient is connected) is
+engagement-scoped (FM-27): every query is filtered by ``$engagement_id``.
 """
 from __future__ import annotations
 
+import itertools
+import math
 from typing import Any
 
 import networkx as nx
@@ -21,28 +43,34 @@ import structlog
 logger = structlog.get_logger()
 
 # ── Cypher query examples (server-side equivalents) ───────────────────────────
+# Every query is scoped to ONE engagement. An unscoped MATCH on a shared Neo4j
+# would return other tenants' assets (FM-27).
 
 CYPHER_SHORTEST_PATH = """
-// Shortest attack path from any internet-exposed asset to a target.
-MATCH (src:GraphNode {type: 'Asset', internet_exposed: true})
-MATCH (tgt:GraphNode {type: 'Asset', entity_id: $target_id})
-MATCH p = shortestPath((src)-[:CONNECTS_TO|SAME_SEGMENT|CREDENTIAL_REUSE|EXPLOITS*..10]->(tgt))
+// Most direct attack path from an internet-exposed asset to a target, one engagement.
+MATCH (src:GraphNode {type: 'Asset', internet_exposed: true, engagement_id: $engagement_id})
+MATCH (tgt:GraphNode {type: 'Asset', entity_id: $target_id, engagement_id: $engagement_id})
+MATCH p = shortestPath((src)-[:REL*..10]->(tgt))
+WHERE all(r IN relationships(p) WHERE r.type IN ['CONNECTS_TO', 'SAME_SEGMENT', 'CREDENTIAL_REUSE'])
+  AND all(n IN nodes(p) WHERE n.engagement_id = $engagement_id)
 RETURN p, reduce(c = 0.0, r IN relationships(p) | c + coalesce(r.weight, 1.0)) AS cost
 ORDER BY cost ASC
 """
 
 CYPHER_BLAST_RADIUS = """
-// All assets reachable from a compromised asset within 10 hops.
-MATCH (src:GraphNode {type: 'Asset', entity_id: $asset_id})
-MATCH (src)-[:CONNECTS_TO|SAME_SEGMENT|CREDENTIAL_REUSE*..10]->(reached:GraphNode {type: 'Asset'})
+// All assets reachable from a compromised asset within 10 hops, one engagement.
+MATCH (src:GraphNode {type: 'Asset', entity_id: $asset_id, engagement_id: $engagement_id})
+MATCH p = (src)-[:REL*..10]->(reached:GraphNode {type: 'Asset', engagement_id: $engagement_id})
+WHERE all(r IN relationships(p) WHERE r.type IN ['CONNECTS_TO', 'SAME_SEGMENT', 'CREDENTIAL_REUSE'])
 RETURN DISTINCT reached.entity_id AS asset_id
 """
 
 CYPHER_CHOKEPOINTS = """
-// Assets that appear on the most shortest paths to critical targets.
-MATCH (tgt:GraphNode {type: 'Asset', criticality: 'critical'})
-MATCH (src:GraphNode {type: 'Asset', internet_exposed: true})
-MATCH p = shortestPath((src)-[*..10]->(tgt))
+// Assets that appear on the most shortest paths to critical targets, one engagement.
+MATCH (tgt:GraphNode {type: 'Asset', criticality: 'critical', engagement_id: $engagement_id})
+MATCH (src:GraphNode {type: 'Asset', internet_exposed: true, engagement_id: $engagement_id})
+MATCH p = shortestPath((src)-[:REL*..10]->(tgt))
+WHERE all(r IN relationships(p) WHERE r.type IN ['CONNECTS_TO', 'SAME_SEGMENT', 'CREDENTIAL_REUSE'])
 UNWIND nodes(p) AS hop
 WITH hop, count(DISTINCT p) AS path_count
 WHERE hop.type = 'Asset'
@@ -56,6 +84,58 @@ _MOVEMENT_RELS = frozenset({"CONNECTS_TO", "SAME_SEGMENT", "CREDENTIAL_REUSE"})
 # reliable one labels the projected edge. Credential reuse is the most reliable.
 _REL_PRIORITY = {"CREDENTIAL_REUSE": 3, "CONNECTS_TO": 2, "SAME_SEGMENT": 1}
 
+# ── step likelihood model ─────────────────────────────────────────────────────
+# Exploit evidence, strongest first. Values are deliberately coarse: they ORDER
+# steps sensibly; they are not a calibrated probability of compromise.
+P_VALIDATED = 0.95            # exploit actually validated in this engagement
+P_CREDENTIAL_REUSE = 0.85     # valid credentials grant access without an exploit
+_P_ATTACK_COMPLEXITY = {"L": 0.75, "M": 0.5, "H": 0.3}
+_P_SEVERITY = {"critical": 0.65, "high": 0.5, "medium": 0.35, "low": 0.2, "info": 0.1}
+P_FLOOR = 0.1                 # a known weakness is never "impossible" (FM-19)
+P_UNKNOWN_HOP = 0.5           # a hop counted in `hops` but not described by an edge
+
+# Business impact of reaching the target, by criticality.
+_IMPACT = {"critical": 1.0, "high": 0.8, "medium": 0.6, "low": 0.4, "info": 0.2}
+
+
+def step_likelihood(finding: dict[str, Any]) -> float:
+    """Success likelihood (0, 1] of exploiting one finding node.
+
+    Evidence order: validated exploit > EPSS (a measured exploitation
+    probability) > CVSS attack complexity > severity. CVSS score itself is never
+    read as a probability. Scaled by verification confidence when present.
+    """
+    if finding.get("exploit_validated"):
+        p = P_VALIDATED
+    else:
+        candidates = []
+        epss = _safe_float(finding.get("epss"))
+        if epss > 0:
+            # EPSS is a 30-day in-the-wild probability; a reachable exploitable
+            # step is at least as likely as its complexity estimate suggests.
+            candidates.append(epss)
+        ac = finding.get("attack_complexity")
+        if ac in _P_ATTACK_COMPLEXITY:
+            candidates.append(_P_ATTACK_COMPLEXITY[ac])
+        else:
+            candidates.append(_P_SEVERITY.get(str(finding.get("severity") or "medium"), 0.35))
+        p = max(candidates)
+    conf = finding.get("confidence")
+    if conf is not None:
+        c = _safe_float(conf)
+        if 0 < c <= 100:
+            p *= c / 100.0
+    return _clamp_p(p)
+
+
+def _clamp_p(p: float) -> float:
+    return max(P_FLOOR, min(1.0, p))
+
+
+def _cost(p: float) -> float:
+    """Edge cost for shortest-path search: most likely path == cheapest path."""
+    return -math.log(max(p, 1e-9))
+
 
 class PathAnalyzer:
     def __init__(self, graph: nx.MultiDiGraph):
@@ -65,7 +145,9 @@ class PathAnalyzer:
     # ── attacker movement projection ──────────────────────────────────────────────
 
     def _exploit_info(self, asset_node: str) -> dict[str, Any]:
-        """Best (easiest) exploitable finding on an asset: {cvss, weight, finding}."""
+        """Most likely exploitable step on an asset: {finding, cvss, likelihood}.
+        Empty when the asset has no exploitable finding (it cannot be compromised
+        by exploitation)."""
         best: dict[str, Any] | None = None
         for _, fid, edata in self.graph.out_edges(asset_node, data=True):
             if edata.get("type") != "HAS_FINDING":
@@ -73,22 +155,21 @@ class PathAnalyzer:
             fdata = self.graph.nodes[fid]
             if not (fdata.get("exploitable") or fdata.get("exploit_validated")):
                 continue
-            # Weight from the EXPLOITS edge (Finding→Asset), fallback by severity.
-            weight = 2.0
-            for _, _tgt, xd in self.graph.out_edges(fid, data=True):
-                if xd.get("type") == "EXPLOITS":
-                    weight = xd.get("weight", 2.0)
-                    break
-            cand = {"finding": fdata.get("entity_id"), "cvss": fdata.get("cvss", 0.0), "weight": weight}
-            if best is None or cand["weight"] < best["weight"]:
+            p = step_likelihood(fdata)
+            cand = {"finding": fdata.get("entity_id"), "cvss": fdata.get("cvss", 0.0),
+                    "likelihood": p, "validated": bool(fdata.get("exploit_validated"))}
+            if best is None or cand["likelihood"] > best["likelihood"]:
                 best = cand
         return best or {}
 
     def movement_graph(self) -> nx.DiGraph:
         """
-        Build (and cache) the Asset→Asset movement projection. Edge weight is the
-        cost to compromise the destination (its easiest exploit), plus a small
-        base cost for the hop itself so longer chains cost more.
+        Build (and cache) the Asset→Asset CONTROL projection. An edge u→v exists
+        only when moving from u grants control of v (monotonic, FM-05):
+          * v carries an exploitable finding  → exploit step, likelihood of it
+          * the hop is CREDENTIAL_REUSE       → access with valid credentials
+        A hop to a host the attacker cannot compromise is dropped: reaching it is
+        not owning it, and no path may continue from it.
         """
         if self._movement is not None:
             return self._movement
@@ -98,27 +179,42 @@ class PathAnalyzer:
             if data.get("type") == "Asset":
                 mv.add_node(n, **data)
 
-        # Collapse parallel movement edges (MultiDiGraph) into one projected edge
-        # per asset pair, keeping the lowest hop cost and the highest-priority rel.
+        # Collapse parallel movement edges (MultiDiGraph) per asset pair, keeping
+        # the highest-priority relationship and the best reachability confidence.
         best: dict[tuple[str, str], dict[str, Any]] = {}
         for u, v, edata in self.graph.edges(data=True):
             rel = edata.get("type")
-            if rel not in _MOVEMENT_RELS or not (mv.has_node(u) and mv.has_node(v)):
+            if rel not in _MOVEMENT_RELS or not (mv.has_node(u) and mv.has_node(v)) or u == v:
                 continue
-            hop_cost = edata.get("weight", 1.0)
+            reach = _clamp_reach(edata.get("reachability_confidence", 1.0))
+            basis = edata.get("basis", "observed")
             cur = best.get((u, v))
             if cur is None or _REL_PRIORITY.get(rel, 0) > _REL_PRIORITY.get(cur["rel"], 0):
-                best[(u, v)] = {"rel": rel, "hop_cost": min(hop_cost, cur["hop_cost"]) if cur else hop_cost}
-            elif hop_cost < cur["hop_cost"]:
-                cur["hop_cost"] = hop_cost
+                best[(u, v)] = {"rel": rel, "reach": max(reach, cur["reach"]) if cur else reach,
+                                "basis": basis if cur is None else _better_basis(basis, cur["basis"])}
+            else:
+                cur["reach"] = max(cur["reach"], reach)
+                cur["basis"] = _better_basis(basis, cur["basis"])
 
         for (u, v), info in best.items():
             dest_exploit = self._exploit_info(v)
-            cost = info["hop_cost"] + dest_exploit.get("weight", 3.0)  # no exploit ⇒ expensive
+            if info["rel"] == "CREDENTIAL_REUSE":
+                step_p = max(P_CREDENTIAL_REUSE, dest_exploit.get("likelihood", 0.0))
+                grants = True
+            elif dest_exploit:
+                step_p = dest_exploit["likelihood"]
+                grants = True
+            else:
+                grants = False
+            if not grants:
+                continue                               # reachable, but not owned
+            p = _clamp_p(step_p * info["reach"])
             mv.add_edge(
                 u, v,
-                weight=cost,
+                weight=_cost(p),
+                likelihood=round(p, 4),
                 rel=info["rel"],
+                basis=info["basis"],
                 dest_compromisable=bool(dest_exploit),
                 dest_cvss=dest_exploit.get("cvss", 0.0),
                 dest_finding=dest_exploit.get("finding"),
@@ -145,30 +241,37 @@ class PathAnalyzer:
         max_paths_per_source: int = 5,
     ) -> list[dict[str, Any]]:
         """
-        Return scored attack paths from every source asset to the target.
-        Each path: {source, target, hops, nodes, edges, risk_score}.
+        Return scored attack paths from every source asset to the target, most
+        likely first. Each path: {source, target, hops, nodes, edges, likelihood,
+        risk_score}. Enumeration is Yen's k-shortest over -ln(likelihood) and stops
+        after ``max_paths_per_source`` per source — it never enumerates every path.
         """
         mv = self.movement_graph()
         target_node = f"asset:{target_asset_id}"
         if not mv.has_node(target_node):
             return []
 
+        # Bound how many candidates Yen may yield while skipping over-long paths, so
+        # a dense graph cannot turn the skip loop into an unbounded scan.
+        scan_cap = max(max_paths_per_source * 20, 50)
         paths: list[dict[str, Any]] = []
         for src in self._source_assets(source_type):
             if src == target_node:
                 continue
             try:
-                simple = nx.all_simple_paths(mv, src, target_node, cutoff=max_hops)
+                gen = nx.shortest_simple_paths(mv, src, target_node, weight="weight")
+                kept = 0
+                for node_path in itertools.islice(gen, scan_cap):
+                    if len(node_path) - 1 > max_hops:
+                        continue
+                    paths.append(self._materialise_path(mv, node_path))
+                    kept += 1
+                    if kept >= max_paths_per_source:
+                        break
             except (nx.NodeNotFound, nx.NetworkXNoPath):
                 continue
-            # Keep the cheapest few paths per source.
-            scored = []
-            for node_path in simple:
-                scored.append(self._materialise_path(mv, node_path))
-            scored.sort(key=lambda p: p["risk_score"], reverse=True)
-            paths.extend(scored[:max_paths_per_source])
 
-        paths.sort(key=lambda p: p["risk_score"], reverse=True)
+        paths.sort(key=lambda p: (-p["risk_score"], p["hops"], p["nodes"]))
         logger.info("graph.paths.found", target=str(target_asset_id), count=len(paths))
         return paths
 
@@ -180,38 +283,64 @@ class PathAnalyzer:
                 "source": mv.nodes[a].get("entity_id"),
                 "target": mv.nodes[b].get("entity_id"),
                 "technique": ed.get("rel"),
-                "weight": ed.get("weight"),
+                "weight": round(ed.get("weight", 0.0), 4),
+                "likelihood": ed.get("likelihood"),
+                "basis": ed.get("basis", "observed"),
                 "exploited": ed.get("dest_compromisable", False),
+                "finding": ed.get("dest_finding"),
                 "cvss": ed.get("dest_cvss", 0.0),
             })
+        tgt = mv.nodes[node_path[-1]]
         path = {
             "source": mv.nodes[node_path[0]].get("entity_id"),
-            "target": mv.nodes[node_path[-1]].get("entity_id"),
+            "target": tgt.get("entity_id"),
             "hops": len(node_path) - 1,
             "nodes": [mv.nodes[n].get("entity_id") for n in node_path],
             "edges": edges,
+            "target_criticality": tgt.get("criticality", "medium"),
         }
+        path["likelihood"] = self.path_likelihood(path)
         path["risk_score"] = self.score_path(path)
         return path
 
-    # ── score_path ────────────────────────────────────────────────────────────────
+    # ── likelihood + score ────────────────────────────────────────────────────────
+
+    def path_likelihood(self, path: dict[str, Any]) -> float:
+        """Product of per-step likelihoods (steps are a chain: all must succeed).
+
+        An edge without an explicit `likelihood` (a legacy/hand-built path dict) is
+        estimated from its CVSS as a weak fallback, and credential reuse from its
+        technique. Hops counted in `hops` but absent from `edges` each contribute
+        P_UNKNOWN_HOP, so a longer path can never be more likely than a shorter one.
+        """
+        edges = path.get("edges", []) or []
+        p = 1.0
+        for e in edges:
+            step = e.get("likelihood")
+            if step is None:
+                if e.get("technique") == "CREDENTIAL_REUSE":
+                    step = P_CREDENTIAL_REUSE
+                else:
+                    cvss = _safe_float(e.get("cvss"))
+                    step = 0.3 + 0.06 * cvss if cvss > 0 else P_FLOOR * 3
+            p *= _clamp_p(_safe_float(step))
+        extra = max(0, int(path.get("hops", len(edges)) or 0) - len(edges))
+        p *= P_UNKNOWN_HOP ** extra
+        return round(p, 6)
 
     def score_path(self, path: dict[str, Any]) -> float:
         """
-        Risk score 0–100 from: sum of exploit CVSS along the path, a penalty for
-        the number of hops (longer chains are less likely), and a bonus when a
-        credential-reuse edge is present (very reliable lateral movement).
-        """
-        edges = path.get("edges", [])
-        sum_cvss = sum(_safe_float(e.get("cvss")) for e in edges)
-        hops = path.get("hops", len(edges))
-        has_cred_reuse = any(e.get("technique") == "CREDENTIAL_REUSE" for e in edges)
+        Risk score 0–100 = path likelihood × business impact of the target.
 
-        raw = sum_cvss * 2.0          # CVSS 0-10 → up to 20 per hop
-        raw -= hops * 1.5             # each extra hop lowers feasibility
-        if has_cred_reuse:
-            raw += 8.0
-        return round(max(0.0, min(100.0, raw)), 2)
+        Replaces the old additive score (2×CVSS per hop − 1.5 per hop), under which a
+        4-hop CVSS-7 chain scored 50 and a 1-hop CVSS-9.8 scored 18.1 (FM-17), and a
+        misconfiguration-only path scored 0 (FM-19).
+        """
+        likelihood = path.get("likelihood")
+        if likelihood is None:
+            likelihood = self.path_likelihood(path)
+        impact = _IMPACT.get(str(path.get("target_criticality") or "critical"), 0.6)
+        return round(max(0.0, min(100.0, 100.0 * likelihood * impact)), 2)
 
     # ── identify_chokepoints ──────────────────────────────────────────────────────
 
@@ -242,15 +371,16 @@ class PathAnalyzer:
             for aid, cnt in counts.items()
             if cnt / total > threshold
         ]
-        chokepoints.sort(key=lambda c: c["path_count"], reverse=True)
+        chokepoints.sort(key=lambda c: (-c["path_count"], str(c["asset_id"])))
         return chokepoints
 
     # ── find_blast_radius ──────────────────────────────────────────────────────────
 
     def find_blast_radius(self, compromised_asset_id: Any, max_hops: int = 10) -> dict[str, Any]:
         """
-        Assets reachable (and thus at risk) if ``compromised_asset_id`` is owned.
-        Returns {origin, reachable: [asset_id], count, by_distance: {hop: [...]}}.
+        Assets the attacker can gain CONTROL of if ``compromised_asset_id`` is owned
+        (control projection, so hosts merely reachable but not compromisable are
+        not counted). Returns {origin, reachable, count, by_distance}.
         """
         mv = self.movement_graph()
         origin = f"asset:{compromised_asset_id}"
@@ -260,7 +390,7 @@ class PathAnalyzer:
         lengths = nx.single_source_shortest_path_length(mv, origin, cutoff=max_hops)
         by_distance: dict[int, list[str]] = {}
         reachable: list[str] = []
-        for node, dist in lengths.items():
+        for node, dist in sorted(lengths.items(), key=lambda kv: (kv[1], kv[0])):
             if node == origin:
                 continue
             entity = mv.nodes[node].get("entity_id")
@@ -273,6 +403,64 @@ class PathAnalyzer:
             "count": len(reachable),
             "by_distance": {str(k): v for k, v in sorted(by_distance.items())},
         }
+
+    # ── explain an empty / thin result (FM-30) ────────────────────────────────────
+
+    def diagnose(self, target_asset_ids: list[str] | None = None,
+                 source_type: str = "internet_exposed") -> dict[str, Any]:
+        """Why are there (no) attack paths? Counts every precondition a path needs
+        and names each one that is missing, so an empty result can never be read as
+        'the network is safe' when it really means 'the model had nothing to work
+        with'. Mirrors the posture engine's evaluated-vs-blind distinction."""
+        g = self.graph
+        mv = self.movement_graph()
+        assets = sum(1 for _, d in g.nodes(data=True) if d.get("type") == "Asset")
+        findings = [d for _, d in g.nodes(data=True) if d.get("type") == "Finding"]
+        exploitable = sum(1 for d in findings if d.get("exploitable") or d.get("exploit_validated"))
+        movement_rels = sum(1 for _, _, d in g.edges(data=True) if d.get("type") in _MOVEMENT_RELS)
+        sources = len(self._source_assets(source_type))
+        targets = [t for t in (target_asset_ids or []) if mv.has_node(f"asset:{t}")]
+
+        reasons: list[dict[str, str]] = []
+        if assets == 0:
+            reasons.append({"code": "no_assets", "detail": "the engagement has no assets yet"})
+        if sources == 0:
+            reasons.append({"code": "no_entry_points",
+                            "detail": "no internet-exposed asset is marked, so no path has a starting point"})
+        if not targets:
+            reasons.append({"code": "no_targets",
+                            "detail": "no crown-jewel target (criticality=critical) is defined"})
+        if movement_rels == 0:
+            reasons.append({"code": "no_reachability",
+                            "detail": "no network reachability or credential edges between assets"})
+        if exploitable == 0:
+            reasons.append({"code": "no_exploitable_steps",
+                            "detail": "no finding is marked exploitable, so no host can be compromised"})
+        elif mv.number_of_edges() == 0 and movement_rels:
+            reasons.append({"code": "no_control_edges",
+                            "detail": "hosts are reachable but none reachable host can be compromised"})
+        return {
+            "assets": assets,
+            "findings": len(findings),
+            "exploitable_findings": exploitable,
+            "entry_points": sources,
+            "targets": len(targets),
+            "reachability_edges": movement_rels,
+            "control_edges": mv.number_of_edges(),
+            "reasons": reasons,
+        }
+
+
+_BASIS_RANK = {"observed": 3, "assumed": 2, "possible": 1}
+
+
+def _better_basis(a: str, b: str) -> str:
+    return a if _BASIS_RANK.get(a, 0) >= _BASIS_RANK.get(b, 0) else b
+
+
+def _clamp_reach(v: Any) -> float:
+    f = _safe_float(v)
+    return 1.0 if f <= 0 else min(1.0, f)
 
 
 def _safe_float(v: Any) -> float:

@@ -80,6 +80,27 @@ def exploit_complexity(finding: Any) -> float:
     return _SEVERITY_COMPLEXITY.get(sev, 2.5)
 
 
+def _attack_complexity(finding: Any) -> str | None:
+    """CVSS Attack Complexity token (L/M/H) from the vector, or None."""
+    for token in str(getattr(finding, "cvss_vector", None) or "").split("/"):
+        if token.startswith("AC:"):
+            ac = token[3:].upper()
+            return ac if ac in _AC_COMPLEXITY else None
+    return None
+
+
+# Finding statuses that still describe a live weakness. Remediated, accepted and
+# false-positive findings must never become attack steps (FM-06).
+LIVE_FINDING_STATUSES: frozenset[str] = frozenset({"open", "confirmed"})
+
+
+def is_live_finding(finding: Any) -> bool:
+    status = getattr(finding, "status", None)
+    if status is None:
+        return True          # in-memory / demo findings carry no status
+    return _enum_value(status) in LIVE_FINDING_STATUSES
+
+
 def is_internet_exposed(asset: Any) -> bool:
     tags = getattr(asset, "tags", None) or {}
     if isinstance(tags, dict) and tags.get("internet_exposed"):
@@ -115,7 +136,7 @@ class GraphBuilder:
 
         assets = list(assets)
         services = list(services)
-        findings = list(findings)
+        findings = [f for f in findings if is_live_finding(f)]
 
         # ── Asset nodes ──
         for a in assets:
@@ -158,6 +179,11 @@ class GraphBuilder:
                 exploitable=bool(getattr(f, "exploitable", False)),
                 exploit_validated=bool(getattr(f, "exploit_validated", False)),
                 mitre=list(getattr(f, "mitre_techniques", None) or []),
+                # Inputs to the analyzer's step-likelihood model (EPSS is a measured
+                # exploitation probability; AC and confidence refine the estimate).
+                epss=_to_float(getattr(f, "epss_score", None)),
+                attack_complexity=_attack_complexity(f),
+                confidence=getattr(f, "verification_confidence", None),
             )
             aid = asset_node_id(getattr(f, "asset_id", None))
             if getattr(f, "asset_id", None) is not None and g.has_node(aid):
@@ -276,8 +302,12 @@ class GraphBuilder:
         asset_ids = [a.id for a in assets]
 
         services = []
+        from app.models.enums import FindingStatus
         findings = list((await db.execute(
-            select(Finding).where(Finding.engagement_id == engagement_id)
+            select(Finding).where(
+                Finding.engagement_id == engagement_id,
+                Finding.status.in_([FindingStatus.open, FindingStatus.confirmed]),
+            )
         )).scalars().all())
         if asset_ids:
             services = list((await db.execute(

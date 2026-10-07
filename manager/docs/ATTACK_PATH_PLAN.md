@@ -1,6 +1,8 @@
 # Engagement-wide, multi-subnet attack-path generation — plan (for review)
 
-Status: **PLAN ONLY — not implemented.** Awaiting approval before any code.
+Status: **P0 implemented** (2026-10-07); P1–P5 pending. Decisions: §8 recommendations accepted
+(flat-internal labelled `assumed`, crown-jewel auto-fallback with override, engagement-scoped,
+(site, IP) identity).
 Revised 2026-10-06 with a failure-mode analysis (§9): 32 failure modes found,
 4 of which make the feature silently empty in production today. Phasing (§7)
 now starts with a **P0 engine-correctness** phase.
@@ -217,7 +219,7 @@ So a **P0 correctness phase** now comes first, and P1/P5 designs changed.
 
 | Phase | Delivers | Fixes failure modes (§9) |
 |---|---|---|
-| **P0 — engine correctness** | Filter findings to live statuses; **monotonic compromise** (pivot only FROM a compromised node); replace `all_simple_paths` with **Yen k-shortest / Dijkstra**; **multiplicative likelihood** scoring; stable path IDs (upsert by deterministic hash, `refresh=False` default); **explain-empty** result; drop/scope dead Neo4j Cypher. | FM-04, 07, 10, 11, 12, 13, 17, 18, 19, 22, 23 |
+| **P0 — engine correctness** ✅ done | Filter findings to live statuses; **monotonic compromise** (pivot only FROM a compromised node); replace `all_simple_paths` with **Yen k-shortest / Dijkstra**; **multiplicative likelihood** scoring; stable path IDs (upsert by deterministic hash, `refresh=False` default); **explain-empty** result; drop/scope dead Neo4j Cypher. | FM-04, 07, 10, 11, 12, 13, 17, 18, 19, 22, 23 |
 | **P1 — subnet model + topology** | Subnet **hub** nodes (asset→subnet→asset, O(n) not O(n²)); inter-subnet edges labelled `observed`/`assumed`; gateways as pivots; **(site, ip) identity**. Wire into `build_from_db`. | FM-01, 14, 15, 16, 20 |
 | **P2 — finding→capability map** | Posture/IOA/misconfig findings as foothold/lateral/priv-esc steps with ATT&CK + per-step success likelihood (confidence × EPSS/KEV × state). | FM-03, 05, 06 |
 | **P3 — credential & relay edges** | Relay edges with **full precondition checks** (target signing off + coercion source + protocol); shared-admin edges **only when LAPS absent**, labelled `possible`. | FM-08, 09 |
