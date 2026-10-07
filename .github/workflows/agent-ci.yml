@@ -49,6 +49,7 @@ jobs:
           tests/test_agent_closure.py tests/test_instance_lock.py tests/test_host_discovery_mobile.py
           tests/test_windows_scripts.py
           tests/test_update_check.py tests/test_check_agent_version.py
+          tests/test_diagnostics.py
       - name: Installer contract (POSIX sh; the curl | sh path customers run)
         if: runner.os != 'Windows'
         run: |

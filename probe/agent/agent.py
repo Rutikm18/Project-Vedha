@@ -83,7 +83,9 @@ def _is_local_manager_url(value: str) -> bool:
 def _load_env(path: Path) -> None:
     """Load key=value lines from probe.env for dev convenience."""
     try:
-        for line in path.read_text().splitlines():
+        # utf-8-sig: a file written by Windows PowerShell may start with a byte-order
+        # mark, which would otherwise glue itself to the first key's name.
+        for line in path.read_text(encoding="utf-8-sig").splitlines():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, _, v = line.partition("=")
@@ -115,8 +117,17 @@ def _force_utf8_streams() -> None:
 _force_utf8_streams()
 
 
+# When PROBE_LOG_FILE is set (the Windows installer does), everything the agent says is
+# also written to a size-capped, rotating file: a Scheduled Task has no console, so
+# without this a client would have no log to read or send us.
+_SAY_LOG = logging.getLogger("agent.say")
+_SAY_LOG.propagate = False          # it has its own file handler; never echo to stderr twice
+
+
 def say(msg: str = "", indent: int = 0) -> None:
     line = ("  " * indent) + msg
+    if _SAY_LOG.handlers:
+        _SAY_LOG.info(line)
     try:
         print(line, flush=True)
     except UnicodeEncodeError:
@@ -124,6 +135,20 @@ def say(msg: str = "", indent: int = 0) -> None:
         # exotic wrapper) must still never crash the agent over an output glyph.
         enc = getattr(sys.stdout, "encoding", None) or "ascii"
         print(line.encode(enc, "replace").decode(enc, "replace"), flush=True)
+
+
+# ── Runtime status (read by the installer, `status` and the support bundle) ─────
+# A headless agent (Windows Scheduled Task, container) has no console, so its state
+# is recorded in status.json beside the state file. Best effort: never raises.
+_STATUS_PATH: Path | None = None
+
+
+def _status(state: str, **fields) -> None:
+    if _STATUS_PATH is None:
+        return
+    from agent import runtime_status
+    runtime_status.write(_STATUS_PATH, state, version=VERSION,
+                         manager=os.environ.get("PLATFORM_URL", ""), **fields)
 
 
 # ── DEBUG (temporary) — set PROBE_DEBUG=1 to trace the connection handshake ────
@@ -355,6 +380,7 @@ def configure_logging() -> str:
         )
     else:
         root.setLevel(getattr(logging, level_name))
+    _attach_log_file(level_name)
     # Third-party chatter would bury the probe's own narration.
     #
     # httpx logs one INFO line per request, and the probe polls the manager every
@@ -371,6 +397,36 @@ def configure_logging() -> str:
     return level_name
 
 
+LOG_FILE_MAX_BYTES = 10 * 1024 * 1024
+LOG_FILE_BACKUPS = 5
+
+
+def _attach_log_file(level_name: str) -> None:
+    """Mirror the agent's logging and its narration into PROBE_LOG_FILE, rotating at
+    10 MB and keeping 5 old files (about 60 MB at most). Best effort: a log file that
+    cannot be opened must never stop the agent."""
+    path = os.environ.get("PROBE_LOG_FILE", "").strip()
+    if not path:
+        return
+    root = logging.getLogger()
+    if any(getattr(h, "_vedha_file", False) for h in root.handlers):
+        return
+    try:
+        from logging.handlers import RotatingFileHandler
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        handler = RotatingFileHandler(path, maxBytes=LOG_FILE_MAX_BYTES,
+                                      backupCount=LOG_FILE_BACKUPS, encoding="utf-8")
+    except OSError as exc:
+        print(f"[warn] cannot write the log file {path}: {exc}", file=sys.stderr, flush=True)
+        return
+    handler._vedha_file = True  # type: ignore[attr-defined]
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-7s %(name)s: %(message)s"))
+    root.addHandler(handler)
+    root.setLevel(min(root.level or logging.INFO, getattr(logging, level_name)))
+    _SAY_LOG.addHandler(handler)
+    _SAY_LOG.setLevel(logging.INFO)
+
+
 def _poll_jobs_or_empty(transport: Transport, limit: int) -> list[dict]:
     """Poll for work. Auth failures (TransportError) and transient network
     failures both propagate to the caller's unified retry/backoff handler so
@@ -379,8 +435,15 @@ def _poll_jobs_or_empty(transport: Transport, limit: int) -> list[dict]:
 
 
 def main() -> None:
+    global _STATUS_PATH
     # ── Load environment ──────────────────────────────────────────────────────
     _load_env(Path(__file__).resolve().parent.parent / "probe.env")
+    # The installer's configuration file (Windows: %ProgramData%\vedha-agent\agent.env).
+    # An explicit environment variable always wins over it.
+    from agent import diagnostics
+    _load_env_file = diagnostics.default_env_file()
+    if _load_env_file is not None:
+        _load_env(_load_env_file)
 
     # Logging BEFORE anything else, so startup failures are narrated too.
     level = configure_logging()
@@ -443,6 +506,11 @@ def main() -> None:
         say(f"    STATE_FILE=~/vedha-agent/state-2.json {sys.argv[0] if sys.argv else 'probe'}")
         say("=" * 62)
         raise SystemExit(1) from exc
+
+    # Only the process that holds the lock may describe the agent's state.
+    from agent import runtime_status
+    _STATUS_PATH = Path(os.environ.get("PROBE_STATUS_FILE") or runtime_status.path_for(STATE_FILE))
+    _status("starting", detail="loading configuration")
 
     SPOOL_DIR = Path(os.environ.get("RESULT_SPOOL_DIR", "/var/lib/vedha-agent/spool"))
     SPOOL_MAX_BYTES = _bounded_env_int(
@@ -568,6 +636,7 @@ def main() -> None:
     )
     action = "Registered" if fresh else "Resumed"
     say(f"{action} as '{PROBE_NAME}'.")
+    _status("online", detail=f"{action.lower()} as '{PROBE_NAME}'; starting to listen for jobs")
 
     from agent.engine import CAPABILITIES
     from agent.use_cases import USE_CASES
@@ -656,6 +725,7 @@ def main() -> None:
 
     # ── Step 6: Main loop (HTTP polling — fallback) ──────────────────────────
     say("Waiting for scan jobs (HTTP polling)...")
+    _status("online", detail="connected to the manager (polling); waiting for jobs")
     last_hb = 0.0
     last_spool_warning = 0.0
     # Runtime resilience: an already-onboarded probe rides out Manager restarts
@@ -1046,6 +1116,7 @@ async def _ws_connection_loop(
                 return False
 
             say("WebSocket connected. Push mode active — waiting for jobs.")
+            _status("online", detail="connected to the manager (live connection); waiting for jobs")
             backoff = WS_RECONNECT_BACKOFF_MIN  # reset on successful connect
 
             # Results use one durable path in every mode: local spool followed
@@ -1708,6 +1779,7 @@ def _enroll_device(
              f"request_id={request_id} auto={response.get('state') == 'approved'}")
         if response.get("state") == "approved":
             say("Probe pre-authorized via enrollment token — auto-approving, no code needed.")
+            _status("enrolling", detail="install token accepted; registering with the manager")
         else:
             verification_path = response.get("verification_path", "/fleet/enroll")
             url = f"{transport._base_url}{verification_path}"
@@ -1723,6 +1795,8 @@ def _enroll_device(
             say(f"   2) Enter code    : {code}")
             say("═" * 58)
             say("Waiting for dashboard approval… (the probe starts automatically once approved)")
+            _status("awaiting-approval", pairing_code=str(code), pairing_url=url,
+                    detail="a person must approve this agent in Fleet")
 
     # Bounds so enrollment never hangs silently:
     #  • net_fail_streak — consecutive transport/network errors → give up with a
@@ -1848,7 +1922,10 @@ def _enroll_device(
                 say(f"  Why : {reason}")
                 say(f"  Fix : {fix}")
                 say("═" * 58)
+                _status("failed", reason=reason, remediation=fix)
                 raise SystemExit(2) from exc
+            _status("retrying", reason=reason, remediation=fix,
+                    detail=f"enrolment attempt {net_fail_streak}/{NET_FAIL_LIMIT}")
             say(f"Enrollment manager unavailable ({reason}) — retrying "
                 f"[{net_fail_streak}/{NET_FAIL_LIMIT}].")
             _dbg(f"enrollment poll failure: {exc!r}")
@@ -2136,17 +2213,78 @@ def _obtain_identity(
                 say(f"  Why : {reason}")
                 say(f"  Fix : {fix}")
                 say("═" * 58)
+                _status("failed", reason=reason, remediation=fix)
                 raise SystemExit(2) from exc
+            _status("retrying", reason=reason, remediation=fix,
+                    detail=f"registration attempt {reg_fail_streak}/{REG_FAIL_LIMIT}")
             say(f"Can't reach manager yet ({reason}) — retrying "
                 f"[{reg_fail_streak}/{REG_FAIL_LIMIT}].")
             _dbg(f"registration failure: {exc!r}")
             time.sleep(min(30, 5 * reg_fail_streak))
 
 
+
+USAGE = """Vedha agent {version}
+
+Usage: vedha-agent [command]
+
+  run              start the agent (this is what the installed service does)
+  doctor           check this computer's connection to the manager and explain any problem
+                   (doctor --preinstall: only the checks that make sense before installing)
+  status [--json]  show what the agent is doing right now
+  support-bundle   [--out FILE] [--mask-ips]   write a redacted zip to send to Vedha support
+  version          print the agent version
+  hostid           print this host's identifier
+  help             show this text
+"""
+
+_DIAGNOSTIC_COMMANDS = ("doctor", "status", "support-bundle")
+
+
+def _diagnostic_command(arg: str, args: list[str]) -> int:
+    """doctor / status / support-bundle. Read-only: they never change the client's
+    settings and never touch the agent's credentials."""
+    from agent import diagnostics
+    env_file = diagnostics.default_env_file()
+    if env_file is not None:
+        _load_env(env_file)
+    _force_utf8_streams()
+    if arg == "doctor":
+        checks = diagnostics.run_doctor(preinstall="--preinstall" in args)
+        say(diagnostics.format_doctor(checks))
+        return 1 if any(c.status == "fail" for c in checks) else 0
+    if arg == "status":
+        info = diagnostics.collect_status()
+        if "--json" in args:
+            import json
+            print(json.dumps(info, indent=2, default=str))
+        else:
+            say(diagnostics.format_status(info))
+        return 0 if info.get("state") == "online" else 1
+    # support-bundle
+    out = None
+    if "--out" in args:
+        index = args.index("--out")
+        out = args[index + 1] if index + 1 < len(args) else None
+        if out is None:
+            say("--out needs a file name, for example: support-bundle --out C:\\Temp\\vedha-support.zip")
+            return 2
+    path = diagnostics.build_support_bundle(out, mask_ips="--mask-ips" in args)
+    say(f"Support bundle written to: {path}")
+    say("It contains no passwords, tokens or keys. Logs do contain host names and IP addresses"
+        + (" (masked)." if "--mask-ips" in args else " (add --mask-ips to hide them)."))
+    say("Please email this file to your Vedha contact.")
+    return 0
+
+
 if __name__ == "__main__":
     try:
         arg = sys.argv[1] if len(sys.argv) > 1 else "run"
-        if arg in ("version", "-v", "--version"):
+        if arg in ("help", "-h", "--help"):
+            say(USAGE.format(version=VERSION))
+        elif arg in _DIAGNOSTIC_COMMANDS:
+            sys.exit(_diagnostic_command(arg, sys.argv[2:]))
+        elif arg in ("version", "-v", "--version"):
             say(f"Vedha Probe {VERSION}")
         elif arg == "hostid":
             from agent.license import host_fingerprint
@@ -2207,8 +2345,13 @@ if __name__ == "__main__":
             configure_logging()
             from agent.local_run import run as _local_run
             raise SystemExit(_local_run(sys.argv[2:]))
-        else:
+        elif arg == "run":
             main()
+        else:
+            # A mistyped command used to start the whole agent. Say so instead.
+            say(f"Unknown command: {arg}")
+            say(USAGE.format(version=VERSION))
+            sys.exit(2)
     except KeyboardInterrupt:
         say("\nProbe stopped.")
         sys.exit(0)
