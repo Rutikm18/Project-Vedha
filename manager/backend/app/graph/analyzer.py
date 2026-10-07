@@ -267,7 +267,11 @@ class PathAnalyzer:
         mv = self.movement_graph()
         assets = [(n, d) for n, d in mv.nodes(data=True) if d.get("type") == "Asset"]
         if source_type == "internet_exposed":
-            return [n for n, d in assets if d.get("internet_exposed")]
+            # Exposure is reachability, not compromise (P4a). An internet-exposed
+            # host is an entry point only if the attacker can actually gain control
+            # of it — the same monotonic-control rule every other hop obeys (FM-05).
+            # Otherwise every exposed host would start a path as if already owned.
+            return [n for n, d in assets if d.get("internet_exposed") and self._exploit_info(n)]
         if source_type == "any":
             return [n for n, _ in assets]
         # treat source_type as an explicit asset entity_id
@@ -491,17 +495,26 @@ class PathAnalyzer:
         movement_rels = sum(1 for _, _, d in g.edges(data=True)
                             if d.get("type") in _MOVEMENT_RELS | _HUB_RELS)
         sources = len(self._source_assets(source_type))
+        exposed = sum(1 for _, d in g.nodes(data=True)
+                      if d.get("type") == "Asset" and d.get("internet_exposed"))
         targets = [t for t in (target_asset_ids or []) if mv.has_node(f"asset:{t}")]
 
         reasons: list[dict[str, str]] = []
         if assets == 0:
             reasons.append({"code": "no_assets", "detail": "the engagement has no assets yet"})
         if sources == 0:
-            reasons.append({"code": "no_entry_points",
-                            "detail": "no internet-exposed asset is marked, so no path has a starting point"})
+            if source_type == "internet_exposed" and exposed:
+                reasons.append({"code": "entry_points_not_compromisable",
+                                "detail": f"{exposed} asset(s) are internet-exposed, but none "
+                                          "carries an exploitable finding, so none is a foothold"})
+            else:
+                reasons.append({"code": "no_entry_points",
+                                "detail": "no asset is internet-exposed (no service seen open "
+                                          "from an external vantage), so no path has a starting point"})
         if not targets:
             reasons.append({"code": "no_targets",
-                            "detail": "no crown-jewel target (criticality=critical) is defined"})
+                            "detail": "no crown-jewel target: none is marked critical and none "
+                                      "was auto-selected (domain controller, hypervisor, data store)"})
         if movement_rels == 0:
             reasons.append({"code": "no_reachability",
                             "detail": "no network reachability or credential edges between assets"})
@@ -517,6 +530,7 @@ class PathAnalyzer:
             "findings": len(findings),
             "exploitable_findings": exploitable,
             "entry_points": sources,
+            "internet_exposed_assets": exposed,
             "targets": len(targets),
             "reachability_edges": movement_rels,
             "control_edges": control_edges,

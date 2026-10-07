@@ -183,7 +183,7 @@ def test_blast_radius_crosses_subnets_in_host_hops():
 def test_diagnose_reports_topology():
     web = _A("web", "10.0.1.5", tags={"internet_exposed": True})
     db = _A("db", "10.0.2.9", criticality="critical")
-    d = PathAnalyzer(_graph([web, db], ["db"], ["10.0.1.0/24", "10.0.2.0/24"])).diagnose(["db"])
+    d = PathAnalyzer(_graph([web, db], ["web", "db"], ["10.0.1.0/24", "10.0.2.0/24"])).diagnose(["db"])
     assert d["segments"] == 2 and d["reachability_posture"] == POSTURE_FLAT
     assert d["reasons"] == []
 

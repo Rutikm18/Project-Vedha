@@ -25,6 +25,10 @@ from app.graph.neo4j_client import Neo4jClient
 
 logger = structlog.get_logger()
 
+# Service.exposure value set by exposure fusion when an EXTERNAL-vantage probe saw
+# the port open (app/detection/vantage_fusion.py).
+SERVICE_EXPOSURE_EXTERNAL = "external"
+
 # Environments that imply an internet-facing asset (attack source).
 _EXPOSED_ENVIRONMENTS: frozenset[str] = frozenset(
     {"dmz", "external", "internet", "public", "perimeter", "edge"}
@@ -152,6 +156,9 @@ class GraphBuilder:
                 ip=getattr(a, "ip_address", None),
                 criticality=_enum_value(getattr(a, "criticality", None), "medium"),
                 internet_exposed=is_internet_exposed(a),
+                exposure_basis="asset_tag" if is_internet_exposed(a) else None,
+                device_role=getattr(a, "device_role", None),
+                role_detail=getattr(a, "role_detail", None),
                 compromised=False,
             )
 
@@ -168,6 +175,22 @@ class GraphBuilder:
             aid = asset_node_id(getattr(s, "asset_id", None))
             if g.has_node(aid):
                 g.add_edge(aid, sid, type="HAS_SERVICE")
+                # P4a: the fleet-fused, multi-probe exposure verdict (vantage_fusion)
+                # is the real "reachable from the internet" signal. It was stamped
+                # on Service rows but never read here, so no asset was ever an entry
+                # point (FM-02). An externally-exposed service makes its host an
+                # internet ENTRY candidate — reachable, not yet owned.
+                exposure = str(getattr(s, "exposure", None) or "").lower()
+                g.nodes[sid]["exposure"] = exposure or None
+                if exposure == SERVICE_EXPOSURE_EXTERNAL:
+                    node = g.nodes[aid]
+                    node["internet_exposed"] = True
+                    node["exposure_basis"] = node.get("exposure_basis") or "service_exposure"
+                    ports = set(node.get("exposed_ports") or [])
+                    port = getattr(s, "port", None)
+                    if isinstance(port, int):
+                        ports.add(port)
+                    node["exposed_ports"] = sorted(ports)
 
         # ── Finding nodes + HAS_FINDING ──
         for f in findings:

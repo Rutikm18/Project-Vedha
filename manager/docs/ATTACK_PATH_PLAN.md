@@ -1,6 +1,6 @@
 # Engagement-wide, multi-subnet attack-path generation — plan (for review)
 
-Status: **P0 and P1a implemented** (2026-10-07); P1b and P2–P5 pending. Decisions: §8 recommendations accepted
+Status: **P0, P1a and P4a implemented** (2026-10-07); P1b, P2, P4b, P3, P5 pending. Decisions: §8 recommendations accepted
 (flat-internal labelled `assumed`, crown-jewel auto-fallback with override, engagement-scoped,
 (site, IP) identity).
 Revised 2026-10-06 with a failure-mode analysis (§9): 32 failure modes found,
@@ -227,7 +227,8 @@ So a **P0 correctness phase** now comes first, and P1/P5 designs changed.
 | **P1b — site-aware identity** | `(site, ip)` asset identity (migration + the 5 asset-creation paths), multi-NIC linking, stale-asset ageing. Split out of P1: it changes asset identity across discovery, job results, findings and two routers, so it gets its own review. | FM-14, 15, 16 |
 | **P2 — finding→capability map** | Posture/IOA/misconfig findings as foothold/lateral/priv-esc steps with ATT&CK + per-step success likelihood (confidence × EPSS/KEV × state). | FM-03, 05, 06 |
 | **P3 — credential & relay edges** | Relay edges with **full precondition checks** (target signing off + coercion source + protocol); shared-admin edges **only when LAPS absent**, labelled `possible`. | FM-08, 09 |
-| **P4 — entry points + crown jewels** | Sources from fused `Service.exposure=="external"`; crown-jewel auto-fallback (DC/hypervisor/DB) + operator override. | FM-02, 21 |
+| **P4a — internet entry points** ✅ done | Assets with a service the fleet-fused exposure verdict marks `external` become entry candidates (`exposure_basis`, `exposed_ports` recorded). An entry point must ALSO carry an existing exploitable finding — exposure is reachability, not compromise. `diagnose` separates "nothing exposed" from "exposed but not compromisable". | FM-02 |
+| **P4b — crown-jewel selection** | Not implemented. Targets remain operator-defined (`criticality=critical`); without them the result is empty and `why_empty` reports `no_targets`. | FM-04 |
 | **P5 — choke points, output, validation** | **Min-cut / betweenness** choke points (not path-frequency); subnet-grouped D3; recompute-after-scan (async, not on GET); **validation harness** with ground-truth fixtures + cascade-failure path validity metric. | FM-24, 25, 26 |
 
 Each phase ships with unit tests (pure functions, fixture graphs) and keeps the

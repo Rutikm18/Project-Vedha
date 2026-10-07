@@ -51,9 +51,10 @@ def test_no_pivot_through_a_host_that_cannot_be_compromised():
 
 
 def test_credential_reuse_grants_control_without_an_exploit():
+    # A is the foothold (exposed AND exploitable); B has no exploit but valid creds reach it.
     g = _graph({"A": {"internet_exposed": True}, "B": {}, "C": {"criticality": "critical"}},
                [("A", "B", "CREDENTIAL_REUSE"), ("B", "C", "CONNECTS_TO")],
-               exploits={"C": {}})
+               exploits={"A": {}, "C": {}})
     paths = PathAnalyzer(g).find_paths_to_target("C")
     assert [p["nodes"] for p in paths] == [["A", "B", "C"]]
     assert paths[0]["edges"][0]["technique"] == "CREDENTIAL_REUSE"
@@ -107,8 +108,9 @@ def test_target_criticality_scales_risk_not_likelihood():
 def test_paths_are_returned_most_likely_first():
     g = _graph({"A": {"internet_exposed": True}, "B": {}, "C": {"criticality": "critical"}},
                [("A", "C", "CONNECTS_TO"), ("A", "B", "CONNECTS_TO"), ("B", "C", "CONNECTS_TO")],
-               exploits={"B": {"exploit_validated": True}, "C": {"severity": "low"}})
+               exploits={"A": {}, "B": {"exploit_validated": True}, "C": {"severity": "low"}})
     paths = PathAnalyzer(g).find_paths_to_target("C")
+    assert len(paths) == 2            # direct and via B — guards against a vacuous pass
     scores = [p["risk_score"] for p in paths]
     assert scores == sorted(scores, reverse=True)
     assert all("likelihood" in p for p in paths)
@@ -192,7 +194,7 @@ def test_diagnose_flags_reachable_but_uncompromisable():
 
 def test_diagnose_clean_when_paths_possible():
     g = _graph({"A": {"internet_exposed": True}, "B": {"criticality": "critical"}},
-               [("A", "B", "CONNECTS_TO")], exploits={"B": {}})
+               [("A", "B", "CONNECTS_TO")], exploits={"A": {}, "B": {}})
     assert PathAnalyzer(g).diagnose(["B"])["reasons"] == []
 
 
