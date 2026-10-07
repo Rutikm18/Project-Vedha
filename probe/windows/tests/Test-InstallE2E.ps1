@@ -42,9 +42,22 @@ $script:Failures = @()
 $script:Passed = 0
 
 function Check {
-  param([string]$Name, [scriptblock]$Body)
+  param([string]$Name, [scriptblock]$Body, [switch]$Dump)
   try { & $Body; $script:Passed++; Write-Host "  ok    $Name" -ForegroundColor Green }
-  catch { $script:Failures += "$Name :: $($_.Exception.Message)"; Write-Host "  FAIL  $Name :: $($_.Exception.Message)" -ForegroundColor Red }
+  catch {
+    $script:Failures += "$Name :: $($_.Exception.Message)"
+    Write-Host "  FAIL  $Name :: $($_.Exception.Message)" -ForegroundColor Red
+    # Capture the evidence now: by the end of the run the logs have been uninstalled.
+    if ($Dump) { Show-State; Show-AgentForeground }
+  }
+}
+function ConvertFrom-EnvText {
+  param([string]$Text)
+  $map = @{}
+  foreach ($line in ($Text.TrimStart([char]0xFEFF) -split "`r?`n")) {
+    if ($line -match '^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$') { $map[$Matches[1]] = $Matches[2].Trim() }
+  }
+  return $map
 }
 function Expect([bool]$Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
 
@@ -69,7 +82,22 @@ function Show-State {
   Get-ChildItem (Join-Path $DataDir 'logs') -Filter 'install-*.log' -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "[$($_.FullName)]"; Get-Content $_.FullName -Tail 80 }
   if (Test-Path $Exe) { Write-Host '[status]'; (Invoke-Agent @('status')).Output }
   Write-Host '[icacls data]'; icacls $DataDir 2>&1
-  Write-Host '[task]'; Get-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue | Format-List *
+  Write-Host '[task]'; Get-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue | Format-List State
+  Write-Host '[task last run]'; Get-ScheduledTaskInfo -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue | Format-List LastRunTime, LastTaskResult, NumberOfMissedRuns
+  Write-Host '[agent processes]'; Get-Process -Name 'vedha-agent' -ErrorAction SilentlyContinue | Format-Table Id, StartTime -AutoSize | Out-String | Write-Host
+}
+function Show-AgentForeground {
+  # Run the agent the way the task does, but where its output can be seen. Stops it after 20 seconds.
+  Write-Host '----- the agent run in the foreground -----'
+  $out = Join-Path $Work 'fg.out'; $err = Join-Path $Work 'fg.err'
+  Remove-Item $out, $err -ErrorAction SilentlyContinue
+  Stop-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue
+  Get-Process -Name 'vedha-agent' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+  Start-Sleep -Seconds 2
+  $p = Start-Process -FilePath $Exe -ArgumentList 'run' -WorkingDirectory $AppDir -PassThru -NoNewWindow -RedirectStandardOutput $out -RedirectStandardError $err
+  if ($p.WaitForExit(20000)) { Write-Host "[foreground run] the agent exited with code $($p.ExitCode)" }
+  else { Write-Host '[foreground run] still running after 20 s (it did not crash)'; $p | Stop-Process -Force -ErrorAction SilentlyContinue }
+  foreach ($f in $out, $err) { if ((Test-Path $f) -and (Get-Item $f).Length -gt 0) { Write-Host "[$f]"; Get-Content $f -Tail 80 } }
 }
 
 try {
@@ -172,7 +200,7 @@ try {
     $path = Join-Path $DataDir 'agent.env'
     $bytes = [System.IO.File]::ReadAllBytes($path)
     Expect (-not ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)) 'file starts with a byte-order mark'
-    $cfg = Read-VedhaConfig -Text ([System.IO.File]::ReadAllText($path))
+    $cfg = ConvertFrom-EnvText -Text ([System.IO.File]::ReadAllText($path))
     Expect ($cfg['PLATFORM_URL'] -eq $Manager) "manager: $($cfg['PLATFORM_URL'])"
     Expect ($cfg['PROBE_NETWORK_SEGMENTS'] -eq '10.99.0.0/24') "scope: $($cfg['PROBE_NETWORK_SEGMENTS'])"
     Expect ($cfg['PROBE_NAME'] -eq 'ci-probe') "name: $($cfg['PROBE_NAME'])"
@@ -188,7 +216,7 @@ try {
 
   Write-Host "`n== The running agent =="
   $status = $null
-  Check 'the agent starts and reports that it cannot reach the manager, with why and the fix' {
+  Check 'the agent starts and reports that it cannot reach the manager, with why and the fix' -Dump {
     $deadline = (Get-Date).AddSeconds(120)
     do {
       Start-Sleep -Seconds 3
@@ -235,7 +263,7 @@ try {
   Check '-Repair re-applies the install, keeps the settings and removes the leftover token' {
     $r = Invoke-Package $Pkg @('-Repair', '-SkipPreflight', '-NoWait', '-NoPause')
     Expect ($r.Code -eq 0) "exit code $($r.Code):`n$($r.Output)"
-    $cfg = Read-VedhaConfig -Text ([System.IO.File]::ReadAllText((Join-Path $DataDir 'agent.env')))
+    $cfg = ConvertFrom-EnvText -Text ([System.IO.File]::ReadAllText((Join-Path $DataDir 'agent.env')))
     Expect ($cfg['PLATFORM_URL'] -eq $Manager -and $cfg['PROBE_NAME'] -eq 'ci-probe' -and $cfg['PROBE_NETWORK_SEGMENTS'] -eq '10.99.0.0/24') 'settings were not kept'
     Expect (-not $cfg.ContainsKey('PROBE_ENROLL_TOKEN')) 'the token is still in the settings file'
     Expect (-not (Test-Path "$AppDir.old")) 'a backup folder was left behind'
@@ -256,7 +284,7 @@ try {
   }
 }
 finally {
-  if ($script:Failures.Count -gt 0) { Show-State }
+  if ($script:Failures.Count -gt 0 -and (Test-Path $DataDir)) { Show-State }
   # Leave the machine as we found it, whatever happened.
   Get-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue | ForEach-Object { Stop-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue; Unregister-ScheduledTask -TaskName 'VedhaAgent' -Confirm:$false -ErrorAction SilentlyContinue }
   Get-Process -Name 'vedha-agent' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue

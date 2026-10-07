@@ -657,6 +657,34 @@ class TestAgentIntegration:
         rec = rs.read(tmp_path / "status.json")
         assert rec["state"] == "retrying" and rec["version"] == AGENT_VERSION and rec["manager"] == "https://m.example.com"
 
+    def test_a_crash_is_recorded_in_the_log_and_the_status(self, tmp_path, monkeypatch, caplog):
+        import logging
+        import agent.agent as ag
+        monkeypatch.setattr(ag, "_STATUS_PATH", tmp_path / "status.json")
+        with caplog.at_level(logging.CRITICAL, logger="agent"):
+            try:
+                raise ValueError("boom")
+            except ValueError as exc:
+                ag._record_crash(exc)
+        rec = rs.read(tmp_path / "status.json")
+        assert rec["state"] == "failed" and "ValueError: boom" in rec["reason"] and "support-bundle" in rec["remediation"]
+        assert any("unexpected error" in r.getMessage() and r.exc_info for r in caplog.records)
+
+    def test_narration_survives_a_console_that_cannot_be_written(self, monkeypatch):
+        import agent.agent as ag
+
+        class Broken:
+            encoding = "utf-8"
+
+            def write(self, *_):
+                raise OSError(6, "The handle is invalid")
+
+            def flush(self):
+                raise OSError(6, "The handle is invalid")
+
+        monkeypatch.setattr(ag.sys, "stdout", Broken())
+        ag.say("this must not raise")
+
     def test_log_file_mirrors_logging_and_narration_and_is_size_capped(self, tmp_path, monkeypatch):
         import logging
         import agent.agent as ag

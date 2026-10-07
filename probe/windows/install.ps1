@@ -239,9 +239,11 @@ function Get-StatusLine {
 function Test-IsWindows { return ([Environment]::OSVersion.Platform -eq 'Win32NT') }
 
 function Reset-WindowsPowerShellModulePath {
-  # install.cmd starts Windows PowerShell. When that is done from a PowerShell 7 prompt, the new
-  # process inherits PowerShell 7's module folders and can fail to find its own built-in
-  # commands. Point it back at its own folders. Does nothing under PowerShell 7 itself.
+  # Defensive: Windows PowerShell inherits PSModulePath from whatever started install.cmd (cmd,
+  # PowerShell 7, a management tool). A foreign or damaged value can hide its built-in commands, so
+  # the installer, which needs only built-ins, uses its own folders. Does nothing under PowerShell 7.
+  # (A real install once stopped at Get-FileHash; the exact cause was not isolated, so the installer
+  # also avoids that cmdlet - see Get-VedhaSha256.)
   if ($PSVersionTable.PSEdition -ne 'Desktop') { return }
   $env:PSModulePath = (@((Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules'), (Join-Path $PSHOME 'Modules'))) -join ';'
 }

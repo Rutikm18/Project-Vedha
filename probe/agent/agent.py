@@ -134,7 +134,14 @@ def say(msg: str = "", indent: int = 0) -> None:
         # Belt-and-braces: a stream we couldn't reconfigure (older Python, an
         # exotic wrapper) must still never crash the agent over an output glyph.
         enc = getattr(sys.stdout, "encoding", None) or "ascii"
-        print(line.encode(enc, "replace").decode(enc, "replace"), flush=True)
+        try:
+            print(line.encode(enc, "replace").decode(enc, "replace"), flush=True)
+        except (OSError, ValueError):
+            pass
+    except (OSError, ValueError):
+        # No usable console (a Windows Scheduled Task, a closed pipe). The line is
+        # already in the log file when one is configured; narrating must never stop the agent.
+        pass
 
 
 # ── Runtime status (read by the installer, `status` and the support bundle) ─────
@@ -149,6 +156,16 @@ def _status(state: str, **fields) -> None:
     from agent import runtime_status
     runtime_status.write(_STATUS_PATH, state, version=VERSION,
                          manager=os.environ.get("PLATFORM_URL", ""), **fields)
+
+
+def _record_crash(exc: BaseException) -> None:
+    """An unexpected error must never be silent. A headless agent (a Windows Scheduled
+    Task) has no console to show a traceback, so write it to the log and record why the
+    agent stopped, where `status`, `doctor` and the installer will report it."""
+    logging.getLogger("agent").critical("The agent stopped because of an unexpected error:", exc_info=exc)
+    _status("failed", reason=f"unexpected error: {type(exc).__name__}: {exc}",
+            remediation="Run `vedha-agent support-bundle` and send the file to Vedha support; "
+                        "the details are in the agent log.")
 
 
 # ── DEBUG (temporary) — set PROBE_DEBUG=1 to trace the connection handshake ────
@@ -2346,7 +2363,11 @@ if __name__ == "__main__":
             from agent.local_run import run as _local_run
             raise SystemExit(_local_run(sys.argv[2:]))
         elif arg == "run":
-            main()
+            try:
+                main()
+            except Exception as exc:  # noqa: BLE001 — recorded in the log and status, then a non-zero exit
+                _record_crash(exc)
+                sys.exit(1)
         else:
             # A mistyped command used to start the whole agent. Say so instead.
             say(f"Unknown command: {arg}")
