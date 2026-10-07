@@ -48,6 +48,7 @@ jobs:
           tests/test_enroll_fresh_request_grace.py tests/test_ws_tls_settings.py
           tests/test_agent_closure.py tests/test_instance_lock.py tests/test_host_discovery_mobile.py
           tests/test_windows_scripts.py
+          tests/test_update_check.py tests/test_check_agent_version.py
       - name: Installer contract (POSIX sh; the curl | sh path customers run)
         if: runner.os != 'Windows'
         run: |

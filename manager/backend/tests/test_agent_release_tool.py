@@ -164,3 +164,54 @@ def test_publish_to_a_local_store_flips_current_last(tmp_path, key):
     tool.publish(tmp_path / "out" / "1.0.2", str(store))
     assert agent_release.load_release(store, public).version == "1.0.2"
     assert (store / "1.0.1").is_dir()  # previous release kept for rollback
+
+
+# ── the agent's own version ──────────────────────────────────────────────────
+
+def test_release_carries_the_agents_own_version_in_the_signed_manifest(tmp_path, key):
+    """`version` names the platform release; `agent_version` is the agent's own
+    number (probe/agent/version.py). They are different on purpose."""
+    key_path, public = key
+    final = _build(tmp_path, key_path, version="1.0.501")
+    manifest = json.loads((final / "manifest.json").read_text())
+    assert manifest["agent_version"] == tool.read_agent_version()
+    assert manifest["version"] == "1.0.501" != manifest["agent_version"]
+    release = agent_release.load_release(tmp_path / "out", public, require_signature=True)
+    assert release.agent_version == tool.read_agent_version()
+    assert tool.verify_release_dir(final, public)["agent_version"] == tool.read_agent_version()
+
+
+def test_an_explicit_agent_version_wins_over_the_file(tmp_path, key):
+    key_path, public = key
+    tool.build_release(
+        key_path=key_path, out=tmp_path / "out", arches=["amd64"], version="1.0.502",
+        builder=_fake_builder([]), saver=_fake_saver, agent_version="7.8.9",
+    )
+    assert agent_release.load_release(tmp_path / "out", public).agent_version == "7.8.9"
+
+
+@pytest.mark.parametrize("bad", ["", "v2.1", "two", "2.1 0", "2.1;x"])
+def test_a_bad_agent_version_is_refused_before_anything_is_built(tmp_path, key, bad):
+    key_path, _ = key
+    calls = []
+    with pytest.raises(tool.ReleaseError, match="agent version"):
+        tool.build_release(
+            key_path=key_path, out=tmp_path / "out", arches=["amd64"], version="1.0.503",
+            builder=_fake_builder(calls), saver=_fake_saver, agent_version=bad,
+        )
+    assert calls == []
+
+
+def test_read_agent_version_reads_text_and_refuses_a_missing_value(tmp_path):
+    good = tmp_path / "version.py"
+    good.write_text('"""doc"""\n\nAGENT_VERSION = "3.4.5"\n')
+    assert tool.read_agent_version(good) == "3.4.5"
+    bad = tmp_path / "bad.py"
+    bad.write_text("nothing = 1\n")
+    with pytest.raises(tool.ReleaseError, match="AGENT_VERSION"):
+        tool.read_agent_version(bad)
+
+
+def test_the_tool_reads_the_real_agent_version_file():
+    text = (REPO / "probe" / "agent" / "version.py").read_text()
+    assert f'AGENT_VERSION = "{tool.read_agent_version()}"' in text

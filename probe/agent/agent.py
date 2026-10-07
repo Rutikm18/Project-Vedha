@@ -58,7 +58,8 @@ from agent.transport import (
     manager_fingerprint,
 )
 
-VERSION = "2.0.0"
+from agent.version import AGENT_VERSION as VERSION  # the agent's own number (agent/version.py)
+
 LOG = logging.getLogger("agent")
 
 
@@ -583,6 +584,25 @@ def main() -> None:
         say(describe_capability(probe_limits()))
     except Exception as exc:  # noqa: BLE001 — diagnostics must never stop startup
         _dbg(f"kernel-limit preflight skipped: {exc!r}")
+
+    # ── Update check (version management only) ──────────────────────────────
+    # Ask the manager whether a newer agent exists. Best effort — it never raises
+    # and never delays the scan loop. A person at the terminal is asked y/N; a
+    # headless agent (service, container) only logs it. A background re-check
+    # runs every few hours and logs once per new version. Nothing is downloaded
+    # or installed here. See agent/update_check.py.
+    try:
+        import platform as _platform
+        from agent import update_check
+        _arch = _platform.machine() or "unknown"
+        update_check.run_startup_check(
+            transport, VERSION, platform=sys.platform, architecture=_arch, say=say,
+        )
+        update_check.PeriodicUpdateChecker(
+            transport, VERSION, platform=sys.platform, architecture=_arch, say=say,
+        ).start()
+    except Exception as exc:  # noqa: BLE001 — a version check must never stop startup
+        _dbg(f"update check skipped: {exc!r}")
 
     # ── Step 4: Create TaskRunner (with identity for scope decryption) ────────
     from agent.task_runner import TaskRunner
@@ -1291,6 +1311,7 @@ async def _ws_run_job(
             "current_job_id": job_id,
             "attempt_id": job.get("attempt_id"),
             "fence": job.get("fence"),
+            "agent_version": VERSION,
         }))
     except Exception as exc:  # noqa: BLE001 — status is optional; the job continues over HTTP
         _dbg(f"ws busy-heartbeat send dropped (job continues via HTTP): {exc!r}")
@@ -1326,6 +1347,7 @@ async def _ws_run_job(
                 "current_job_id": None,
                 "attempt_id": None,
                 "fence": None,
+                "agent_version": VERSION,
             }))
         except Exception as exc:  # noqa: BLE001 — best-effort WS status frame
             _dbg(f"ws idle-heartbeat send dropped: {exc!r}")
@@ -1402,6 +1424,7 @@ async def _ws_heartbeat_sender(
                 "current_job_id": current_job_id,
                 "attempt_id": (job_state or {}).get("attempt_id"),
                 "fence": (job_state or {}).get("fence"),
+                "agent_version": VERSION,
             }))
     except Exception:
         pass  # ws closed, task will be cancelled

@@ -25,6 +25,8 @@ from typing import Any, Iterable
 
 import httpx
 
+from agent.version import AGENT_VERSION
+
 LOG = logging.getLogger("transport")
 
 
@@ -781,6 +783,9 @@ class Transport:
                     "current_job_id": current_job_id,
                     "attempt_id": attempt_id,
                     "fence": fence,
+                    # Lets Fleet show the version actually running, even after an
+                    # upgrade. An older manager ignores the field.
+                    "agent_version": AGENT_VERSION,
                 },
             )
             if r.status_code == 409:
@@ -1056,6 +1061,36 @@ class Transport:
         except httpx.HTTPError as exc:
             LOG.warning("submit_result failed for job %s: %s", job_id, exc)
         return False
+
+    # ── Update check (version management only) ─────────────────────────────────
+
+    def update_check(
+        self, agent_version: str, platform: str, architecture: str, *, timeout: float = 5.0,
+    ) -> dict[str, Any] | None:
+        """Ask the manager whether a newer agent exists. Returns its reply, or None
+        when the answer is unavailable for ANY reason (older manager, no network,
+        stale token). Deliberately does not refresh credentials: this runs on a
+        background thread and must never race the main loop's token handling."""
+        if not self._agent_id:
+            return None
+        try:
+            r = self._client.post(
+                "/agents/update-check",
+                headers=self.auth_header,
+                json={
+                    "agent_id": self._agent_id,
+                    "agent_version": agent_version,
+                    "platform": platform,
+                    "architecture": architecture,
+                },
+                timeout=timeout,
+            )
+            if r.status_code != 200:
+                return None
+            body = r.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        return body if isinstance(body, dict) else None
 
     # ── Low-level HTTP GET for callbacks ───────────────────────────────────────
 
