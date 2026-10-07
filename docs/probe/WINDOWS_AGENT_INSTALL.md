@@ -134,22 +134,52 @@ PowerShell execution policy (a unit test enforces this).
 
 ## 8. Verified vs. not yet verified
 
-Verified in CI on a GitHub `windows-latest` runner (the build you download is
-this one): compile, no source or bytecode shipped, 77 modules load, `version` /
-`hostid` / `manifest`, `help` / unknown command / `doctor` against an unreachable
-manager, installer logic under PowerShell 7 **and** Windows PowerShell 5.1,
-real install → status → doctor → support-bundle (no secrets inside) → repair →
-uninstall.
+**Verified** - on a GitHub `windows-latest` runner, in the run that built the zip you
+download (all 22 install checks and every build step green):
 
-**Not verified yet — do these once before the first customer:**
+- Build: closure-only compile (77 modules, MinGW gcc), no Python source or bytecode in
+  the output, `version` / `hostid` / `manifest` / `runtime-check`, and `help`, an unknown
+  command and `doctor` against an unreachable manager on the compiled exe.
+- Installer logic under PowerShell 7 **and** Windows PowerShell 5.1.
+- A real install from the unzipped package via `install.cmd`, then:
+  - a damaged package, a missing agent program, a malformed token, an `http://` manager
+    and an unreachable manager each stop **before** anything is installed, with the cause
+    and the fix, and leave no task or folder behind; the token is never echoed or logged;
+  - the program lands in `Program Files`, runs, and has its own Python and Visual C++
+    runtime in the folder; the scheduled task runs as SYSTEM at startup;
+  - the data folder is readable only by SYSTEM and Administrators; `agent.env` has no BOM
+    and holds the settings; the install log holds no token;
+  - the agent, started by the task as SYSTEM, writes its log and reports `retrying`
+    with the reason and the fix when the manager is unreachable (it does not exit);
+  - `doctor`, `status` and `support-bundle` work on the installed agent, and the bundle
+    holds the diagnosis but no token or key;
+  - `-Repair` keeps the settings and removes the leftover token; `-Uninstall` removes the
+    program and task but keeps the identity and logs; `-Uninstall -Purge` deletes
+    everything.
 
-1. Install on a **clean** Windows 10/11 or Server VM (not the build machine): the
-   compiled folder must run without a Visual C++ runtime installed.
+Two things the runs taught us, so you do not rediscover them:
+
+- An unreachable manager used to make the agent give up after six checks. On Windows
+  it now keeps retrying (`PROBE_KEEP_RETRYING=true`, written by the installer; the pause
+  grows to 5 minutes). Linux/Docker keep the old exit-with-diagnosis behaviour.
+- A first run of the installer stopped at `Get-FileHash` ("not recognized") on the
+  runner. The exact cause was **not isolated**; a child Windows PowerShell can find that
+  cmdlet when run on its own. The installer now hashes with .NET and starts from
+  Windows PowerShell's own module folders, which got it through. If a customer
+  machine ever reports a "not recognized" cmdlet, send the install log.
+
+**Not verified yet - do these once before the first customer:**
+
+1. Install on a **clean** Windows 10/11 or Server VM (not a CI runner): that the folder
+   runs on a machine that never had Visual C++ or Python installed. (The folder carries
+   the runtime DLLs; only a clean machine proves nothing else is missing.)
 2. A **real enrolment**: a Fleet token, the baked manager address, the agent shows
-   online, and a job runs end to end.
-3. The **UAC prompt path** (double-click `install.cmd`, not an elevated prompt).
-4. A machine **with your customer's EDR** (or Windows Defender with cloud
-   protection) — expect a warning until the build is signed.
-5. `ALLOWLIST.txt` says the agent "does not read files … or capture traffic":
-   confirm that is true of this build before you send it. The text was adapted
-   from another vendor's guide, not derived from our code.
+   online, and a job runs end to end. CI only proves the unreachable-manager path.
+3. **Reboot**: that the task starts the agent at boot and it connects after a restart.
+4. The **UAC prompt path** (double-click `install.cmd`, not an elevated prompt). CI
+   runs already elevated.
+5. A machine **with your customer's EDR** (or Windows Defender with cloud protection) -
+   expect a warning until the build is signed.
+6. `ALLOWLIST.txt` says the agent "does not read files ... or capture traffic":
+   confirm that is true of this build before you send it. The text was adapted from
+   another vendor's guide, not derived from our code.
