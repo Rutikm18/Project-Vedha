@@ -95,6 +95,18 @@ try {
     Expect ($text -notmatch "'__VEDHA_PACKAGE_VERSION__'") 'package version placeholder was not replaced'
   }
 
+  # What a Windows PowerShell started from this session can see. install.cmd does exactly this, and a
+  # customer may also run it from a PowerShell 7 prompt. Printed for diagnosis; not a pass/fail check.
+  $probe = Join-Path $Work 'child-env.ps1'
+  Set-Content -LiteralPath $probe -Value @(
+    "`$missing = @('Get-FileHash','Get-ScheduledTask','Register-ScheduledTask','ConvertFrom-Json','Expand-Archive') | Where-Object { -not (Get-Command `$_ -ErrorAction SilentlyContinue) }",
+    "'child PSVersion : ' + `$PSVersionTable.PSVersion",
+    "'child cannot find: ' + `$(if (`$missing) { `$missing -join ', ' } else { '(nothing missing)' })",
+    "'child PSModulePath: ' + `$env:PSModulePath"
+  )
+  Write-Host "`n== Windows PowerShell as started from here =="
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $probe 2>&1 | ForEach-Object { Write-Host "  $_" }
+
   Write-Host "`n== Things that must stop BEFORE anything is installed =="
   Check 'a damaged package is refused and names the file' {
     $bad = Join-Path $Work 'pkg-damaged'

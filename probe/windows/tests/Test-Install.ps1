@@ -118,6 +118,9 @@ try {
   Set-Content -LiteralPath (Join-Path $tmp 'b.txt') -Value 'beta' -NoNewline
   $hashA = (Get-FileHash -LiteralPath (Join-Path $tmp 'a.txt') -Algorithm SHA256).Hash.ToLower()
   $hashB = (Get-FileHash -LiteralPath (Join-Path $tmp 'b.txt') -Algorithm SHA256).Hash.ToLower()
+  Assert-Equal (Get-VedhaSha256 -Path (Join-Path $tmp 'a.txt')) $hashA 'hash: .NET SHA-256 matches Get-FileHash'
+  Assert-Equal (Get-VedhaSha256 -Path (Join-Path $tmp 'b.txt')) $hashB 'hash: .NET SHA-256 matches Get-FileHash (second file)'
+  Assert-Equal (Get-VedhaSha256 -Path (Join-Path $tmp 'a.txt')).Length 64 'hash: 64 lower-case hex characters'
   $sums = Join-Path $tmp 'SHA256SUMS.txt'
   Set-Content -LiteralPath $sums -Value @("$hashA  a.txt", "$hashB  b.txt")
   Assert-Equal (@(Test-PackageHashes -Root $tmp -SumsFile $sums)).Count 0 'integrity: an intact package passes'
@@ -135,6 +138,24 @@ try {
   Set-Content -LiteralPath $sums -Value @('this is not a hash line')
   Assert-True  ((@(Test-PackageHashes -Root $tmp -SumsFile $sums))[0] -match 'Unreadable line') 'integrity: a garbled sums file is a problem'
 } finally { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+
+# --- folder removal and module path ---------------------------------------------------------
+$doomed = Join-Path ([System.IO.Path]::GetTempPath()) ("vedha-rm-" + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path (Join-Path $doomed 'logs') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $doomed 'logs\x.log') -Value 'x'
+Assert-True (Remove-VedhaFolder -Path $doomed) 'remove folder: a folder with files is removed'
+Assert-False (Test-Path -LiteralPath $doomed) 'remove folder: it is really gone'
+Assert-True (Remove-VedhaFolder -Path $doomed) 'remove folder: a folder that is already gone counts as removed'
+
+$modulePathBefore = $env:PSModulePath
+Reset-WindowsPowerShellModulePath
+if ($PSVersionTable.PSEdition -eq 'Desktop') {
+  Assert-True  ($env:PSModulePath -like "*$PSHOME*") 'module path: Windows PowerShell gets its own folder back'
+  Assert-False ($env:PSModulePath -match '\\PowerShell\\7') 'module path: PowerShell 7 folders are not inherited'
+} else {
+  Assert-Equal $env:PSModulePath $modulePathBefore 'module path: PowerShell 7 is left alone'
+}
+$env:PSModulePath = $modulePathBefore
 
 # --- permissions check -------------------------------------------------------------------
 $locked = @('C:\ProgramData\vedha-agent NT AUTHORITY\SYSTEM:(OI)(CI)(F)', '                   BUILTIN\Administrators:(OI)(CI)(F)', '', 'Successfully processed 1 files; Failed processing 0 files')

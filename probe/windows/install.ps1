@@ -178,6 +178,18 @@ function Hide-VedhaSecrets {
   return ($Text -replace 'vet_[A-Za-z0-9_-]{6,}', 'vet_[removed]')
 }
 
+function Get-VedhaSha256 {
+  # SHA-256 of a file as lower-case hex. Uses .NET directly, so it works even when the
+  # PowerShell module that holds Get-FileHash cannot be found (see Reset-WindowsPowerShellModulePath).
+  param([string]$Path)
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    $stream = [System.IO.File]::OpenRead($Path)
+    try { return (($sha.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') }) -join '') }
+    finally { $stream.Dispose() }
+  } finally { $sha.Dispose() }
+}
+
 function Test-PackageHashes {
   # Checks every file named in SHA256SUMS.txt. Returns problems (empty = intact).
   param([string]$Root, [string]$SumsFile)
@@ -191,7 +203,7 @@ function Test-PackageHashes {
     $path = Join-Path $Root $relative
     if (-not (Test-Path -LiteralPath $path)) {
       $problems += "Missing: $relative"
-    } elseif ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLower() -ne $expected) {
+    } elseif ((Get-VedhaSha256 -Path $path) -ne $expected) {
       $problems += "Changed or damaged: $relative"
     }
   }
@@ -225,6 +237,27 @@ function Get-StatusLine {
 # ---------------------------------------------------------------------------
 
 function Test-IsWindows { return ([Environment]::OSVersion.Platform -eq 'Win32NT') }
+
+function Reset-WindowsPowerShellModulePath {
+  # install.cmd starts Windows PowerShell. When that is done from a PowerShell 7 prompt, the new
+  # process inherits PowerShell 7's module folders and can fail to find its own built-in
+  # commands. Point it back at its own folders. Does nothing under PowerShell 7 itself.
+  if ($PSVersionTable.PSEdition -ne 'Desktop') { return }
+  $env:PSModulePath = (@((Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules'), (Join-Path $PSHOME 'Modules'))) -join ';'
+}
+
+function Remove-VedhaFolder {
+  # Deletes a folder, retrying briefly (antivirus or a log that is just closing can hold a file
+  # for a moment). True only when the folder is really gone.
+  param([string]$Path)
+  for ($i = 0; $i -lt 6; $i++) {
+    if (-not (Test-Path -LiteralPath $Path)) { return $true }
+    Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction SilentlyContinue
+    if (-not (Test-Path -LiteralPath $Path)) { return $true }
+    Start-Sleep -Milliseconds 500
+  }
+  return (-not (Test-Path -LiteralPath $Path))
+}
 
 function Test-IsAdmin {
   $id = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -333,8 +366,9 @@ function Invoke-VedhaUninstall {
   if (Test-Path -LiteralPath $AppDir) { Remove-Item -LiteralPath $AppDir -Recurse -Force; Write-Good "Removed $AppDir" }
   Write-Step '2/2' 'Identity and logs'
   if ($Purge) {
-    if (Test-Path -LiteralPath $DataDir) { Remove-Item -LiteralPath $DataDir -Recurse -Force }
-    Write-Good "Deleted $DataDir (the agent's identity, settings and logs)."
+    # This run's own log is still open, so the folder itself is deleted as the script finishes.
+    $script:PurgeDataDir = $DataDir
+    Write-Good "$DataDir (the agent's identity, settings and logs) will be deleted as this finishes."
     Write-Host '    Tell your Vedha contact so the agent is revoked on their side.'
   } else {
     Write-Good "Kept $DataDir (identity, settings, logs). Re-run with -Uninstall -Purge to delete them."
@@ -471,7 +505,7 @@ function Invoke-VedhaInstall {
     Set-VedhaAcl -Path $DataDir
     if ($CaBundle) { Copy-Item -LiteralPath $CaBundle -Destination $caPath -Force }
 
-    $digest = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLower()
+    $digest = Get-VedhaSha256 -Path $exe
     $version = $PackageVersion
     if ($version -like '__*') { $version = '' }
     $config = New-VedhaAgentConfig -ManagerUrl $managerUrl -DataDir $DataDir -AgentName $agentName -ScopeValue $scopeValue `
@@ -558,6 +592,7 @@ function Invoke-VedhaInstall {
 
 function Invoke-Main {
   if (-not (Test-IsWindows)) { Write-Host 'This installer runs on Windows only.'; return 2 }
+  Reset-WindowsPowerShellModulePath
 
   $appDir  = Join-Path $env:ProgramFiles 'Vedha Agent'
   $dataDir = Join-Path $env:ProgramData 'vedha-agent'
@@ -621,7 +656,17 @@ function Invoke-Main {
   } finally {
     if ($transcribing) {
       try { Stop-Transcript | Out-Null } catch { }
-      try { Write-Utf8NoBom -Path $logPath -Text (Hide-VedhaSecrets -Text ([System.IO.File]::ReadAllText($logPath))) } catch { }
+      if (-not $script:PurgeDataDir) {
+        try { Write-Utf8NoBom -Path $logPath -Text (Hide-VedhaSecrets -Text ([System.IO.File]::ReadAllText($logPath))) } catch { }
+      }
+    }
+  }
+  if ($script:PurgeDataDir -and $exitCode -eq 0) {
+    if (Remove-VedhaFolder -Path $script:PurgeDataDir) {
+      Write-Host "Deleted $($script:PurgeDataDir)." -ForegroundColor Green
+    } else {
+      Write-Host "Could not delete $($script:PurgeDataDir) completely. Delete that folder by hand (as Administrator)." -ForegroundColor Yellow
+      $exitCode = 1
     }
   }
 
