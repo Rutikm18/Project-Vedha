@@ -6,9 +6,14 @@ name: vedha-agent-windows-build
 #   * the compiled binary can import every module the agent loads lazily
 #     (vedha-agent runtime-check),
 #   * it starts and answers `version` / `hostid` / `manifest`,
-#   * the install and package scripts parse as PowerShell.
+#   * the install and package scripts parse as PowerShell and their logic passes its
+#     tests under BOTH PowerShell 7 and Windows PowerShell 5.1 (what customers have),
+#   * the customer package is then installed, diagnosed, repaired and removed for real
+#     on this Windows runner (windows/tests/Test-InstallE2E.ps1): scheduled task,
+#     permissions, logs, doctor / status / support-bundle, failure messages.
 # The zip is uploaded as a workflow artifact; publishing it to the manager is a
-# separate, deliberate step.
+# separate, deliberate step. Run it manually (Run workflow) and fill in manager_url to
+# get a package that already carries your manager's address.
 on:
   pull_request:
     paths:
@@ -20,6 +25,11 @@ on:
       - "probe/requirements-runtime.txt"
       - ".github/workflows/agent-windows-build.yml"
   workflow_dispatch:
+    inputs:
+      manager_url:
+        description: "Manager address baked into the customer package (https://...)"
+        required: false
+        default: "https://api.vedhasec.com"
 
 jobs:
   build:
@@ -40,12 +50,19 @@ jobs:
 
       - name: PowerShell scripts parse
         run: |
-          foreach ($f in 'windows\build-agent-exe.ps1','windows\install.ps1','windows\uninstall.ps1','windows\package-zip.ps1','windows\setup.ps1') {
+          foreach ($f in 'windows\build-agent-exe.ps1','windows\install.ps1','windows\uninstall.ps1','windows\package-zip.ps1','windows\setup.ps1','windows\tests\Test-Install.ps1','windows\tests\Test-InstallE2E.ps1') {
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errors) | Out-Null
             if ($errors) { $errors | ForEach-Object { Write-Error "$f : $($_.Message)" }; exit 1 }
             Write-Host "ok  $f"
           }
+
+      - name: Installer logic tests (PowerShell 7)
+        run: pwsh -NoProfile -File windows\tests\Test-Install.ps1
+
+      - name: Installer logic tests (Windows PowerShell 5.1, what customers run)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File windows\tests\Test-Install.ps1
 
       # Nuitka downloads its own gcc and keeps a ccache of compiled C objects here.
       # Restoring it makes a re-run minutes instead of ~35. Saved even if a later
@@ -79,6 +96,18 @@ jobs:
           if (-not $manifest.capabilities) { Write-Error 'manifest has no capabilities'; exit 1 }
           Write-Host "manifest ok: $($manifest.capabilities.Count) capabilities"
 
+      - name: Troubleshooting commands work in the compiled agent
+        run: |
+          $exe = 'windows\dist\vedha-agent\vedha-agent.exe'
+          $help = & $exe help | Out-String
+          foreach ($word in 'doctor','status','support-bundle') { if ($help -notmatch $word) { Write-Error "help does not list $word"; exit 1 } }
+          & $exe nonsense-command | Out-Null
+          if ($LASTEXITCODE -ne 2) { Write-Error "an unknown command must exit 2 (got $LASTEXITCODE)"; exit 1 }
+          $env:PLATFORM_URL = 'https://127.0.0.1:9'
+          $out = & $exe doctor --preinstall | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 1 -or $out -notmatch 'cannot connect to 127.0.0.1:9') { Write-Error 'doctor did not diagnose an unreachable manager'; exit 1 }
+
       - name: No source or bytecode of ours in the output
         run: |
           $dist = (Resolve-Path 'windows\dist\vedha-agent').Path
@@ -89,9 +118,16 @@ jobs:
           Write-Host 'clean'
 
       - name: Package
-        run: powershell -ExecutionPolicy Bypass -File windows\package-zip.ps1 -Manager https://api.example.invalid
+        env:
+          MANAGER_URL: ${{ inputs.manager_url || 'https://api.example.invalid' }}
+        run: powershell -ExecutionPolicy Bypass -File windows\package-zip.ps1 -Manager $env:MANAGER_URL
+
+      - name: Install the customer package for real (end to end)
+        run: pwsh -NoProfile -File windows\tests\Test-InstallE2E.ps1 -ZipPath windows\dist\vedha-agent-win.zip
 
       - uses: actions/upload-artifact@v4
         with:
           name: vedha-agent-windows
-          path: probe/windows/dist/vedha-probe-win.zip
+          path: |
+            probe/windows/dist/vedha-agent-win.zip
+            probe/windows/dist/vedha-agent-win.zip.sha256
