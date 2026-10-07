@@ -107,6 +107,8 @@ jobs:
           $out = & $exe doctor --preinstall | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 1 -or $out -notmatch 'cannot connect to 127.0.0.1:9') { Write-Error 'doctor did not diagnose an unreachable manager'; exit 1 }
+          # The runner ends this step with the last native exit code; doctor's 1 was the expected answer.
+          $global:LASTEXITCODE = 0
 
       - name: No source or bytecode of ours in the output
         run: |

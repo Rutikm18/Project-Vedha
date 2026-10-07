@@ -338,9 +338,18 @@ def classify_probe(probe: ManagerProbe) -> list[Check]:
         if probe.proxy_status == 403:
             return [Check("manager", "fail", "the proxy refused the connection (HTTP 403)",
                           f"ask IT to allow {probe.host} through the proxy")]
-        return [Check("manager", "fail", f"cannot connect to {where}{proxy_note}: {probe.tcp_error}",
-                      "a firewall is blocking outbound TCP " + str(probe.port) + " to the manager. Ask IT to allow this "
-                      "computer to reach " + where + (", or install with -Proxy http://proxy:port if a proxy is required." if not probe.via_proxy else "."))]
+        error = (probe.tcp_error or "").lower()
+        proxy_hint = ", or install with -Proxy http://proxy:port if a proxy is required." if not probe.via_proxy else "."
+        if "refused" in error or "10061" in error:
+            # Something answered and said no: a wrong address/port, or a firewall that rejects.
+            fix = ("the address answered but nothing accepted the connection. Check the manager address is right (" + where +
+                   "). If it is, ask IT whether a firewall rejects outbound TCP " + str(probe.port) + proxy_hint)
+        elif "timed out" in error or "10060" in error:
+            fix = ("no answer came back, which usually means a firewall is silently dropping outbound TCP " + str(probe.port) +
+                   ". Ask IT to allow this computer to reach " + where + proxy_hint)
+        else:
+            fix = ("the network path to the manager is not open. Ask IT to allow this computer to reach " + where + proxy_hint)
+        return [Check("manager", "fail", f"cannot connect to {where}{proxy_note}: {probe.tcp_error}", fix)]
     if probe.https and not probe.tls_ok:
         err = probe.tls_error.lower()
         if "certificate" in err or "verify" in err or probe.cert_issuer:

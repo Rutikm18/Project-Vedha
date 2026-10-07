@@ -192,6 +192,23 @@ class TestClassify:
         c = self.one(probe(tcp_ok=False, tls_ok=False, http_status=0, tcp_error="timed out"))
         assert c.status == "fail" and "firewall" in c.remediation and "-Proxy" in c.remediation
 
+    @pytest.mark.parametrize("error", [
+        "[Errno 111] Connection refused",
+        "[WinError 10061] No connection could be made because the target machine actively refused it",
+    ])
+    def test_refused_connection_checks_the_address_first_not_just_blames_the_firewall(self, error):
+        c = self.one(probe(tcp_ok=False, tls_ok=False, http_status=0, tcp_error=error))
+        assert c.status == "fail" and "Check the manager address" in c.remediation
+        assert "silently dropping" not in c.remediation and "-Proxy" in c.remediation
+
+    def test_timeout_says_a_firewall_is_dropping_the_traffic(self):
+        c = self.one(probe(tcp_ok=False, tls_ok=False, http_status=0, tcp_error="[WinError 10060] timed out"))
+        assert "silently dropping" in c.remediation
+
+    def test_other_network_errors_get_a_neutral_message(self):
+        c = self.one(probe(tcp_ok=False, tls_ok=False, http_status=0, tcp_error="[Errno 101] Network is unreachable"))
+        assert "not open" in c.remediation and "silently dropping" not in c.remediation
+
     def test_with_a_proxy_the_proxy_option_is_not_suggested_again(self):
         c = self.one(probe(tcp_ok=False, tls_ok=False, http_status=0, tcp_error="x", via_proxy="http://px:3128"))
         assert "-Proxy" not in c.remediation and "through the proxy" in c.detail
