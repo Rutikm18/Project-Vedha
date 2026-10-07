@@ -10,6 +10,7 @@ Claude updates it at the end of every finished piece of work: a change-log row, 
 | Area | State |
 | --- | --- |
 | `origin/main` | `4c78573`. **Everything not yet on it is combined on `integrate/all-to-main`, tested, not yet pushed**: agent install, portal plan locks, report export fix, new logo, Technical Findings report, operator Deep scan, design system doc |
+| Migration chain | `main` now carries migrations `0054` → `0058` (notification_rules, sla_alerts, tenant_settings, user_mfa); DB previously had 0058 applied from feature branches, causing `vedha-migrate-1` to fail |
 | Production | [app.vedhasec.com](https://app.vedhasec.com) / [api.vedhasec.com](https://api.vedhasec.com) — **stopped for a redeploy on 1 Oct** (owner). Was healthy on 1.0.325 on 30 Sep |
 | Tests | On `integrate/all-to-main` (3 Oct): backend 2,276 passed, 8 skipped · frontend 375 of 377 (the 2 = missing `pdfkit`) · probe 2,512 (no probe change since the agent-install run) · lint 0 errors · one Alembic head (`0054`) |
 | AI providers | Anthropic: no API credit · OpenAI: key rejected on AWS · Gemini: works, but its key was not on the AWS server |
