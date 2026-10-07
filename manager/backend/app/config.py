@@ -30,6 +30,10 @@ class Settings(BaseSettings):
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
+    # Optional separate Redis for disposable caches (the AI answer cache). The
+    # main Redis holds sessions, lockouts and sign-in codes and must never evict
+    # them; a cache instance may. Empty = use REDIS_URL for the cache too.
+    redis_cache_url: str = ""
 
     # Database connection pool — these are per-process (each uvicorn worker has its
     # own pool). Keep pool_size small on shared EC2 to avoid exhausting Postgres

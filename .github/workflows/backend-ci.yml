@@ -1,0 +1,92 @@
+name: backend-ci
+
+# The backend's ~2,300 tests and the Alembic chain had no CI: nothing ran them
+# on a push or a pull request. This runs both, on the production Python (3.12).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'manager/backend/**'
+      - 'manager/detection_engine/**'
+      - 'scripts/agent_release.py'
+      - 'scripts/agent_client_kit.py'
+      - 'scripts/onprem_bundle.py'
+      - 'probe/install.sh'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    paths:
+      - 'manager/backend/**'
+      - 'manager/detection_engine/**'
+      - 'scripts/agent_release.py'
+      - 'scripts/agent_client_kit.py'
+      - 'scripts/onprem_bundle.py'
+      - 'probe/install.sh'
+      - '.github/workflows/backend-ci.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: manager/backend
+    env:
+      # Unit tests mock the database and Redis; these values only satisfy config.
+      DATABASE_URL: postgresql+asyncpg://vedha:vedha@127.0.0.1:5432/vedha
+      REDIS_URL: redis://127.0.0.1:6379/0
+      JWT_SECRET: ci-only-secret-that-is-at-least-32-characters
+      APP_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: manager/backend/requirements.txt
+      - run: pip install -r requirements.txt "pytest==9.1.1" "pytest-asyncio==1.4.0" "aiosqlite==0.22.1"
+      - run: python -m pytest -q -p no:cacheprovider
+
+  migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: manager/backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: vedha
+          POSTGRES_PASSWORD: vedha
+          POSTGRES_DB: vedha
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U vedha -d vedha"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql+asyncpg://vedha:vedha@127.0.0.1:5432/vedha
+      JWT_SECRET: ci-only-secret-that-is-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: manager/backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: One Alembic head
+        run: test "$(alembic heads | wc -l)" -eq 1
+      - name: Upgrade, step back, upgrade again, then fully down
+        run: |
+          alembic upgrade head
+          alembic downgrade -1
+          alembic upgrade head
+          alembic downgrade base

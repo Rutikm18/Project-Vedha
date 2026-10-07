@@ -29,6 +29,9 @@ x-backend-image: &backend-image
 x-backend-env: &backend-env
   DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vapt}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-vapt_db}
   REDIS_URL: redis://redis:6379/0
+  # Disposable caches (AI answers) live in their own Redis that may evict, so
+  # sessions, lockouts and sign-in codes in the main Redis never are.
+  REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis-cache:6379/0}
   JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set — run deploy/aws/install.sh or openssl rand -base64 48}
   PROBE_POLICY_SIGNING_KEY: ${PROBE_POLICY_SIGNING_KEY:-}
   # Trust-on-first-use probe enrollment (single-owner fleets). gen-env sets this
@@ -122,7 +125,7 @@ services:
       --appendonly yes
       --appendfsync everysec
       --maxmemory ${REDIS_MAXMEMORY:-192mb}
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy noeviction
     volumes:
       - redisdata:/data
     # NOT published to host — internal compose network only.
@@ -135,11 +138,38 @@ services:
     deploy:
       resources:
         limits:
-          # Must exceed REDIS_MAXMEMORY (192mb) + AOF/COW overhead, or the OOM
-          # killer trips before redis's own LRU eviction can run.
+          # Must exceed REDIS_MAXMEMORY (192mb) + AOF/COW overhead. This Redis
+          # holds sessions, rate limits, lockouts and sign-in codes: it never
+          # evicts (noeviction). Caches go to redis-cache below.
           memory: ${REDIS_MEM_LIMIT:-256M}
         reservations:
           memory: 64M
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  # Disposable cache (AI answers): may drop any key when full, keeps nothing on disk.
+  redis-cache:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --save ""
+      --appendonly no
+      --maxmemory ${REDIS_CACHE_MAXMEMORY:-128mb}
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_CACHE_MEM_LIMIT:-192M}
+        reservations:
+          memory: 32M
     restart: unless-stopped
     logging:
       driver: json-file
@@ -209,11 +239,17 @@ services:
       - --workers
       - "${API_WORKERS:-2}"
       - --proxy-headers           # trust X-Forwarded-For from Caddy
+      # Only proxies on the Docker networks (Caddy) may set the client address.
+      # "*" let any direct caller pick its own address: bypassing per-address
+      # rate limits, the sign-in allowlist and probe auto-enrolment.
       - --forwarded-allow-ips
-      - "*"
+      - "${FORWARDED_ALLOW_IPS:-127.0.0.1,172.16.0.0/12,192.168.0.0/16}"
       - --timeout-graceful-shutdown
       - "30"
     ports:
+      # Production (install.sh / make tls) sets API_BIND=127.0.0.1. The lab path
+      # keeps 0.0.0.0 because `install.sh <ip>` probes dial :18080 directly; that
+      # is safe for client addresses now that only Docker networks are trusted.
       - "${API_BIND:-0.0.0.0}:${API_PORT:-18080}:8000"
     volumes:
       # Agent releases published by scripts/agent-release.sh (read-only here).
