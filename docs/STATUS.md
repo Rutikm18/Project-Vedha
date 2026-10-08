@@ -69,6 +69,16 @@ Priority order from the [next-8 workstreams plan](planning/2026-09-29-next-8-wor
 | P2-1 | Website content | Not started | S | Platform choice needed |
 | P2-2 | Platform walkthrough + feature videos | Not started | M | After P1, so recordings show the final UI |
 
+### Open pull requests (checked 8 Oct 2026; `main` is `280c579`)
+
+| PR | Branch | What it is | Against current `main` | Next step |
+| --- | --- | --- | --- | --- |
+| [#10](https://github.com/Rutikm18/Project-Vedha/pull/10) | `claude/fervent-brahmagupta-o0g44u` | Windows agent: one-command install, self-diagnosis, version management, S3 hosting kit (agent 2.2.4) | 27 commits ahead, 71 behind; a trial merge conflicts **only in `docs/STATUS.md`** | Fix GitHub Actions billing, re-run its checks, then merge. CI has not run on the last 4 fixes ([blocker](#needs-you)) |
+| [#11](https://github.com/Rutikm18/Project-Vedha/pull/11) | `claude/deploy-hardening` | Deployment hardening: trusted proxies, Redis split, internal metrics, backend CI | 2 commits ahead, 71 behind; a trial merge is **clean** | Needs its checks to run (billing), then merge |
+| [#5](https://github.com/Rutikm18/Project-Vedha/pull/5) | `claude/elegant-noether-ggdafj` | Detection + attack paths + signed agent release pipeline | 52 commits ahead, 64 behind; a trial merge conflicts in 6 files (`engine_bridge.py`, `finding_translator.py`, the engagement page, `Makefile`, `secret-scan.yml`, `STATUS.md`). Parts of it already reached `main` through #8 and #9 | **Owner decision:** work out what of #5 is not yet in `main`, then port only that. Not a straight merge |
+
+PRs #1 to #4 and #6 to #9 are merged. Other branches with no PR: `claude/adoring-maxwell-uz71b2`, `claude/cool-cannon-l598dk`, `claude/laughing-pasteur-isijb5`, `feat/per-scan-findings`, `fix/ai-brain-env-loading`, `fix/starlette-422-constant`, `codex/customer-portal-engagement-parity`, `dev`, `integration/all-prs`, `integration/all-prs-full`, `test` (not checked; some are older integration branches).
+
 ### Done on `integrate/all-to-main`, waiting for push
 
 | Item | Area | Notes |
@@ -157,6 +167,7 @@ These need your accounts, your server or your decision.
 - [ ] **Decide retention for the Windows agent's scan-result archive** (F-1 is fixed; results are now kept in the locked data folder but never pruned)
 - [ ] **Deploy the Windows agent downloads on S3** (about 15 minutes, [hosting guide section 3](operations/WINDOWS_AGENT_HOSTING.md#3-one-time-aws-setup-about-15-minutes)), publish one release, and try the one-line install on a clean Windows VM
 - [ ] **Decide:** Fleet's token button: publish a Linux release, or let Claude change the panel so Windows tokens do not depend on it
+- [ ] **GitHub Actions billing is blocking every CI job** (since 8 Oct, ~06:54 UTC): "recent account payments have failed or your spending limit needs to be increased". Fix it under Settings > Billing & plans on the account that owns the repo (payment must succeed, Actions spending limit above zero), then ask Claude to re-run the failed jobs. Until then PR #10's last four fixes (instance-lock Ctrl+C, gitleaks allowlist, LF endings, `setup doctor` encoding) and the 2.2.4 package are untested in CI
 - [ ] **Windows code signing (P0-3c): the agent is NOT signed today.** Choose and fund a signing identity (Azure Trusted Signing or an EV/OV certificate); identity checks take days, so start early. Claude builds the signing step once you choose
 - [ ] Check the line in `ALLOWLIST.txt` that says the agent "does not read files ... or capture traffic": it was adapted from another vendor's guide, not derived from our code
 - [ ] Review and merge [PR #10](https://github.com/Rutikm18/Project-Vedha/pull/10) (`claude/fervent-brahmagupta-o0g44u`) when you are ready. Its CI has 3 red checks that this PR did not cause (a `gitleaks` token setting, a CPU-count-dependent scanner test, a Windows path test); see the PR comment
