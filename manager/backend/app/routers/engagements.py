@@ -275,10 +275,10 @@ async def _promote_from_facts(db, engagement_id: uuid.UUID, facts: list[dict]) -
         host = target.split(":", 1)[0] if target.count(":") == 1 else target
         asset = assets.get(host)
         if asset is None:
-            asset = (await db.execute(
-                select(Asset).where(Asset.engagement_id == engagement_id,
-                                    Asset.ip_address == host)
-            )).scalar_one_or_none()
+            # Operator import has no probe site: global identity, duplicate-safe
+            # (an IP may legitimately have several rows under per-site identity).
+            from app.services.asset_resolution import find_asset
+            asset = await find_asset(db, engagement_id, host)
             if asset:
                 asset.last_seen = datetime.now(timezone.utc)
             else:

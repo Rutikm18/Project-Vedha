@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, String
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -11,6 +11,10 @@ from app.models.enums import AssetCriticality, AssetType
 
 class Asset(Base, TimestampMixin):
     __tablename__ = "assets"
+    __table_args__ = (
+        # Identity lookups are (engagement, ip[, site]); see services/asset_resolution.py.
+        Index("ix_assets_engagement_ip_site", "engagement_id", "ip_address", "site_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default="gen_random_uuid()"
@@ -19,6 +23,16 @@ class Asset(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("engagements.id", ondelete="CASCADE"), nullable=False, index=True
     )
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    # Identity scope (P1b). NULL = the IP alone identifies this asset (the
+    # default, and always the case for globally-routable IPs). Set only when the
+    # engagement uses per-site identity and this is a private IP observed by a
+    # probe of that site — so two sites' 10.0.0.5 stay two assets. It is an
+    # identity partition, not provenance: which probes saw the host lives in
+    # finding evidence.
+    site_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("probe_sites.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     hostname: Mapped[str | None] = mapped_column(String(255), nullable=True)
     fqdn: Mapped[str | None] = mapped_column(String(255), nullable=True)
     os: Mapped[str | None] = mapped_column(String(100), nullable=True)

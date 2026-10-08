@@ -1,6 +1,8 @@
 # Engagement-wide, multi-subnet attack-path generation — plan (for review)
 
-Status: **P0, P1a and P4a implemented** (2026-10-07); P1b, P2, P4b, P3, P5 pending. Decisions: §8 recommendations accepted
+Status: **P0, P1a, P4a implemented; P1b partly** (2026-10-08). P1b done: identity policy, migration 0055,
+shared resolver wired into every asset path. P1b pending: site-aware exposure fusion, site-keyed
+segments / multi-NIC linking / staleness, identity report endpoint. P2, P4b, P3, P5 pending. Decisions: §8 recommendations accepted
 (flat-internal labelled `assumed`, crown-jewel auto-fallback with override, engagement-scoped,
 (site, IP) identity).
 Revised 2026-10-06 with a failure-mode analysis (§9): 32 failure modes found,
