@@ -335,7 +335,7 @@ async def _run_generation(engagement_id: str, job_id: str, opts: dict) -> None:
         gen = LLMReportGenerator(db)
         if not gen.available:
             await _set_job(db, job_id, ScanJobStatus.failed,
-                           {"error": "LLM not configured (set ANTHROPIC_API_KEY)"})
+                           {"error": "No AI provider is configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY or OPENROUTER_API_KEY on the Manager."})
             await db.commit()
             return
 
@@ -382,6 +382,14 @@ async def _run_generation(engagement_id: str, job_id: str, opts: dict) -> None:
                         sections += 1
         except LLMUnavailableError as exc:
             await _set_job(db, job_id, ScanJobStatus.failed, {"error": str(exc), "sections": sections})
+            await db.commit()
+            return
+        except Exception as exc:  # noqa: BLE001 — a background task must never leave the job "running"
+            logger.exception("ai.report.generation_crashed", engagement=engagement_id)
+            await db.rollback()
+            await _set_job(db, job_id, ScanJobStatus.failed,
+                           {"error": f"Report generation failed unexpectedly ({type(exc).__name__}); see manager logs.",
+                            "sections": 0})  # the failed transaction was rolled back
             await db.commit()
             return
 

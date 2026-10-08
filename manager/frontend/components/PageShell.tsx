@@ -8,6 +8,7 @@ import { RefreshButton } from "./RefreshButton";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clearAuth } from "../lib/fetcher";
+import { clearSessionState } from "../lib/session-state";
 
 interface PageShellProps {
   title: string;
@@ -63,6 +64,7 @@ export function PageShell({
   }, [surface]);
 
   const handleLogout = useCallback(async () => {
+    clearSessionState();
     if (surface === "portal") {
       await fetch("/api/portal/login", { method: "DELETE" }).catch(() => {});
       window.location.href = "/portal/login";

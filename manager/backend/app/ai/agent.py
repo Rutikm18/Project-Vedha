@@ -190,6 +190,8 @@ class AgentDecisionEngine:
         self._effort = settings.llm_effort
         self._max_tokens = settings.llm_max_tokens
         self._max_iters = 8
+        # SYSTEM_PROMPT plus, once run() starts, the engagement's sector brief.
+        self._system = SYSTEM_PROMPT
 
         # Ordered (provider, client, model) list: Claude first, then OpenAI tool
         # calling behind the same SDK shape (app/ai/openai_tools.py). The loop's
@@ -230,6 +232,7 @@ class AgentDecisionEngine:
         except GatewayDenied as exc:
             raise AgentUnavailableError(str(exc)) from exc
 
+        self._system = await self._system_with_domain(engagement_id)
         run_id = uuid.uuid4()
         messages: list[dict] = [{
             "role": "user",
@@ -245,7 +248,7 @@ class AgentDecisionEngine:
             resp = await self._create(messages)
             await _audit_sdk_call(
                 self._db, self._settings, task="advisor_agent", model=self._model, pseudo=pseudo,
-                system=SYSTEM_PROMPT, messages=messages,
+                system=self._system, messages=messages,
                 response=repr(getattr(resp, "content", "")), engagement_id=engagement_id)
 
             if getattr(resp, "stop_reason", None) == "refusal":
@@ -285,6 +288,21 @@ class AgentDecisionEngine:
                     run_id=str(run_id), stored=stored)
         return {"run_id": str(run_id), "recommendations_stored": stored}
 
+    async def _system_with_domain(self, engagement_id: uuid.UUID) -> str:
+        """SYSTEM_PROMPT plus the engagement's sector/jurisdiction brief (same
+        trusted block the chat assistant uses). Fail-soft: any lookup problem
+        leaves the plain prompt, so the advisor never fails because of it."""
+        from app.models.engagement import Engagement
+        from app.services.domain_context import domain_brief_for
+        try:
+            eng = (await self._db.execute(
+                select(Engagement).where(Engagement.id == engagement_id))).scalar_one_or_none()
+            brief = await domain_brief_for(self._db, eng) if eng is not None else None
+        except Exception as exc:  # noqa: BLE001 — the brief is advisory
+            logger.warning("agent.domain_brief_failed", engagement=str(engagement_id), error=str(exc))
+            return SYSTEM_PROMPT
+        return f"{SYSTEM_PROMPT}\n\n{brief.text}" if brief and brief.text else SYSTEM_PROMPT
+
     async def _create(self, messages: list[dict]):
         """One model turn from the first provider that can serve it. Failures are
         recorded in the shared circuit breaker, so a provider that just
@@ -302,7 +320,7 @@ class AgentDecisionEngine:
                 # breakpoint on the system block caches BOTH (Anthropic order:
                 # tools → system → messages), so each iteration only pays for the
                 # growing message tail.
-                "system": cached_system_prompt(SYSTEM_PROMPT),
+                "system": cached_system_prompt(self._system),
                 "tools": _TOOLS,
                 "messages": messages,
             }

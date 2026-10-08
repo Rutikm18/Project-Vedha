@@ -41,8 +41,11 @@ export async function POST(req: Request) {
   }
 
   let factCard;
+  let engagementId: string | null = null;
   try {
-    factCard = (await resolveSecurityReference({ reference: body.findingId, token })).factCard;
+    const resolved = await resolveSecurityReference({ reference: body.findingId, token });
+    factCard = resolved.factCard;
+    engagementId = resolved.finding?.engagementId ?? null;
   } catch (error) {
     const status = error instanceof BackendError || error instanceof SecurityContextError ? error.status : 502;
     return NextResponse.json({ error: error instanceof Error ? error.message : "Security context unavailable" }, { status });
@@ -60,6 +63,8 @@ export async function POST(req: Request) {
         })),
         context: { securityBrief: factCard },
         max_tokens: 600,
+        // The Manager loads this engagement's sector profile itself (tenant-scoped).
+        ...(engagementId ? { engagement_id: engagementId } : {}),
       },
     });
     return NextResponse.json({
