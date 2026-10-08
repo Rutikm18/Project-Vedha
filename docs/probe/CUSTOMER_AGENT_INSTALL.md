@@ -5,6 +5,10 @@ systems in your engagement's scope, and sends the results to Vedha. It only
 makes **outbound HTTPS connections to your Vedha manager** — nothing connects
 in to it, and you open no inbound ports.
 
+> **Windows host?** Skip to [Installing on Windows](#installing-on-windows) below. The portal's
+> **Add agent** panel shows a **Linux / Windows** switch when your Vedha team has published
+> the Windows agent.
+
 ## 1. Prepare a host
 
 | Need | Details |
@@ -110,3 +114,36 @@ once it has passed.
 | "release signature does NOT verify" | Stop and contact Vedha; do not work around it |
 | The agent shows a pairing code | Enter it in Fleet → "Or approve with an installer code" |
 | Fleet shows "access expired" | The access date passed. Ask your Vedha team to extend it; no reinstall |
+
+## Installing on Windows
+
+**The host.** 64-bit Windows 10 / 11 or Windows Server 2016 or later, Windows PowerShell 5.1 or
+later, and an account that can run PowerShell as administrator. Same network rules as Linux:
+outbound HTTPS (443) to your manager, working time sync, no inbound ports.
+
+**The command.** In **Fleet → Add agent**, choose **Windows**, generate the command and run it in
+PowerShell opened with **Run as administrator** (or paste the Command Prompt form into `cmd`, which
+asks for administrator rights itself). It looks like this:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; & ([scriptblock]::Create((irm 'https://api.vedhasec.com/agent/install.ps1'))) -Manager 'https://api.vedhasec.com' -Token 'vet_…'"
+```
+
+The token works once and expires like the Linux one. Before it installs anything the installer
+verifies the signature on the release, checks the downloaded package against the checksum in that
+signed release, and — when the release is Authenticode-signed — checks the signature on
+`vedha-agent.exe`. If any check fails it stops and installs nothing. To check a release without
+installing it, add `-VerifyOnly` to the command (no administrator rights needed).
+
+**What gets installed.** A background task named **VedhaAgent** that runs as SYSTEM and starts at boot,
+under `C:\ProgramData\vedha-agent` (identity key, logs). That folder is readable only by SYSTEM and
+Administrators. The agent appears under **Connected vedha-agents** within a minute; its scan range
+is exactly your engagement's scope.
+
+**Security software.** A network scanner can look like malware to antivirus / EDR. Ask your security
+team to allow `vedha-agent.exe` (and the folder above) before installing. If a file goes missing during
+install, security software removed it: allow it and run the command again.
+
+**Upgrade:** run a fresh command from the portal. **Remove:** from an administrator prompt run
+`powershell -ExecutionPolicy Bypass -File C:\ProgramData\vedha-agent\uninstall.ps1 -Purge`
+(without `-Purge` the identity and logs are kept).

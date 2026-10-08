@@ -7,7 +7,7 @@ import { GET as listTokens, POST as createToken } from "../app/api/fleet/enroll-
 import { DELETE as revokeToken } from "../app/api/fleet/enroll-tokens/[id]/route";
 import { GET as releaseGet } from "../app/api/fleet/release/route";
 import { PATCH as setExpiry } from "../app/api/fleet/agents/[id]/access-expiry/route";
-import { managerHost } from "../app/fleet/AddAgent";
+import { managerHost, windowsCommands, windowsIntegrity, windowsOffered } from "../app/fleet/AddAgent";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -128,6 +128,38 @@ describe("Fleet install UI", () => {
   test("the portal never chooses an engagement for its token", () => {
     const adapter = readFileSync(join(process.cwd(), "lib/fleet-workspace-api.ts"), "utf8");
     assert.match(adapter, /portalApi<InstallToken>\("\/workspace\/fleet\/enroll-tokens", \{\s*method: "POST", body: \{ name, lifetime_minutes: lifetimeMinutes \}/);
+  });
+
+  test("Windows is offered only when the manager says the release has a Windows package", () => {
+    const base = { available: true, manager_url: "https://m.example", manager_url_configured: true };
+    assert.equal(windowsOffered(null), false);
+    assert.equal(windowsOffered({ ...base }), false);                                   // manager predates Windows
+    assert.equal(windowsOffered({ ...base, windows: { available: false } }), false);
+    assert.equal(windowsOffered({ ...base, windows: { available: true } }), true);
+    assert.equal(windowsOffered({ ...base, available: false, windows: { available: true } }), false);
+  });
+
+  test("Windows commands come out in the preferred order and only when present", () => {
+    assert.deepEqual(windowsCommands(undefined), []);
+    assert.deepEqual(windowsCommands({ one_line: "a", download: "b", run: "c" }), []);
+    const both = windowsCommands({ one_line: "a", download: "b", run: "c", windows_powershell: "ps", windows_cmd: "cmd" });
+    assert.deepEqual(both.map((c) => [c.key, c.command]), [["powershell", "ps"], ["cmd", "cmd"]]);
+    // a plain-http (lab) manager gets the PowerShell form only
+    assert.deepEqual(windowsCommands({ one_line: "a", download: "b", run: "c", windows_powershell: "ps" }).map((c) => c.key), ["powershell"]);
+  });
+
+  test("the Windows integrity line is honest about a missing Authenticode certificate", () => {
+    const base = { available: true, manager_url: "https://m", manager_url_configured: true };
+    assert.equal(windowsIntegrity(null), "");
+    assert.equal(windowsIntegrity({ ...base, windows: { available: false } }), "");
+    assert.match(windowsIntegrity({ ...base, windows: { available: true, authenticode_thumbprint: null } }), /not Authenticode-signed/);
+    assert.match(windowsIntegrity({ ...base, windows: { available: true, authenticode_thumbprint: "ABCDEF0123456789ABCDEF0123456789ABCDEF01" } }), /Authenticode-signed \(certificate ABCDEF01/);
+  });
+
+  test("the Windows commands are shown from the server, never composed in the browser", () => {
+    const source = readFileSync(join(process.cwd(), "app/fleet/AddAgent.tsx"), "utf8");
+    assert.doesNotMatch(source, /install\.ps1'\)|Invoke-WebRequest|irm /);        // only the server builds a runnable command
+    assert.match(source, /windowsCommands\(created\?\.commands\)/);
   });
 
   test("managerHost shows the host the agent dials", () => {

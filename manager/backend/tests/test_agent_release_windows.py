@@ -304,3 +304,19 @@ def test_install_sh_still_reads_the_docker_image_from_a_schema_2_manifest(tmp_pa
     absent = subprocess.run(["sh", str(script), str(final / "manifest.json"), "file"],
                             capture_output=True, text=True)
     assert "windows" not in absent.stdout
+
+
+def test_keygen_can_add_the_p256_key_to_an_existing_ed25519_key(tmp_path, capsys):
+    ed = tmp_path / "ed.pem"
+    assert tool.main(["keygen", "--out", str(ed)]) == 0
+    ed_bytes = ed.read_bytes()
+    p256 = tmp_path / "p256.pem"
+    assert tool.main(["keygen", "--p256-out", str(p256)]) == 0           # Windows added later
+    assert ed.read_bytes() == ed_bytes and p256.exists()
+    assert "AGENT_RELEASE_P256_PUBLIC_KEY=" in capsys.readouterr().out
+    assert tool.main(["keygen", "--p256-out", str(p256)]) == 1           # never overwritten
+
+
+def test_keygen_needs_something_to_generate(capsys):
+    assert tool.main(["keygen"]) == 1
+    assert "--out and/or --p256-out" in capsys.readouterr().err

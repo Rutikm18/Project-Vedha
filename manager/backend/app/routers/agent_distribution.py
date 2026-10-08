@@ -349,7 +349,8 @@ def release_status(*, detailed: bool, request: Request | None = None) -> dict:
         sbom_sha256=release.sbom.sha256 if release.sbom else None,
         windows={
             "available": release.windows_available,
-            "reason": "" if release.windows_available else (
+            # Operators see why; customers only see whether it is offered.
+            "reason": "" if (release.windows_available or not detailed) else (
                 release.windows_unavailable or "this release has no Windows package"),
             "p256_signed": release.p256_signed,
             "p256_key_id": release.p256_key_id,

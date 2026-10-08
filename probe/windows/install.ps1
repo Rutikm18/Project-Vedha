@@ -43,6 +43,12 @@ $appDir = Join-Path $installDir 'app'
 if (Test-Path $appDir) { Remove-Item $appDir -Recurse -Force }
 Copy-Item (Join-Path $PSScriptRoot 'vedha-agent') $appDir -Recurse -Force
 
+# Keep the uninstaller with the install: after the one-command install the package is gone.
+foreach ($name in 'uninstall.ps1', 'uninstall.cmd') {
+  $source = Join-Path $PSScriptRoot $name
+  if (Test-Path $source) { Copy-Item $source (Join-Path $installDir $name) -Force }
+}
+
 # Local scan ceiling (empty => the manager will not dispatch jobs).
 if (-not $Scope) {
   try {

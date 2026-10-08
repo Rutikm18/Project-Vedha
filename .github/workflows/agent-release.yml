@@ -17,7 +17,7 @@ name: agent-release
 #     against a stub manager: it must accept the release and refuse every tampered variant.
 #   * publish     attaches the already-signed files to a GitHub Release. It builds nothing.
 #
-# One-time setup, key rotation and manual verification: manager/docs/AGENT_RELEASE.md.
+# One-time setup, key rotation and manual verification: docs/operations/AGENT_DISTRIBUTION.md.
 #
 #   Secrets (environment `agent-release`)       AGENT_RELEASE_SIGNING_KEY       Ed25519 PEM  (Linux installs)
 #                                               AGENT_RELEASE_P256_KEY          P-256 PEM    (Windows installs)
@@ -282,7 +282,7 @@ jobs:
           set -euo pipefail
           for name in ED25519_KEY P256_KEY ED25519_PUB P256_PUB; do
             if [ -z "${!name}" ]; then
-              echo "::error title=Release signing is not configured::$name is empty. See manager/docs/AGENT_RELEASE.md (one-time setup)."
+              echo "::error title=Release signing is not configured::$name is empty. See docs/operations/AGENT_DISTRIBUTION.md (one-time setup)."
               exit 1
             fi
           done
@@ -473,7 +473,7 @@ jobs:
 
               python3 scripts/agent_release.py pull --repo $REPO --tag $TAG --to <AGENT_RELEASE_DIR>
 
-          See manager/docs/AGENT_RELEASE.md.
+          See docs/operations/AGENT_DISTRIBUTION.md.
           NOTES
           gh release create "$TAG" release/* --repo "$REPO" --target "$SHA" \
             --title "Vedha agent $VERSION" --notes-file notes.md

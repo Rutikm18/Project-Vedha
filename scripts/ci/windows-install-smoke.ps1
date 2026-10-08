@@ -5,7 +5,7 @@
     * the "VedhaAgent" Scheduled Task exists;
     * C:\ProgramData\vedha-agent is restricted to SYSTEM and Administrators (inheritance removed);
     * the install token sits in that folder, not in the service wrapper;
-    * uninstall -Purge removes the task and the folder.
+    * the uninstaller is kept with the install, and uninstall -Purge removes the task and the folder.
 
   The manager address is unreachable on purpose: the agent cannot enrol, so the token file must
   still be there (it is only deleted after a successful enrolment) and the installer must say so.
@@ -41,7 +41,8 @@ $wrapper = Get-Content (Join-Path $dir 'agent-service.cmd') -Raw
 if ($wrapper -match 'vet_') { throw 'the install token leaked into the service wrapper' }
 if ($wrapper -notmatch 'set /p PROBE_ENROLL_TOKEN=<') { throw 'the service wrapper does not read the token from the locked file' }
 
-& (Join-Path $work 'uninstall.ps1') -Purge
+if (-not (Test-Path (Join-Path $dir 'uninstall.ps1'))) { throw 'the uninstaller was not kept with the install' }
+& (Join-Path $dir 'uninstall.ps1') -Purge
 if (Get-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue) { throw 'uninstall left the task behind' }
 if (Test-Path $dir) { throw 'uninstall -Purge left the install folder behind' }
 Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue

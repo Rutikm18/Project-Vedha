@@ -317,6 +317,8 @@ class TestRoutes:
         status = dist.release_status(detailed=True)
         assert status["available"] is True and status["windows"]["available"] is False
         assert "P256" in status["windows"]["reason"]
+        customer = dist.release_status(detailed=False)
+        assert customer["windows"]["available"] is False and customer["windows"]["reason"] == ""
 
 
 # ── public-path allowlist ────────────────────────────────────────────────────

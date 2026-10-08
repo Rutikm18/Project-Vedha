@@ -146,3 +146,35 @@ def test_third_party_actions_use_release_tags_not_branches():
     for uses in re.findall(r"uses:\s*([^\s#]+)", TEXT):
         assert "@" in uses, uses
         assert uses.split("@")[1] not in {"main", "master", "latest"}, uses
+
+
+# ── the pieces around the workflow ───────────────────────────────────────────
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+@pytest.mark.parametrize("compose", ["docker-compose.yml", "manager/docker-compose.yml"])
+def test_compose_passes_both_release_public_keys_to_the_api(compose):
+    """Without the P-256 key in the container, a production manager silently withholds the
+    Windows package. The key must reach the API through both compose files."""
+    text = (REPO_ROOT / compose).read_text(encoding="utf-8")
+    assert "AGENT_RELEASE_PUBLIC_KEY: ${AGENT_RELEASE_PUBLIC_KEY:-}" in text
+    assert "AGENT_RELEASE_P256_PUBLIC_KEY: ${AGENT_RELEASE_P256_PUBLIC_KEY:-}" in text
+    yaml.safe_load(text)                                    # still valid YAML
+
+
+def test_every_release_target_exists_in_the_makefile():
+    text = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    for target in ("agent-keygen", "agent-keygen-p256", "agent-release", "agent-verify", "agent-publish", "agent-pull"):
+        assert re.search(rf"^{target}:", text, re.M), target
+    assert re.search(r"^\.PHONY:.*\bagent-pull\b.*\bagent-keygen-p256\b|^\.PHONY:.*\bagent-keygen-p256\b.*\bagent-pull\b", text, re.M)
+
+
+def test_the_runbook_the_workflow_points_at_exists_and_covers_the_pipeline():
+    assert "docs/operations/AGENT_DISTRIBUTION.md" in TEXT
+    doc = (REPO_ROOT / "docs" / "operations" / "AGENT_DISTRIBUTION.md").read_text(encoding="utf-8")
+    for needle in ("AGENT_RELEASE_P256_PUBLIC_KEY", "agent-release.yml", "make agent-pull", "-VerifyOnly",
+                   "Authenticode", "agent-release` (add required reviewers", "Rotating a key"):
+        assert needle in doc, needle
+    for secret in (*SIGNING_SECRETS, "WINDOWS_CODESIGN_PFX_BASE64"):
+        assert secret in doc, secret                         # every secret the workflow reads is documented

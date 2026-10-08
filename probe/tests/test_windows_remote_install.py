@@ -210,3 +210,9 @@ def test_scripts_parse_in_powershell(name):
     )
     result = subprocess.run([exe, "-NoProfile", "-Command", script], capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_the_uninstaller_is_kept_with_the_install():
+    text = _text("install.ps1")
+    assert "'uninstall.ps1', 'uninstall.cmd'" in text and "Copy-Item $source (Join-Path $installDir $name)" in text
+    assert "uninstall.ps1" in _text("package-zip.ps1")          # and the package carries it

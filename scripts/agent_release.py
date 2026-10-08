@@ -722,9 +722,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    kg = sub.add_parser("keygen", help="create a new Ed25519 release signing key")
-    kg.add_argument("--out", required=True, type=Path)
-    kg.add_argument("--p256-out", type=Path, help="also create the P-256 key Windows installs verify")
+    kg = sub.add_parser("keygen", help="create a new Ed25519 release signing key (and/or the P-256 key for Windows)")
+    kg.add_argument("--out", type=Path, help="Ed25519 key file (Linux installs)")
+    kg.add_argument("--p256-out", type=Path, help="P-256 key file (Windows installs); may be given alone "
+                                                   "to add Windows to an existing Ed25519 key")
 
     bd = sub.add_parser("build", help="build + sign a release")
     bd.add_argument("--key", required=True, type=Path)
@@ -764,11 +765,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.cmd == "keygen":
-            pub = keygen(args.out)
-            print(f"Release key written to {args.out} (mode 600). Keep it off the manager server.")
-            print("Add this line to the manager's .env, then restart the api:")
-            print(f"AGENT_RELEASE_PUBLIC_KEY={pub}")
-            print(f"(key id {key_id(pub)})")
+            if not args.out and not args.p256_out:
+                raise ReleaseError("keygen needs --out and/or --p256-out")
+            if args.out:
+                pub = keygen(args.out)
+                print(f"Release key written to {args.out} (mode 600). Keep it off the manager server.")
+                print("Add this line to the manager's .env, then restart the api:")
+                print(f"AGENT_RELEASE_PUBLIC_KEY={pub}")
+                print(f"(key id {key_id(pub)})")
             if args.p256_out:
                 spki = keygen_p256(args.p256_out)
                 print(f"\nP-256 key (Windows) written to {args.p256_out} (mode 600).")
