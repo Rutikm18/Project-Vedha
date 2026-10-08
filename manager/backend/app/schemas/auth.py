@@ -22,6 +22,57 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class LoginResponse(BaseModel):
+    """Either a session (access + refresh) or a second-step challenge.
+
+    `mfa_required`: the user has two-step sign-in; send a code to /auth/mfa/verify.
+    `mfa_enrollment_required`: the organisation requires it and the user has not
+    set it up; enrol with /auth/mfa/enroll/* to finish signing in.
+    """
+    access_token: str | None = None
+    refresh_token: str | None = None
+    token_type: str = "bearer"
+    mfa_required: bool = False
+    mfa_enrollment_required: bool = False
+    mfa_token: str | None = None
+
+
+class MfaCodeRequest(BaseModel):
+    mfa_token: str = Field(..., min_length=10, max_length=2048)
+    # A 6-digit app code, or a recovery code like 7KQ4M-X9PRT.
+    code: str = Field(..., min_length=6, max_length=32)
+
+
+class MfaTokenRequest(BaseModel):
+    mfa_token: str = Field(..., min_length=10, max_length=2048)
+
+
+class MfaEnableRequest(BaseModel):
+    code: str = Field(..., min_length=6, max_length=12)
+
+
+class MfaDisableRequest(BaseModel):
+    password: str = Field(..., min_length=1, max_length=512)
+    code: str = Field(..., min_length=6, max_length=32)
+
+
+class MfaSetupResponse(BaseModel):
+    secret: str
+    otpauth_uri: str
+    account: str
+
+
+class MfaEnabledResponse(LoginResponse):
+    recovery_codes: list[str]
+
+
+class MfaStatusResponse(BaseModel):
+    enabled: bool
+    enabled_at: datetime | None
+    recovery_codes_left: int
+    required_by_policy: bool
+
+
 class CurrentUser(BaseModel):
     """Parsed from JWT claims — attached to request.state and injected as dependency."""
     model_config = ConfigDict(frozen=True)

@@ -26,12 +26,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from posture_rules import is_validated
+from posture_rules import is_credentialed, is_validated
 
-# Evidence-tier base confidence (parallels verifier.py's _TIER_BASE). A validated
-# scanner's posture finding is a DIRECT protocol observation (a real SMB/RDP/TLS
-# handshake), not a version inference — that is inherently high-confidence. An
-# unvalidated scanner is a single, uncorroborated signal until proven.
+# Evidence-tier base confidence (parallels verifier.py's _TIER_BASE). A credentialed
+# collector read the host's OWN authoritative state over an authenticated session —
+# the top tier (verifier.py's authoritative_credentialed=95). A validated scanner's
+# posture finding is a DIRECT protocol observation (a real SMB/RDP/TLS handshake),
+# not a version inference — inherently high-confidence. An unvalidated scanner is a
+# single, uncorroborated signal until proven.
+_CREDENTIALED_BASE = 92
 _VALIDATED_BASE = 85
 _UNVALIDATED_BASE = 55
 
@@ -81,10 +84,13 @@ def assess_confidence(*, rule_id: str, scanner: str, evidence_ref_count: int,
     """Return (confidence 0-100, precision_factors). Pure and deterministic:
     same inputs → same output, no clock/network/randomness (verifier.py's rule)."""
     factors: dict[str, Any] = {}
-    validated = is_validated(scanner)
-    conf = _VALIDATED_BASE if validated else _UNVALIDATED_BASE
-    factors["base"] = {"tier": "validated_protocol" if validated else "unvalidated_single",
-                       "value": conf}
+    if is_credentialed(scanner):
+        conf, tier = _CREDENTIALED_BASE, "authoritative_credentialed"
+    elif is_validated(scanner):
+        conf, tier = _VALIDATED_BASE, "validated_protocol"
+    else:
+        conf, tier = _UNVALIDATED_BASE, "unvalidated_single"
+    factors["base"] = {"tier": tier, "value": conf}
 
     # ≥2 independent evidence refs agree → a small corroboration bump.
     if evidence_ref_count >= 2:

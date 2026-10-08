@@ -226,7 +226,8 @@ async def _handle_notify(event: Event) -> None:
         return
     async with AsyncSessionLocal() as db:
         n = await notify_tenant(db, uuid.UUID(tenant_id),
-                                p.get("subject", "Vedha notification"), p.get("body", ""))
+                                p.get("subject", "Vedha notification"), p.get("body", ""),
+                                channels=p.get("channels"))
         await db.commit()
     logger.info("outbox.notify.done", tenant_id=tenant_id, sent=n)
 
@@ -479,7 +480,8 @@ def main() -> None:
         # This background process runs two durable loops: the outbox consumer
         # (detection etc.) and the lease reaper (requeue jobs from dead probes).
         from app.workers.reaper import run_reaper
-        await asyncio.gather(run_worker(stop), run_reaper(stop))
+        from app.workers.sla_watch import run_sla_watch
+        await asyncio.gather(run_worker(stop), run_reaper(stop), run_sla_watch(stop))
 
     asyncio.run(_run())
 

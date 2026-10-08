@@ -1,0 +1,30 @@
+{
+  "_readme": "One entry per card. Replace every [CONFIRM ...] value, then run: node cards/build.mjs. Founder cards put a save-contact QR (vCard) on the back; partner cards put a booking QR tagged with the partner's slug.",
+  "people": [
+    {
+      "type": "founder",
+      "slug": "founder-a",
+      "name": "[CONFIRM Founder A]",
+      "role": "Co-founder",
+      "phone": "+91 [CONFIRM 98XXX XXXXX]",
+      "email": "info@vedhasec.com"
+    },
+    {
+      "type": "founder",
+      "slug": "rutik-mangale",
+      "name": "Rutik Mangale",
+      "role": "Co-founder & CTO",
+      "phone": "+91 93258 48094",
+      "email": "info@vedhasec.com"
+    },
+    {
+      "type": "partner",
+      "slug": "sample-partner",
+      "firm": "[Partner firm name]",
+      "name": "[Partner name]",
+      "role": "Network health checks",
+      "phone": "+91 [partner phone]",
+      "email": "[partner email]"
+    }
+  ]
+}

@@ -50,6 +50,8 @@ export async function POST(req: Request) {
         }],
         context: { securityBrief: factCard },
         max_tokens: 1600,
+        // Sector expertise: the Manager loads the finding's engagement profile itself.
+        ...(resolved.finding?.engagementId ? { engagement_id: resolved.finding.engagementId } : {}),
         // Operator-selected model (optional). Manager cascades to a free model
         // when the chosen/paid provider is out of credit.
         ...(body.provider ? { provider: body.provider } : {}),

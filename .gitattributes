@@ -1,0 +1,11 @@
+# Windows batch files must keep CRLF line endings on every platform.
+probe/windows/*.cmd text eol=crlf
+
+# Everything else under probe/windows stays LF on every platform, so a Windows checkout (autocrlf)
+# builds the same package bytes, and the hosted publish script and templates stay runnable.
+probe/windows/**/*.ps1 text eol=lf
+probe/windows/**/*.txt text eol=lf
+probe/windows/**/*.sh text eol=lf
+probe/windows/**/*.yaml text eol=lf
+probe/windows/*.ps1 text eol=lf
+probe/windows/*.txt text eol=lf

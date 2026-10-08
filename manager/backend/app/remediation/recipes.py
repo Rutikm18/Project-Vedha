@@ -95,7 +95,7 @@ _FIREWALL_CONTAIN = S(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Posture rules (29) — keyed by rule_id
+# Posture rules (29 original + 12 in _P_V2 below) — keyed by rule_id
 # ═══════════════════════════════════════════════════════════════════════════
 
 _P: list[Recipe] = [
@@ -696,8 +696,519 @@ _P: list[Recipe] = [
         "Restrict {port} to the application tier.",
         V("db_scan", "TLS negotiation on {ip}:{port} succeeds and plaintext is refused", "TLS required"),
         ("CWE-319", "MITRE T1040"), effort="medium"),
+
+    # ── enhanced-scanner posture rules (TLS cert quality, web, DNS, LDAP, SNMP,
+    #    IoT/OT and mobile/AI surfaces added with the expanded detection set) ──
+    Recipe(
+        "POSTURE-TLS-WEAK-KEY", 1, "Reissue the TLS certificate on {host} with a strong key",
+        "mitigation", "mitigate",
+        "TLS endpoint serves a certificate with a 2048-bit+ RSA or P-256+ ECDSA key",
+        (
+            S("fix", "Generate a strong key and reissue the certificate",
+              "The certificate on {host}:{port} uses a key below current strength. Generate a new 2048-bit+ RSA "
+              "(or P-256+ ECDSA) key, have a fresh certificate issued for it, and install it on {service}.",
+              lin=("openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out newkey.pem",
+                   "openssl req -new -key newkey.pem -out newcsr.pem   # submit the CSR to your CA, then install the issued cert"),
+              gen=("Reissue the {service} certificate for {host}:{port} with a 2048-bit+ RSA or P-256+ ECDSA key and install the new chain",),
+              pre=("Confirm the CA and the clients accept the chosen key type before cutover.",),
+              downtime="brief {service} reload to load the new certificate",
+              rollback="Keep the previous certificate and key until the new one is confirmed, then retire the weak key.",
+              risk="medium"),
+            S("hardening", "Enforce a minimum key strength at issuance",
+              "Set the CA / ACME profile to refuse keys below 2048-bit RSA or P-256 ECDSA so a weak key cannot be reissued.",
+              gen=("Add a minimum-key-strength policy to the certificate issuance profile",)),
+        ),
+        "Terminate TLS for {host}:{port} at a gateway presenting a strong certificate until the endpoint is reissued.",
+        V("tls_scan", "the certificate presented on {ip}:{port} uses a strong public key",
+          "public key is 2048-bit+ RSA or P-256+ ECDSA",
+          generic="openssl s_client -connect {ip}:{port} </dev/null 2>/dev/null | openssl x509 -noout -text | grep -A1 'Public-Key'"),
+        ("CWE-326", "MITRE T1040"), effort="medium"),
+
+    Recipe(
+        "POSTURE-TLS-WEAK-SIGNATURE", 1, "Reissue the TLS certificate on {host} with a SHA-256 signature",
+        "mitigation", "mitigate",
+        "TLS certificate chain is signed with SHA-256 or stronger (no MD5/SHA-1)",
+        (
+            S("fix", "Reissue the certificate with a modern signature algorithm",
+              "The certificate on {host}:{port} is signed with MD5 or SHA-1, which is forgeable. Have the CA "
+              "reissue it with a SHA-256+ signature and install the new chain on {service}.",
+              gen=("Request a SHA-256-signed replacement certificate for {host}:{port} from the issuing CA and install it",),
+              pre=("Check the whole chain: an intermediate may carry the weak signature, not the leaf.",),
+              downtime="brief {service} reload",
+              rollback="Retain the prior certificate until the new chain verifies.", risk="medium"),
+            S("hardening", "Reject weak signatures going forward",
+              "Configure the CA profile and TLS policy to refuse MD5/SHA-1 signatures.",
+              gen=("Set issuance and TLS policy to require SHA-256+ signatures",)),
+        ),
+        "Front {host}:{port} with a gateway presenting a SHA-256-signed certificate until it is reissued.",
+        V("tls_scan", "the certificate chain on {ip}:{port} is signed with SHA-256 or stronger",
+          "no MD5 or SHA-1 signatures anywhere in the chain",
+          generic="openssl s_client -connect {ip}:{port} </dev/null 2>/dev/null | openssl x509 -noout -text | grep 'Signature Algorithm'"),
+        ("CWE-328", "MITRE T1557"), effort="medium"),
+
+    Recipe(
+        "POSTURE-WEB-DANGEROUS-METHODS", 1, "Disable dangerous HTTP methods on {host}", "mitigation", "mitigate",
+        "Web service answers only the methods it needs (typically GET/POST/HEAD); PUT/DELETE/TRACE/CONNECT refused",
+        (
+            S("fix", "Restrict the allowed HTTP methods",
+              "The {service} on {host}:{port} accepts methods such as PUT, DELETE or TRACE that let a caller write "
+              "files or reflect headers. Limit it to the methods the application actually uses.",
+              lin=("# nginx: in the server block, return 405 for anything but the needed methods",
+                   "# Apache: use LimitExcept for GET/POST/HEAD, and set TraceEnable off"),
+              gen=("Configure {service} on {host}:{port} to allow only GET/POST/HEAD and refuse PUT/DELETE/TRACE/CONNECT",),
+              pre=("Confirm the application does not rely on WebDAV or REST verbs before disabling them.",),
+              rollback="Re-enable the specific method the application is shown to need.", risk="low"),
+        ),
+        "Add a WAF or reverse-proxy rule dropping PUT/DELETE/TRACE/CONNECT to {host}:{port} until the server config is changed.",
+        V("web_scan", "{ip}:{port} refuses PUT/DELETE/TRACE with 405/501", "only the required methods are accepted",
+          generic="curl -sS -X OPTIONS http://{ip}:{port}/ -i | grep -i '^Allow:'"),
+        ("CWE-650", "MITRE T1505"), effort="low"),
+
+    Recipe(
+        "POSTURE-WEB-NO-HSTS", 1, "Enable HSTS on {host}", "mitigation", "mitigate",
+        "HTTPS service sends a Strict-Transport-Security header with a reasonable max-age",
+        (
+            S("fix", "Send the Strict-Transport-Security header",
+              "The HTTPS service on {host}:{port} does not set HSTS, so the first request can be forced over "
+              "cleartext HTTP and intercepted. Add the header on every HTTPS response.",
+              lin=("# nginx: add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains\" always;",
+                   "# Apache: Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\""),
+              gen=("Set Strict-Transport-Security with max-age=31536000 and includeSubDomains on HTTPS responses from {host}:{port}",),
+              pre=("Make sure every subdomain is HTTPS-ready before adding includeSubDomains.",),
+              rollback="Remove the header or lower max-age if a subdomain breaks.", risk="low"),
+        ),
+        "Enforce HTTPS and HSTS at the CDN or load balancer in front of {host} until the origin sets it.",
+        V("web_scan", "the HTTPS response from {ip}:{port} carries a Strict-Transport-Security header",
+          "Strict-Transport-Security present with a max-age",
+          generic="curl -sS -I https://{ip}:{port}/ | grep -i strict-transport-security"),
+        ("CWE-319", "MITRE T1040"), effort="low"),
+
+    Recipe(
+        "POSTURE-DNS-VERSION-DISCLOSURE", 1, "Stop version disclosure on the DNS server {host}", "mitigation", "mitigate",
+        "DNS server no longer returns its build in a version.bind / version.server query",
+        (
+            S("fix", "Mask the version response",
+              "The DNS server on {host}:{port} answers version.bind with its real build, which tells an attacker "
+              "which CVEs to try. Override the version string.",
+              lin=("# BIND: in the options block set   version \"not disclosed\";   then  sudo rndc reconfig",
+                   "# PowerDNS: set  version-string=anonymous  in pdns.conf and restart"),
+              gen=("Configure {service} on {host} to return a static or empty version string for version.bind",),
+              rollback="Restore the default version directive if your monitoring needs the build.", risk="low"),
+            S("hardening", "Keep the resolver patched",
+              "Masking the banner is not a patch; keep {service} on a supported, current build.",
+              gen=("Track {service} releases and apply security updates on a schedule",)),
+        ),
+        "Restrict recursion and version queries on {host}:{port} to trusted clients at the firewall.",
+        V("dns_scan", "a version.bind CHAOS TXT query to {ip} no longer returns the real build",
+          "version response is static, empty, or refused",
+          generic="dig @{ip} version.bind chaos txt +short"),
+        ("CWE-200", "MITRE T1590.002"), effort="low"),
+
+    Recipe(
+        "POSTURE-LDAP-ANONYMOUS-SEARCH", 1, "Disable anonymous LDAP search on {host}", "mitigation", "mitigate",
+        "Directory on {host}:{port} requires authentication before it returns entries",
+        (
+            S("fix", "Require authentication for directory reads",
+              "The directory on {host}:{port} lets an anonymous client enumerate users and groups. Disable "
+              "anonymous bind and anonymous search.",
+              lin=("# OpenLDAP: set  olcDisallows: bind_anon  and  olcRequires: authc  then restart slapd",),
+              win=("Active Directory: set dsHeuristics so anonymous operations are disabled (7th character not 2)",),
+              gen=("Configure {service} on {host} to deny anonymous bind and anonymous search",),
+              pre=("Confirm no application relies on anonymous read (some address books do) before disabling.",),
+              rollback="Re-enable anonymous read for the one subtree an application is shown to need.", risk="medium"),
+        ),
+        "Restrict {port} on {host} to the application and admin subnets that use the directory.",
+        V("ldap_scan", "an anonymous bind to {ip}:{port} can no longer read directory entries",
+          "anonymous search returns no entries or is refused",
+          generic="ldapsearch -x -H ldap://{ip}:{port} -b '' -s base   # expect no directory content"),
+        ("CWE-287", "MITRE T1087.002"), effort="medium"),
+
+    Recipe(
+        "POSTURE-SNMP-AMPLIFIER", 1, "Stop {host} being usable as an SNMP amplifier", "mitigation", "mitigate",
+        "SNMP on {host}:{port} answers only authorized management hosts and no default community",
+        (
+            S("containment", "Restrict UDP {port} to the management network",
+              "A reflected SNMP GETBULK can be amplified against a third party. Limit UDP {port} on {host} to the "
+              "monitoring hosts that poll it.",
+              gen=("Allow UDP {port} to {ip} only from the monitoring/management subnet at the firewall; drop it elsewhere",),
+              risk="low"),
+            S("fix", "Remove default communities and prefer SNMPv3",
+              "Replace the public/private communities and move {service} to SNMPv3 with auth and privacy so an "
+              "unauthenticated query cannot be reflected.",
+              lin=("# snmpd.conf: remove the 'rocommunity public' line, define an SNMPv3 authPriv user, then restart snmpd",),
+              gen=("Delete default SNMP communities on {host} and require SNMPv3 authPriv",),
+              pre=("Confirm the monitoring system supports SNMPv3 before removing the community strings.",),
+              rollback="Restore a read-only community scoped to the monitoring host if the v3 cutover slips.", risk="medium"),
+        ),
+        "Rate-limit or block inbound UDP {port} to {host} at the edge until the communities are removed.",
+        V("snmp_scan", "an SNMP query to {ip}:{port} with a default community is refused",
+          "default communities rejected; only SNMPv3 or authorized access works",
+          generic="snmpget -v2c -c public {ip} sysDescr.0   # expect timeout / no response"),
+        ("CWE-406", "MITRE T1498.002"), effort="medium"),
+
+    Recipe(
+        "POSTURE-MQTT-UNAUTHENTICATED", 1, "Require authentication on the MQTT broker {host}", "mitigation", "mitigate",
+        "MQTT broker on {host}:{port} requires credentials and TLS; anonymous clients refused",
+        (
+            S("containment", "Limit the broker to its device network",
+              "While anonymous access is open, restrict {port} on {host} to the device and application subnets.",
+              gen=("Allow {port}/tcp to {ip} only from the IoT and application subnets at the firewall",), risk="low"),
+            S("fix", "Turn off anonymous access and require credentials",
+              "Configure {service} on {host}:{port} to reject anonymous clients, require per-client credentials, "
+              "and enable TLS on the secured listener.",
+              lin=("# Mosquitto: set  allow_anonymous false  and a password_file, then restart the broker",),
+              gen=("Disable anonymous access on {service}, add per-client credentials, and enable TLS",),
+              pre=("Provision credentials for every legitimate publisher and subscriber before enforcing.",),
+              downtime="clients reconnect with credentials",
+              rollback="Re-enable anonymous on an internal-only listener if a device cannot be updated in time.", risk="medium"),
+        ),
+        "Keep {port} on {host} firewalled to the device subnet and watch for anonymous CONNECTs until auth is enforced.",
+        V("iot_scan", "an anonymous MQTT CONNECT to {ip}:{port} is refused",
+          "broker requires credentials; anonymous CONNECT denied",
+          generic="mosquitto_sub -h {ip} -p {port} -t test -C 1   # expect connection refused / not authorized"),
+        ("CWE-306", "MITRE T1133"), effort="medium"),
+
+    Recipe(
+        "POSTURE-CWMP-EXPOSED", 1, "Restrict the TR-069/CWMP interface on {host}", "mitigation", "mitigate",
+        "CWMP management port on {host}:{port} is reachable only from the provider ACS",
+        (
+            S("fix", "Bind CWMP to the ACS only",
+              "The TR-069/CWMP interface on {host}:{port} is internet-reachable, which has been used for mass "
+              "device takeover. Restrict it to the managing ACS, or disable it if no ACS is used.",
+              gen=("Configure the device so CWMP on {port} accepts connections only from the provider ACS address, "
+                   "or disable TR-069 if you do not use an ACS",),
+              net=("ACL on the upstream firewall: permit {port}/tcp to {ip} only from the ACS address, deny elsewhere",),
+              pre=("Confirm whether an ACS legitimately manages {host} before disabling CWMP.",),
+              rollback="Re-permit the ACS address if remote management stops working.", risk="medium"),
+        ),
+        "Block {port}/tcp to {host} from the internet at the edge until CWMP is bound to the ACS.",
+        V("iot_scan", "CWMP on {ip}:{port} is not reachable from outside the ACS network",
+          "TR-069 endpoint refused from untrusted sources",
+          generic="curl -sS -m 5 http://{ip}:{port}/ -o /dev/null   # from an untrusted host, expect a timeout"),
+        ("CWE-284", "MITRE T1190"), effort="medium"),
+
+    Recipe(
+        "POSTURE-RTSP-EXPOSED", 1, "Lock down the RTSP endpoint on {host}", "mitigation", "mitigate",
+        "RTSP service on {host}:{port} requires authentication and is reachable only from trusted viewers",
+        (
+            S("containment", "Restrict {port} to the camera VLAN and VMS",
+              "An exposed RTSP stream leaks video and is often unauthenticated. Restrict {port} on {host} to the "
+              "video-management server and operator subnet.",
+              gen=("Allow {port}/tcp to {ip} only from the VMS and operator subnets at the firewall",), risk="low"),
+            S("fix", "Require authentication on the stream",
+              "Enable per-user credentials on {service} and remove any default account so the stream cannot be "
+              "opened anonymously.",
+              gen=("Set a strong RTSP username and password on {host}, remove default or blank credentials, and enable TLS/SRTP if supported",),
+              pre=("Record which viewers and NVRs pull the stream before changing credentials.",),
+              downtime="viewers re-authenticate",
+              rollback="Restore the prior credential on an internal-only listener if an NVR breaks.", risk="medium"),
+        ),
+        "Keep {port} on {host} firewalled to the camera VLAN until authentication is enforced.",
+        V("iot_scan", "an unauthenticated RTSP DESCRIBE to {ip}:{port} is refused",
+          "RTSP requires credentials; anonymous DESCRIBE returns 401",
+          generic="curl -sS -m 5 rtsp://{ip}:{port}/   # expect 401 Unauthorized"),
+        ("CWE-306", "MITRE T1021"), effort="medium"),
+
+    Recipe(
+        "POSTURE-ADB-UNAUTHENTICATED", 1, "Disable network ADB on {host}", "mitigation", "avoid",
+        "Android Debug Bridge is not reachable over the network on {host}:{port}",
+        (
+            S("containment", "Block {port} immediately",
+              "An open ADB port is a remote root shell. Block {port}/tcp to {host} at the nearest firewall right away.",
+              gen=("Deny {port}/tcp to {ip} at the segment firewall now; allow only a named debug host if one is truly needed",),
+              risk="low"),
+            S("fix", "Turn off ADB over the network",
+              "Disable network ADB on the device so it no longer listens on {port}. Debugging over USB with "
+              "authorized keys is the supported path.",
+              gen=("On the device, turn off wireless debugging / ADB over network and, if managed, disable USB debugging by MDM policy",),
+              pre=("Confirm no automated test rig depends on this device's network ADB before disabling.",),
+              rollback="Re-enable wireless debugging only on an isolated lab network with key authorization.", risk="medium"),
+        ),
+        "Keep {port}/tcp to {host} blocked at the firewall until network ADB is turned off on the device.",
+        V("mobile_scan", "a connection to ADB on {ip}:{port} is refused",
+          "no ADB service answers on the network port",
+          generic="nc -vz -w 5 {ip} {port}   # expect connection refused / timeout"),
+        ("CWE-306", "MITRE T1021"), effort="low"),
+
+    Recipe(
+        "POSTURE-AI-ENDPOINT-UNAUTHENTICATED", 1, "Put authentication in front of the AI endpoint on {host}",
+        "mitigation", "mitigate",
+        "AI/MCP inference endpoint on {host}:{port} requires authentication and is not openly reachable",
+        (
+            S("containment", "Restrict {port} to known callers",
+              "An open inference or MCP endpoint lets anyone spend tokens, read prompts, or reach connected tools. "
+              "Restrict {port} on {host} to the application hosts that call it.",
+              gen=("Allow {port}/tcp to {ip} only from the application and service subnet at the firewall",), risk="low"),
+            S("fix", "Require authentication on the endpoint",
+              "Front {service} on {host}:{port} with an API key or gateway auth, and bind the model server to the "
+              "loopback address so only the authenticated proxy reaches it.",
+              gen=("Require an API key or gateway token on every request to {host}:{port}, and bind the inference server to 127.0.0.1 behind that proxy",),
+              pre=("Issue keys to the legitimate callers before turning on enforcement.",),
+              downtime="callers add an auth header",
+              rollback="Scope access to an internal-only listener if a caller cannot add auth immediately.", risk="medium"),
+        ),
+        "Keep {port} on {host} firewalled to the application tier and monitor for unauthenticated calls until auth is enforced.",
+        V("mcp_ai_scan", "an unauthenticated request to {ip}:{port} is rejected",
+          "endpoint returns 401 or 403 without a valid key",
+          generic="curl -sS -m 5 http://{ip}:{port}/   # expect 401/403 without credentials"),
+        ("CWE-306", "MITRE T1133"), effort="medium"),
 ]
 
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Posture rules added by the detection-enhancement pass (12) — previously
+# unconsumed probe facts. Same structure and verification discipline as above.
+# ═══════════════════════════════════════════════════════════════════════════
+
+_P_V2: list[Recipe] = [
+    Recipe(
+        "POSTURE-TLS-WEAK-KEY", 1, "Reissue the weak-key certificate on {host}:{port}",
+        "vendor_fix", "mitigate", "Certificate key is RSA >= 2048 bits or EC >= 256 bits",
+        (
+            S("fix", "Generate a strong key and reissue the certificate",
+              "Create a new private key of adequate size, request a certificate for it, and install "
+              "it for the service on port {port}.",
+              lin=("openssl req -new -newkey rsa:3072 -nodes -keyout server.key -out server.csr",),
+              win=("certreq -new request.inf request.req   # set KeyLength = 3072 in request.inf",),
+              gen=("Reissue the certificate from your CA with a >=2048-bit RSA or P-256+ EC key",),
+              pre=("Note which clients pin the current certificate before replacing it.",),
+              downtime="service reload to pick up the new certificate",
+              rollback="Reinstall the previous certificate and key from backup.", risk="low"),
+            S("hardening", "Enforce minimum key sizes in issuance policy",
+              "Configure the CA / ACME client so keys below the floor cannot be issued.",
+              gen=("Set the CA certificate template minimum key size to 2048 (RSA) / 256 (EC)",)),
+        ),
+        "Restrict the service to trusted clients until the certificate is replaced.",
+        V("tls_scan", "Certificate public key on {ip}:{port} is RSA >= 2048 or EC >= 256 bits",
+          "public_key_bits meets the minimum for its key type",
+          linux="openssl s_client -connect {ip}:{port} </dev/null 2>/dev/null | openssl x509 -noout -text | grep 'Public-Key'"),
+        ("CWE-326", "MITRE T1040", "NIST SP 800-57 Part 1 — key length recommendations",
+         "CA/Browser Forum Baseline Requirements — key sizes"), effort="low"),
+
+    Recipe(
+        "POSTURE-TLS-WEAK-SIGNATURE", 1, "Reissue the SHA-1/MD5-signed certificate on {host}:{port}",
+        "vendor_fix", "mitigate", "Certificate signed with SHA-256 or stronger",
+        (
+            S("fix", "Reissue with a SHA-256 signature",
+              "Request a new certificate signed with SHA-256 or stronger and install it on port {port}.",
+              lin=("openssl req -new -sha256 -key server.key -out server.csr",),
+              gen=("Reissue the certificate from your CA with a SHA-256 (or stronger) signature",),
+              downtime="service reload to pick up the new certificate",
+              rollback="Reinstall the previous certificate from backup.", risk="low"),
+            S("hardening", "Retire legacy signature hashes at the CA",
+              "Disable MD5/SHA-1 signing on any internal CA so legacy certificates cannot be reissued.",
+              gen=("Set the internal CA hash algorithm to SHA256 or stronger",)),
+        ),
+        "Restrict the service to trusted clients until the certificate is replaced.",
+        V("tls_scan", "Certificate on {ip}:{port} is signed with SHA-256 or stronger",
+          "sig_algorithm is not md5 / sha1",
+          linux="openssl s_client -connect {ip}:{port} </dev/null 2>/dev/null | openssl x509 -noout -text | grep 'Signature Algorithm'"),
+        ("CWE-327", "MITRE T1557", "CA/Browser Forum — SHA-1 deprecation"), effort="low"),
+
+    Recipe(
+        "POSTURE-WEB-DANGEROUS-METHODS", 1, "Disable dangerous HTTP methods on {host}:{port}",
+        "workaround", "mitigate", "Only GET/HEAD/POST (and methods the API needs) are allowed",
+        (
+            S("containment", "Block write/trace methods at the edge",
+              "Reject PUT, DELETE, TRACE and CONNECT at the reverse proxy or WAF in front of {host}.",
+              gen=("Add a WAF / proxy rule rejecting PUT, DELETE, TRACE, CONNECT to {ip}:{port}",)),
+            S("fix", "Restrict methods in the web server",
+              "Allow only the methods the application uses; disable TRACE explicitly.",
+              lin=("# Apache: TraceEnable Off  and  <LimitExcept GET POST HEAD> Require all denied </LimitExcept>",
+                   "# nginx: if ($request_method !~ ^(GET|HEAD|POST)$) return 405;",
+                   "sudo apachectl configtest || sudo nginx -t"),
+              win=("Import-Module WebAdministration; Get-WebConfiguration system.webServer/security/requestFiltering/verbs",),
+              downtime="web server reload", rollback="Restore the previous server configuration.",
+              risk="medium"),
+        ),
+        "Front the service with a proxy that only forwards the methods the application needs.",
+        V("web_scan", "OPTIONS on {ip}:{port} no longer advertises PUT/DELETE/TRACE/CONNECT",
+          "dangerous_methods is empty",
+          linux="curl -s -o /dev/null -D - -X OPTIONS http://{ip}:{port}/ | grep -i '^allow'"),
+        ("CWE-650", "MITRE T1505", "OWASP Testing Guide — Test HTTP Methods"), effort="low"),
+
+    Recipe(
+        "POSTURE-WEB-NO-HSTS", 1, "Enable HSTS on {host}:{port}", "workaround", "mitigate",
+        "Strict-Transport-Security header sent with a long max-age",
+        (
+            S("fix", "Send the Strict-Transport-Security header",
+              "Add HSTS to every HTTPS response so browsers refuse to downgrade to cleartext.",
+              lin=("# nginx: add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains\" always;",
+                   "# Apache: Header always set Strict-Transport-Security \"max-age=31536000; includeSubDomains\""),
+              gen=("Configure the load balancer / proxy to add Strict-Transport-Security on HTTPS responses",),
+              pre=("Confirm every subdomain serves valid HTTPS before using includeSubDomains.",),
+              downtime="web server reload", rollback="Remove the header (browsers keep cached HSTS until max-age).",
+              risk="medium"),
+        ),
+        "Redirect all HTTP to HTTPS at the edge until HSTS is deployed.",
+        V("web_scan", "HTTPS responses from {ip}:{port} include Strict-Transport-Security",
+          "strict-transport-security not in security_headers_missing",
+          linux="curl -sk -D - -o /dev/null https://{ip}:{port}/ | grep -i strict-transport-security"),
+        ("CWE-319", "MITRE T1040", "RFC 6797 — HTTP Strict Transport Security"), effort="low"),
+
+    Recipe(
+        "POSTURE-DNS-VERSION-DISCLOSURE", 1, "Hide the DNS server version on {host}", "workaround",
+        "mitigate", "version.bind returns no software version",
+        (
+            S("fix", "Override the version.bind response",
+              "Configure the resolver to answer CHAOS TXT version.bind with no version string.",
+              lin=("# BIND named.conf options: version \"not disclosed\";",
+                   "sudo named-checkconf && sudo rndc reconfig"),
+              win=("dnscmd /config /EnableVersionQuery 0",),
+              rollback="Remove the override and reload.", risk="low"),
+        ),
+        "Restrict DNS queries to internal clients so the version is not exposed externally.",
+        V("dns_scan", "CHAOS TXT version.bind on {ip} returns no version",
+          "version_bind is empty or refused",
+          linux="dig @{ip} version.bind chaos txt +short"),
+        ("CWE-200", "MITRE T1590.002", "ISC BIND 9 ARM — version option"), effort="low"),
+
+    Recipe(
+        "POSTURE-LDAP-ANONYMOUS-SEARCH", 1, "Disable anonymous LDAP search on {host}", "mitigation",
+        "mitigate", "Anonymous callers can read at most the RootDSE",
+        (
+            S("containment", "Restrict LDAP to trusted networks",
+              "Limit 389/636 on {host} to domain members and management hosts until the ACL is fixed.",
+              gen=("Restrict 389/tcp and 636/tcp to {ip} from trusted subnets at the firewall",)),
+            S("fix", "Remove anonymous read access",
+              "Disable anonymous operations so directory content requires authentication.",
+              win=("# AD: ensure the 7th character of dsHeuristics is not 2 (anonymous operations disabled)",
+                   "Get-ADObject 'CN=Directory Service,CN=Windows NT,CN=Services,CN=Configuration,DC=example,DC=com' -Properties dsHeuristics"),
+              lin=("# OpenLDAP: olcDisallows: bind_anon  and an ACL denying anonymous read beyond the RootDSE",),
+              pre=("Identify legacy apps that bind anonymously (directory access logs) before disabling.",),
+              rollback="Restore the previous dsHeuristics / ACL value.", risk="medium"),
+        ),
+        "Monitor anonymous LDAP searches and restrict LDAP to trusted networks.",
+        V("ldap_scan", "Anonymous search against {ip} returns no directory entries",
+          "anonymous_search_allowed is false",
+          linux="ldapsearch -x -H ldap://{ip} -b '' -s base   # RootDSE only; a subtree search must fail"),
+        ("CWE-200", "MITRE T1087.002", "Microsoft — Anonymous LDAP operations (dsHeuristics)"),
+        effort="medium"),
+
+    Recipe(
+        "POSTURE-SNMP-AMPLIFIER", 1, "Stop {host} being an SNMP amplifier", "mitigation", "mitigate",
+        "SNMP reachable only from trusted managers, v3 only",
+        (
+            S("containment", "Block SNMP from untrusted sources",
+              "Allow 161/udp on {host} only from the network-management stations.",
+              gen=("Restrict 161/udp to {ip} from the NMS subnet at the firewall",)),
+            S("fix", "Move to SNMPv3 and restrict the agent",
+              "Disable v1/v2c communities and bind the agent to management interfaces.",
+              net=("no snmp-server community public", "snmp-server group NMS v3 priv"),
+              lin=("# net-snmp: remove rocommunity lines; add createUser + rouser for v3",
+                   "sudo systemctl restart snmpd"),
+              rollback="Restore the previous agent configuration.", risk="medium"),
+        ),
+        "Rate-limit SNMP at the edge and alert on large SNMP response volumes.",
+        V("snmp_scan", "SNMP GETBULK from an untrusted source to {ip} gets no response",
+          "amplification_factor not measured / below threshold",
+          linux="snmpbulkwalk -v2c -c public {ip} 1.3.6.1.2.1.2.2   # expect timeout"),
+        ("CWE-406", "MITRE T1498.002", "US-CERT TA14-017A — UDP-based amplification attacks"),
+        effort="low"),
+
+    Recipe(
+        "POSTURE-MQTT-UNAUTHENTICATED", 1, "Require authentication on the MQTT broker {host}",
+        "mitigation", "mitigate", "Broker rejects anonymous CONNECT",
+        (
+            S("containment", "Restrict the broker to known clients",
+              "Allow 1883/8883 on {host} only from the device and application networks.",
+              gen=("Restrict 1883/tcp and 8883/tcp to {ip} from trusted subnets",)),
+            S("fix", "Disable anonymous access",
+              "Require credentials or client certificates for every CONNECT.",
+              lin=("# mosquitto.conf: allow_anonymous false  and  password_file /etc/mosquitto/passwd",
+                   "sudo systemctl restart mosquitto"),
+              rollback="Set allow_anonymous back to its previous value.", risk="medium"),
+            S("hardening", "Use TLS and topic ACLs",
+              "Serve MQTT over TLS (8883) and restrict each client to the topics it needs.",
+              gen=("Enable listener 8883 with TLS and an acl_file per client",)),
+        ),
+        "Restrict the broker to trusted networks and monitor for unexpected subscribers to '#'.",
+        V("iot_scan", "Anonymous MQTT CONNECT to {ip}:{port} is refused",
+          "CONNACK return code 4/5 (not authorized)",
+          linux="mosquitto_sub -h {ip} -p {port} -t '#' -C 1 -W 5   # expect 'not authorised'"),
+        ("CWE-306", "MITRE T1133", "OASIS MQTT 3.1.1 — security considerations"), effort="low"),
+
+    Recipe(
+        "POSTURE-CWMP-EXPOSED", 1, "Restrict TR-069/CWMP on {host}", "mitigation", "mitigate",
+        "CWMP reachable only from the ACS",
+        (
+            S("containment", "Block 7547 from untrusted networks",
+              "Allow the CWMP port on {host} only from the provider's ACS addresses.",
+              gen=("Restrict 7547/tcp to {ip} from the ACS addresses only",)),
+            S("fix", "Disable or update the CWMP service",
+              "Turn off remote management if unused, otherwise update the device firmware.",
+              net=("Disable TR-069 / remote management in the device admin UI if it is not required",),
+              gen=("Update the device firmware to the vendor's current release",),
+              rollback="Re-enable remote management in the admin UI.", risk="low"),
+        ),
+        "Firewall the port at the edge; monitor for inbound connections to 7547.",
+        V("iot_scan", "CWMP endpoint on {ip}:{port} is not reachable from the scan vantage",
+          "cwmp_indicators false / port closed",
+          linux="curl -s -m 5 http://{ip}:{port}/ -o /dev/null -w '%{{http_code}}'   # expect timeout"),
+        ("CWE-284", "MITRE T1190", "Broadband Forum TR-069 — security considerations"), effort="low"),
+
+    Recipe(
+        "POSTURE-RTSP-EXPOSED", 1, "Restrict the RTSP stream on {host}", "mitigation", "mitigate",
+        "RTSP reachable only from the video-management network, with authentication",
+        (
+            S("containment", "Restrict RTSP to the video network",
+              "Allow 554/8554 on {host} only from the NVR / video-management subnet.",
+              gen=("Restrict 554/tcp and 8554/tcp to {ip} from the video-management subnet",)),
+            S("fix", "Require authentication and change default credentials",
+              "Enable stream authentication on the camera and set a unique password.",
+              net=("Enable RTSP authentication and set a unique admin password in the camera UI",),
+              gen=("Update the camera firmware to the vendor's current release",),
+              rollback="Revert the camera configuration from its backup.", risk="low"),
+        ),
+        "Isolate cameras on a dedicated VLAN with no route to user networks.",
+        V("iot_scan", "Unauthenticated RTSP DESCRIBE to {ip}:{port} is refused",
+          "RTSP responds 401 or the port is not reachable",
+          linux="curl -s -m 5 -X OPTIONS rtsp://{ip}:{port}/   # expect 401 or timeout"),
+        ("CWE-284", "MITRE T1021"), effort="low"),
+
+    Recipe(
+        "POSTURE-ADB-UNAUTHENTICATED", 1, "Disable network ADB on {host}", "mitigation", "mitigate",
+        "ADB not listening on the network",
+        (
+            S("containment", "Block 5555 immediately",
+              "Block 5555/tcp to {host}: an open ADB daemon is a remote shell.",
+              gen=("Deny 5555/tcp to {ip} at the nearest firewall",)),
+            S("fix", "Turn off ADB over TCP",
+              "Disable network debugging on the device (or via MDM) and reboot it.",
+              gen=("Settings > Developer options > turn off 'ADB over network' / 'Wireless debugging'",
+                   "Enforce 'disable USB/ADB debugging' through the MDM policy"),
+              reboot=True, downtime="device reboot",
+              rollback="Re-enable developer options only on an isolated test network.", risk="low"),
+        ),
+        "Isolate the device until ADB is disabled; treat it as possibly compromised.",
+        V("mobile_scan", "ADB CNXN to {ip}:5555 gets no reply or an AUTH challenge",
+          "unauthenticated_shell is false",
+          linux="adb connect {ip}:5555   # expect failure / unauthorized"),
+        ("CWE-306", "MITRE T1021", "Android developer documentation — ADB over Wi-Fi"), effort="low"),
+
+    Recipe(
+        "POSTURE-AI-ENDPOINT-UNAUTHENTICATED", 1, "Require authentication on the AI endpoint {host}:{port}",
+        "mitigation", "mitigate", "Inference / MCP endpoint requires authentication",
+        (
+            S("containment", "Restrict the endpoint to the application network",
+              "Allow port {port} on {host} only from the services that call it.",
+              gen=("Restrict {port}/tcp to {ip} from the application subnet",)),
+            S("fix", "Put authentication in front of the endpoint",
+              "Bind the model server to localhost and expose it only through an authenticating proxy.",
+              lin=("# Ollama: set OLLAMA_HOST=127.0.0.1 in the service environment",
+                   "sudo systemctl restart ollama"),
+              gen=("Front the endpoint with a reverse proxy enforcing API keys or OAuth",
+                   "For MCP servers, enable the server's OAuth authorization"),
+              rollback="Restore the previous bind address / proxy configuration.", risk="medium"),
+        ),
+        "Monitor request volume and model usage; rotate any secrets the endpoint could expose.",
+        V("mcp_ai_scan", "Discovery request to {ip}:{port} is refused without credentials",
+          "unauthenticated_access is false",
+          linux="curl -s -o /dev/null -w '%{{http_code}}' http://{ip}:{port}/api/tags   # expect 401/403"),
+        ("CWE-306", "MITRE T1133", "OWASP Top 10 for LLM Applications"), effort="low"),
+]
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Exposed-service categories (port_intel) — POSTURE-EXPOSED-<CATEGORY>
@@ -864,7 +1375,7 @@ GENERIC = Recipe(
     (), effort="medium")
 
 
-RECIPES: dict[str, Recipe] = {r.recipe_id: r for r in (*_P, *_E, CVE_PATCH, GENERIC)}
+RECIPES: dict[str, Recipe] = {r.recipe_id: r for r in (*_P, *_P_V2, *_E, CVE_PATCH, GENERIC)}
 
 # Legacy keyword categories (remediation_kb.classify_finding) → recipe ids, for
 # findings that carry no structured rule id (imports, older probe paths).

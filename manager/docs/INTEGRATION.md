@@ -10,11 +10,10 @@ browser ──▶ Next /api/* (BFF) ──server-side──▶ FastAPI ──▶
 ```
 
 ## The pattern (how every route is migrated)
-Old route (in-memory store):
+Old route (in-memory store, with the since-removed `withAuth` OTP check):
 ```ts
-import { withAuth } from ".../lib/auth-middleware";
 import { fooStore } from ".../lib/foo-store";
-export const GET = withAuth(async () => NextResponse.json(fooStore.list()));
+export const GET = async () => NextResponse.json(fooStore.list());
 ```
 New route (BFF → FastAPI):
 ```ts

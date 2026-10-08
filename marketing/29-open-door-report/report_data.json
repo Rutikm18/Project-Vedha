@@ -1,0 +1,9 @@
+{
+  "_readme": "Fill each chart's rows ONLY from the named source. Leave rows null to keep the 'data pending' frame. Never estimate.",
+  "edition": "Stage 1 · India · [CONFIRM month] 2026",
+  "charts": {
+    "exposed": { "title": "Internet-exposed services in India, by type", "unit": "exposed services", "source": "Shadowserver Foundation (aggregate, country level), pulled [date]; credit line as agreed in #20", "rows": null },
+    "found":   { "title": "What Vedha checks found inside offices, by type", "unit": "offices with this finding", "source": "Vedha checks [dates], n = [offices]; aggregated under the data-use clause (#9 X.4)", "rows": null },
+    "poll":    { "title": "Had you heard of CERT-In's 15 controls for MSMEs?", "unit": "respondents", "source": "Vedha 15 Controls Awareness Poll (#18), n = [n], [dates]; not a random sample", "rows": null }
+  }
+}

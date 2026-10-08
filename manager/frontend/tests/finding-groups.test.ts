@@ -5,7 +5,7 @@ import { describe, test } from "node:test";
 import { mapFindingGroupPage } from "../lib/adapters";
 import { backendFindingFilters, backendQueryString } from "../lib/findings-query";
 
-const findingsPage = readFileSync(new URL("../app/findings/page.tsx", import.meta.url), "utf8");
+const findingsPage = readFileSync(new URL("../app/findings/workspace.tsx", import.meta.url), "utf8");
 
 describe("findings filter mapping", () => {
   test("accepts the page's own signal-filter names (they were silently dropped)", () => {

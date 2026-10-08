@@ -30,6 +30,7 @@ from app.auth.portal_scope import (
     finding_lock_gate, remediation_gate, written_reports_gate,
 )
 from app.services import portal_locks
+from app.ratelimit import ai_rate_limit
 from app.dependencies import DB, RedisConn
 from app.models.agent import Agent, AgentStatus
 from app.models.asset import Asset
@@ -150,8 +151,10 @@ async def portal_me(user: ClientUser, db: DB):
 @router.get("/entitlement", response_model=EntitlementOut,
             summary="Your plan: POC or licence, scans left, days left")
 async def portal_entitlement(user: ClientUser, db: DB):
+    from app.services import org_settings
     view = await entitlements.view_for(db, assert_client(user))
-    return EntitlementOut(**entitlements.view_dict(view))
+    defaults = await org_settings.get_section(db, user.tenant_id, "customer-defaults")
+    return EntitlementOut(**entitlements.view_dict(view), support_contact=defaults.support_contact or None)
 
 
 @router.get("/findings", response_model=list[ClientFindingOut],
@@ -662,7 +665,7 @@ def _assistant_finding_view(f: Finding) -> dict:
     }
 
 
-@router.post("/assistant/chat", dependencies=[Depends(ai_assistant_gate)], response_model=ClientAssistantReply,
+@router.post("/assistant/chat", dependencies=[Depends(ai_assistant_gate), Depends(ai_rate_limit)], response_model=ClientAssistantReply,
              summary="Ask about your own assessment (security topics only)")
 async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: DB):
     eng_id = assert_client(user)

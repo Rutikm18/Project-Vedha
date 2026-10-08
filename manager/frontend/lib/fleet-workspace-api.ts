@@ -16,12 +16,28 @@ export interface AgentInstallInfo {
   /** Portal only: whether this engagement can take an agent right now. */
   can_add_agent?: boolean;
   blocker?: string | null;
+  /** The Windows side of the release; absent on managers that predate it. */
+  windows?: AgentWindowsInfo;
+}
+
+export interface AgentWindowsInfo {
+  available: boolean;
+  /** Why Windows is withheld — operators only; empty for customers. */
+  reason?: string;
+  p256_signed?: boolean;
+  p256_key_id?: string | null;
+  /** SHA-1 thumbprint the release pins for vedha-agent.exe; null when it is not Authenticode-signed. */
+  authenticode_thumbprint?: string | null;
 }
 
 export interface InstallCommands {
   one_line: string;
   download: string;
   run: string;
+  /** Windows PowerShell form — run from an elevated prompt. Absent for a non-https manager or values that cannot be embedded safely. */
+  windows_powershell?: string;
+  /** cmd.exe form (self-elevating). Absent whenever the PowerShell form is. */
+  windows_cmd?: string;
 }
 
 /** An install token as Fleet lists it. `token` and `commands` exist only in the

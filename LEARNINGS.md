@@ -443,3 +443,13 @@
 ### Dependency-free inline markdown rendering (React)
 **What:** Splitting a string on a capture-group regex that matches `**bold**` and backtick-code spans, then mapping the tokens to `<strong>` / `<code>` / plain React fragments, renders inline emphasis without a markdown library.
 **Why:** Vedha's `AssistantText` renderer previously stripped `**bold**` to plain text; rendering it inline lets the assistant's emphasised host/severity/action stand out, and avoids adding a `react-markdown` dependency to the frontend.
+
+## 2026-10-07
+
+### Alembic "Can't locate revision" from DB/codebase divergence
+**What:** When `alembic_version` in the database records a revision ID that no longer exists in the `alembic/versions/` directory, Alembic refuses to run and exits with `Can't locate revision identified by '<id>'`. The fix is to add the missing migration file(s) — not to stamp the DB back, which would leave the DB schema ahead of the ORM models.
+**Why:** Vedha's DB had revisions 0055–0058 applied from feature branches (notifications, SLA alerts, tenant settings, MFA), but `main` only carried up to 0054. Switching branches without dropping the DB left `vedha-migrate-1` crashing on every `docker compose up`.
+
+### Baked migration files require an image rebuild
+**What:** Alembic migration files are copied into the Docker image at build time (`COPY . .` in the Dockerfile). Adding or removing a migration file on disk does not affect a running or cached image — `docker compose build` must be re-run to pick up the change.
+**Why:** After copying the four missing migration files into `alembic/versions/`, the `migrate` service still failed because the cached `vedha-backend:local` image didn't contain them; only after rebuilding the image did `alembic upgrade head` succeed.

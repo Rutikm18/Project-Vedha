@@ -18,9 +18,7 @@ import React from "react";
 import { AlertTriangle, Inbox, Lock, RefreshCw, WifiOff, type LucideIcon } from "lucide-react";
 import { errorMessage, isUnauthorized } from "../../lib/fetcher";
 
-// JetBrains Mono is intentionally not loaded (see console-tokens.css); use the
-// app's mono stack so these states match the rest of the product.
-const MONO = "var(--font-mono)";
+const BODY = "var(--font-body)";
 
 /* ── Loading: skeleton rows (reserves layout to avoid CLS) ── */
 export function SkeletonRows({ rows = 3, height = 46 }: { rows?: number; height?: number }) {
@@ -41,8 +39,8 @@ export function EmptyState({
   return (
     <div style={center}>
       <Icon size={36} color="var(--adv-border)" strokeWidth={1.5} />
-      <div style={{ fontFamily: MONO, fontSize: 13, color: "var(--adv-text)", marginTop: 12 }}>{title}</div>
-      {hint && <div style={{ fontFamily: MONO, fontSize: 11, color: "var(--adv-text-muted)", marginTop: 4, maxWidth: 360, textAlign: "center" }}>{hint}</div>}
+      <div style={{ fontFamily: BODY, fontSize: 13, color: "var(--adv-text)", marginTop: 12 }}>{title}</div>
+      {hint && <div style={{ fontFamily: BODY, fontSize: 13, lineHeight: 1.5, color: "var(--adv-text-muted)", marginTop: 4, maxWidth: 360, textAlign: "center" }}>{hint}</div>}
       {action && <div style={{ marginTop: 14 }}>{action}</div>}
     </div>
   );
@@ -55,8 +53,8 @@ export function ErrorState({
   return (
     <div role="alert" aria-live="assertive" style={center}>
       <AlertTriangle size={32} color="var(--sev-critical-color)" strokeWidth={1.75} />
-      <div style={{ fontFamily: MONO, fontSize: 13, color: "var(--adv-text)", marginTop: 12 }}>{title}</div>
-      {detail && <div style={{ fontFamily: MONO, fontSize: 11, color: "var(--sev-critical-color)", marginTop: 4, maxWidth: 420, textAlign: "center" }}>{detail}</div>}
+      <div style={{ fontFamily: BODY, fontSize: 13, color: "var(--adv-text)", marginTop: 12 }}>{title}</div>
+      {detail && <div style={{ fontFamily: BODY, fontSize: 13, lineHeight: 1.5, color: "var(--sev-critical-color)", marginTop: 4, maxWidth: 420, textAlign: "center" }}>{detail}</div>}
       {onRetry && (
         <button onClick={onRetry} style={btn} aria-label="Retry">
           <RefreshCw size={12} /> Try again
@@ -72,8 +70,8 @@ export function Unauthorized({ onLogin }: { onLogin?: () => void }) {
   return (
     <div role="alert" style={center}>
       <Lock size={32} color="var(--sev-high-color)" strokeWidth={1.75} />
-      <div style={{ fontFamily: MONO, fontSize: 13, color: "var(--adv-text)", marginTop: 12 }}>Your session has expired</div>
-      <div style={{ fontFamily: MONO, fontSize: 11, color: "var(--adv-text-muted)", marginTop: 4 }}>Sign in again to continue.</div>
+      <div style={{ fontFamily: BODY, fontSize: 13, color: "var(--adv-text)", marginTop: 12 }}>Your session has expired</div>
+      <div style={{ fontFamily: BODY, fontSize: 13, lineHeight: 1.5, color: "var(--adv-text-muted)", marginTop: 4 }}>Sign in again to continue.</div>
       <button onClick={go} style={btn}>Sign in</button>
     </div>
   );
@@ -84,7 +82,7 @@ export function OfflineBanner({ label = "Offline — showing last known data" }:
   return (
     <div role="status" style={{
       display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", marginBottom: 10,
-      fontFamily: MONO, fontSize: 11, color: "var(--sev-high-color)",
+      fontFamily: BODY, fontSize: 13, lineHeight: 1.5, color: "var(--sev-high-color)",
       background: "var(--sev-high-bg)", border: "1px solid var(--sev-high-color)33", borderRadius: 6,
     }}>
       <WifiOff size={13} /> {label}
@@ -134,7 +132,7 @@ const center: React.CSSProperties = {
 };
 const btn: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6, marginTop: 16,
-  fontFamily: MONO, fontSize: 11, color: "var(--adv-accent)",
+  fontFamily: BODY, fontSize: 13, lineHeight: 1.5, color: "var(--adv-accent)",
   background: "var(--adv-accent-bg)", border: "1px solid var(--adv-accent-border)",
   borderRadius: 6, padding: "6px 14px", cursor: "pointer",
 };

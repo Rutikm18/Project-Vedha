@@ -88,15 +88,18 @@ class RedisKv:
     """Redis-backed store shared by every worker; any Redis error falls back to a
     process-local MemoryKv for that operation."""
 
-    def __init__(self, fallback: MemoryKv | None = None) -> None:
+    def __init__(self, fallback: MemoryKv | None = None, *, cache: bool = False) -> None:
         self._fallback = fallback or MemoryKv()
         self._warned = False
+        # cache=True: the disposable-cache Redis (REDIS_CACHE_URL), which may evict.
+        self._cache = cache
 
     async def _run(self, op: Callable[[object], Awaitable[T]],
                    fallback: Callable[[], Awaitable[T]]) -> T:
         from app import dependencies  # late: keeps this module import-light
         try:
-            return await op(await dependencies.get_redis())
+            conn = await (dependencies.get_cache_redis() if self._cache else dependencies.get_redis())
+            return await op(conn)
         except Exception as exc:  # noqa: BLE001 — fail open, never fail the AI call
             if not self._warned:
                 logger.warning("ai.kv.redis_unavailable", error=type(exc).__name__)
@@ -156,3 +159,26 @@ def set_default_kv(store: KvStore | None) -> None:
     """Swap the process-wide store (tests use a fresh MemoryKv per test)."""
     global _default
     _default = store
+
+
+_answers: KvStore | None = None
+
+
+def answer_kv() -> KvStore:
+    """Where stored AI answers live. They are a cache: with REDIS_CACHE_URL set they
+    go to that instance (which may evict), so they never push sessions or lockout
+    counters out of the main Redis. Without it, the default store."""
+    global _answers
+    if _answers is not None:
+        return _answers
+    from app.config import get_settings
+    if get_settings().redis_cache_url:
+        _answers = RedisKv(cache=True)
+        return _answers
+    return default_kv()
+
+
+def set_answer_kv(store: KvStore | None) -> None:
+    """Swap the answer store (tests)."""
+    global _answers
+    _answers = store

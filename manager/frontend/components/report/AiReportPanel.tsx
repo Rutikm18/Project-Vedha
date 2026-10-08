@@ -119,11 +119,30 @@ export function AiReportPanel({ engagementId, findingCount }: {
     onSuccess: (job) => setJobId(job.jobId ?? job.job_id),
   });
 
+  const reviewMut = useMutation({
+    mutationFn: (action: { kind: "approve" | "reject"; ids?: string[]; feedback?: string }) =>
+      fetchJson(`/api/engagements/${encodeURIComponent(engagementId)}/ai-report/${action.kind}`, {
+        method: "POST",
+        body: JSON.stringify({
+          output_ids: action.ids,
+          ...(action.kind === "reject" ? { feedback: action.feedback, regenerate: true } : {}),
+        }),
+      }),
+    onSuccess: () => { void refetchDrafts(); },
+  });
+
+  function reject(ids: string[]) {
+    const feedback = window.prompt("What should change? (the section is regenerated with this feedback)");
+    if (feedback && feedback.trim().length >= 3) reviewMut.mutate({ kind: "reject", ids, feedback: feedback.trim() });
+  }
+
   const drafts = draftsQ.data?.drafts ?? draftsQ.data?.sections ?? [];
   const active = genMut.isPending || reportStatusActive(jobStatus);
   const generationError = genMut.error instanceof Error
     ? genMut.error.message
-    : statusQ.error instanceof Error
+    : reviewMut.error instanceof Error
+      ? reviewMut.error.message
+      : statusQ.error instanceof Error
       ? statusQ.error.message
       : jobStatus === "failed"
         ? statusQ.data?.result?.error || "Report generation failed."
@@ -200,6 +219,13 @@ export function AiReportPanel({ engagementId, findingCount }: {
           <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>
             {draftsQ.isLoading ? "Loading…" : `${drafts.length} section${drafts.length === 1 ? "" : "s"}`}
           </span>
+          {drafts.length > 0 && (
+            <button className="btn" style={{ marginLeft: "auto", fontSize: 11, padding: "3px 10px" }}
+              disabled={reviewMut.isPending}
+              onClick={() => reviewMut.mutate({ kind: "approve" })}>
+              Approve all
+            </button>
+          )}
         </div>
 
         {draftsQ.error && (
@@ -243,6 +269,14 @@ export function AiReportPanel({ engagementId, findingCount }: {
                   fontSize: 11, lineHeight: 1.6, color: "var(--text-secondary)",
                   borderTop: "1px solid var(--border-subtle)",
                 }}>{draft.output}</pre>
+                <div style={{ display: "flex", gap: 8, padding: "8px 12px", borderTop: "1px solid var(--border-subtle)" }}>
+                  <button className="btn" style={{ fontSize: 11, padding: "3px 10px" }}
+                    disabled={reviewMut.isPending}
+                    onClick={() => reviewMut.mutate({ kind: "approve", ids: [draft.id] })}>Approve</button>
+                  <button className="btn" style={{ fontSize: 11, padding: "3px 10px" }}
+                    disabled={reviewMut.isPending}
+                    onClick={() => reject([draft.id])}>Reject &amp; regenerate</button>
+                </div>
                 {invalid && (draft.validation?.issues?.length ?? 0) > 0 && (
                   <ul style={{ margin: 0, padding: "9px 28px", color: "var(--sev-high-color)", fontSize: 10.5 }}>
                     {draft.validation!.issues!.map((issue) => <li key={issue}>{issue}</li>)}

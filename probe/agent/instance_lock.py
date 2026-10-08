@@ -106,12 +106,10 @@ def _holder_hint(path: Path) -> str:
     started = info.get("started_at")
     if not pid:
         return "another probe process"
-    alive = ""
-    try:
-        os.kill(int(pid), 0)            # signal 0 = existence check, no effect
-        alive = " (running)"
-    except (OSError, ValueError, TypeError):
-        alive = " (may have exited — retry)"
+    # NOT os.kill(pid, 0): on Windows signal 0 is CTRL_C_EVENT, so that "existence check"
+    # sends Ctrl+C to the holder's console group (found when a test run was interrupted).
+    from agent.runtime_status import process_alive
+    alive = " (running)" if process_alive(pid) else " (may have exited — retry)"
     return f"PID {pid}{alive}" + (f", started {started}" if started else "")
 
 

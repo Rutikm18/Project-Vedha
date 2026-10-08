@@ -30,6 +30,10 @@ class Settings(BaseSettings):
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
+    # Optional separate Redis for disposable caches (the AI answer cache). The
+    # main Redis holds sessions, lockouts and sign-in codes and must never evict
+    # them; a cache instance may. Empty = use REDIS_URL for the cache too.
+    redis_cache_url: str = ""
 
     # Database connection pool — these are per-process (each uvicorn worker has its
     # own pool). Keep pool_size small on shared EC2 to avoid exhausting Postgres
@@ -45,6 +49,9 @@ class Settings(BaseSettings):
     # exceed the probe heartbeat interval (~30s); reaper runs on its own cadence.
     job_lease_seconds: int = 300
     reaper_interval_seconds: int = 60
+    # How often the worker checks open findings for SLA transitions to announce
+    # (0 disables the watcher).
+    sla_watch_interval_seconds: int = 900
 
     # Neo4j (attack-path graph store — optional; engine falls back to in-memory NetworkX)
     neo4j_uri: str = "bolt://localhost:7687"
@@ -183,6 +190,10 @@ class Settings(BaseSettings):
     # AGENT_RELEASE_REQUIRE_SIGNATURE=true.
     agent_release_dir: str = "/var/lib/vedha/agent-releases"
     agent_release_public_key: str = ""
+    # Base64 DER SubjectPublicKeyInfo of the P-256 key (printed by
+    # `agent_release.py keygen --p256-out`). Windows installs verify the manifest
+    # against it; unset, Linux is served and the Windows package is withheld.
+    agent_release_p256_public_key: str = ""
     agent_release_require_signature: bool = False
     # Public base URL of this API (https://api.example.com) — what a customer's
     # host dials. Used to build the install command shown in Fleet.

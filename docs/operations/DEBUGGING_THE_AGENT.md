@@ -152,7 +152,7 @@ hardened-agent unit suite on `windows-latest` alongside Linux and macOS.
 |---|---|---|---|
 | **Foreground (source)** | `probe\windows\setup.ps1 -Foreground` | No | Quick test / live console debugging |
 | **Persistent task (source)** | `probe\windows\setup.ps1` | **Yes** | Real deployment (survives reboot) |
-| **Packaged .exe** | `probe\windows\build-agent-exe.ps1` → `install.ps1` | Yes | Sealed distribution (no Python on host) |
+| **Packaged .exe (customers)** | the zip from CI: `install.cmd -Token vet_...` ([guide](../probe/WINDOWS_AGENT_INSTALL.md)) | Yes | Customer distribution (no Python on host). Diagnose with `vedha-agent.exe status` / `doctor` / `support-bundle` ([reference](../probe/WINDOWS_AGENT_REFERENCE.md)) |
 | **Bootstrap one-liner** | `probe\install.ps1` | — | Download-then-run bootstrap |
 
 ```powershell

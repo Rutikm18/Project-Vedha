@@ -1,0 +1,59 @@
+{
+  "name": "dual-homed machine is the way across a segmented boundary",
+  "description": "FM-15. One machine answers on 10.0.1.5 and 10.0.2.5 under one name. Owning its outer address is owning its inner one, and the inner network is otherwise unreachable.",
+  "scope": [
+    "10.0.1.0/24",
+    "10.0.2.0/24"
+  ],
+  "posture": "segmented",
+  "assets": [
+    {
+      "id": "edgeNIC",
+      "ip": "10.0.1.5",
+      "hostname": "gateway-app",
+      "environment": "dmz"
+    },
+    {
+      "id": "innerNIC",
+      "ip": "10.0.2.5",
+      "hostname": "gateway-app"
+    },
+    {
+      "id": "jewel",
+      "ip": "10.0.2.9",
+      "criticality": "critical"
+    }
+  ],
+  "exploitable": [
+    "edgeNIC",
+    "jewel"
+  ],
+  "targets": [
+    "jewel"
+  ],
+  "truth": {
+    "valid_hops": [
+      [
+        "edgeNIC",
+        "innerNIC"
+      ],
+      [
+        "innerNIC",
+        "jewel"
+      ]
+    ],
+    "forbidden_hops": [
+      [
+        "edgeNIC",
+        "jewel"
+      ]
+    ],
+    "expected_paths": [
+      [
+        "edgeNIC",
+        "innerNIC",
+        "jewel"
+      ]
+    ]
+  }
+}

@@ -117,28 +117,15 @@ def _http_rules(data: dict, banner: str, port: int, target: str) -> list[dict]:
     return out
 
 
-# Cleartext / legacy protocols that are a finding purely by being open.
-_CLEARTEXT_PORTS = {
-    21: ("FTP", "credentials and data traverse the network in cleartext"),
-    23: ("Telnet", "credentials and the entire session traverse the network in cleartext"),
-    69: ("TFTP", "unauthenticated file transfer with no encryption"),
-    512: ("rexec", "legacy remote execution with cleartext credentials"),
-    513: ("rlogin", "legacy remote login with cleartext credentials"),
-}
-
-
-def _cleartext_rule(port: int, target: str) -> list[dict]:
-    info = _CLEARTEXT_PORTS.get(port)
-    if not info:
-        return []
-    name, why = info
-    return [dict(
-        title=f"Cleartext service exposed ({name})",
-        severity=FindingSeverity.medium, cvss=5.9, cve_ids=None,
-        description=f"{name} is open on port {port}: {why}.",
-        remediation=f"Disable {name} and use an encrypted equivalent (e.g. SSH/SFTP/HTTPS).",
-        evidence={"port": port, "service": name},
-    )]
+# NOTE (gap #2 — duplicate findings): the cleartext/legacy-protocol rule that
+# used to live here was RETIRED. The manager's detection-engine posture track
+# (detection_engine/port_intel.py + posture_rules.detect_exposed_services) is the
+# authoritative, exposure-aware producer for exposed cleartext protocols
+# ("Cleartext protocol exposed on {port} ({svc})"). Emitting a second,
+# different-titled "Cleartext service exposed (...)" here produced a duplicate
+# finding per service (the dedup key is (asset, title), so different titles never
+# merged). This module now covers only what the posture engine does NOT: the SSH
+# KEXINIT weak-crypto and the thttpd legacy-webserver banner findings below.
 
 
 async def create_service_vuln_findings(
@@ -147,6 +134,7 @@ async def create_service_vuln_findings(
     scan_result_id: uuid.UUID | None = None,
     scan_job_id: uuid.UUID | None = None,
     recorded_at: datetime | None = None,
+    identity=None,
 ) -> int:
     """Scan the result's `facts` for weak/outdated network services and persist
     Finding rows. Idempotent per (engagement, asset, title). Returns the count
@@ -175,11 +163,12 @@ async def create_service_vuln_findings(
             candidates += _ssh_rules(data, banner, port, target)
         if service in ("http", "https") or port in (80, 443, 8080, 8443):
             candidates += _http_rules(data, banner, port, target)
-        candidates += _cleartext_rule(port, target)
+        # Cleartext/legacy-protocol findings are produced authoritatively by the
+        # posture engine (port_intel); not duplicated here — see the note above.
         if not candidates:
             continue
 
-        asset = await _resolve_asset(db, engagement_id, target)
+        asset = await _resolve_asset(db, engagement_id, target, identity=identity)
         for c in candidates:
             duplicate = await _find_open_duplicate(
                 db, engagement_id, asset.id if asset else None, c["title"]
@@ -195,6 +184,7 @@ async def create_service_vuln_findings(
                     recorded_at=now,
                     initial=False,
                     previous_evidence=duplicate.evidence,
+                    source_host=target,
                 )
                 duplicate.last_seen = now
                 updated += 1
@@ -209,6 +199,7 @@ async def create_service_vuln_findings(
                 tool=tool,
                 recorded_at=now,
                 initial=True,
+                source_host=target,
             )
             db.add(_new_finding(
                 engagement_id, asset, observed_at=now, **candidate

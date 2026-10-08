@@ -493,6 +493,12 @@ env_set MANAGER_PUBLIC_URL "https://$API_HOST"
 env_set CORS_ORIGINS "https://$DOMAIN,https://$API_HOST"
 env_set API_BIND 127.0.0.1
 env_set FRONTEND_BIND 127.0.0.1
+# A public HTTPS manager is production. Left on the testing values from gen-env,
+# the login page would hand out the seeded admin password (/api/auth/dev-hint),
+# the API docs would be public, and agent releases would not need a signature.
+env_set APP_ENV production
+env_set DEV_LOGIN_HINT 0
+env_set PROBE_AUTO_ENROLL false
 ok ".env updated (backup in deploy/tls/backup/)"
 
 # The old port-80 edge proxy must release the port before Caddy takes it.

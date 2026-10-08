@@ -45,7 +45,7 @@ def _out(u: User) -> UserOut:
         email=u.email,
         role=u.role.value if hasattr(u.role, "value") else str(u.role),
         is_active=u.is_active,
-        mfa_enabled=u.mfa_enabled,
+        mfa_enabled=bool(u.mfa_enabled and u.mfa_secret_enc),
         created_at=u.created_at,
         password_expires_at=u.password_expires_at,
     )

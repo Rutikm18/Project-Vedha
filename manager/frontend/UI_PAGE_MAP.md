@@ -47,9 +47,9 @@ Two apps share this frontend:
 
 ### 2. Login
 - Page: `app/login/page.tsx`
-- API: `app/api/auth/login/route.ts`, `auth/request/route.ts`, `auth/verify/route.ts`,
-  `auth/me/route.ts`, `auth/logout/route.ts`, `auth/dev-hint/route.ts`
-- Store: `lib/auth-store.ts`, `lib/auth-middleware.ts`, `lib/security-context.ts`
+- API: `app/api/auth/login/route.ts`, `auth/me/route.ts`, `auth/logout/route.ts`,
+  `auth/pats/route.ts`, `auth/dev-hint/route.ts`
+- Store: `lib/security-context.ts`
 
 ### 3. Engagements (list)
 - Page: `app/engagements/page.tsx`
@@ -59,13 +59,24 @@ Two apps share this frontend:
 ### 4. Engagement detail
 - Page: `app/engagements/[id]/page.tsx`
 - API: `app/api/engagements/[id]/route.ts`, `.../assets/route.ts`,
-  `.../attack-graph/route.ts`, `.../attack-paths/route.ts` (+ `[pathId]`),
-  `.../blast-radius/[assetId]/route.ts`, `.../chokepoints/route.ts`,
   `.../vuln-prioritizer/route.ts`, `.../import-facts/route.ts`
+- Attack-path API (all real proxies to FastAPI via `lib/attack-paths-proxy.ts`, which validates
+  UUID params and forwards only listed query keys): `.../attack-paths/route.ts` (+ `[pathId]`),
+  `.../attack-path-analysis/route.ts`, `.../chokepoints/route.ts`, `.../attack-graph/route.ts`,
+  `.../blast-radius/[assetId]/route.ts`
 - AI report: `.../ai-report/{draft,generate,approve,reject}/route.ts`,
   `.../ai-report/status/[jobId]/route.ts`
 - Detection validation: `.../detection-validation/{coverage,gaps,results,run,siem-config}/route.ts`
-- Graph logic: `lib/graph-store.ts`
+- Attack paths page: see 4a.
+
+### 4a. Engagement → Attack paths (Beta)
+- Page: `app/engagements/[id]/attack-paths/page.tsx` → `AttackPathsWorkspace.tsx` (data + layout),
+  `Panels.tsx` (coverage, empty-state explanation, fix-first, route table, step detail),
+  `PathMap.tsx` (route map), `styles.ts`
+- Linked from the engagement toolbar with a Beta badge (operators only, not the customer portal); the page header carries the same badge and a notice that says what beta means here
+- API client: `lib/attack-paths-api.ts` · view-model and types: `lib/attack-paths.ts`
+  (wording rules, empty-state reasons, fix-first sentence, route-map layout)
+- Backend: `manager/backend/app/routers/attack_paths.py` (list, detail, analysis, recompute)
 
 ### 5. Engagement → Customer access
 - Page: `app/engagements/[id]/customer-access/page.tsx`
@@ -121,7 +132,6 @@ Two apps share this frontend:
 - Page: `app/settings/page.tsx`
 - API: `app/api/settings/status/route.ts`, `app/api/sla-policy/route.ts`,
   `app/api/integrations/route.ts` (+ `[kind]`, `test`)
-- Store: `lib/permissions-store.ts`
 
 ---
 

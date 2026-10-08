@@ -95,6 +95,8 @@ export interface Entitlement {
   locked_features?: LockFeature[];
   /** Written (free-text) reports are withheld while any severity is locked. */
   written_reports_withheld?: boolean;
+  /** Who the customer should contact to change their plan (set by the organisation). */
+  support_contact?: string | null;
 }
 
 export interface EntitlementAdmin extends Entitlement {

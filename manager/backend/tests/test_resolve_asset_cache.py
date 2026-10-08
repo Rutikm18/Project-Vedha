@@ -11,12 +11,19 @@ from app.discovery.finding_translator import _resolve_asset
 from app.models.asset import Asset
 
 
+def _rows(*assets):
+    """What the resolver's `select(Asset)` returns: `.scalars().all()` rows."""
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = list(assets)
+    return result
+
+
 @pytest.mark.asyncio
 async def test_cache_resolves_each_host_once():
     eng = uuid.uuid4()
     existing = Asset(engagement_id=eng, ip_address="10.0.0.5")
     db = MagicMock()
-    db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: existing))
+    db.execute = AsyncMock(return_value=_rows(existing))
     cache: dict = {}
 
     # 20 findings on the same host — one DB query, then cache hits.
@@ -32,7 +39,7 @@ async def test_no_cache_keeps_old_behavior():
     eng = uuid.uuid4()
     existing = Asset(engagement_id=eng, ip_address="10.0.0.5")
     db = MagicMock()
-    db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: existing))
+    db.execute = AsyncMock(return_value=_rows(existing))
     for _ in range(3):
         await _resolve_asset(db, eng, "10.0.0.5")       # no cache → queries each time
     assert db.execute.await_count == 3
@@ -43,7 +50,7 @@ async def test_host_port_target_normalized():
     eng = uuid.uuid4()
     existing = Asset(engagement_id=eng, ip_address="10.0.0.5")
     db = MagicMock()
-    db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: existing))
+    db.execute = AsyncMock(return_value=_rows(existing))
     cache: dict = {}
     await _resolve_asset(db, eng, "10.0.0.5:443", cache=cache)   # host:port form
     await _resolve_asset(db, eng, "10.0.0.5", cache=cache)       # same host

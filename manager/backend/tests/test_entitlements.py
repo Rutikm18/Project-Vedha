@@ -272,7 +272,7 @@ class TestOperatorRoutes:
         op = _operator()
         eng = SimpleNamespace(id=uuid.uuid4(), tenant_id=op.tenant_id)
         monkeypatch.setattr(ca, "get_or_404", AsyncMock(return_value=eng))
-        db = _route_db(None)                   # no existing entitlement
+        db = _route_db(None, None)             # no existing entitlement; no tenant defaults row
         out = asyncio.run(ca.put_entitlement(
             eng.id, ca.EntitlementConfig(plan_type="poc", duration_days=14, scan_quota=10), db, op))
         added = [c.args[0] for c in db.add.call_args_list]
@@ -359,3 +359,48 @@ def test_used_up_wording_is_grammatical():
     assert many.modes["normal"].reason.startswith("You've used all 3 normal scans in")
     total = ent.evaluate(_row(scan_quota=1, scans_used=1), now=NOW)
     assert total.reason.startswith("You've used your 1 scan in your POC")
+
+
+class TestNewCustomerDefaults:
+    """An organisation's new-customer defaults seed a brand-new POC; existing plans
+    and licensed plans are untouched."""
+
+    def _row(self):
+        return SimpleNamespace(locked_severities=None, locked_features=None, license_key=None,
+                               starts_at=None, expires_at=None, scans_used=0)
+
+    def _apply(self, plan_type, defaults, **body):
+        from app.services.org_settings import CustomerDefaults
+        row = self._row()
+        cfg = ca.EntitlementConfig(plan_type=plan_type, duration_days=14 if plan_type == "poc" else None,
+                                   expires_at=None if plan_type == "poc" else datetime(2027, 1, 1, tzinfo=timezone.utc),
+                                   **body)
+        ca.apply_entitlement_config(row, cfg, now=datetime.now(timezone.utc),
+                                    defaults=CustomerDefaults(**defaults) if defaults is not None else None)
+        return row
+
+    def test_a_new_poc_starts_with_the_organisations_locks(self):
+        row = self._apply("poc", {"poc_locked_severities": ["critical"], "poc_locked_features": ["reports", "ai_assistant"]})
+        assert row.locked_severities == ["critical"]
+        assert row.locked_features == ["ai_assistant", "reports"]          # canonical order
+
+    def test_without_defaults_the_builtin_poc_locks_apply(self):
+        row = self._apply("poc", None)
+        assert row.locked_severities == ["critical", "high"] and row.locked_features == []
+
+    def test_a_licensed_plan_never_starts_locked(self):
+        row = self._apply("licensed", {"poc_locked_severities": ["critical", "high"], "poc_locked_features": ["reports"]})
+        assert row.locked_severities == [] and row.locked_features == []
+
+    def test_explicit_locks_in_the_request_win_over_defaults(self):
+        row = self._apply("poc", {"poc_locked_severities": ["critical"]}, locked_severities=["low"], locked_features=[])
+        assert row.locked_severities == ["low"] and row.locked_features == []
+
+    def test_an_existing_plan_keeps_what_it_has(self):
+        from app.services.org_settings import CustomerDefaults
+        row = self._row()
+        row.locked_severities, row.locked_features = ["medium"], ["compliance"]
+        cfg = ca.EntitlementConfig(plan_type="poc", duration_days=7)
+        ca.apply_entitlement_config(row, cfg, now=datetime.now(timezone.utc),
+                                    defaults=CustomerDefaults(poc_locked_severities=["critical"]))
+        assert row.locked_severities == ["medium"] and row.locked_features == ["compliance"]

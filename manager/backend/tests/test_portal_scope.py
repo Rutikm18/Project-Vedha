@@ -6,6 +6,7 @@ inside its one engagement and rejects any attempt to reach another.
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -28,6 +29,8 @@ from tests.test_refresh_security import FakeRedis
 from app.models.enums import UserRole
 from app.models.finding import Finding
 from app.schemas.auth import CurrentUser
+
+_REQ = SimpleNamespace(client=SimpleNamespace(host="203.0.113.1"), headers={})
 
 
 def _client(engagement: uuid.UUID | None = None) -> CurrentUser:
@@ -207,7 +210,7 @@ class TestRefreshPreservesAudienceAndScope:
         redis = FakeRedis()
         await refresh_store.issue(redis, jti, str(uid))
 
-        resp = await refresh(RefreshRequest(refresh_token=token), db=self._db_returning(user), redis=redis)
+        resp = await refresh(RefreshRequest(refresh_token=token), db=self._db_returning(user), redis=redis, request=_REQ)
 
         claims = decode_token(resp.access_token)
         assert claims["aud"] == PORTAL_AUDIENCE
@@ -223,7 +226,7 @@ class TestRefreshPreservesAudienceAndScope:
         redis = FakeRedis()
         await refresh_store.issue(redis, jti, str(uid))
 
-        resp = await refresh(RefreshRequest(refresh_token=token), db=self._db_returning(user), redis=redis)
+        resp = await refresh(RefreshRequest(refresh_token=token), db=self._db_returning(user), redis=redis, request=_REQ)
 
         claims = decode_token(resp.access_token)
         assert claims["aud"] == MANAGER_AUDIENCE
@@ -241,5 +244,5 @@ class TestRefreshPreservesAudienceAndScope:
         await refresh_store.issue(redis, jti, str(uid))
 
         with pytest.raises(HTTPException) as exc:
-            await refresh(RefreshRequest(refresh_token=token), db=self._db_returning(user), redis=redis)
+            await refresh(RefreshRequest(refresh_token=token), db=self._db_returning(user), redis=redis, request=_REQ)
         assert exc.value.status_code == 403

@@ -1,0 +1,41 @@
+{
+  "name": "two sites reuse 10.0.0.0/24 and are not connected",
+  "description": "FM-14. Per-site identity and a segmented posture: site A's exposed host and site B's jewel only share an address range, not a network. No path, and certainly no direct hop.",
+  "scope": [
+    "10.0.0.0/24"
+  ],
+  "posture": "segmented",
+  "identity": "per_site",
+  "assets": [
+    {
+      "id": "entryA",
+      "ip": "10.0.0.5",
+      "site": "siteA",
+      "environment": "dmz"
+    },
+    {
+      "id": "jewelB",
+      "ip": "10.0.0.9",
+      "site": "siteB",
+      "criticality": "critical"
+    }
+  ],
+  "exploitable": [
+    "entryA",
+    "jewelB"
+  ],
+  "targets": [
+    "jewelB"
+  ],
+  "truth": {
+    "forbidden_hops": [
+      [
+        "entryA",
+        "jewelB"
+      ]
+    ],
+    "unreachable_targets": [
+      "jewelB"
+    ]
+  }
+}

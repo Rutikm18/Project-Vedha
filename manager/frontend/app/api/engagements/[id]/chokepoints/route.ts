@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
-import { graphStore } from "../../../../../lib/graph-store";
+import { engagementGet } from "../../../../../lib/attack-paths-proxy";
 
-// GET /engagements/{id}/chokepoints
-export async function GET() {
-  const chokepoints = graphStore.getChokepoints();
-  return NextResponse.json({ chokepoints, total: chokepoints.length });
-}
+/** GET /api/engagements/{id}/chokepoints → hosts to fix first and the smallest cutting set. */
+export const GET = engagementGet({
+  uuids: ["id"],
+  path: (p) => `/engagements/${p.id}/chokepoints`,
+});

@@ -17,6 +17,7 @@ from app.models.user import User
 from app.schemas.finding import FindingClosurePacket, FindingPatch
 from app.services import finding_events
 from app.services.audit import record_audit
+from app.services.notification_rules import notify_event_safe
 
 
 def _closure_event_detail(packet: FindingClosurePacket) -> dict[str, object]:
@@ -49,6 +50,24 @@ async def get_finding_for_action(
     if finding is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
     return finding
+
+
+async def _announce_status_change(db, finding, tenant_id, previous_status, reason) -> None:
+    """Queue the "finding status changed" notification. Building the message and
+    queueing it are both guarded: a notification problem must never fail the
+    status change that triggered it."""
+    try:
+        old = getattr(previous_status, "value", previous_status)
+        new = getattr(finding.status, "value", finding.status)
+        title = " ".join(str(getattr(finding, "title", "")).split())[:200]
+        severity = getattr(getattr(finding, "severity", None), "value", getattr(finding, "severity", ""))
+        why = f". Reason: {' '.join(str(reason).split())[:300]}" if reason else "."
+        await notify_event_safe(
+            db, tenant_id, "finding_status_changed",
+            f"Vedha: finding moved from {old} to {new}",
+            f"'{title}' ({severity}) changed status from {old} to {new}{why}")
+    except Exception:  # noqa: BLE001 — see docstring
+        pass
 
 
 async def patch_finding(
@@ -210,6 +229,9 @@ async def patch_finding(
                 "risk_to": float(finding.risk_score) if finding.risk_score is not None else None,
             },
         )
+
+    if status_changed:
+        await _announce_status_change(db, finding, tenant_id, previous_status, action_reason)
 
     record_audit(
         db,

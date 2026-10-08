@@ -1,0 +1,31 @@
+{
+  "name": "exposed but not compromisable",
+  "description": "P4a. A host reachable from the internet with nothing exploitable is not a foothold; the jewel behind it is not reachable by the model.",
+  "scope": [
+    "10.0.1.0/24"
+  ],
+  "posture": "flat",
+  "assets": [
+    {
+      "id": "exposed",
+      "ip": "10.0.1.5",
+      "environment": "dmz"
+    },
+    {
+      "id": "jewel",
+      "ip": "10.0.1.9",
+      "criticality": "critical"
+    }
+  ],
+  "exploitable": [
+    "jewel"
+  ],
+  "targets": [
+    "jewel"
+  ],
+  "truth": {
+    "unreachable_targets": [
+      "jewel"
+    ]
+  }
+}

@@ -5,6 +5,10 @@ systems in your engagement's scope, and sends the results to Vedha. It only
 makes **outbound HTTPS connections to your Vedha manager** — nothing connects
 in to it, and you open no inbound ports.
 
+> **Windows host?** Skip to [Installing on Windows](#installing-on-windows) below. The portal's
+> **Add agent** panel shows a **Linux / Windows** switch when your Vedha team has published
+> the Windows agent.
+
 ## 1. Prepare a host
 
 | Need | Details |
@@ -70,7 +74,8 @@ your local network never goes through the proxy.
 |---|---|
 | `--name NAME` | Name shown in the portal (default: the host name) |
 | `--no-proxy LIST` | Extra hosts that bypass the proxy |
-| `--require-signature` | Fail if the signature can't be checked on this host (no OpenSSL 3) |
+| `--token-file FILE` | Read the token from a root-only file instead of the command line (keeps it out of shell history) |
+| `--require-signature` | Always on for an installer from your manager: it stops if the signature can't be checked (needs OpenSSL 3, or `python3-cryptography` on older systems) |
 
 ## 4. Operate
 
@@ -78,6 +83,7 @@ your local network never goes through the proxy.
 |---|---|
 | Logs | `docker logs -f vedha-agent` |
 | Status | the portal's Fleet page (heartbeat, current job) |
+| Upgrade | Run the newer installer with a new token: the container is replaced and the agent keeps its identity |
 | Remove | `sudo sh vedha-install.sh --uninstall` (add `PROBE_PURGE=true` to delete its identity) |
 
 ## Access dates
@@ -110,3 +116,37 @@ once it has passed.
 | "release signature does NOT verify" | Stop and contact Vedha; do not work around it |
 | The agent shows a pairing code | Enter it in Fleet → "Or approve with an installer code" |
 | Fleet shows "access expired" | The access date passed. Ask your Vedha team to extend it; no reinstall |
+
+## Installing on Windows
+
+**The host.** 64-bit Windows 10 / 11 or Windows Server 2016 or later, Windows PowerShell 5.1 or
+later, and an account that can run PowerShell as administrator. Same network rules as Linux:
+outbound HTTPS (443) to your manager, working time sync, no inbound ports.
+
+**The command.** In **Fleet → Add agent**, choose **Windows**, generate the command and run it in
+PowerShell opened with **Run as administrator** (or paste the Command Prompt form into `cmd`, which
+asks for administrator rights itself). It looks like this:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; & ([scriptblock]::Create((irm 'https://api.vedhasec.com/agent/install.ps1'))) -Manager 'https://api.vedhasec.com' -Token 'vet_…'"
+```
+
+The token works once and expires like the Linux one. Before it installs anything the installer
+verifies the signature on the release, checks the downloaded package against the checksum in that
+signed release, and — when the release is Authenticode-signed — checks the signature on
+`vedha-agent.exe`. If any check fails it stops and installs nothing. To check a release without
+installing it, add `-VerifyOnly` to the command (no administrator rights needed).
+
+**What gets installed.** A background task named **VedhaAgent** that runs as SYSTEM and starts at boot,
+under `C:\ProgramData\vedha-agent` (identity key, logs). That folder is readable only by SYSTEM and
+Administrators. The agent appears under **Connected vedha-agents** within a minute; its scan range
+is exactly your engagement's scope.
+
+**Security software.** A network scanner can look like malware to antivirus / EDR. Ask your security
+team to allow `vedha-agent.exe` (and the folder above) before installing. If a file goes missing during
+install, security software removed it: allow it and run the command again.
+
+**Upgrade:** run a fresh command from the portal. **Remove:** from an administrator prompt run
+`C:\ProgramData\vedha-agent\tools\uninstall.cmd` (add `-Purge` to also delete the agent's identity and
+logs; without it they are kept). For the other commands (`-Repair`, proxy and certificate options, support
+bundle) see `WINDOWS_AGENT_INSTALL.md`.
