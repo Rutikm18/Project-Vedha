@@ -107,8 +107,9 @@ def test_windows_is_authenticode_signed_before_packaging_and_proven():
 
 
 def test_authenticode_certificate_is_removed_from_the_runner():
-    cleanup = next(s for s in JOBS["windows-package"]["steps"] if s.get("if") == "always()")
-    assert "codesign.pfx" in cleanup["run"] and "Remove-Item" in cleanup["run"]
+    cleanup = next(s for s in JOBS["windows-package"]["steps"]
+                   if s.get("if") == "always()" and "codesign.pfx" in s.get("run", ""))
+    assert "Remove-Item" in cleanup["run"]
 
 
 def test_signed_thumbprint_is_pinned_into_the_manifest():

@@ -96,12 +96,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install cryptography pytest
+      # The backend tests' conftest imports the app, so the backend's core requirements are needed.
+      - run: python -m pip install -r manager/backend/requirements-core.txt pytest pytest-asyncio
       - name: Release tool, installer contracts and the stub manager
         run: >-
           python -m pytest -q -p no:cacheprovider
           manager/backend/tests/test_agent_release_windows.py
           manager/backend/tests/test_agent_stub_manager.py
+          manager/backend/tests/test_agent_release_workflow.py
           probe/tests/test_windows_scripts.py
           probe/tests/test_windows_remote_install.py
           probe/tests/test_windows_installer_pwsh.py
@@ -159,7 +161,7 @@ jobs:
   windows-package:
     needs: plan
     runs-on: windows-latest
-    timeout-minutes: 75
+    timeout-minutes: 120
     outputs:
       thumbprint: ${{ steps.sign.outputs.thumbprint }}
     defaults:
@@ -175,8 +177,25 @@ jobs:
       - name: Closure check (only the agent's own code is compiled)
         run: python tools/agent_closure.py --check
 
+      # Nuitka's compiled-object cache, shared with agent-windows-build.yml (same key): a release build
+      # then takes minutes instead of ~35.
+      - name: Restore Nuitka cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~\AppData\Local\Nuitka\Nuitka\Cache
+          key: nuitka-win-${{ hashFiles('probe/requirements-runtime.txt') }}-${{ github.run_id }}
+          restore-keys: |
+            nuitka-win-${{ hashFiles('probe/requirements-runtime.txt') }}-
+
       - name: Build the compiled agent (Nuitka)
         run: powershell -ExecutionPolicy Bypass -File windows\build-agent-exe.ps1
+
+      - name: Save Nuitka cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ~\AppData\Local\Nuitka\Nuitka\Cache
+          key: nuitka-win-${{ hashFiles('probe/requirements-runtime.txt') }}-${{ github.run_id }}
 
       - name: Smoke test the compiled agent
         run: |
