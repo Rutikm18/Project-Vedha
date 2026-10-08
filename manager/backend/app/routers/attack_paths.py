@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import DB, AuthUser
 from app.graph.analyzer import PathAnalyzer
 from app.graph.builder import GraphBuilder
+from app.graph.coverage import coverage_report, freshness_report
 from app.graph.visualizer import GraphVisualizer
 from app.models.asset import Asset
 from app.models.attack_path import AttackPath
@@ -163,6 +164,35 @@ async def list_chokepoints(
             "computed_at": computed_at.isoformat() if computed_at else None}
 
 
+# ── GET /attack-path-analysis ─────────────────────────────────────────────────
+
+@router.get("/attack-path-analysis",
+            summary="Stored engagement-level analysis: choke points, coverage, freshness, why-empty")
+async def attack_path_analysis(
+    engagement_id: uuid.UUID,
+    db: DB,
+    current_user: AuthUser,
+):
+    """Everything about the engagement as a whole that the last recompute found.
+    Read-only: an engagement that was never computed answers `computed: false`
+    instead of computing on a GET."""
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    stored = await db.get(AttackPathAnalysis, engagement_id)
+    if stored is None:
+        return {"computed": False, "detail": "no attack-path computation has run for this engagement yet"}
+    analysis = stored.analysis or {}
+    labels = await _asset_labels(db, engagement_id)
+    return {
+        "computed": True,
+        "computed_at": stored.computed_at.isoformat(),
+        "path_count": stored.path_count,
+        "choke": labelled_choke(analysis.get("choke") or {}, labels),
+        "coverage": analysis.get("coverage"),
+        "freshness": analysis.get("freshness"),
+        "diagnostics": analysis.get("diagnostics"),
+    }
+
+
 # ── GET /blast-radius/{asset_id} ──────────────────────────────────────────────
 
 @router.get("/blast-radius/{asset_id}", summary="Assets reachable if this asset is compromised")
@@ -261,7 +291,7 @@ async def _recompute_and_store(
     """Recompute and UPSERT the engagement's paths. Returns the analyzer's
     diagnostics so the caller can explain an empty result."""
     await _lock_engagement_paths(db, engagement_id)
-    analyzer, _graph = await _build_analyzer(db, engagement_id)
+    analyzer, graph = await _build_analyzer(db, engagement_id)
     targets = await _target_ids(db, engagement_id, target_asset_id)
     paths = _all_paths_to_critical(analyzer, targets)
 
@@ -293,7 +323,10 @@ async def _recompute_and_store(
         row.risk_score = Decimal(str(p["risk_score"]))
         row.chokepoints = path_chokepoints(p["nodes"], choke)         # only the ones ON this path
     diagnostics = analyzer.diagnose(targets)
-    await _store_analysis(db, engagement_id, {"choke": choke, "diagnostics": diagnostics}, len(wanted))
+    await _store_analysis(db, engagement_id, {
+        "choke": choke, "diagnostics": diagnostics,
+        "coverage": coverage_report(graph), "freshness": freshness_report(graph),
+    }, len(wanted))
     await db.flush()
     logger.info("graph.paths.stored", engagement=str(engagement_id), count=len(wanted),
                 removed=len(stale))

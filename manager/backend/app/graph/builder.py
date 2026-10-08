@@ -436,6 +436,8 @@ class GraphBuilder:
 
         graph = self.build_asset_graph(engagement_id, assets, services, findings,
                                        freshness_days=freshness_days)
+        graph.graph["freshness_days"] = freshness_days
+        graph.graph["scope_cidrs"] = list(getattr(engagement, "scope_cidrs", None) or [])
 
         # P1a: derive the subnet topology from the engagement scope and assets.
         # Before this, no topology was ever supplied, so no lateral movement

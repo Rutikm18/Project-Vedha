@@ -387,6 +387,9 @@ class PathAnalyzer:
             "edges": edges,
             "target_criticality": tgt.get("criticality", "medium"),
         }
+        crossed = [mv.nodes[n] for n in node_path if mv.nodes[n].get("type") == "NetworkSegment"]
+        path["outside_scope"] = sorted({c.get("cidr") for c in crossed if c.get("scoped") is False})
+        path["inferred_subnets"] = sorted({c.get("cidr") for c in crossed if c.get("inferred")})
         stale_steps = sum(1 for e in edges if e["stale"])
         path["stale_steps"] = stale_steps
         path["freshness"] = ("stale" if stale_steps == len(edges) and edges

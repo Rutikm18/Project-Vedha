@@ -194,3 +194,91 @@ def test_the_analysis_is_stored_once_per_engagement_and_replaced_on_recompute():
 def test_the_stored_analysis_is_json_serialisable():
     import json
     json.dumps(_bottleneck().choke_analysis(["jewel"]))
+
+
+# ── coverage, freshness and the grouped graph ────────────────────────────────
+
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+from app.graph.coverage import coverage_report, freshness_report  # noqa: E402
+from app.graph.visualizer import GraphVisualizer  # noqa: E402
+
+_NOW = datetime(2026, 10, 8, tzinfo=timezone.utc)
+
+
+def _built(assets, scope, exploitable=(), posture=POSTURE_SEGMENTED, freshness_days=30):
+    b = GraphBuilder()
+    b.build_asset_graph("eng", assets, [], [_F(uuid.uuid4(), a) for a in exploitable],
+                        freshness_days=freshness_days, now=_NOW)
+    b.add_segment_topology(derive_topology(assets, scope, posture))
+    b.graph.graph["scope_cidrs"], b.graph.graph["freshness_days"] = list(scope), freshness_days
+    return b.graph
+
+
+@dataclass
+class _T(_A):
+    last_seen: datetime | None = None
+
+
+def test_coverage_counts_hosts_per_subnet_and_names_scope_nobody_looked_at():
+    g = _built([_T("a", "10.0.1.5", last_seen=_NOW), _T("b", "10.0.1.6", last_seen=_NOW - timedelta(days=60))],
+               ["10.0.1.0/24", "10.0.9.0/24"])
+    r = coverage_report(g)
+    (seg,) = r["segments"]
+    assert seg["cidr"] == "10.0.1.0/24" and seg["hosts"] == 2 and seg["stale_hosts"] == 1
+    assert r["scope_without_observed_hosts"] == [{"cidr": "10.0.9.0/24", "addresses": 256}]
+    assert r["confidence"] == "partial" and "not tracked" in r["basis"]
+
+
+def test_full_observation_is_still_only_called_observed_never_complete():
+    g = _built([_T("a", "10.0.1.5", last_seen=_NOW)], ["10.0.1.0/24"])
+    assert coverage_report(g)["confidence"] == "observed"
+
+
+def test_hosts_outside_the_authorised_scope_are_reported():
+    g = _built([_T("a", "10.0.1.5"), _T("rogue", "192.168.7.7")], ["10.0.1.0/24"])
+    r = coverage_report(g)
+    assert r["observed_outside_scope"] == ["192.168.7.0/24"] and r["confidence"] == "partial"
+
+
+def test_freshness_summarises_the_evidence_age():
+    g = _built([_T("a", "10.0.1.5", last_seen=_NOW), _T("b", "10.0.1.6", last_seen=_NOW - timedelta(days=60)),
+                _T("c", "10.0.1.7")], ["10.0.1.0/24"])
+    r = freshness_report(g)
+    assert r["assets"] == 3 and r["stale_assets"] == 1 and r["assets_without_timestamp"] == 1
+    assert r["window_days"] == 30 and r["oldest_seen"].startswith("2026-08") and r["stale_fraction"] == 0.333
+
+
+def test_a_path_through_unscoped_or_inferred_space_says_so():
+    assets = [_A("e", "10.0.1.5", environment="dmz"), _A("gw", "10.0.1.1", device_role="network_device"),
+              _A("far", "172.16.4.9", criticality="critical")]            # outside every scope CIDR
+    b = GraphBuilder()
+    b.build_asset_graph("eng", assets, [], [_F(uuid.uuid4(), a) for a in ("e", "gw", "far")])
+    b.add_segment_topology(derive_topology(assets, ["10.0.1.0/24"], POSTURE_SEGMENTED))
+    paths = PathAnalyzer(b.graph).find_paths_to_target("far")
+    assert paths and "172.16.4.0/24" in paths[0]["outside_scope"]
+    assert paths[0]["inferred_subnets"] == ["172.16.4.0/24"]
+
+
+def test_the_d3_graph_is_grouped_by_subnet():
+    g = _built([_T("a", "10.0.1.5"), _T("b", "10.0.2.5")], ["10.0.1.0/24", "10.0.2.0/24"])
+    d3 = GraphVisualizer(g).to_d3()
+    assert {x["key"] for x in d3["groups"]} == {"10.0.1.0/24", "10.0.2.0/24"}
+    assert all(x["hosts"] == 1 for x in d3["groups"])
+    by_id = {n["id"]: n for n in d3["nodes"] if n["type"] == "Asset"}
+    assert by_id["a"]["group"] == "10.0.1.0/24" and by_id["b"]["group"] == "10.0.2.0/24"
+    seg = next(n for n in d3["nodes"] if n["type"] == "NetworkSegment")
+    assert seg["group"] in {"10.0.1.0/24", "10.0.2.0/24"}
+
+
+def test_d3_edges_carry_their_basis_and_nodes_their_freshness():
+    g = _built([_T("a", "10.0.1.5", last_seen=_NOW - timedelta(days=90))], ["10.0.1.0/24"])
+    d3 = GraphVisualizer(g).to_d3()
+    assert next(n for n in d3["nodes"] if n["type"] == "Asset")["stale"] is True
+    assert all("basis" in e for e in d3["edges"])
+
+
+def test_the_whole_stored_analysis_is_json_serialisable():
+    import json
+    g = _built([_T("a", "10.0.1.5", last_seen=_NOW)], ["10.0.1.0/24"])
+    json.dumps({"coverage": coverage_report(g), "freshness": freshness_report(g)})

@@ -289,7 +289,8 @@ def test_recompute_keeps_ids_and_removes_only_stale_paths():
 
     async def run(paths):
         async def _build(_db, _eid):
-            return _analyzer_returning(paths), None
+            import networkx as nx
+            return _analyzer_returning(paths), nx.MultiDiGraph()
 
         async def _targets(_db, _eid, _t):
             return ["z"]
