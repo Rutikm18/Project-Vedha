@@ -38,12 +38,13 @@ _PUBLIC_ENROLLMENT_PATHS = (
     re.compile(r"^/probe-enrollment/requests/[0-9a-fA-F-]+/activate$"),
     re.compile(r"^/probe-enrollment/token$"),
 )
-# Agent distribution: the installer and signed manifest are public; the image
-# route authenticates its own enrolment token (a vet_ token is not a JWT).
+# Agent distribution: the installers and signed manifest are public; the image
+# and package routes authenticate their own enrolment token (a vet_ token is not
+# a JWT).
 _PUBLIC_DISTRIBUTION_PATHS = (
-    re.compile(r"^/agent/install\.sh$"),
-    re.compile(r"^/agent/manifest\.json(\.sig)?$"),
-    re.compile(r"^/agent/image/[a-z0-9]{1,16}$"),
+    re.compile(r"^/agent/install\.(sh|ps1|cmd)$"),
+    re.compile(r"^/agent/manifest\.json(\.sig|\.p256\.sig)?$"),
+    re.compile(r"^/agent/(image|package)/[a-z0-9]{1,16}$"),
 )
 
 
@@ -84,7 +85,7 @@ def agent_jwt_path_allows(path: str, method: str) -> bool:
     the route handlers.
     """
     method = method.upper()
-    if path == "/agents/heartbeat":
+    if path in ("/agents/heartbeat", "/agents/update-check"):
         return method == "POST"
     if _AGENT_REFRESH_PATH.fullmatch(path):
         return method == "POST"

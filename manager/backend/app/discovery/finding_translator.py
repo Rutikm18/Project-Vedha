@@ -25,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.asset import Asset
-from app.models.enums import AssetType, FindingSeverity, FindingStatus
+from app.models.enums import FindingSeverity, FindingStatus
 from app.models.finding import Finding
 from app.models.service import Service
 from app.services.finding_scan_provenance import record_scan_observation
@@ -52,78 +52,42 @@ def _map_severity(raw: str | None) -> FindingSeverity:
         return FindingSeverity.info
 
 
-class AssetCache(dict):
-    """{host: Asset} for one detection run, plus the hosts prime_asset_cache has
-    already checked and found absent (so _resolve_asset need not look again)."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.known_absent: set[str] = set()
-
-
-def _host_of(target: str | None) -> str | None:
-    """The host part of a probe target ("1.2.3.4" or "1.2.3.4:443"); IPv6 literals
-    (several colons) are kept whole. This is the key assets are stored under."""
-    if not target:
-        return None
-    return target.split(":", 1)[0] if target.count(":") == 1 else target
+# The asset-resolution policy and its per-run cache live in ONE place
+# (services/asset_resolution.py). They are re-exported under the names the
+# detection pipeline and its tests have always imported from here.
+from app.services.asset_resolution import AssetCache, host_of as _host_of  # noqa: E402,F401
 
 
 async def prime_asset_cache(db: AsyncSession, engagement_id: uuid.UUID,
-                            targets, cache: dict) -> int:
+                            targets, cache: dict, identity=None) -> int:
     """Fill `cache` with the engagement's existing assets for `targets` in ONE query
-    per 1,000 hosts, so _resolve_asset only has to create what is genuinely new
-    instead of looking every host up one by one. Returns how many were found."""
-    hosts = list(dict.fromkeys(h for h in (_host_of(t) for t in targets) if h and h not in cache))
-    found = 0
-    for start in range(0, len(hosts), 1000):
-        chunk = hosts[start:start + 1000]
-        rows = (await db.execute(
-            select(Asset).where(Asset.engagement_id == engagement_id, Asset.ip_address.in_(chunk))
-        )).scalars().all()
-        for asset in rows:
-            cache.setdefault(asset.ip_address, asset)
-            found += 1
-        if isinstance(cache, AssetCache):
-            cache.known_absent.update(h for h in chunk if h not in cache)
-    return found
+    per 1,000 hosts (see services/asset_resolution.prime_asset_cache). `identity`
+    is the submission's IdentityContext; None = global."""
+    from app.services.asset_resolution import prime_asset_cache as _prime
+    return await _prime(db, engagement_id, targets, cache, identity=identity)
 
 
 async def _resolve_asset(db: AsyncSession, engagement_id: uuid.UUID, target: str | None,
-                         *, cache: dict | None = None) -> Asset | None:
+                         *, cache: dict | None = None, identity=None) -> Asset | None:
     """Find the Asset for a probe-reported target IP, creating a minimal one if needed.
 
     A probe's tls_scan/smb_enum/etc. can run standalone (no prior discovery job
     promoted this host yet), so the asset may not exist — create a bare-bones
     row rather than dropping the finding for lack of somewhere to attach it.
 
-    `cache` (a caller-owned {host: Asset} dict for one detection run) eliminates the
-    N+1 where every finding on the same host re-queried/re-created the asset — a
-    host with 20 findings did 20 identical lookups; with the cache it does one. A
-    caller that knows the hosts up front should prime it with prime_asset_cache so
-    even that one lookup per host becomes a single query for the whole run. New
-    assets get their id here (not from the database), so creating one costs no
-    flush and a run's new assets go out in one batched INSERT.
+    Delegates to services/asset_resolution.resolve_asset, the single identity
+    policy (global by default; per-site for private IPs when the engagement opts
+    in). `identity` is the submission's IdentityContext; None = global.
+
+    `cache` (a caller-owned AssetCache for one detection run) eliminates the N+1
+    where every finding on the same host re-queried/re-created the asset: a host
+    with 20 findings does one lookup, and a caller that knows the hosts up front
+    primes it with prime_asset_cache so that becomes one query per 1,000 hosts for
+    the whole run. New assets get their id here (not from the database), so
+    creating one costs no flush and a run's new assets go out in one batched INSERT.
     """
-    host = _host_of(target)
-    if not host:
-        return None
-    if cache is not None and host in cache:
-        return cache[host]
-    if cache is None or host not in getattr(cache, "known_absent", ()):
-        existing = (await db.execute(
-            select(Asset).where(Asset.engagement_id == engagement_id, Asset.ip_address == host)
-        )).scalar_one_or_none()
-        if existing:
-            if cache is not None:
-                cache[host] = existing
-            return existing
-    asset = Asset(id=uuid.uuid4(), engagement_id=engagement_id, ip_address=host,
-                  asset_type=AssetType.server, last_seen=datetime.now(timezone.utc))
-    db.add(asset)
-    if cache is not None:
-        cache[host] = asset
-    return asset
+    from app.services.asset_resolution import resolve_asset
+    return await resolve_asset(db, engagement_id, target, identity=identity, cache=cache)
 
 
 def _finding_port(f: dict) -> int | None:
@@ -310,6 +274,7 @@ async def create_findings_from_probe_result(
     scan_result_id: uuid.UUID | None = None,
     scan_job_id: uuid.UUID | None = None,
     recorded_at: datetime | None = None,
+    identity=None,
 ) -> int:
     """Convert a probe's self-assessed `findings` list into persisted Finding rows.
 
@@ -331,7 +296,7 @@ async def create_findings_from_probe_result(
         if not isinstance(f, dict):
             continue
         try:
-            asset = await _resolve_asset(db, engagement_id, f.get("target"))
+            asset = await _resolve_asset(db, engagement_id, f.get("target"), identity=identity)
             title = (f.get("title") or f"{scan_type} finding")[:500]
             asset_id = asset.id if asset else None
             # gap #2: an exposed-service probe finding carries a per-port condition

@@ -73,6 +73,10 @@ class GraphVisualizer:
                 "criticality": data.get("criticality"),
                 "compromised": entity in compromised,
                 "internet_exposed": data.get("internet_exposed", False),
+                # Subnet grouping (P5): a force layout can cluster by `group`; a segment is its own group.
+                "group": data.get("entity_id") if data.get("type") == "NetworkSegment" else data.get("segment"),
+                "site": data.get("site"),
+                "stale": bool(data.get("stale")),
                 "x": round(float(pos[0]) * 500, 2),
                 "y": round(float(pos[1]) * 500, 2),
             })
@@ -85,6 +89,7 @@ class GraphVisualizer:
                 "source_key": u,
                 "target_key": v,
                 "technique": data.get("type"),
+                "basis": data.get("basis"),
                 "weight": data.get("weight", 1.0),
                 "exploited": data.get("type") == "EXPLOITS" or data.get("dest_compromisable", False),
             })
@@ -99,4 +104,11 @@ class GraphVisualizer:
                 "highlighted": i == 0,  # highlight the highest-risk path by default
             })
 
-        return {"nodes": nodes, "edges": edges, "paths": path_summaries}
+        groups = [
+            {"key": d.get("entity_id"), "label": d.get("cidr") or d.get("label"), "site": d.get("site"),
+             "hosts": sum(1 for _, _, e in self.graph.in_edges(n, data=True) if e.get("type") == "IN_SEGMENT"),
+             "inferred": bool(d.get("inferred")), "in_scope": bool(d.get("scoped", True))}
+            for n, d in sorted(self.graph.nodes(data=True), key=lambda kv: str(kv[0]))
+            if d.get("type") == "NetworkSegment"
+        ]
+        return {"nodes": nodes, "edges": edges, "paths": path_summaries, "groups": groups}

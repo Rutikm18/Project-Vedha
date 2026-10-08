@@ -474,6 +474,7 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                                     cache: dict | None = None,
                                     open_index: dict | None = None,
                                     remediated_index: dict | None = None,
+                                    identity=None,
                                     ) -> tuple[int, int]:
     """Translate posture/config-exposure findings (from the VERIFIED scanners) into
     backend Finding rows, reusing the SAME dedup + regression-reopen lifecycle as
@@ -485,7 +486,8 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
         try:
             title = _posture_title(p)
             manager_risk = _posture_risk_on_manager_scale(p)
-            asset = await _resolve_asset(db, engagement_id, p.get("asset_ip"), cache=cache)
+            asset = await _resolve_asset(db, engagement_id, p.get("asset_ip"), cache=cache,
+                                         identity=identity)
             asset_id = asset.id if asset else None
 
             # gap #2: an exposed-service posture finding (POSTURE-EXPOSED-*) carries
@@ -634,6 +636,7 @@ async def _persist_attack_paths(
     cache: dict | None = None, open_index: dict | None = None,
     remediated_index: dict | None = None,
     touched: list | None = None,
+    identity=None,
 ) -> int:
     """Correlate composite attack paths from the run's facts and persist them as
     Finding rows (deduped by title, reaffirmed across runs). Returns NEW count."""
@@ -641,7 +644,8 @@ async def _persist_attack_paths(
     created = 0
     for d in attack_path_findings(facts, device_roles):
         try:
-            asset = await _resolve_asset(db, engagement_id, d.get("target"), cache=cache)
+            asset = await _resolve_asset(db, engagement_id, d.get("target"), cache=cache,
+                                         identity=identity)
             asset_id = asset.id if asset else None
             title = d["title"][:500]
             evidence = {
@@ -839,6 +843,18 @@ async def _notify_coverage_gap(db: AsyncSession, engagement_id: uuid.UUID, inges
         logger.warning("detection_run.coverage_notify_failed", error=str(exc))
 
 
+async def _refresh_attack_paths(db: AsyncSession, engagement_id: uuid.UUID) -> None:
+    """Best-effort refresh of an engagement's stored attack paths (see
+    attack_paths.refresh_if_materialised). Imported lazily: the router pulls in the
+    web layer, which detection must not depend on at import time."""
+    try:
+        from app.routers.attack_paths import refresh_if_materialised
+        await refresh_if_materialised(db, engagement_id)
+    except Exception as exc:  # noqa: BLE001 — a stale path list must not fail detection
+        logger.warning("detection_run.attack_path_refresh_failed",
+                       engagement_id=str(engagement_id), error=str(exc))
+
+
 async def create_findings_from_facts(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
     *, scan_result_id: uuid.UUID | None = None, job_id: uuid.UUID | None = None,
@@ -909,6 +925,11 @@ async def create_findings_from_facts(
         # One asset cache shared by the CVE, posture and attack-path loops: the same
         # host is resolved ONCE per run instead of once per finding (kills the N+1).
         asset_cache: AssetCache = AssetCache()
+        # Asset identity for this submission (P1b): global by default; private IPs
+        # scoped to the submitting probe's site when the engagement opts in.
+        # Resolved ONCE so the CVE, posture and composite loops agree.
+        from app.services.asset_resolution import identity_context
+        identity = await identity_context(db, engagement_id, scan_result_id=scan_result_id)
         # The same treatment for the dedup/regression lookups, which were the
         # other N+1 in these loops: TWO queries load this engagement's existing
         # findings, instead of one or two per finding produced (~12 per host, so
@@ -930,12 +951,13 @@ async def create_findings_from_facts(
             [f.get("target") for f in facts if isinstance(f, dict)]
             + [d.get("asset_ip") for d in cve_dicts]
             + [p.get("asset_ip") for p in posture_dicts],
-            asset_cache)
+            asset_cache, identity=identity)
         for d in cve_dicts:
             try:
                 cve = d.get("cve_id") or "finding"
                 title = f"{cve} — {d.get('cpe', '').split(':')[4] if d.get('cpe') else ''}".strip(" —")[:500]
-                asset = await _resolve_asset(db, engagement_id, d.get("asset_ip"), cache=asset_cache)
+                asset = await _resolve_asset(db, engagement_id, d.get("asset_ip"),
+                                             cache=asset_cache, identity=identity)
                 asset_id = asset.id if asset else None
 
                 dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
@@ -1011,7 +1033,7 @@ async def create_findings_from_facts(
             p_created, p_reaffirmed = await _persist_posture_findings(
                 db, engagement_id, run.id, now, posture_dicts, touched, db_version,
                 cache=asset_cache, open_index=open_index,
-                remediated_index=remediated_index)
+                remediated_index=remediated_index, identity=identity)
             created += p_created
             reaffirmed += p_reaffirmed
         except Exception as exc:  # noqa: BLE001 — posture must not sink the run
@@ -1032,7 +1054,7 @@ async def create_findings_from_facts(
             corr_new = await _persist_attack_paths(
                 db, engagement_id, run, detect_meta.get("accepted_facts") or [], now,
                 cache=asset_cache, open_index=open_index,
-                remediated_index=remediated_index, touched=touched)
+                remediated_index=remediated_index, touched=touched, identity=identity)
             created += corr_new
         except Exception as exc:  # noqa: BLE001 — correlation must not sink the run
             logger.warning("detection_run.correlation_failed", error=str(exc))
@@ -1103,6 +1125,13 @@ async def create_findings_from_facts(
         if created:
             await _notify_new_findings(db, engagement_id, run.id)
         await _notify_coverage_gap(db, engagement_id, (run.stats or {}).get("ingest"))
+
+        # Stored attack paths and the fix-first analysis describe the findings as of
+        # their last computation. When this run changed the live set (something new,
+        # something resolved) refresh them — only if the engagement already has
+        # stored results, and never at the cost of the run itself.
+        if created or resolved:
+            await _refresh_attack_paths(db, engagement_id)
         logger.info("detection_run.completed", run_id=str(run.id),
                     engagement_id=str(engagement_id), new=created,
                     reaffirmed=reaffirmed, resolved=resolved,

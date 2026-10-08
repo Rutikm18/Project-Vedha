@@ -1,0 +1,66 @@
+{
+  "name": "segmented network: the only way in is the gateway",
+  "description": "Segmented posture: subnets connect only through a compromised gateway. The exposed host must NOT reach the inner jewel directly.",
+  "scope": [
+    "10.0.1.0/24",
+    "10.0.2.0/24"
+  ],
+  "posture": "segmented",
+  "assets": [
+    {
+      "id": "entry",
+      "ip": "10.0.1.5",
+      "environment": "dmz"
+    },
+    {
+      "id": "gw",
+      "ip": "10.0.1.1",
+      "role": "network_device"
+    },
+    {
+      "id": "jewel",
+      "ip": "10.0.2.9",
+      "criticality": "critical"
+    }
+  ],
+  "exploitable": [
+    "entry",
+    "gw",
+    "jewel"
+  ],
+  "targets": [
+    "jewel"
+  ],
+  "truth": {
+    "valid_hops": [
+      [
+        "entry",
+        "gw"
+      ],
+      [
+        "gw",
+        "jewel"
+      ]
+    ],
+    "forbidden_hops": [
+      [
+        "entry",
+        "jewel"
+      ]
+    ],
+    "expected_paths": [
+      [
+        "entry",
+        "gw",
+        "jewel"
+      ]
+    ],
+    "min_fix_set": [
+      "gw"
+    ],
+    "top_choke": "gw",
+    "independent_routes": {
+      "jewel": 1
+    }
+  }
+}

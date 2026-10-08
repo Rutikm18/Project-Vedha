@@ -199,15 +199,10 @@ class DiscoveryWorker:
             if not host.ip:
                 continue
 
-            # Deduplication: upsert by (engagement_id, ip_address)
-            existing = (
-                await db.execute(
-                    select(Asset).where(
-                        Asset.engagement_id == eng_uuid,
-                        Asset.ip_address == host.ip,
-                    )
-                )
-            ).scalar_one_or_none()
+            # Deduplication: upsert by the engagement's asset identity. Server-side
+            # discovery has no probe site, so global identity, duplicate-safe.
+            from app.services.asset_resolution import find_asset
+            existing = await find_asset(db, eng_uuid, host.ip)
 
             if existing:
                 existing.hostname = host.hostname or existing.hostname

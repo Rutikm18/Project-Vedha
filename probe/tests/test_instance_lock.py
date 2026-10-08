@@ -219,3 +219,20 @@ class TestWindowsPath:
         monkeypatch.setattr(il, "msvcrt", None)
         assert not il.locking_available()
         assert acquire_instance_lock(state) is None   # never block the scan
+
+
+def test_no_existence_check_uses_os_kill_signal_zero():
+    """On Windows os.kill(pid, 0) sends CTRL_C_EVENT, not a no-op existence check.
+
+    It interrupted the pytest run on windows-latest (KeyboardInterrupt after the last test) and,
+    in a real agent, would send Ctrl+C to the running agent's console group when a second
+    instance started. Use agent.runtime_status.process_alive, which has a Windows branch.
+    """
+    import re
+    bad = []
+    for path in (Path(__file__).resolve().parents[1] / "agent").rglob("*.py"):
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            code = line.split("#", 1)[0]
+            if re.search(r"os\.kill\([^,()]+,\s*0\s*\)", code) and path.name != "runtime_status.py":
+                bad.append(f"{path.name}:{n}")
+    assert not bad, f"use process_alive() instead of os.kill(pid, 0): {bad}"

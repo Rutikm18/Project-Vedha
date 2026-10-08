@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight,
   CircleDot, Clock3, FileText, Loader2, Network, Pencil, Play, RefreshCw, Target,
-  Shield, Tags, Upload, UserRound, Users, X,
+  Route, Shield, Tags, Upload, UserRound, Users, X,
 } from "lucide-react";
 import { PageShell } from "../../../components/PageShell";
 import { PortalShell } from "../../../components/portal/PortalShell";
@@ -582,7 +582,12 @@ export function EngagementWorkspace({
               </button>
             ))}
           </nav>
-          <Link href={surface === "portal" ? "/portal/reports" : "/reports"} className="engagement-report-link"><FileText size={15} /> Reports <span className="badge badge-info">Beta</span></Link>
+          <div className="engagement-toolbar-links">
+            {surface === "manager" && (
+              <Link href={`/engagements/${encodeURIComponent(id)}/attack-paths`} className="engagement-attack-link"><Route size={15} /> Attack paths <span className="badge badge-info">Beta</span></Link>
+            )}
+            <Link href={surface === "portal" ? "/portal/reports" : "/reports"} className="engagement-report-link"><FileText size={15} /> Reports <span className="badge badge-info">Beta</span></Link>
+          </div>
         </div>
 
         <div
