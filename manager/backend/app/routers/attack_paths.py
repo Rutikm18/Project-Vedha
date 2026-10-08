@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import structlog
@@ -29,6 +30,7 @@ from app.graph.builder import GraphBuilder
 from app.graph.visualizer import GraphVisualizer
 from app.models.asset import Asset
 from app.models.attack_path import AttackPath
+from app.models.attack_path_analysis import AttackPathAnalysis
 from app.models.engagement import Engagement
 from app.models.enums import AssetCriticality
 from app.models.probe_site import ProbeSite
@@ -137,21 +139,28 @@ async def get_attack_path(
 
 # ── GET /chokepoints ──────────────────────────────────────────────────────────
 
-@router.get("/chokepoints", summary="Chokepoint assets with remediation priority")
+@router.get("/chokepoints", summary="Which hosts to fix first, and the smallest set that cuts every path")
 async def list_chokepoints(
     engagement_id: uuid.UUID,
     db: DB,
     current_user: AuthUser,
 ):
+    """Reads the analysis stored by the last recompute. Only an engagement that was
+    never computed is analysed on the spot (and not stored: a GET does not write)."""
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
-    analyzer, _graph = await _build_analyzer(db, engagement_id)
-
-    paths = _all_paths_to_critical(analyzer, await _critical_asset_ids(db, engagement_id))
-    chokepoints = analyzer.identify_chokepoints(paths)
+    stored = await db.get(AttackPathAnalysis, engagement_id)
+    if stored is not None:
+        choke, computed_at, source = (stored.analysis or {}).get("choke") or {}, stored.computed_at, "stored"
+    else:
+        analyzer, _graph = await _build_analyzer(db, engagement_id)
+        choke = analyzer.choke_analysis(await _target_ids(db, engagement_id, None))
+        computed_at, source = None, "computed"
     labels = await _asset_labels(db, engagement_id)
-    for c in chokepoints:
-        c["label"] = labels.get(str(c["asset_id"]), c["asset_id"])
-    return {"count": len(chokepoints), "chokepoints": chokepoints}
+    body = labelled_choke(choke, labels)
+    return {"count": len(body["ranked"]), "chokepoints": body["ranked"], "min_fix_set": body["min_fix_set"],
+            "targets": body["targets"], "entry_points": body.get("entry_points", 0),
+            "method": body.get("method"), "source": source,
+            "computed_at": computed_at.isoformat() if computed_at else None}
 
 
 # ── GET /blast-radius/{asset_id} ──────────────────────────────────────────────
@@ -256,8 +265,9 @@ async def _recompute_and_store(
     targets = await _target_ids(db, engagement_id, target_asset_id)
     paths = _all_paths_to_critical(analyzer, targets)
 
-    chokepoints = analyzer.identify_chokepoints(paths)
-    choke_ids = [c["asset_id"] for c in chokepoints]
+    # Engagement-wide facts are computed once, measured on the network (not counted
+    # on the truncated path list) and stored once (FM-25/26).
+    choke = analyzer.choke_analysis(targets)
 
     # Upsert by deterministic id: unchanged paths keep their id, vanished paths
     # are removed, new ones inserted. Never a blanket delete-then-insert.
@@ -281,11 +291,48 @@ async def _recompute_and_store(
         row.path_nodes = [str(n) for n in p["nodes"]]
         row.path_edges = p["edges"]
         row.risk_score = Decimal(str(p["risk_score"]))
-        row.chokepoints = choke_ids
+        row.chokepoints = path_chokepoints(p["nodes"], choke)         # only the ones ON this path
+    diagnostics = analyzer.diagnose(targets)
+    await _store_analysis(db, engagement_id, {"choke": choke, "diagnostics": diagnostics}, len(wanted))
     await db.flush()
     logger.info("graph.paths.stored", engagement=str(engagement_id), count=len(wanted),
                 removed=len(stale))
-    return analyzer.diagnose(targets)
+    return diagnostics
+
+
+async def _store_analysis(db: AsyncSession, engagement_id: uuid.UUID, payload: dict, path_count: int) -> None:
+    """Replace the engagement's stored analysis (one row per engagement)."""
+    now = datetime.now(timezone.utc)
+    row = await db.get(AttackPathAnalysis, engagement_id)
+    if row is None:
+        db.add(AttackPathAnalysis(engagement_id=engagement_id, computed_at=now,
+                                  path_count=path_count, analysis=payload))
+    else:
+        row.computed_at, row.path_count, row.analysis = now, path_count, payload
+
+
+def path_chokepoints(path_nodes: list[str], choke: dict) -> list[str]:
+    """The choke points that lie on THIS path (in path order). Each path row used to
+    carry the whole engagement's list, which says nothing about the path (FM-26)."""
+    wanted = {r["asset_id"] for r in (choke.get("ranked") or []) if r.get("risk_removed", 0) > 0}
+    return [str(n) for n in path_nodes if str(n) in wanted]
+
+
+def labelled_choke(choke: dict, labels: dict[str, str]) -> dict:
+    """Stored/computed choke analysis with host labels added (ids stay authoritative)."""
+    def label(aid):
+        return labels.get(str(aid), str(aid))
+    fix = choke.get("min_fix_set") or {"size": 0, "assets": [], "independent_routes": {}}
+    return {
+        **choke,
+        "ranked": [{**r, "label": label(r["asset_id"]),
+                    "targets_cut_off_labels": [label(t) for t in r.get("targets_cut_off") or []]}
+                   for r in choke.get("ranked") or []],
+        "min_fix_set": {"size": fix.get("size", 0),
+                        "assets": [{"asset_id": a, "label": label(a)} for a in fix.get("assets") or []],
+                        "independent_routes": {label(k): v for k, v in (fix.get("independent_routes") or {}).items()}},
+        "targets": [{**x, "label": label(x["asset_id"])} for x in choke.get("targets") or []],
+    }
 
 
 async def _asset_labels(db: AsyncSession, engagement_id: uuid.UUID) -> dict[str, str]:

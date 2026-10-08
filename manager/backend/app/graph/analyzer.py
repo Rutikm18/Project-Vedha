@@ -466,6 +466,145 @@ class PathAnalyzer:
         chokepoints.sort(key=lambda c: (-c["path_count"], str(c["asset_id"])))
         return chokepoints
 
+    # ── choke points: effect of fixing a host, and the minimum fix set (P5) ───────
+
+    def _best_likelihoods(self, targets: list[str], sources: list[str],
+                          removed: frozenset[str] = frozenset()) -> dict[str, float]:
+        """Best (most likely) attack-path likelihood from ANY source to each target,
+        with the `removed` hosts taken out of the network. 0.0 = unreachable.
+
+        One shortest-path run per target over the same movement graph and the same
+        -ln(likelihood) cost the path search uses, so it agrees with the paths shown.
+        It is the BEST path, not a sum: attack paths share steps and are not
+        independent (NIST metric-aggregation work), so adding their likelihoods would
+        overstate the risk (FM-20)."""
+        mv = self.movement_graph()
+        keep = [s for s in sources if s not in removed and mv.has_node(s)]
+        view = nx.restricted_view(mv, removed, []) if removed else mv
+        out: dict[str, float] = {}
+        for t in targets:
+            if t in removed or not mv.has_node(t) or not keep:
+                out[t] = 0.0
+                continue
+            if t in keep:
+                out[t] = 1.0
+                continue
+            try:
+                cost, _ = nx.multi_source_dijkstra(view, keep, target=t, weight="weight")
+                out[t] = math.exp(-cost)
+            except nx.NetworkXNoPath:
+                out[t] = 0.0
+        return out
+
+    def min_fix_set(self, targets: list[str], sources: list[str]) -> dict[str, Any]:
+        """The SMALLEST set of hosts whose remediation cuts every modelled attack path
+        from an entry point to a crown jewel (minimum vertex cut, by max-flow).
+
+        Hosts are cuttable at cost 1 each — except the targets themselves, which are
+        what we are protecting; subnet hubs cannot be remediated and are free to
+        cross. Replaces 'assets that appear on most of the first five paths found'
+        (FM-25), which depended on enumeration order and subnet density.
+        Also returns, per target, how many VERTEX-DISJOINT routes reach it
+        (Menger): that many independent hosts must fall before it is safe."""
+        mv = self.movement_graph()
+        targets = [t for t in targets if mv.has_node(t)]
+        sources = [s for s in sources if mv.has_node(s) and s not in targets]
+        if not sources or not targets:
+            return {"size": 0, "assets": [], "independent_routes": {}}
+
+        def build(target_set: list[str]) -> nx.DiGraph:
+            h = nx.DiGraph()
+            for n in mv.nodes:
+                cuttable = _is_asset(mv, n) and n not in target_set
+                if cuttable:
+                    h.add_edge((n, "in"), (n, "out"), capacity=1)
+                else:
+                    h.add_edge((n, "in"), (n, "out"))          # no capacity attribute = unbounded
+            for u, v in mv.edges:
+                h.add_edge((u, "out"), (v, "in"))
+            for s in sources:
+                h.add_edge("SOURCE", (s, "in"))
+            for t in target_set:
+                h.add_edge((t, "out"), "SINK")
+            return h
+
+        def solve(target_set: list[str]) -> tuple[int, list[str]]:
+            h = build(target_set)
+            if not nx.has_path(h, "SOURCE", "SINK"):
+                return 0, []
+            try:
+                value, (reach, other) = nx.minimum_cut(h, "SOURCE", "SINK")
+            except nx.NetworkXUnbounded:                        # a route made only of uncuttable nodes
+                return 0, []
+            cut = sorted(n for n in mv.nodes if (n, "in") in reach and (n, "out") in other)
+            return int(value), cut
+
+        size, cut = solve(targets)
+        routes = {mv.nodes[t].get("entity_id"): solve([t])[0] for t in targets}
+        return {"size": size, "assets": [mv.nodes[n].get("entity_id") for n in cut],
+                "independent_routes": routes}
+
+    def choke_analysis(self, target_asset_ids: list[str], source_type: str = "internet_exposed",
+                       top: int = 20, max_candidates: int = 80) -> dict[str, Any]:
+        """Engagement-level answer to "what should we fix first?".
+
+          * `ranked`  — hosts ordered by the risk REMOVED if that one host were fixed:
+                        sum over crown jewels of impact × (best-path likelihood before −
+                        after). Measured on the network, not counted on a truncated
+                        list of paths, so it cannot be biased by enumeration order.
+          * `min_fix_set` — the smallest set that cuts every modelled path, plus how
+                        many independent routes reach each target.
+          * `targets` — per-target best-path risk (never a sum of overlapping paths).
+
+        Candidates are the hosts on the best routes (every host that matters sits on
+        one), capped; targets are never candidates."""
+        mv = self.movement_graph()
+        targets = [f"asset:{t}" for t in target_asset_ids if mv.has_node(f"asset:{t}")]
+        sources = self._source_assets(source_type)
+        base = self._best_likelihoods(targets, sources)
+
+        candidates: dict[str, None] = {}
+        for src in sources:
+            for t in targets:
+                if src == t:
+                    continue
+                try:
+                    gen = nx.shortest_simple_paths(mv, src, t, weight="weight")
+                    for node_path in itertools.islice(gen, 5):
+                        for n in node_path:
+                            if _is_asset(mv, n) and n not in targets:
+                                candidates[n] = None
+                except (nx.NodeNotFound, nx.NetworkXNoPath):
+                    continue
+            if len(candidates) >= max_candidates:
+                break
+
+        impact = {t: _IMPACT.get(str(mv.nodes[t].get("criticality") or "medium"), 0.6) for t in targets}
+        ranked: list[dict[str, Any]] = []
+        for c in sorted(candidates)[:max_candidates]:
+            after = self._best_likelihoods(targets, sources, frozenset({c}))
+            reduction = sum(impact[t] * (base[t] - after[t]) for t in targets)
+            if reduction <= 1e-9:
+                continue
+            cut_off = [mv.nodes[t].get("entity_id") for t in targets if base[t] > 0 and after[t] == 0]
+            ranked.append({
+                "asset_id": mv.nodes[c].get("entity_id"),
+                "risk_removed": round(100 * reduction, 2),
+                "targets_cut_off": cut_off,
+                "remediation_priority": _priority_from_reduction(reduction, sum(impact[t] * base[t] for t in targets)),
+            })
+        ranked.sort(key=lambda r: (-r["risk_removed"], -len(r["targets_cut_off"]), str(r["asset_id"])))
+
+        return {
+            "ranked": ranked[:top],
+            "min_fix_set": self.min_fix_set(targets, sources),
+            "targets": [{"asset_id": mv.nodes[t].get("entity_id"),
+                         "best_likelihood": round(base[t], 6),
+                         "risk": round(100 * base[t] * impact[t], 2)} for t in targets],
+            "entry_points": len(sources),
+            "method": "single-host removal over the control graph + minimum vertex cut",
+        }
+
     # ── find_blast_radius ──────────────────────────────────────────────────────────
 
     def find_blast_radius(self, compromised_asset_id: Any, max_hops: int = 10) -> dict[str, Any]:
@@ -589,6 +728,12 @@ def _safe_float(v: Any) -> float:
         return float(v)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _priority_from_reduction(reduction: float, total: float) -> str:
+    """critical/high/medium by the share of the engagement's modelled risk one fix removes."""
+    share = reduction / total if total > 0 else 0.0
+    return "critical" if share >= 0.8 else "high" if share >= 0.5 else "medium"
 
 
 def _priority(fraction: float) -> str:
