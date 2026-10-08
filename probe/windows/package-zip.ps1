@@ -91,3 +91,26 @@ Write-Host ''
 Write-Host '  Send the ZIP to the customer, and give them the ZIP SHA-256 and their one-time install token'
 Write-Host '  through a DIFFERENT channel (phone, chat). They then run:  install.cmd -Token vet_XXXXXXXX'
 Set-Content -LiteralPath ($OutZip + '.sha256') -Value "$zipHash  $(Split-Path -Leaf $OutZip)"
+
+# release.json: what the S3 publish step (hosting\publish-to-s3.sh) needs to know about this build,
+# so publishing never has to guess the version or recompute anything.
+$agentVersion = ''
+$versionPy = Join-Path $PSScriptRoot '..\agent\version.py'
+if (Test-Path -LiteralPath $versionPy) {
+  $m = [regex]::Match([System.IO.File]::ReadAllText($versionPy), 'AGENT_VERSION\s*=\s*"([^"]+)"')
+  if ($m.Success) { $agentVersion = $m.Groups[1].Value }
+}
+$release = [ordered]@{
+  schema          = 1
+  version         = $agentVersion
+  package_version = $PackageVersion
+  manager         = $Manager
+  zip             = "$agentVersion/vedha-agent-win.zip"
+  sha256          = $zipHash
+  exe_sha256      = $exeHash
+  size            = (Get-Item -LiteralPath $OutZip).Length
+  built_at        = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+}
+$releasePath = $OutZip -replace '\.zip$', '.release.json'
+[System.IO.File]::WriteAllText($releasePath, ($release | ConvertTo-Json -Compress), $utf8)
+Write-Host "  Release info     : $releasePath  (agent $agentVersion)"

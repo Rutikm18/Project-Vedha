@@ -141,6 +141,7 @@ function New-VedhaAgentConfig {
     "PROBE_NETWORK_SEGMENTS=$ScopeValue",
     "STATE_FILE=$DataDir\state.json",
     "RESULT_SPOOL_DIR=$DataDir\spool",
+    "PROBE_RESULT_DIR=$DataDir\results",    # scan archive: inside the locked data folder, not Program Files
     "PROBE_LOG_FILE=$DataDir\logs\agent.log",
     "PROBE_STATUS_FILE=$DataDir\status.json"
   )

@@ -204,6 +204,7 @@ try {
     Expect ($cfg['PLATFORM_URL'] -eq $Manager) "manager: $($cfg['PLATFORM_URL'])"
     Expect ($cfg['PROBE_NETWORK_SEGMENTS'] -eq '10.99.0.0/24') "scope: $($cfg['PROBE_NETWORK_SEGMENTS'])"
     Expect ($cfg['PROBE_NAME'] -eq 'ci-probe') "name: $($cfg['PROBE_NAME'])"
+    Expect ($cfg['PROBE_RESULT_DIR'] -eq (Join-Path $DataDir 'results')) "scan archive: $($cfg['PROBE_RESULT_DIR'])"
     Expect ($cfg['PROBE_ENROLL_TOKEN'] -eq $Token) 'token line missing'
     Expect ($cfg['PROBE_BUILD_DIGEST'] -eq (Get-FileHash $Exe -Algorithm SHA256).Hash.ToLower()) 'build digest does not match the installed program'
   }
@@ -233,6 +234,9 @@ try {
     $log = Join-Path $DataDir 'logs\agent.log'
     Expect (Test-Path $log) 'agent.log was not created'
     Expect ((Get-Content $log -Raw) -match 'Vedha Probe') 'agent.log has no start-up line'
+    # Scan results must be archived in the locked data folder, never beside the program (Program Files is readable by standard users).
+    Expect (Test-Path (Join-Path $DataDir 'results')) 'the scan archive folder was not created in the data folder'
+    Expect (-not (Test-Path (Join-Path $AppDir 'result'))) 'a scan archive folder exists inside Program Files'
   }
 
   Write-Host "`n== Troubleshooting commands on the installed agent =="
@@ -282,10 +286,65 @@ try {
     Expect ($r.Code -eq 0) "exit code $($r.Code):`n$($r.Output)"
     Expect (-not (Test-Path $DataDir)) 'the data folder is still there'
   }
+
+  # ---- the same package, installed with ONE command from a hosted location (hosting\get.ps1) ----
+  # A web server on this computer stands in for S3 + CloudFront. get.ps1 runs under Windows PowerShell 5.1,
+  # as a customer's would.
+  Write-Host "`n== One command from a hosted location (get.ps1) =="
+  $python = $null
+  foreach ($candidate in 'python', 'python3') { if (-not $python -and (Get-Command $candidate -ErrorAction SilentlyContinue)) { $python = $candidate } }
+  Expect ($null -ne $python) 'Python is needed on the PATH for the throw-away web server'
+  $hosted = Join-Path $Work 'hosted'
+  New-Item -ItemType Directory -Force -Path (Join-Path $hosted 'windows\9.9.9') | Out-Null
+  Copy-Item -LiteralPath $ZipPath -Destination (Join-Path $hosted 'windows\9.9.9\vedha-agent-win.zip')
+  $zipHash = (Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256).Hash.ToLower()
+  $port = 18765
+  $script:HostedServer = Start-Process -FilePath $python -ArgumentList @('-m', 'http.server', "$port", '--bind', '127.0.0.1', '--directory', $hosted) `
+    -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $Work 'hosted.out') -RedirectStandardError (Join-Path $Work 'hosted.err')
+  for ($i = 0; $i -lt 40; $i++) {
+    Start-Sleep -Milliseconds 250
+    try { $c = New-Object Net.Sockets.TcpClient; $c.Connect('127.0.0.1', $port); $c.Close(); break } catch { }
+  }
+  $getScript = Join-Path (Split-Path -Parent $PSScriptRoot) 'hosting\get.ps1'
+  $winPowerShell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+  function Invoke-GetScript {
+    param([string[]]$GetArgs)
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $output = (& $winPowerShell -NoProfile -ExecutionPolicy Bypass -File $getScript @GetArgs 2>&1 | Out-String); return [pscustomobject]@{ Code = $LASTEXITCODE; Output = $output } }
+    finally { $ErrorActionPreference = $previous }
+  }
+  $commonArgs = @('-BaseUrl', "http://127.0.0.1:$port/windows", '-Version', '9.9.9', '-Token', $Token, '-Manager', $Manager,
+                  '-Scope', '10.99.0.0/24', '-Name', 'ci-probe', '-SkipPreflight', '-NoWait', '-NoPause')
+  Check 'a hosted download that does not match the hash in the command is refused and nothing is installed' {
+    $r = Invoke-GetScript (@('-Sha256', ('0' * 64)) + $commonArgs)
+    Expect ($r.Code -ne 0) "exit code was $($r.Code)"
+    Expect ($r.Output -match 'does not match') "no mismatch message:`n$($r.Output)"
+    Expect (-not (Get-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue)) 'a task was created'
+    Expect (-not (Test-Path $AppDir)) 'the program folder was created'
+    Expect ($r.Output -notmatch [regex]::Escape($Token)) 'the token was echoed'
+  }
+  Check 'one command downloads, verifies and installs the hosted package' {
+    $r = Invoke-GetScript (@('-Sha256', $zipHash) + $commonArgs)
+    Expect ($r.Code -eq 0) "exit code $($r.Code):`n$($r.Output)"
+    Expect ($r.Output -match 'SHA-256 matches') "no verification message:`n$($r.Output)"
+    Expect (Test-Path $Exe) 'vedha-agent.exe is not in Program Files'
+    Expect ($null -ne (Get-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue)) 'no scheduled task'
+    $left = @(Get-ChildItem (Join-Path $env:SystemRoot 'Temp') -Directory -Filter 'vedha-install-*' -ErrorAction SilentlyContinue)
+    Expect ($left.Count -eq 0) "downloaded files were left behind: $($left.FullName -join ', ')"
+  }
+  Check 'a hosted install can be removed again' {
+    $r = Invoke-Package $Pkg @('-Uninstall', '-Purge', '-NoPause')
+    Expect ($r.Code -eq 0) "exit code $($r.Code):`n$($r.Output)"
+    Expect (-not (Get-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue)) 'the task is still there'
+    Expect (-not (Test-Path $AppDir)) 'the program folder is still there'
+    Expect (-not (Test-Path $DataDir)) 'the data folder is still there'
+  }
 }
 finally {
   if ($script:Failures.Count -gt 0 -and (Test-Path $DataDir)) { Show-State }
   # Leave the machine as we found it, whatever happened.
+  if ($script:HostedServer -and -not $script:HostedServer.HasExited) { Stop-Process -Id $script:HostedServer.Id -Force -ErrorAction SilentlyContinue }
   Get-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue | ForEach-Object { Stop-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue; Unregister-ScheduledTask -TaskName 'VedhaAgent' -Confirm:$false -ErrorAction SilentlyContinue }
   Get-Process -Name 'vedha-agent' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
   Start-Sleep -Seconds 1

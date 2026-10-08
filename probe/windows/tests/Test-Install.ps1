@@ -80,6 +80,7 @@ $text = New-VedhaAgentConfig -ManagerUrl 'https://m.example.com' -DataDir 'C:\Pr
 $cfg = Read-VedhaConfig -Text $text
 Assert-Equal $cfg['PLATFORM_URL'] 'https://m.example.com' 'config: manager'
 Assert-Equal $cfg['VERIFY_TLS'] 'true' 'config: TLS verification is on'
+Assert-Equal $cfg['PROBE_RESULT_DIR'] 'C:\ProgramData\vedha-agent\results' 'config: scan results are archived in the locked data folder'
 Assert-Equal $cfg['LICENSE_ENFORCED'] 'false' 'config: licence setting for the unsealed build'
 Assert-Equal $cfg['PROBE_KEEP_RETRYING'] 'true' 'config: the agent keeps retrying an unreachable manager instead of exiting'
 Assert-Equal $cfg['PROBE_NAME'] 'PC1-probe' 'config: name'

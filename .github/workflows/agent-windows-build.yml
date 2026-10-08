@@ -50,7 +50,7 @@ jobs:
 
       - name: PowerShell scripts parse
         run: |
-          foreach ($f in 'windows\build-agent-exe.ps1','windows\install.ps1','windows\uninstall.ps1','windows\package-zip.ps1','windows\setup.ps1','windows\tests\Test-Install.ps1','windows\tests\Test-InstallE2E.ps1') {
+          foreach ($f in 'windows\build-agent-exe.ps1','windows\install.ps1','windows\uninstall.ps1','windows\package-zip.ps1','windows\setup.ps1','windows\tests\Test-Install.ps1','windows\tests\Test-InstallE2E.ps1','windows\hosting\get.ps1','windows\hosting\tests\Test-Get.ps1') {
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errors) | Out-Null
             if ($errors) { $errors | ForEach-Object { Write-Error "$f : $($_.Message)" }; exit 1 }
@@ -63,6 +63,13 @@ jobs:
       - name: Installer logic tests (Windows PowerShell 5.1, what customers run)
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File windows\tests\Test-Install.ps1
+
+      - name: Hosted one-command download tests (PowerShell 7)
+        run: pwsh -NoProfile -File windows\hosting\tests\Test-Get.ps1
+
+      - name: Hosted one-command download tests (Windows PowerShell 5.1)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File windows\hosting\tests\Test-Get.ps1
 
       # Nuitka downloads its own gcc and keeps a ccache of compiled C objects here.
       # Restoring it makes a re-run minutes instead of ~35. Saved even if a later
@@ -133,3 +140,4 @@ jobs:
           path: |
             probe/windows/dist/vedha-agent-win.zip
             probe/windows/dist/vedha-agent-win.zip.sha256
+            probe/windows/dist/vedha-agent-win.release.json
