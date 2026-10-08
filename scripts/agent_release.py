@@ -10,6 +10,10 @@ from a signed release built here.
             [--p256-key FILE --windows-zip ZIP [--authenticode-thumbprint HEX]] [--sbom FILE]
     verify  DIR --public-key B64 [--p256-public-key B64]
     publish DIR --to DEST              DEST = local dir or user@host:/path (rsync)
+    pull    --repo OWNER/REPO --to DIR  download a published release from its GitHub Release,
+            [--tag agent-vX.Y.Z]        re-verify BOTH signatures against your pinned keys, and
+            [--env-file .env]           only then install it into the manager's release store
+                                        and make it current (run on the manager host)
 
 A release directory looks like:
 
@@ -45,6 +49,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -418,19 +425,23 @@ def _write_current(root: Path, version: str) -> None:
 
 # ── verify ───────────────────────────────────────────────────────────────────
 
+def verify_manifest_ed25519(public_key_b64: str, signature_b64: bytes | str, manifest_bytes: bytes) -> None:
+    _, _, Ed25519PublicKey = _crypto()
+    try:
+        signature = base64.b64decode(signature_b64.strip(), validate=True)
+        raw = base64.b64decode(public_key_b64, validate=True)
+        Ed25519PublicKey.from_public_bytes(raw).verify(signature, manifest_bytes)
+    except Exception as exc:
+        raise ReleaseError("manifest signature does not verify with this public key") from exc
+
+
 def verify_release_dir(directory: Path, public_key_b64: str, *, expect_version: str | None = None,
                        p256_public_key_b64: str | None = None) -> dict:
     """Signature(s), file names and hashes — the same checks the manager runs.
     A manifest that lists a Windows package must also carry a P-256 signature,
     and the caller must supply the P-256 key to check it against."""
-    _, _, Ed25519PublicKey = _crypto()
     manifest_bytes = (directory / "manifest.json").read_bytes()
-    signature = base64.b64decode((directory / "manifest.json.sig").read_bytes().strip(), validate=True)
-    raw = base64.b64decode(public_key_b64, validate=True)
-    try:
-        Ed25519PublicKey.from_public_bytes(raw).verify(signature, manifest_bytes)
-    except Exception as exc:
-        raise ReleaseError("manifest signature does not verify with this public key") from exc
+    verify_manifest_ed25519(public_key_b64, (directory / "manifest.json.sig").read_bytes(), manifest_bytes)
     manifest = json.loads(manifest_bytes)
     if expect_version is not None and manifest.get("version") != expect_version:
         raise ReleaseError("manifest version mismatch")
@@ -512,6 +523,199 @@ def publish(release_dir: Path, dest: str) -> None:
     _write_current(root, version)
 
 
+# ── pull: GitHub Release -> the manager's release store ─────────────────────
+
+GITHUB_API = "https://api.github.com"
+TAG_PREFIX = "agent-v"
+# GitHub: owners are alphanumerics and hyphens; repository names also allow _ and . ("." / ".." are not names).
+_REPO_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/(?!\.{1,2}$)[A-Za-z0-9_.-]{1,100}")
+_ASSET_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,200}")
+_VERSION_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z._-]{0,63}")
+_MAX_MANIFEST_BYTES = 1024 * 1024
+_MAX_ASSET_BYTES = 4 * 1024 ** 3
+_HTTP_TIMEOUT = 60
+
+
+class _KeepTokenOnItsHost(urllib.request.HTTPRedirectHandler):
+    """GitHub serves release assets from object storage behind a redirect. Follow it, but
+    never hand the GitHub token to a different host, and never follow https -> http."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is None:
+            return None
+        before, after = urllib.parse.urlsplit(req.full_url), urllib.parse.urlsplit(newurl)
+        if before.scheme == "https" and after.scheme != "https":
+            raise ReleaseError(f"refusing a redirect from https to {after.scheme}")
+        if before.netloc.lower() != after.netloc.lower():
+            new.remove_header("Authorization")
+        return new
+
+
+def _gh_open(url: str, token: str | None, accept: str, opener):
+    req = urllib.request.Request(url, headers={
+        "Accept": accept, "User-Agent": "vedha-agent-release", "X-GitHub-Api-Version": "2022-11-28"})
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+    try:
+        return opener.open(req, timeout=_HTTP_TIMEOUT)
+    except urllib.error.HTTPError as exc:
+        hint = {401: "the token was refused", 403: "access denied or rate limited",
+                404: "not found - for a private repository set GITHUB_TOKEN to a token that can read it"}.get(exc.code, "")
+        raise ReleaseError(f"GitHub answered {exc.code} for {urllib.parse.urlsplit(url).path}: {hint}") from exc
+    except urllib.error.URLError as exc:
+        raise ReleaseError(f"cannot reach {urllib.parse.urlsplit(url).netloc}: {exc.reason}") from exc
+
+
+def _gh_json(url: str, token: str | None, opener):
+    with _gh_open(url, token, "application/vnd.github+json", opener) as resp:
+        return json.loads(resp.read(8 * 1024 * 1024))
+
+
+def _gh_download(asset: dict, dest: Path, token: str | None, opener, *, limit: int) -> None:
+    """Stream one release asset to `dest`, refusing anything larger than GitHub says it is."""
+    size = int(asset.get("size") or 0)
+    if size <= 0 or size > limit:
+        raise ReleaseError(f"asset {asset['name']}: unreasonable size {size}")
+    total = 0
+    with _gh_open(asset["url"], token, "application/octet-stream", opener) as resp, dest.open("xb") as out:
+        for chunk in iter(lambda: resp.read(_CHUNK), b""):
+            total += len(chunk)
+            if total > size:
+                raise ReleaseError(f"asset {asset['name']}: more data than the {size} bytes GitHub lists")
+            out.write(chunk)
+    if total != size:
+        raise ReleaseError(f"asset {asset['name']}: got {total} of {size} bytes")
+    dest.chmod(0o644)
+
+
+def select_release(repo: str, tag: str | None, token: str | None, api_url: str, opener) -> dict:
+    """The GitHub release to pull: the named tag, or the newest published agent release."""
+    base = f"{api_url}/repos/{repo}/releases"
+    if tag:
+        if not tag.startswith(TAG_PREFIX):
+            raise ReleaseError(f"tag must look like {TAG_PREFIX}<version> (got {tag!r})")
+        return _gh_json(f"{base}/tags/{urllib.parse.quote(tag)}", token, opener)
+    for release in _gh_json(f"{base}?per_page=50", token, opener):
+        if (release.get("tag_name", "").startswith(TAG_PREFIX)
+                and not release.get("draft") and not release.get("prerelease")):
+            return release
+    raise ReleaseError(f"{repo} has no published release tagged {TAG_PREFIX}<version>")
+
+
+def manifest_file_names(manifest: dict) -> list[str]:
+    """Every file a release's manifest vouches for (besides the manifest and its signatures)."""
+    entries = [manifest.get("installer")] + list(manifest.get("images") or [])
+    for key in ("windows_installer", "windows_launcher", "sbom"):
+        entries.append(manifest.get(key))
+    entries += list(manifest.get("packages") or [])
+    names = [e["file"] for e in entries if e]
+    for name in names:
+        if not _ASSET_NAME_RE.fullmatch(name):
+            raise ReleaseError(f"manifest lists an unsafe file name {name!r}")
+    return names
+
+
+def _version_tuple(version: str):
+    try:
+        return tuple(int(part) for part in version.split("."))
+    except ValueError:
+        return None
+
+
+def pull(*, repo: str, dest: Path, public_key_b64: str, p256_public_key_b64: str | None = None,
+         tag: str | None = None, token: str | None = None, api_url: str = GITHUB_API,
+         make_current: bool = True, opener=None, log=print) -> Path:
+    """Download a release from GitHub, verify it exactly as the manager will, and install it.
+
+    Nothing reaches the release store unless BOTH signatures verify against the keys the caller
+    pins (the manager's AGENT_RELEASE_PUBLIC_KEY / AGENT_RELEASE_P256_PUBLIC_KEY), every file
+    matches its signed SHA-256 and the version matches the tag. The manifest signature is
+    checked before the large files are fetched. Only files the signed manifest lists are
+    taken; any other asset on the GitHub release is ignored."""
+    if not _REPO_RE.fullmatch(repo):
+        raise ReleaseError(f"--repo must be OWNER/REPO (got {repo!r})")
+    dest = Path(dest)
+    if ":" in str(dest) and not dest.is_absolute() and not dest.exists() and sys.platform != "win32":
+        raise ReleaseError("pull installs into a local directory: run it on the manager host")
+    api_url = api_url.rstrip("/")
+    opener = opener or urllib.request.build_opener(_KeepTokenOnItsHost())
+
+    release = select_release(repo, tag, token, api_url, opener)
+    tag_name = release.get("tag_name") or ""
+    version = tag_name[len(TAG_PREFIX):] if tag_name.startswith(TAG_PREFIX) else ""
+    if not _VERSION_RE.fullmatch(version):
+        raise ReleaseError(f"release tag {tag_name!r} is not {TAG_PREFIX}<version>")
+    if release.get("draft"):
+        raise ReleaseError(f"{tag_name} is a draft release")
+    assets = {a["name"]: a for a in release.get("assets", [])
+              if _ASSET_NAME_RE.fullmatch(a.get("name", "")) and a.get("state", "uploaded") == "uploaded"}
+    for needed in ("manifest.json", "manifest.json.sig"):
+        if needed not in assets:
+            raise ReleaseError(f"{tag_name} has no {needed} asset: not a signed agent release")
+    log(f"Pulling {repo} {tag_name} ...")
+
+    dest.mkdir(parents=True, exist_ok=True)
+    work = Path(tempfile.mkdtemp(prefix=f".pull-{version}-", dir=dest))
+    try:
+        staging = work / version
+        staging.mkdir()
+        staging.chmod(0o755)
+        for name in ("manifest.json", "manifest.json.sig", P256_SIG_FILE):
+            if name in assets:
+                _gh_download(assets[name], staging / name, token, opener,
+                             limit=_MAX_MANIFEST_BYTES)
+
+        manifest_bytes = (staging / "manifest.json").read_bytes()
+        verify_manifest_ed25519(public_key_b64, (staging / "manifest.json.sig").read_bytes(), manifest_bytes)
+        manifest = json.loads(manifest_bytes)
+        if manifest.get("version") != version:
+            raise ReleaseError(f"manifest is version {manifest.get('version')!r} but the tag says {version!r}")
+        log("  manifest signature OK - fetching the files it lists")
+
+        for name in manifest_file_names(manifest):
+            if name not in assets:
+                raise ReleaseError(f"{tag_name} is missing {name}, which its signed manifest lists")
+            log(f"  {name} ({int(assets[name].get('size') or 0) / 1e6:.1f} MB)")
+            _gh_download(assets[name], staging / name, token, opener, limit=_MAX_ASSET_BYTES)
+
+        verify_release_dir(staging, public_key_b64, expect_version=version,
+                           p256_public_key_b64=p256_public_key_b64)
+        log("  all signatures and checksums verify")
+
+        target = dest / version
+        if target.exists():
+            if (target / "manifest.json").read_bytes() != manifest_bytes:
+                raise ReleaseError(f"{target} already exists with different content - releases are immutable")
+            log(f"  {version} is already installed")
+        else:
+            staging.rename(target)
+        previous = (dest / "CURRENT").read_text(encoding="utf-8").strip() if (dest / "CURRENT").is_file() else ""
+        if make_current:
+            _write_current(dest, version)
+            old, new = _version_tuple(previous), _version_tuple(version)
+            if previous and old and new and new < old:
+                log(f"  WARNING: this ROLLS BACK the served agent from {previous} to {version}")
+            log(f"  {version} is now the release the manager serves")
+        else:
+            log(f"  installed as {target}; CURRENT left at {previous or 'unset'}")
+        return target
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def read_env_file(path: Path) -> dict[str, str]:
+    """KEY=VALUE lines of a manager .env (comments and quotes tolerated)."""
+    values: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        values[key.strip()] = value.strip().strip("\"'")
+    return values
+
+
 # ── CLI ──────────────────────────────────────────────────────────────────────
 
 def main(argv: list[str] | None = None) -> int:
@@ -543,6 +747,19 @@ def main(argv: list[str] | None = None) -> int:
     pb = sub.add_parser("publish", help="copy a release into the manager's store")
     pb.add_argument("path", type=Path)
     pb.add_argument("--to", required=True)
+
+    pl = sub.add_parser("pull", help="download a release from GitHub, verify it, install it into the store")
+    pl.add_argument("--repo", required=True, help="OWNER/REPO that publishes the agent releases")
+    pl.add_argument("--to", required=True, type=Path, help="the manager's AGENT_RELEASE_DIR")
+    pl.add_argument("--tag", default=None, help=f"{TAG_PREFIX}<version> (default: the newest published agent release)")
+    pl.add_argument("--env-file", type=Path, default=None,
+                    help="manager .env holding AGENT_RELEASE_PUBLIC_KEY and AGENT_RELEASE_P256_PUBLIC_KEY")
+    pl.add_argument("--public-key", default=None, help="Ed25519 release public key (default: AGENT_RELEASE_PUBLIC_KEY)")
+    pl.add_argument("--p256-public-key", default=None,
+                    help="P-256 release public key (default: AGENT_RELEASE_P256_PUBLIC_KEY)")
+    pl.add_argument("--no-current", action="store_true", help="install the release but do not make it the served one")
+    pl.add_argument("--api-url", default=GITHUB_API, help="GitHub API base (GitHub Enterprise Server)")
+    # The GitHub token comes from GITHUB_TOKEN / GH_TOKEN, never from the command line.
 
     args = parser.parse_args(argv)
     try:
@@ -583,6 +800,17 @@ def main(argv: list[str] | None = None) -> int:
         elif args.cmd == "publish":
             publish(args.path, args.to)
             print(f"Published {resolve_release_dir(args.path).name} to {args.to}")
+        elif args.cmd == "pull":
+            env = dict(os.environ)
+            if args.env_file:
+                env.update(read_env_file(args.env_file))
+            public_key = args.public_key or env.get("AGENT_RELEASE_PUBLIC_KEY")
+            if not public_key:
+                raise ReleaseError("no release public key: pass --public-key, --env-file, or set AGENT_RELEASE_PUBLIC_KEY")
+            pull(repo=args.repo, dest=args.to, public_key_b64=public_key,
+                 p256_public_key_b64=args.p256_public_key or env.get("AGENT_RELEASE_P256_PUBLIC_KEY") or None,
+                 tag=args.tag, token=os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN"),
+                 api_url=args.api_url, make_current=not args.no_current)
     except ReleaseError as exc:
         print(f"agent-release: {exc}", file=sys.stderr)
         return 1
