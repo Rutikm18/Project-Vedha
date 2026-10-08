@@ -13,6 +13,17 @@ manager's release store, and served by app.routers.agent_distribution:
         vedha-agent-<v>-amd64.tar.gz  `docker save | gzip` per architecture
         vedha-agent-<v>-arm64.tar.gz
 
+Schema 2 adds an optional Windows package, installer + launcher and an SBOM,
+and a second signature over the same manifest — ECDSA P-256 — because Windows
+PowerShell 5.1 cannot verify Ed25519:
+
+      manifest.json.p256.sig         base64 of the 64-byte r||s ECDSA signature
+      install.ps1 / install.cmd      the Windows installer and its launcher
+      vedha-agent-<v>-windows-amd64.zip
+      sbom.cdx.json
+    packages: [{"os": "windows", "cpu": "amd64", "file", "sha256", "size",
+                "authenticode_thumbprint"?}]   (NB "cpu": install.sh keys on "arch")
+
 manifest.json (schema 1):
     {"schema": 1, "version": "1.0.335", "created_at": "...",
      "installer": {"file": "install.sh", "sha256": "<hex>"},
@@ -38,18 +49,27 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 
 ARCHES = ("amd64", "arm64")
 CURRENT_FILE = "CURRENT"
 MANIFEST_FILE = "manifest.json"
 SIGNATURE_FILE = "manifest.json.sig"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 1                 # what a Linux-only release is written as
+SUPPORTED_SCHEMAS = (1, 2)
+P256_SIGNATURE_FILE = "manifest.json.p256.sig"
+# (os, cpu) targets the manager will hand out. Anything else in a manifest is
+# refused rather than served: the download route names the target in its URL.
+PACKAGE_TARGETS = (("windows", "amd64"),)
 
 _VERSION_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z._-]{0,63}")
 _FILE_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z._-]{0,127}")
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _TAG_RE = re.compile(r"[a-z0-9][a-z0-9._/-]{0,127}:[0-9A-Za-z][0-9A-Za-z._-]{0,127}")
+_THUMBPRINT_RE = re.compile(r"[0-9A-F]{40}")
 _HASH_CHUNK = 1024 * 1024
 
 
@@ -76,6 +96,13 @@ class ReleaseImage(ReleaseFile):
 
 
 @dataclass(frozen=True)
+class ReleasePackage(ReleaseFile):
+    os: str = ""
+    cpu: str = ""
+    authenticode_thumbprint: str = ""
+
+
+@dataclass(frozen=True)
 class AgentRelease:
     version: str
     directory: Path
@@ -84,6 +111,21 @@ class AgentRelease:
     images: dict[str, ReleaseImage] = field(default_factory=dict)
     signed: bool = False
     signing_key_id: str = ""
+    # Schema 2 (Windows). `packages` is keyed by os ("windows"). When the
+    # release has a Windows package but this manager cannot vouch for it,
+    # `packages` is empty and `windows_unavailable` says why — Linux is unaffected.
+    packages: dict[str, ReleasePackage] = field(default_factory=dict)
+    windows_installer: ReleaseFile | None = None
+    windows_launcher: ReleaseFile | None = None
+    sbom: ReleaseFile | None = None
+    p256_signed: bool = False
+    p256_key_id: str = ""
+    windows_unavailable: str = ""
+
+    @property
+    def windows_available(self) -> bool:
+        return "windows" in self.packages and self.windows_installer is not None \
+            and self.windows_launcher is not None
 
     @property
     def arches(self) -> list[str]:
@@ -104,6 +146,21 @@ def decode_public_key(value: str) -> Ed25519PublicKey:
 def key_id(public_key_b64: str) -> str:
     raw = base64.b64decode(public_key_b64.strip(), validate=True)
     return hashlib.sha256(raw).hexdigest()[:16]
+
+
+def decode_p256_public_key(value: str) -> ec.EllipticCurvePublicKey:
+    """AGENT_RELEASE_P256_PUBLIC_KEY: base64 DER SubjectPublicKeyInfo of a P-256 key."""
+    try:
+        key = serialization.load_der_public_key(base64.b64decode(value.strip(), validate=True))
+    except Exception as exc:
+        raise ValueError("AGENT_RELEASE_P256_PUBLIC_KEY must be a base64 DER P-256 public key") from exc
+    if not isinstance(key, ec.EllipticCurvePublicKey) or not isinstance(key.curve, ec.SECP256R1):
+        raise ValueError("AGENT_RELEASE_P256_PUBLIC_KEY must be a P-256 (secp256r1) key")
+    return key
+
+
+def p256_key_id(public_key_b64: str) -> str:
+    return hashlib.sha256(base64.b64decode(public_key_b64.strip(), validate=True)).hexdigest()[:16]
 
 
 def sha256_file(path: Path) -> str:
@@ -151,7 +208,22 @@ def verify_manifest_signature(manifest: bytes, signature_b64: bytes, public_key_
         raise ReleaseUnavailable("release signature does not verify against AGENT_RELEASE_PUBLIC_KEY") from exc
 
 
-def load_release(root: Path, public_key_b64: str = "", *, require_signature: bool = True) -> AgentRelease:
+def verify_manifest_p256(manifest: bytes, signature_b64: bytes, public_key_b64: str) -> None:
+    """ECDSA-SHA256 over the manifest; signature is base64 of the 64-byte r||s."""
+    try:
+        public_key = decode_p256_public_key(public_key_b64)
+        raw = base64.b64decode(signature_b64.strip(), validate=True)
+        if len(raw) != 64:
+            raise ValueError("P-256 signature must be 64 bytes")
+        der = encode_dss_signature(int.from_bytes(raw[:32], "big"), int.from_bytes(raw[32:], "big"))
+        public_key.verify(der, manifest, ec.ECDSA(hashes.SHA256()))
+    except (InvalidSignature, ValueError, TypeError) as exc:
+        raise ReleaseUnavailable(
+            "release P-256 signature does not verify against AGENT_RELEASE_P256_PUBLIC_KEY") from exc
+
+
+def load_release(root: Path, public_key_b64: str = "", *, require_signature: bool = True,
+                 p256_public_key_b64: str = "") -> AgentRelease:
     """Read, verify and return the release named by <root>/CURRENT."""
     root = Path(root)
     try:
@@ -189,7 +261,7 @@ def load_release(root: Path, public_key_b64: str = "", *, require_signature: boo
         manifest = json.loads(manifest_bytes)
     except ValueError as exc:
         raise ReleaseUnavailable(f"release {version} manifest is not valid JSON") from exc
-    if not isinstance(manifest, dict) or manifest.get("schema") != SCHEMA_VERSION:
+    if not isinstance(manifest, dict) or manifest.get("schema") not in SUPPORTED_SCHEMAS:
         raise ReleaseUnavailable(f"release {version} manifest has an unsupported schema")
     if manifest.get("version") != version:
         raise ReleaseUnavailable(f"manifest version does not match CURRENT ({version})")
@@ -198,7 +270,8 @@ def load_release(root: Path, public_key_b64: str = "", *, require_signature: boo
 
     images: dict[str, ReleaseImage] = {}
     entries = manifest.get("images")
-    if not isinstance(entries, list) or not entries:
+    raw_packages = manifest.get("packages")
+    if not isinstance(entries, list) or (not entries and not raw_packages):
         raise ReleaseUnavailable(f"release {version} lists no agent images")
     for entry in entries:
         arch = entry.get("arch") if isinstance(entry, dict) else None
@@ -215,6 +288,10 @@ def load_release(root: Path, public_key_b64: str = "", *, require_signature: boo
             size=checked.size, arch=arch, tag=tag,
         )
 
+    sbom = _checked_file(directory, manifest["sbom"], "sbom") if manifest.get("sbom") else None
+    windows = _load_windows(directory, manifest, version, raw_packages, manifest_bytes,
+                            p256_public_key_b64, require_signature)
+
     return AgentRelease(
         version=version,
         directory=directory.resolve(),
@@ -223,7 +300,62 @@ def load_release(root: Path, public_key_b64: str = "", *, require_signature: boo
         images=images,
         signed=signed,
         signing_key_id=key_id(public_key_b64) if signed else "",
+        sbom=sbom,
+        **windows,
     )
+
+
+def _load_windows(directory: Path, manifest: dict, version: str, raw_packages: object,
+                  manifest_bytes: bytes, p256_public_key_b64: str,
+                  require_signature: bool) -> dict:
+    """The Windows half of a schema-2 release.
+
+    Fail-closed on tampering, soft on configuration: a P-256 signature that is
+    present but does not verify (or is missing while a key is configured) rejects
+    the WHOLE release — the Ed25519 signature passing means the build was
+    authentic, so a bad second signature is a sign of tampering or a broken
+    build. A manager that simply has no P-256 key configured withholds Windows
+    only; Linux keeps working."""
+    if not raw_packages:
+        return {}
+    if not isinstance(raw_packages, list):
+        raise ReleaseUnavailable(f"release {version} packages entry is malformed")
+
+    soft_off = {"windows_unavailable": ""}
+    p256_signed = False
+    if p256_public_key_b64.strip():
+        try:
+            signature = (directory / P256_SIGNATURE_FILE).read_bytes()
+        except FileNotFoundError as exc:
+            raise ReleaseUnavailable(f"release {version} has a Windows package but no P-256 signature") from exc
+        verify_manifest_p256(manifest_bytes, signature, p256_public_key_b64)
+        p256_signed = True
+    elif require_signature:
+        return {"windows_unavailable":
+                "AGENT_RELEASE_P256_PUBLIC_KEY is not configured, so the Windows package cannot be verified"}
+
+    packages: dict[str, ReleasePackage] = {}
+    for entry in raw_packages:
+        if not isinstance(entry, dict):
+            raise ReleaseUnavailable(f"release {version} packages entry is malformed")
+        target = (entry.get("os"), entry.get("cpu"))
+        if target not in PACKAGE_TARGETS:
+            raise ReleaseUnavailable(f"release {version} lists an unsupported package target")
+        if target[0] in packages:
+            raise ReleaseUnavailable(f"release {version} lists {target[0]} twice")
+        thumb = entry.get("authenticode_thumbprint", "")
+        if thumb and not (isinstance(thumb, str) and _THUMBPRINT_RE.fullmatch(thumb)):
+            raise ReleaseUnavailable(f"release {version} Authenticode thumbprint is malformed")
+        checked = _checked_file(directory, entry, f"{target[0]} package")
+        packages[target[0]] = ReleasePackage(
+            name=checked.name, path=checked.path, sha256=checked.sha256, size=checked.size,
+            os=target[0], cpu=target[1], authenticode_thumbprint=thumb or "")
+
+    installer = _checked_file(directory, manifest.get("windows_installer"), "windows installer")
+    launcher = _checked_file(directory, manifest.get("windows_launcher"), "windows launcher")
+    return {**soft_off, "packages": packages, "windows_installer": installer,
+            "windows_launcher": launcher, "p256_signed": p256_signed,
+            "p256_key_id": p256_key_id(p256_public_key_b64) if p256_signed else ""}
 
 
 # ── stat-keyed cache ─────────────────────────────────────────────────────────
@@ -232,10 +364,10 @@ _cache_lock = threading.Lock()
 _cache: dict[tuple, AgentRelease | ReleaseUnavailable] = {}
 
 
-def _stamp(root: Path, public_key_b64: str, require_signature: bool) -> tuple:
+def _stamp(root: Path, public_key_b64: str, require_signature: bool, p256_public_key_b64: str = "") -> tuple:
     """Cheap fingerprint of everything load_release reads. Any edit, swap or
     republish changes an mtime/size, which invalidates the cached verdict."""
-    parts: list = [str(root), public_key_b64.strip(), require_signature]
+    parts: list = [str(root), public_key_b64.strip(), require_signature, p256_public_key_b64.strip()]
     current = root / CURRENT_FILE
     try:
         stat = current.stat()
@@ -254,16 +386,18 @@ def _stamp(root: Path, public_key_b64: str, require_signature: bool) -> tuple:
     return tuple(parts)
 
 
-def current_release(root: Path | str, public_key_b64: str = "", *, require_signature: bool = True) -> AgentRelease:
+def current_release(root: Path | str, public_key_b64: str = "", *, require_signature: bool = True,
+                    p256_public_key_b64: str = "") -> AgentRelease:
     """load_release, cached until the release store changes. Raises
     ReleaseUnavailable (also cached) when nothing servable is published."""
     root = Path(root)
-    stamp = _stamp(root, public_key_b64, require_signature)
+    stamp = _stamp(root, public_key_b64, require_signature, p256_public_key_b64)
     with _cache_lock:
         hit = _cache.get(stamp)
     if hit is None:
         try:
-            hit = load_release(root, public_key_b64, require_signature=require_signature)
+            hit = load_release(root, public_key_b64, require_signature=require_signature,
+                               p256_public_key_b64=p256_public_key_b64)
         except ReleaseUnavailable as exc:
             hit = exc
         with _cache_lock:

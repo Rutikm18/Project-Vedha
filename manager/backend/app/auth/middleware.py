@@ -33,12 +33,13 @@ _PUBLIC_ENROLLMENT_PATHS = (
     re.compile(r"^/probe-enrollment/requests/[0-9a-fA-F-]+/activate$"),
     re.compile(r"^/probe-enrollment/token$"),
 )
-# Agent distribution: the installer and signed manifest are public; the image
-# route authenticates its own enrolment token (a vet_ token is not a JWT).
+# Agent distribution: the installers and signed manifest are public; the image
+# and package routes authenticate their own enrolment token (a vet_ token is not
+# a JWT).
 _PUBLIC_DISTRIBUTION_PATHS = (
-    re.compile(r"^/agent/install\.sh$"),
-    re.compile(r"^/agent/manifest\.json(\.sig)?$"),
-    re.compile(r"^/agent/image/[a-z0-9]{1,16}$"),
+    re.compile(r"^/agent/install\.(sh|ps1|cmd)$"),
+    re.compile(r"^/agent/manifest\.json(\.sig|\.p256\.sig)?$"),
+    re.compile(r"^/agent/(image|package)/[a-z0-9]{1,16}$"),
 )
 
 
