@@ -333,6 +333,26 @@ async def _recompute_and_store(
     return diagnostics
 
 
+async def refresh_if_materialised(db: AsyncSession, engagement_id: uuid.UUID) -> bool:
+    """Bring an engagement's STORED attack paths and analysis up to date after its
+    findings changed. Called by the detection run — reading never recomputes.
+
+    Only when someone already has stored results: before that, the first read
+    computes them, so an engagement nobody looks at costs nothing. Without this a
+    stored path list silently describes the network as it was at the last manual
+    refresh, however many findings have been fixed or found since. Runs in a
+    savepoint so a failure here can never poison the caller's transaction.
+    Returns True when it recomputed."""
+    has_paths = (await db.execute(
+        select(AttackPath.id).where(AttackPath.engagement_id == engagement_id).limit(1)
+    )).first() is not None
+    if not has_paths and await db.get(AttackPathAnalysis, engagement_id) is None:
+        return False
+    async with db.begin_nested():
+        await _recompute_and_store(db, engagement_id, None)
+    return True
+
+
 async def _store_analysis(db: AsyncSession, engagement_id: uuid.UUID, payload: dict, path_count: int) -> None:
     """Replace the engagement's stored analysis (one row per engagement)."""
     now = datetime.now(timezone.utc)

@@ -15,6 +15,7 @@ namespaced so an asset and a finding can never collide.
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Iterable
@@ -61,6 +62,41 @@ def segment_node_id(key: Any) -> str:
 
 def _iso(value: Any) -> str | None:
     return value.isoformat() if isinstance(value, datetime) else None
+
+
+def _neo4j_scalar(v: Any) -> Any:
+    if isinstance(v, bool) or v is None or isinstance(v, (int, float, str)):
+        return v
+    if isinstance(v, Decimal):
+        return float(v)
+    if isinstance(v, datetime):
+        return v.isoformat()
+    return str(getattr(v, "value", v))
+
+
+def _neo4j_props(data: dict[str, Any]) -> dict[str, Any]:
+    """Node/edge attributes as Neo4j property values. Neo4j stores only primitives
+    and homogeneous lists of primitives; a nested dict or a mixed list would make
+    the whole write fail, so those become JSON text and null attributes are dropped
+    (an absent property already reads as null)."""
+    out: dict[str, Any] = {}
+    for k, v in data.items():
+        if v is None:
+            continue
+        if isinstance(v, dict):
+            out[str(k)] = json.dumps(v, sort_keys=True, default=str)
+        elif isinstance(v, (list, tuple, set, frozenset)):
+            items = [_neo4j_scalar(i) for i in (sorted(v, key=str) if isinstance(v, (set, frozenset)) else v)
+                     if i is not None]
+            if any(isinstance(i, (dict, list, tuple, set)) for i in v):
+                out[str(k)] = json.dumps(list(v), default=str)
+            elif len({type(i) for i in items}) <= 1:
+                out[str(k)] = items
+            else:
+                out[str(k)] = json.dumps(items, default=str)
+        else:
+            out[str(k)] = _neo4j_scalar(v)
+    return out
 
 
 def _enum_value(v: Any, default: str = "") -> str:
@@ -481,30 +517,28 @@ class GraphBuilder:
     # ── Neo4j mirror ──────────────────────────────────────────────────────────────
 
     def sync_to_neo4j(self, engagement_id: Any) -> dict[str, int]:
-        """Mirror the current in-memory graph into Neo4j via batched writes."""
+        """Replace this engagement's mirror in Neo4j with the current in-memory graph.
+
+        Per-engagement and atomic (see Neo4jClient.replace_engagement): nodes and
+        edges for the engagement are deleted and rewritten in one transaction, so a
+        fixed weakness leaves the mirror, other tenants are untouched, and parallel
+        relationships stay distinct. Best-effort — a Neo4j outage must never stop
+        the in-memory analysis; on failure the result carries `error`."""
         if self._neo4j is None:
             return {"nodes": 0, "edges": 0}
+        eid = str(engagement_id)
         self._neo4j.ensure_schema()
-
         nodes = [
-            {"key": n, "engagement_id": str(engagement_id), **{k: v for k, v in data.items()}}
+            {**_neo4j_props(data), "key": str(n), "engagement_id": eid}
             for n, data in self.graph.nodes(data=True)
         ]
-        # Single :GraphNode label keyed by `key`, with the real node type kept as
-        # a property — avoids assuming the APOC plugin for dynamic labels.
-        self._neo4j.run_write(
-            "UNWIND $batch AS n MERGE (x:GraphNode {key: n.key}) SET x += n",
-            nodes,
-        )
+        # `ekey` is the multigraph key: two edges of one type between the same hosts
+        # (two credentials, two weaknesses) are two relationships, not one.
         edges = [
-            {"src": u, "dst": v, **{k: val for k, val in data.items()}}
-            for u, v, data in self.graph.edges(data=True)
+            {**_neo4j_props(data), "src": str(u), "dst": str(v), "ekey": str(k), "engagement_id": eid}
+            for u, v, k, data in self.graph.edges(keys=True, data=True)
         ]
-        self._neo4j.run_write(
-            "UNWIND $batch AS e "
-            "MATCH (a:GraphNode {key: e.src}) MATCH (b:GraphNode {key: e.dst}) "
-            "MERGE (a)-[r:REL {type: e.type}]->(b) SET r += e",
-            edges,
-        )
+        if not self._neo4j.replace_engagement(eid, nodes, edges):
+            return {"nodes": 0, "edges": 0, "error": "neo4j mirror not updated"}
         logger.info("graph.neo4j.synced", nodes=len(nodes), edges=len(edges))
         return {"nodes": len(nodes), "edges": len(edges)}
