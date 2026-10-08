@@ -236,6 +236,7 @@ class _FakeDB:
 
     def __init__(self):
         self.rows: dict = {}
+        self.analyses: dict = {}
         self.deleted_ids: list = []
 
     async def execute(self, stmt, params=None):
@@ -250,8 +251,14 @@ class _FakeDB:
             return _Result([])
         return _Result(self.rows.values())
 
+    async def get(self, model, key):
+        return self.analyses.get(key)
+
     def add(self, row):
-        self.rows[row.id] = row
+        if hasattr(row, "analysis"):                      # the engagement-level AttackPathAnalysis (keyed by engagement)
+            self.analyses[row.engagement_id] = row
+        else:
+            self.rows[row.id] = row
 
     async def flush(self):
         return None
@@ -262,8 +269,8 @@ def _analyzer_returning(paths):
         def find_paths_to_target(self, _tid):
             return [dict(p) for p in paths]
 
-        def identify_chokepoints(self, _paths):
-            return []
+        def choke_analysis(self, _targets):
+            return {"ranked": [], "min_fix_set": {"size": 0, "assets": [], "independent_routes": {}}, "targets": []}
 
         def diagnose(self, _t):
             return {"reasons": []}
@@ -282,7 +289,8 @@ def test_recompute_keeps_ids_and_removes_only_stale_paths():
 
     async def run(paths):
         async def _build(_db, _eid):
-            return _analyzer_returning(paths), None
+            import networkx as nx
+            return _analyzer_returning(paths), nx.MultiDiGraph()
 
         async def _targets(_db, _eid, _t):
             return ["z"]

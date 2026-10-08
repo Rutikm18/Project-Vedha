@@ -110,6 +110,15 @@ Redaction-first (logs + bundle = the review's top disclosure vector):
 - **Runnable today:** `sh install.sh self-scan` / `.\install.ps1 self-scan` (no Manager); `connect` opt-in.
 - **Review failure register (15 rows):** agent-side items #3–#14 built + tested; **#1 (OT) deferred by design**; **#2/#10(partial)/#15 (signing/SBOM/parser-fuzzing) → Phase 10**.
 
+## Update — signed release path (supersedes the "skippable" note in Phase 7 for installs from a manager)
+Installs made from a manager's **signed release** are never permissive: `install.sh` (Linux, Ed25519)
+and `install.ps1` (Windows, ECDSA P-256 + optional Authenticode pin) verify the release signature and the
+package checksum and **fail closed**. `verify_download` / `--strict` above remain the brain-path
+(`install.sh`/`install.ps1` shims) toggle. See `docs/operations/AGENT_DISTRIBUTION.md` and
+`.github/workflows/agent-release.yml` (build, sign, Windows proof, publish). Phase 10's "code signing"
+is delivered for the release manifest; Authenticode for `vedha-agent.exe` is wired and activates when a
+certificate secret is configured.
+
 ## Remaining phases
 - **Phase 9** — service install with restart limits (systemd / launchd / Scheduled Task), rendered *from* the config object.
 - **Phase 10** — code signing + SBOM + 3-OS CI + SOC/uninstall/network/data-handling docs.

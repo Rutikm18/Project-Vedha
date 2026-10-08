@@ -4,6 +4,11 @@
 
   Usage (from probe\windows):
     powershell -ExecutionPolicy Bypass -File package-zip.ps1 -Manager https://api.example.com
+    powershell -ExecutionPolicy Bypass -File package-zip.ps1 -Release
+
+  -Manager bakes ONE manager address into the package (a ZIP you hand to a customer).
+  -Release builds the package the manager itself serves (agent-release.yml): no address is baked in,
+  because the one-command installer (install-remote.ps1) passes -Manager and -Token at install time.
 
   Output: probe\windows\dist\vedha-agent-win.zip   (and the zip's SHA-256, to send to the customer separately)
 
@@ -16,9 +21,12 @@
     ALLOWLIST.txt         what their security team should allow, with this build's hash
     SHA256SUMS.txt        a checksum of every file, checked by the installer
 #>
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'Customer')]
 param(
-  [Parameter(Mandatory = $true)][string]$Manager,
+  # A hand-delivered ZIP must name its manager (the launchers refuse to run without one).
+  [Parameter(Mandatory = $true, ParameterSetName = 'Customer')][string]$Manager,
+  # The release package carries no manager address; it is given at install time.
+  [Parameter(Mandatory = $true, ParameterSetName = 'Release')][switch]$Release,
   [string]$AgentDir = '',
   [string]$OutZip = '',
   [string]$PackageVersion = ''
@@ -35,8 +43,12 @@ if (-not $PackageVersion) {
 
 $exe = Join-Path $AgentDir 'vedha-agent.exe'
 if (-not (Test-Path -LiteralPath $exe)) { throw "compiled agent not found in $AgentDir  (run build-agent-exe.ps1 first)" }
-$managerHost = ([uri]$Manager).Host
-if (-not $managerHost) { throw "-Manager must be a full address such as https://api.example.com (got '$Manager')" }
+if ($Release) {
+  $managerHost = 'the Vedha manager address you were given'
+} else {
+  $managerHost = ([uri]$Manager).Host
+  if (-not $managerHost) { throw "-Manager must be a full address such as https://api.example.com (got '$Manager')" }
+}
 
 $stage = Join-Path $PSScriptRoot 'dist\_stage'
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
@@ -58,8 +70,13 @@ function Set-Placeholders {
   foreach ($key in $Values.Keys) { $text = $text.Replace($key, $Values[$key]) }
   [System.IO.File]::WriteAllText($Path, $text, $utf8)
 }
-Set-Placeholders (Join-Path $stage 'run.cmd')     @{ '__VEDHA_MANAGER_URL__' = $Manager }
-Set-Placeholders (Join-Path $stage 'install.ps1') @{ '__VEDHA_MANAGER_URL__' = $Manager; '__VEDHA_PACKAGE_VERSION__' = $PackageVersion }
+if ($Release) {
+  # The manager placeholder stays: install.ps1 then insists on -Manager, run.cmd refuses to run unconfigured.
+  Set-Placeholders (Join-Path $stage 'install.ps1') @{ '__VEDHA_PACKAGE_VERSION__' = $PackageVersion }
+} else {
+  Set-Placeholders (Join-Path $stage 'run.cmd')     @{ '__VEDHA_MANAGER_URL__' = $Manager }
+  Set-Placeholders (Join-Path $stage 'install.ps1') @{ '__VEDHA_MANAGER_URL__' = $Manager; '__VEDHA_PACKAGE_VERSION__' = $PackageVersion }
+}
 
 $allow = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'ALLOWLIST.template.txt'))
 $allow = $allow.Replace('{{MANAGER_HOST}}', $managerHost).Replace('{{VERSION}}', $PackageVersion).Replace('{{EXE_SHA256}}', $exeHash)
@@ -83,13 +100,17 @@ Remove-Item -LiteralPath $stage -Recurse -Force
 $zipHash = (Get-FileHash -LiteralPath $OutZip -Algorithm SHA256).Hash.ToLower()
 Write-Host ''
 Write-Host "Packaged: $OutZip" -ForegroundColor Green
-Write-Host "  Manager baked in : $Manager"
+if ($Release) { Write-Host '  Manager baked in : (none - release package; given at install time)' } else { Write-Host "  Manager baked in : $Manager" }
 Write-Host "  Package version  : $PackageVersion"
 Write-Host "  vedha-agent.exe  : $exeHash"
 Write-Host "  ZIP SHA-256      : $zipHash"
 Write-Host ''
-Write-Host '  Send the ZIP to the customer, and give them the ZIP SHA-256 and their one-time install token'
-Write-Host '  through a DIFFERENT channel (phone, chat). They then run:  install.cmd -Token vet_XXXXXXXX'
+if ($Release) {
+  Write-Host '  Release package: agent-release.yml signs it into the release; customers install it with the command from Fleet.'
+} else {
+  Write-Host '  Send the ZIP to the customer, and give them the ZIP SHA-256 and their one-time install token'
+  Write-Host '  through a DIFFERENT channel (phone, chat). They then run:  install.cmd -Token vet_XXXXXXXX'
+}
 Set-Content -LiteralPath ($OutZip + '.sha256') -Value "$zipHash  $(Split-Path -Leaf $OutZip)"
 
 # release.json: what the S3 publish step (hosting\publish-to-s3.sh) needs to know about this build,
@@ -104,7 +125,7 @@ $release = [ordered]@{
   schema          = 1
   version         = $agentVersion
   package_version = $PackageVersion
-  manager         = $Manager
+  manager         = $(if ($Release) { '' } else { $Manager })
   zip             = "$agentVersion/vedha-agent-win.zip"
   sha256          = $zipHash
   exe_sha256      = $exeHash

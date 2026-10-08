@@ -78,11 +78,12 @@ RETURN hop.entity_id AS asset_id, path_count ORDER BY path_count DESC
 """
 
 # Relationship types an attacker can traverse for lateral movement.
-_MOVEMENT_RELS = frozenset({"CONNECTS_TO", "SAME_SEGMENT", "CREDENTIAL_REUSE"})
+_MOVEMENT_RELS = frozenset({"CONNECTS_TO", "SAME_SEGMENT", "CREDENTIAL_REUSE", "SAME_HOST"})
 
 # When several movement relationships link the same asset pair, the most
-# reliable one labels the projected edge. Credential reuse is the most reliable.
-_REL_PRIORITY = {"CREDENTIAL_REUSE": 3, "CONNECTS_TO": 2, "SAME_SEGMENT": 1}
+# reliable one labels the projected edge. SAME_HOST (one machine, two addresses)
+# is identity, not a hop; credential reuse is the next most reliable.
+_REL_PRIORITY = {"SAME_HOST": 4, "CREDENTIAL_REUSE": 3, "CONNECTS_TO": 2, "SAME_SEGMENT": 1}
 
 # ── step likelihood model ─────────────────────────────────────────────────────
 # Exploit evidence, strongest first. Values are deliberately coarse: they ORDER
@@ -93,6 +94,10 @@ _P_ATTACK_COMPLEXITY = {"L": 0.75, "M": 0.5, "H": 0.3}
 _P_SEVERITY = {"critical": 0.65, "high": 0.5, "medium": 0.35, "low": 0.2, "info": 0.1}
 P_FLOOR = 0.1                 # a known weakness is never "impossible" (FM-19)
 P_UNKNOWN_HOP = 0.5           # a hop counted in `hops` but not described by an edge
+
+# A step that lands on an asset not seen within the freshness window (FM-16/32): the
+# weakness may have been fixed or the address re-leased, so it is likelier wrong.
+P_STALE_FACTOR = 0.5
 
 # Subnet hubs (P1a). Reaching a member through its subnet's hub costs the
 # member's exploit likelihood scaled by the same-subnet adjacency confidence.
@@ -205,7 +210,13 @@ class PathAnalyzer:
 
         for (u, v), info in best.items():
             dest_exploit = self._exploit_info(v)
-            if info["rel"] == "CREDENTIAL_REUSE":
+            if info["rel"] == "SAME_HOST":
+                # Same machine: owning one address IS owning the other. The only
+                # doubt is whether the two addresses really are one machine, which
+                # the link's reachability confidence already carries.
+                step_p = 1.0
+                grants = True
+            elif info["rel"] == "CREDENTIAL_REUSE":
                 step_p = max(P_CREDENTIAL_REUSE, dest_exploit.get("likelihood", 0.0))
                 grants = True
             elif dest_exploit:
@@ -215,13 +226,15 @@ class PathAnalyzer:
                 grants = False
             if not grants:
                 continue                               # reachable, but not owned
-            p = _clamp_p(step_p * info["reach"])
+            stale = bool(mv.nodes[v].get("stale"))
+            p = _clamp_p(step_p * info["reach"] * (P_STALE_FACTOR if stale else 1.0))
             mv.add_edge(
                 u, v,
                 weight=_cost(p),
                 likelihood=round(p, 4),
                 rel=info["rel"],
                 basis=info["basis"],
+                stale=stale,
                 dest_compromisable=bool(dest_exploit),
                 dest_cvss=dest_exploit.get("cvss", 0.0),
                 dest_finding=dest_exploit.get("finding"),
@@ -252,8 +265,9 @@ class PathAnalyzer:
                 _hub_edge(mv, u, v, 1.0, "IN_SEGMENT", "same_subnet")
                 exploit = self._exploit_info(u)
                 if exploit:      # member is compromisable → reachable FROM its hub
-                    p = _clamp_p(exploit["likelihood"] * CONF_SAME_SUBNET)
-                    _hub_edge(mv, v, u, p, "SEGMENT_MEMBER", "same_subnet",
+                    stale = bool(mv.nodes[u].get("stale"))
+                    p = _clamp_p(exploit["likelihood"] * CONF_SAME_SUBNET * (P_STALE_FACTOR if stale else 1.0))
+                    _hub_edge(mv, v, u, p, "SEGMENT_MEMBER", "same_subnet", stale=stale,
                               dest_compromisable=True, dest_cvss=exploit.get("cvss", 0.0),
                               dest_finding=exploit.get("finding"))
             elif rel == "SEGMENT_LINK":
@@ -340,7 +354,9 @@ class PathAnalyzer:
                 p *= ed.get("likelihood", 1.0)
             last = parts[-1]
             first_rel = parts[0].get("rel")
-            if not via:
+            if first_rel == "SAME_HOST" and not via:
+                technique = "SAME_HOST"
+            elif not via:
                 technique = first_rel
             elif first_rel == "ROUTES":
                 technique = "GATEWAY_ROUTE"
@@ -356,6 +372,7 @@ class PathAnalyzer:
                 "weight": round(sum(ed.get("weight", 0.0) for ed in parts), 4),
                 "likelihood": round(_clamp_p(p), 4),
                 "basis": basis,
+                "stale": bool(last.get("stale")),
                 "exploited": last.get("dest_compromisable", False),
                 "finding": last.get("dest_finding"),
                 "cvss": last.get("dest_cvss", 0.0),
@@ -370,6 +387,13 @@ class PathAnalyzer:
             "edges": edges,
             "target_criticality": tgt.get("criticality", "medium"),
         }
+        crossed = [mv.nodes[n] for n in node_path if mv.nodes[n].get("type") == "NetworkSegment"]
+        path["outside_scope"] = sorted({c.get("cidr") for c in crossed if c.get("scoped") is False})
+        path["inferred_subnets"] = sorted({c.get("cidr") for c in crossed if c.get("inferred")})
+        stale_steps = sum(1 for e in edges if e["stale"])
+        path["stale_steps"] = stale_steps
+        path["freshness"] = ("stale" if stale_steps == len(edges) and edges
+                             else "partly_stale" if stale_steps else "fresh")
         path["likelihood"] = self.path_likelihood(path)
         path["risk_score"] = self.score_path(path)
         return path
@@ -445,6 +469,154 @@ class PathAnalyzer:
         chokepoints.sort(key=lambda c: (-c["path_count"], str(c["asset_id"])))
         return chokepoints
 
+    # ── choke points: effect of fixing a host, and the minimum fix set (P5) ───────
+
+    def _best_likelihoods(self, targets: list[str], sources: list[str],
+                          removed: frozenset[str] = frozenset()) -> dict[str, float]:
+        """Best (most likely) attack-path likelihood from ANY source to each target,
+        with the `removed` hosts taken out of the network. 0.0 = unreachable.
+
+        One shortest-path run per target over the same movement graph and the same
+        -ln(likelihood) cost the path search uses, so it agrees with the paths shown.
+        It is the BEST path, not a sum: attack paths share steps and are not
+        independent (NIST metric-aggregation work), so adding their likelihoods would
+        overstate the risk (FM-20)."""
+        mv = self.movement_graph()
+        keep = [s for s in sources if s not in removed and mv.has_node(s)]
+        view = nx.restricted_view(mv, removed, []) if removed else mv
+        out: dict[str, float] = {}
+        for t in targets:
+            if t in removed or not mv.has_node(t) or not keep:
+                out[t] = 0.0
+                continue
+            if t in keep:
+                out[t] = 1.0
+                continue
+            try:
+                cost, _ = nx.multi_source_dijkstra(view, keep, target=t, weight="weight")
+                out[t] = math.exp(-cost)
+            except nx.NetworkXNoPath:
+                out[t] = 0.0
+        return out
+
+    def min_fix_set(self, targets: list[str], sources: list[str]) -> dict[str, Any]:
+        """The SMALLEST set of hosts whose remediation cuts every modelled attack path
+        from an entry point to a crown jewel (minimum vertex cut, by max-flow).
+
+        Hosts are cuttable at cost 1 each — except the targets themselves, which are
+        what we are protecting; subnet hubs cannot be remediated and are free to
+        cross. Replaces 'assets that appear on most of the first five paths found'
+        (FM-25), which depended on enumeration order and subnet density.
+        Also returns, per target, how many VERTEX-DISJOINT routes reach it
+        (Menger): that many independent hosts must fall before it is safe."""
+        mv = self.movement_graph()
+        targets = [t for t in targets if mv.has_node(t)]
+        sources = [s for s in sources if mv.has_node(s) and s not in targets]
+        if not sources or not targets:
+            return {"size": 0, "assets": [], "independent_routes": {}}
+
+        source_set = set(sources)
+
+        def build(target_set: list[str]) -> nx.DiGraph:
+            h = nx.DiGraph()
+            for n in mv.nodes:
+                cuttable = _is_asset(mv, n) and n not in target_set
+                if cuttable:
+                    # Every host costs one unit (scaled), but an ENTRY host costs a hair more:
+                    # when fixing the entry and fixing shared infrastructure cut the same
+                    # routes, prefer the infrastructure — an entry fix removes only that entry.
+                    h.add_edge((n, "in"), (n, "out"),
+                               capacity=_CUT_UNIT + (1 if n in source_set else 0))
+                else:
+                    h.add_edge((n, "in"), (n, "out"))          # no capacity attribute = unbounded
+            for u, v in mv.edges:
+                h.add_edge((u, "out"), (v, "in"))
+            for s in sources:
+                h.add_edge("SOURCE", (s, "in"))
+            for t in target_set:
+                h.add_edge((t, "out"), "SINK")
+            return h
+
+        def solve(target_set: list[str]) -> tuple[int, list[str]]:
+            h = build(target_set)
+            if not nx.has_path(h, "SOURCE", "SINK"):
+                return 0, []
+            try:
+                value, (reach, other) = nx.minimum_cut(h, "SOURCE", "SINK")
+            except nx.NetworkXUnbounded:                        # a route made only of uncuttable nodes
+                return 0, []
+            cut = sorted(n for n in mv.nodes if (n, "in") in reach and (n, "out") in other)
+            return int(value) // _CUT_UNIT, cut
+
+        size, cut = solve(targets)
+        routes = {mv.nodes[t].get("entity_id"): solve([t])[0] for t in targets}
+        return {"size": size, "assets": [mv.nodes[n].get("entity_id") for n in cut],
+                "independent_routes": routes}
+
+    def choke_analysis(self, target_asset_ids: list[str], source_type: str = "internet_exposed",
+                       top: int = 20, max_candidates: int = 80) -> dict[str, Any]:
+        """Engagement-level answer to "what should we fix first?".
+
+          * `ranked`  — hosts ordered by the risk REMOVED if that one host were fixed:
+                        sum over crown jewels of impact × (best-path likelihood before −
+                        after). Measured on the network, not counted on a truncated
+                        list of paths, so it cannot be biased by enumeration order.
+          * `min_fix_set` — the smallest set that cuts every modelled path, plus how
+                        many independent routes reach each target.
+          * `targets` — per-target best-path risk (never a sum of overlapping paths).
+
+        Candidates are the hosts on the best routes (every host that matters sits on
+        one), capped; targets are never candidates."""
+        mv = self.movement_graph()
+        targets = [f"asset:{t}" for t in target_asset_ids if mv.has_node(f"asset:{t}")]
+        sources = self._source_assets(source_type)
+        base = self._best_likelihoods(targets, sources)
+
+        candidates: dict[str, None] = {}
+        for src in sources:
+            for t in targets:
+                if src == t:
+                    continue
+                try:
+                    gen = nx.shortest_simple_paths(mv, src, t, weight="weight")
+                    for node_path in itertools.islice(gen, 5):
+                        for n in node_path:
+                            if _is_asset(mv, n) and n not in targets:
+                                candidates[n] = None
+                except (nx.NodeNotFound, nx.NetworkXNoPath):
+                    continue
+            if len(candidates) >= max_candidates:
+                break
+
+        impact = {t: _IMPACT.get(str(mv.nodes[t].get("criticality") or "medium"), 0.6) for t in targets}
+        ranked: list[dict[str, Any]] = []
+        for c in sorted(candidates)[:max_candidates]:
+            after = self._best_likelihoods(targets, sources, frozenset({c}))
+            reduction = sum(impact[t] * (base[t] - after[t]) for t in targets)
+            if reduction <= 1e-9:
+                continue
+            cut_off = [mv.nodes[t].get("entity_id") for t in targets if base[t] > 0 and after[t] == 0]
+            ranked.append({
+                "asset_id": mv.nodes[c].get("entity_id"),
+                "risk_removed": round(100 * reduction, 2),
+                "targets_cut_off": cut_off,
+                "remediation_priority": _priority_from_reduction(reduction, sum(impact[t] * base[t] for t in targets)),
+            })
+        source_ids = {mv.nodes[s].get("entity_id") for s in sources}
+        # Equal effect: shared infrastructure before an entry host, then by id (deterministic).
+        ranked.sort(key=lambda r: (-r["risk_removed"], -len(r["targets_cut_off"]),
+                                   r["asset_id"] in source_ids, str(r["asset_id"])))
+
+        return {
+            "ranked": ranked[:top],
+            "min_fix_set": self.min_fix_set(targets, sources),
+            "targets": [{"asset_id": mv.nodes[t].get("entity_id"),
+                         "best_likelihood": round(base[t], 6),
+                         "risk": round(100 * base[t] * impact[t], 2)} for t in targets],
+            "entry_points": len(sources),
+            "method": "single-host removal over the control graph + minimum vertex cut",
+        }
+
     # ── find_blast_radius ──────────────────────────────────────────────────────────
 
     def find_blast_radius(self, compromised_asset_id: Any, max_hops: int = 10) -> dict[str, Any]:
@@ -513,8 +685,8 @@ class PathAnalyzer:
                                           "from an external vantage), so no path has a starting point"})
         if not targets:
             reasons.append({"code": "no_targets",
-                            "detail": "no crown-jewel target: none is marked critical and none "
-                                      "was auto-selected (domain controller, hypervisor, data store)"})
+                            "detail": "no crown-jewel target: no asset in this engagement is marked "
+                                      "critical"})
         if movement_rels == 0:
             reasons.append({"code": "no_reachability",
                             "detail": "no network reachability or credential edges between assets"})
@@ -541,7 +713,10 @@ class PathAnalyzer:
         }
 
 
-_BASIS_RANK = {"observed": 4, "same_subnet": 3, "assumed": 2, "possible": 1}
+_CUT_UNIT = 1000                      # scale of one host in the minimum-cut flow network (see min_fix_set)
+
+_BASIS_RANK = {"observed": 4, "same_subnet": 3, "same_host_fqdn": 3, "same_host_name": 2,
+               "assumed": 2, "assumed_cross_site": 1, "possible": 1}
 
 
 def _is_asset(mv: nx.DiGraph, n: str) -> bool:
@@ -567,6 +742,12 @@ def _safe_float(v: Any) -> float:
         return float(v)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _priority_from_reduction(reduction: float, total: float) -> str:
+    """critical/high/medium by the share of the engagement's modelled risk one fix removes."""
+    share = reduction / total if total > 0 else 0.0
+    return "critical" if share >= 0.8 else "high" if share >= 0.5 else "medium"
 
 
 def _priority(fraction: float) -> str:

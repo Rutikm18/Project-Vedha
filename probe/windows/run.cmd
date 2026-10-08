@@ -1,5 +1,5 @@
 @echo off
-rem ── Vedha Agent — attended run (no admin needed) ─────────────────────────────
+rem -- Vedha Agent - attended run (no admin needed) -----------------------------
 rem Double-click to see the agent connect to the manager and wait for jobs.
 rem Close the window to stop. For a permanent install, use install.cmd instead.
 setlocal

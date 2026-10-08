@@ -188,7 +188,7 @@ class TestGraphVisualizer:
         pa = PathAnalyzer(built_graph)
         paths = pa.find_paths_to_target(demo["critical_asset_id"])
         d3 = GraphVisualizer(built_graph).to_d3(paths)
-        assert set(d3.keys()) == {"nodes", "edges", "paths"}
+        assert set(d3.keys()) == {"nodes", "edges", "paths", "groups"}      # groups: subnet clusters (P5)
         node = d3["nodes"][0]
         assert {"id", "label", "type", "criticality", "compromised", "x", "y"} <= set(node)
         edge = d3["edges"][0]

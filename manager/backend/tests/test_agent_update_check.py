@@ -100,7 +100,8 @@ class TestManifestAgentVersion:
         build_release(tmp_path, key, manifest_overrides={"agent_version": "2.1.0"})
         monkeypatch.setattr(dist, "get_settings", lambda: SimpleNamespace(
             agent_release_dir=str(tmp_path), agent_release_public_key=pub,
-            agent_release_require_signature=True, is_production=False, manager_public_url="https://m"))
+            agent_release_require_signature=True, agent_release_p256_public_key="", is_production=False,
+            manager_public_url="https://m"))
         status = dist.release_status(detailed=True)
         assert status["available"] and status["agent_version"] == "2.1.0" and status["version"] == "1.0.400"
 

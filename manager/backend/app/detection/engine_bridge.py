@@ -841,6 +841,16 @@ async def _notify_coverage_gap(db: AsyncSession, engagement_id: uuid.UUID, inges
                 f"assessed. Top reasons: {why}.")
     except Exception as exc:  # noqa: BLE001 — notification must not fail the run
         logger.warning("detection_run.coverage_notify_failed", error=str(exc))
+async def _refresh_attack_paths(db: AsyncSession, engagement_id: uuid.UUID) -> None:
+    """Best-effort refresh of an engagement's stored attack paths (see
+    attack_paths.refresh_if_materialised). Imported lazily: the router pulls in the
+    web layer, which detection must not depend on at import time."""
+    try:
+        from app.routers.attack_paths import refresh_if_materialised
+        await refresh_if_materialised(db, engagement_id)
+    except Exception as exc:  # noqa: BLE001 — a stale path list must not fail detection
+        logger.warning("detection_run.attack_path_refresh_failed",
+                       engagement_id=str(engagement_id), error=str(exc))
 
 
 async def create_findings_from_facts(
@@ -1113,6 +1123,15 @@ async def create_findings_from_facts(
         if created:
             await _notify_new_findings(db, engagement_id, run.id)
         await _notify_coverage_gap(db, engagement_id, (run.stats or {}).get("ingest"))
+
+
+
+        # Stored attack paths and the fix-first analysis describe the findings as of
+        # their last computation. When this run changed the live set (something new,
+        # something resolved) refresh them — only if the engagement already has
+        # stored results, and never at the cost of the run itself.
+        if created or resolved:
+            await _refresh_attack_paths(db, engagement_id)
         logger.info("detection_run.completed", run_id=str(run.id),
                     engagement_id=str(engagement_id), new=created,
                     reaffirmed=reaffirmed, resolved=resolved,

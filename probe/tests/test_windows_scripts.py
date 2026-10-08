@@ -33,7 +33,9 @@ def test_launchers_carry_the_placeholder_the_packager_replaces():
     assert PLACEHOLDER in _text("run.cmd")
     assert PLACEHOLDER in _text("install.ps1")
     assert PLACEHOLDER in _text("package-zip.ps1")      # the -replace target
-    assert re.search(r"Mandatory\s*=\s*\$true\)\]\[string\]\$Manager", _text("package-zip.ps1"))
+    assert re.search(r"Mandatory\s*=\s*\$true,\s*ParameterSetName\s*=\s*'Customer'\)\]\[string\]\$Manager",
+                     _text("package-zip.ps1"))          # a customer ZIP must name its manager
+    assert "ParameterSetName = 'Release'" in _text("package-zip.ps1")     # the release package opts out explicitly
 
 
 def test_launchers_refuse_to_run_unconfigured():

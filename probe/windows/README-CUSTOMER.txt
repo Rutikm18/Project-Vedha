@@ -34,6 +34,13 @@ If something goes wrong
      (add --mask-ips to hide them). Nothing is sent automatically.
   - Antivirus or endpoint protection blocked something? Give ALLOWLIST.txt to your security team.
 
+Installing from your Vedha portal instead?
+  Fleet -> Add agent -> Windows gives a single command that downloads this same package, checks the
+  signed release (and, when the release is Authenticode-signed, the signature on vedha-agent.exe) and
+  runs the installer below for you. You do not need to unzip anything. The agent is the same either way.
+  To remove an agent installed that way, from an Administrator prompt:
+      C:\ProgramData\vedha-agent\tools\uninstall.cmd   (add -Purge to also delete its identity and logs)
+
 Other commands
   install.cmd -Repair            re-apply the installation and re-check it (keeps the agent's identity)
   install.cmd -Uninstall         remove the agent  (add -Purge to also delete its identity and logs)

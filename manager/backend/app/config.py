@@ -190,6 +190,10 @@ class Settings(BaseSettings):
     # AGENT_RELEASE_REQUIRE_SIGNATURE=true.
     agent_release_dir: str = "/var/lib/vedha/agent-releases"
     agent_release_public_key: str = ""
+    # Base64 DER SubjectPublicKeyInfo of the P-256 key (printed by
+    # `agent_release.py keygen --p256-out`). Windows installs verify the manifest
+    # against it; unset, Linux is served and the Windows package is withheld.
+    agent_release_p256_public_key: str = ""
     agent_release_require_signature: bool = False
     # Public base URL of this API (https://api.example.com) — what a customer's
     # host dials. Used to build the install command shown in Fleet.

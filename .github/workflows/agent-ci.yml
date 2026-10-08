@@ -6,7 +6,11 @@ on:
       - "probe/agent/**"
       - "probe/tests/**"
       - "probe/install.*"
+      - "probe/windows/**"
       - "probe/requirements-runtime.txt"
+      - "scripts/agent_release.py"
+      - "scripts/ci/**"
+      - ".github/workflows/agent-ci.yml"
   workflow_dispatch:
 
 jobs:
@@ -47,7 +51,7 @@ jobs:
           tests/test_hw_bind.py tests/test_sealed_gate.py
           tests/test_enroll_fresh_request_grace.py tests/test_ws_tls_settings.py
           tests/test_agent_closure.py tests/test_instance_lock.py tests/test_host_discovery_mobile.py
-          tests/test_windows_scripts.py
+          tests/test_windows_scripts.py tests/test_windows_remote_install.py tests/test_windows_installer_pwsh.py
           tests/test_update_check.py tests/test_check_agent_version.py
           tests/test_diagnostics.py
           tests/test_runtime_gate.py

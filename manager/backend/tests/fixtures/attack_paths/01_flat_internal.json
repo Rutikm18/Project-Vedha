@@ -1,0 +1,56 @@
+{
+  "name": "flat internal network, three subnets",
+  "description": "Flat posture: subnets of one engagement are assumed reachable, so the exposed host reaches the jewel directly. Going through the middle host is a valid but DOMINATED detour (the direct subnet link is more likely), so only the direct path is expected; the detour's hops are still valid ground truth.",
+  "scope": [
+    "10.0.1.0/24",
+    "10.0.2.0/24",
+    "10.0.3.0/24"
+  ],
+  "posture": "flat",
+  "assets": [
+    {
+      "id": "entry",
+      "ip": "10.0.1.5",
+      "environment": "dmz"
+    },
+    {
+      "id": "mid",
+      "ip": "10.0.2.5"
+    },
+    {
+      "id": "jewel",
+      "ip": "10.0.3.5",
+      "criticality": "critical"
+    }
+  ],
+  "exploitable": [
+    "entry",
+    "mid",
+    "jewel"
+  ],
+  "targets": [
+    "jewel"
+  ],
+  "truth": {
+    "valid_hops": [
+      [
+        "entry",
+        "mid"
+      ],
+      [
+        "mid",
+        "jewel"
+      ],
+      [
+        "entry",
+        "jewel"
+      ]
+    ],
+    "expected_paths": [
+      [
+        "entry",
+        "jewel"
+      ]
+    ]
+  }
+}

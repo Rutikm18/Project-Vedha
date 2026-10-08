@@ -1411,6 +1411,14 @@ async def list_engagement_assets(
     ]
 
 
+@router.get("/{engagement_id}/asset-identity",
+            summary="Evidence for choosing global vs per-site asset identity (overlapping ranges, merged machines, multi-homed hosts, stale assets)")
+async def asset_identity_report(engagement_id: uuid.UUID, db: ReadDB, current_user: AuthUser):
+    from app.services.asset_identity_report import load_report
+    engagement = await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    return await load_report(db, engagement)
+
+
 @router.get("/{engagement_id}/scope", summary="Return the engagement's authoritative scope (for probe re-validation)")
 async def get_engagement_scope(
     engagement_id: uuid.UUID,
