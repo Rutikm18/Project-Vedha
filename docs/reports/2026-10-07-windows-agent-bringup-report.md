@@ -1,6 +1,6 @@
 # Windows agent bring-up report - 7 October 2026
 
-Branch: `claude/fervent-brahmagupta-o0g44u` (16 commits ahead of `origin/main`, **not merged, no pull request open**).
+Branch: `claude/fervent-brahmagupta-o0g44u` ([PR #10](https://github.com/Rutikm18/Project-Vedha/pull/10), open, **not merged**).
 Related: [ADR-0005](../adr/0005-windows-agent-delivery.md) · [operator guide](../probe/WINDOWS_AGENT_INSTALL.md) ·
 [CI and real-install test](../testing/windows-agent-ci-and-e2e.md) · [pipeline](../planning/2026-10-07-windows-agent-pipeline.md).
 

@@ -1,6 +1,6 @@
 # ADR-0005 — Windows agent delivery: a zip, one command, self-diagnosing
 
-Status: accepted and implemented on `claude/fervent-brahmagupta-o0g44u` (not merged, no pull request open)
+Status: accepted and implemented on `claude/fervent-brahmagupta-o0g44u` ([PR #10](https://github.com/Rutikm18/Project-Vedha/pull/10), open, not merged)
 Date: 2026-10-07
 Related: [operator guide](../probe/WINDOWS_AGENT_INSTALL.md) · [reference](../probe/WINDOWS_AGENT_REFERENCE.md) · [CI and end-to-end test](../testing/windows-agent-ci-and-e2e.md) · [version management](../design/agent-version-management.md) · [bring-up report](../reports/2026-10-07-windows-agent-bringup-report.md) · [pipeline](../planning/2026-10-07-windows-agent-pipeline.md)
 
