@@ -31,6 +31,7 @@ from app.models.asset import Asset
 from app.models.attack_path import AttackPath
 from app.models.engagement import Engagement
 from app.models.enums import AssetCriticality
+from app.models.probe_site import ProbeSite
 from app.utils.db import get_or_404
 
 router = APIRouter(prefix="/engagements/{engagement_id}", tags=["attack-paths"])
@@ -119,12 +120,14 @@ async def get_attack_path(
             "via": edge.get("via") or [],
             "basis": edge.get("basis"),
             "likelihood": edge.get("likelihood"),
+            "stale": bool(edge.get("stale")),
             "explanation": _explain_hop(edge, labels),
         })
 
     return {
         "id": str(path.id),
         "risk_score": float(path.risk_score) if path.risk_score is not None else None,
+        "freshness": path_freshness(path.path_edges or []),
         "node_count": len(path.path_nodes or []),
         "nodes": [labels.get(str(n), str(n)) for n in (path.path_nodes or [])],
         "hops": hops,
@@ -287,11 +290,42 @@ async def _recompute_and_store(
 
 async def _asset_labels(db: AsyncSession, engagement_id: uuid.UUID) -> dict[str, str]:
     rows = (await db.execute(
-        select(Asset.id, Asset.hostname, Asset.ip_address).where(
+        select(Asset.id, Asset.hostname, Asset.ip_address, Asset.site_id).where(
             Asset.engagement_id == engagement_id
         )
     )).all()
-    return {str(r[0]): (r[1] or r[2] or str(r[0])) for r in rows}
+    site_ids = {r[3] for r in rows if r[3] is not None}
+    site_names: dict[str, str] = {}
+    if site_ids:
+        site_names = {str(s.id): s.name for s in (await db.execute(
+            select(ProbeSite).where(ProbeSite.id.in_(site_ids))
+        )).scalars().all()}
+    return disambiguated_labels(rows, site_names)
+
+
+def disambiguated_labels(rows, site_names: dict[str, str]) -> dict[str, str]:
+    """asset id -> a label a person can tell apart. Under per-site identity two
+    machines can share an address (10.0.0.5 at HQ and at the branch); a path that
+    names "10.0.0.5" twice is unreadable, so a label that is not unique gets its
+    site appended. Unique labels are left exactly as they were."""
+    base = {str(r[0]): (r[1] or r[2] or str(r[0])) for r in rows}
+    counts: dict[str, int] = {}
+    for label in base.values():
+        counts[label] = counts.get(label, 0) + 1
+    out = dict(base)
+    for r in rows:
+        aid, site = str(r[0]), r[3] if len(r) > 3 else None
+        if counts[base[aid]] > 1 and site is not None:
+            out[aid] = f"{base[aid]} @ {site_names.get(str(site)) or str(site)[:8]}"
+    return out
+
+
+def path_freshness(edges: list[dict]) -> str:
+    """fresh / partly_stale / stale, from the per-hop `stale` flags."""
+    flags = [bool(e.get("stale")) for e in edges or []]
+    if not flags or not any(flags):
+        return "fresh"
+    return "stale" if all(flags) else "partly_stale"
 
 
 def _path_summary(r: AttackPath) -> dict:
@@ -314,6 +348,7 @@ def _explain_hop(edge: dict, labels: dict[str, str]) -> str:
         "CONNECTS_TO": "pivots over the network to",
         "SAME_SEGMENT": "moves laterally within the same segment to",
         "CREDENTIAL_REUSE": "reuses captured credentials to access",
+        "SAME_HOST": "is already on the same machine, which also answers as",
         "SAME_SUBNET": f"moves laterally within subnet {via[0] if via else ''} to",
         "CROSS_SUBNET": f"crosses from subnet {via[0] if via else '?'} into "
                         f"{via[-1] if via else '?'} to reach",
@@ -321,6 +356,18 @@ def _explain_hop(edge: dict, labels: dict[str, str]) -> str:
                          f"{via[-1] if via else 'another subnet'} to reach",
     }.get(technique, "reaches")
     suffix = f" and exploits it (CVSS {edge.get('cvss')})" if edge.get("exploited") else ""
-    caveat = (" Reachability between these subnets is assumed, not observed — "
-              "verify segmentation." if edge.get("basis") == "assumed" else "")
-    return f"From {src}, the attacker {verb} {dst}{suffix}.{caveat}"
+    basis = edge.get("basis")
+    caveats = []
+    if basis == "assumed":
+        caveats.append("Reachability between these subnets is assumed, not observed — verify segmentation.")
+    elif basis == "assumed_cross_site":
+        caveats.append("These are different SITES' private networks. That they are connected at all is "
+                       "assumed and unlikely by default — confirm whether the sites are linked.")
+    elif basis == "same_host_name":
+        caveats.append("The two addresses are linked as one machine by host name only — confirm they are "
+                       "the same device.")
+    elif basis == "same_host_fqdn":
+        caveats.append("The two addresses are linked as one machine by their shared fully qualified name.")
+    if edge.get("stale"):
+        caveats.append("The destination was not seen recently, so this step may no longer hold.")
+    return f"From {src}, the attacker {verb} {dst}{suffix}." + "".join(" " + c for c in caveats)

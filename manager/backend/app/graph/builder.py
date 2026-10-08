@@ -15,12 +15,14 @@ namespaced so an asset and a finding can never collide.
 """
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, Iterable
 
 import networkx as nx
 import structlog
 
+from app.detection.asset_identity import DEFAULT_FRESHNESS_DAYS, is_stale
 from app.graph.neo4j_client import Neo4jClient
 
 logger = structlog.get_logger()
@@ -55,6 +57,10 @@ def finding_node_id(finding_id: Any) -> str:
 
 def segment_node_id(key: Any) -> str:
     return f"segment:{key}"
+
+
+def _iso(value: Any) -> str | None:
+    return value.isoformat() if isinstance(value, datetime) else None
 
 
 def _enum_value(v: Any, default: str = "") -> str:
@@ -109,6 +115,15 @@ def is_live_finding(finding: Any) -> bool:
     return _enum_value(status) in LIVE_FINDING_STATUSES
 
 
+def freshness_days_from_roe(rules_of_engagement: dict | None) -> int | None:
+    """Engagement freshness window in days (rules_of_engagement.attack_path_freshness_days);
+    default 30, 0 disables staleness handling."""
+    val = (rules_of_engagement or {}).get("attack_path_freshness_days")
+    if isinstance(val, bool) or not isinstance(val, int) or val < 0:
+        return DEFAULT_FRESHNESS_DAYS
+    return val or None
+
+
 def is_internet_exposed(asset: Any) -> bool:
     tags = getattr(asset, "tags", None) or {}
     if isinstance(tags, dict) and tags.get("internet_exposed"):
@@ -133,10 +148,14 @@ class GraphBuilder:
         findings: Iterable[Any] = (),
         credentials: Iterable[dict[str, Any]] | None = None,
         network_topology: dict[str, Any] | None = None,
+        freshness_days: int | None = DEFAULT_FRESHNESS_DAYS,
+        now: datetime | None = None,
     ) -> nx.MultiDiGraph:
         """
         Build the full multi-type attack graph. Returns the populated DiGraph
-        (also stored on ``self.graph``).
+        (also stored on ``self.graph``). Assets last seen more than
+        ``freshness_days`` ago are flagged ``stale`` (FM-16/32); the analyzer
+        down-weights and labels steps that land on them.
         """
         g = self.graph
         g.clear()
@@ -160,6 +179,9 @@ class GraphBuilder:
                 device_role=getattr(a, "device_role", None),
                 role_detail=getattr(a, "role_detail", None),
                 compromised=False,
+                site=str(a.site_id) if getattr(a, "site_id", None) is not None else None,
+                last_seen=_iso(getattr(a, "last_seen", None)),
+                stale=is_stale(getattr(a, "last_seen", None), now, freshness_days),
             )
 
         # ── Service nodes + HAS_SERVICE ──
@@ -313,7 +335,7 @@ class GraphBuilder:
             self.graph.add_node(
                 node, type="NetworkSegment", entity_id=key, label=seg.get("cidr", key),
                 cidr=seg.get("cidr", key), inferred=bool(seg.get("inferred")),
-                scoped=bool(seg.get("scoped", True)),
+                scoped=bool(seg.get("scoped", True)), site=seg.get("site"),
                 gateways=list(seg.get("gateways") or []))
             for member in seg.get("members") or []:
                 aid = asset_node_id(member)
@@ -335,6 +357,26 @@ class GraphBuilder:
                 added += 1
         self.graph.graph["reachability_posture"] = topology.get("posture")
         self.graph.graph["unplaced_assets"] = list(topology.get("unplaced") or [])
+        return added
+
+    def add_machine_links(self, groups: Iterable[dict[str, Any]]) -> int:
+        """SAME_HOST edges between the assets of one multi-homed machine
+        (asset_identity.link_machines). Owning one address is owning the machine,
+        so each edge grants control of its far side; the link's own confidence
+        (a name match is evidence, not proof) rides on the edge. Returns edges
+        added (two per pair, one each way)."""
+        added = 0
+        for group in groups:
+            members = [asset_node_id(m) for m in group.get("members") or []
+                       if self.graph.has_node(asset_node_id(m))]
+            for i, a in enumerate(members):
+                for b in members[i + 1:]:
+                    for u, v in ((a, b), (b, a)):
+                        self.graph.add_edge(
+                            u, v, type="SAME_HOST", basis=group.get("basis"),
+                            reachability_confidence=group.get("confidence", 0.7),
+                            machine=group.get("name"))
+                        added += 1
         return added
 
     def _add_credential_edges(self, credentials: Iterable[dict[str, Any]]) -> int:
@@ -384,20 +426,30 @@ class GraphBuilder:
                 select(Service).where(Service.asset_id.in_(asset_ids))
             )).scalars().all())
 
-        graph = self.build_asset_graph(engagement_id, assets, services, findings)
-
-        # P1a: derive the subnet topology from the engagement scope and assets.
-        # Before this, no topology was ever supplied, so no lateral movement
-        # existed and every multi-host path was impossible (FM-01).
+        from app.detection.asset_identity import link_machines, mode_from_roe
         from app.detection.reachability import derive_topology, posture_from_roe
         from app.models.engagement import Engagement
         engagement = await db.get(Engagement, engagement_id)
+        roe = getattr(engagement, "rules_of_engagement", None)
+        identity_mode = mode_from_roe(roe)
+        freshness_days = freshness_days_from_roe(roe)
+
+        graph = self.build_asset_graph(engagement_id, assets, services, findings,
+                                       freshness_days=freshness_days)
+
+        # P1a: derive the subnet topology from the engagement scope and assets.
+        # Before this, no topology was ever supplied, so no lateral movement
+        # existed and every multi-host path was impossible (FM-01). P1b-4: under
+        # per-site identity a private subnet belongs to its site.
         topology = derive_topology(
             assets,
             getattr(engagement, "scope_cidrs", None) or [],
-            posture_from_roe(getattr(engagement, "rules_of_engagement", None)),
+            posture_from_roe(roe),
+            identity_mode=identity_mode,
         )
         self.add_segment_topology(topology)
+        # P1b-4: one machine seen at several addresses (the dual-homed pivot).
+        self.add_machine_links(link_machines(assets, identity_mode, freshness_days=freshness_days))
 
         if self._neo4j is not None:
             self.sync_to_neo4j(engagement_id)

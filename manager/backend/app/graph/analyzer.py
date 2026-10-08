@@ -78,11 +78,12 @@ RETURN hop.entity_id AS asset_id, path_count ORDER BY path_count DESC
 """
 
 # Relationship types an attacker can traverse for lateral movement.
-_MOVEMENT_RELS = frozenset({"CONNECTS_TO", "SAME_SEGMENT", "CREDENTIAL_REUSE"})
+_MOVEMENT_RELS = frozenset({"CONNECTS_TO", "SAME_SEGMENT", "CREDENTIAL_REUSE", "SAME_HOST"})
 
 # When several movement relationships link the same asset pair, the most
-# reliable one labels the projected edge. Credential reuse is the most reliable.
-_REL_PRIORITY = {"CREDENTIAL_REUSE": 3, "CONNECTS_TO": 2, "SAME_SEGMENT": 1}
+# reliable one labels the projected edge. SAME_HOST (one machine, two addresses)
+# is identity, not a hop; credential reuse is the next most reliable.
+_REL_PRIORITY = {"SAME_HOST": 4, "CREDENTIAL_REUSE": 3, "CONNECTS_TO": 2, "SAME_SEGMENT": 1}
 
 # ── step likelihood model ─────────────────────────────────────────────────────
 # Exploit evidence, strongest first. Values are deliberately coarse: they ORDER
@@ -93,6 +94,10 @@ _P_ATTACK_COMPLEXITY = {"L": 0.75, "M": 0.5, "H": 0.3}
 _P_SEVERITY = {"critical": 0.65, "high": 0.5, "medium": 0.35, "low": 0.2, "info": 0.1}
 P_FLOOR = 0.1                 # a known weakness is never "impossible" (FM-19)
 P_UNKNOWN_HOP = 0.5           # a hop counted in `hops` but not described by an edge
+
+# A step that lands on an asset not seen within the freshness window (FM-16/32): the
+# weakness may have been fixed or the address re-leased, so it is likelier wrong.
+P_STALE_FACTOR = 0.5
 
 # Subnet hubs (P1a). Reaching a member through its subnet's hub costs the
 # member's exploit likelihood scaled by the same-subnet adjacency confidence.
@@ -205,7 +210,13 @@ class PathAnalyzer:
 
         for (u, v), info in best.items():
             dest_exploit = self._exploit_info(v)
-            if info["rel"] == "CREDENTIAL_REUSE":
+            if info["rel"] == "SAME_HOST":
+                # Same machine: owning one address IS owning the other. The only
+                # doubt is whether the two addresses really are one machine, which
+                # the link's reachability confidence already carries.
+                step_p = 1.0
+                grants = True
+            elif info["rel"] == "CREDENTIAL_REUSE":
                 step_p = max(P_CREDENTIAL_REUSE, dest_exploit.get("likelihood", 0.0))
                 grants = True
             elif dest_exploit:
@@ -215,13 +226,15 @@ class PathAnalyzer:
                 grants = False
             if not grants:
                 continue                               # reachable, but not owned
-            p = _clamp_p(step_p * info["reach"])
+            stale = bool(mv.nodes[v].get("stale"))
+            p = _clamp_p(step_p * info["reach"] * (P_STALE_FACTOR if stale else 1.0))
             mv.add_edge(
                 u, v,
                 weight=_cost(p),
                 likelihood=round(p, 4),
                 rel=info["rel"],
                 basis=info["basis"],
+                stale=stale,
                 dest_compromisable=bool(dest_exploit),
                 dest_cvss=dest_exploit.get("cvss", 0.0),
                 dest_finding=dest_exploit.get("finding"),
@@ -252,8 +265,9 @@ class PathAnalyzer:
                 _hub_edge(mv, u, v, 1.0, "IN_SEGMENT", "same_subnet")
                 exploit = self._exploit_info(u)
                 if exploit:      # member is compromisable → reachable FROM its hub
-                    p = _clamp_p(exploit["likelihood"] * CONF_SAME_SUBNET)
-                    _hub_edge(mv, v, u, p, "SEGMENT_MEMBER", "same_subnet",
+                    stale = bool(mv.nodes[u].get("stale"))
+                    p = _clamp_p(exploit["likelihood"] * CONF_SAME_SUBNET * (P_STALE_FACTOR if stale else 1.0))
+                    _hub_edge(mv, v, u, p, "SEGMENT_MEMBER", "same_subnet", stale=stale,
                               dest_compromisable=True, dest_cvss=exploit.get("cvss", 0.0),
                               dest_finding=exploit.get("finding"))
             elif rel == "SEGMENT_LINK":
@@ -340,7 +354,9 @@ class PathAnalyzer:
                 p *= ed.get("likelihood", 1.0)
             last = parts[-1]
             first_rel = parts[0].get("rel")
-            if not via:
+            if first_rel == "SAME_HOST" and not via:
+                technique = "SAME_HOST"
+            elif not via:
                 technique = first_rel
             elif first_rel == "ROUTES":
                 technique = "GATEWAY_ROUTE"
@@ -356,6 +372,7 @@ class PathAnalyzer:
                 "weight": round(sum(ed.get("weight", 0.0) for ed in parts), 4),
                 "likelihood": round(_clamp_p(p), 4),
                 "basis": basis,
+                "stale": bool(last.get("stale")),
                 "exploited": last.get("dest_compromisable", False),
                 "finding": last.get("dest_finding"),
                 "cvss": last.get("dest_cvss", 0.0),
@@ -370,6 +387,10 @@ class PathAnalyzer:
             "edges": edges,
             "target_criticality": tgt.get("criticality", "medium"),
         }
+        stale_steps = sum(1 for e in edges if e["stale"])
+        path["stale_steps"] = stale_steps
+        path["freshness"] = ("stale" if stale_steps == len(edges) and edges
+                             else "partly_stale" if stale_steps else "fresh")
         path["likelihood"] = self.path_likelihood(path)
         path["risk_score"] = self.score_path(path)
         return path
@@ -541,7 +562,8 @@ class PathAnalyzer:
         }
 
 
-_BASIS_RANK = {"observed": 4, "same_subnet": 3, "assumed": 2, "possible": 1}
+_BASIS_RANK = {"observed": 4, "same_subnet": 3, "same_host_fqdn": 3, "same_host_name": 2,
+               "assumed": 2, "assumed_cross_site": 1, "possible": 1}
 
 
 def _is_asset(mv: nx.DiGraph, n: str) -> bool:
