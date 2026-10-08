@@ -8,7 +8,7 @@ import {
   type RemediationArtifact,
   type RemediationWorkspacePreview,
   validateRemediationFindingIds,
-} from "../lib/remediation-workspace";
+} from "../lib/remediation-workspace.client";
 
 const originalFetch = globalThis.fetch;
 const FINDING_A = "11111111-1111-4111-8111-111111111111";
