@@ -74,7 +74,8 @@ your local network never goes through the proxy.
 |---|---|
 | `--name NAME` | Name shown in the portal (default: the host name) |
 | `--no-proxy LIST` | Extra hosts that bypass the proxy |
-| `--require-signature` | Fail if the signature can't be checked on this host (no OpenSSL 3) |
+| `--token-file FILE` | Read the token from a root-only file instead of the command line (keeps it out of shell history) |
+| `--require-signature` | Always on for an installer from your manager: it stops if the signature can't be checked (needs OpenSSL 3, or `python3-cryptography` on older systems) |
 
 ## 4. Operate
 
@@ -82,6 +83,7 @@ your local network never goes through the proxy.
 |---|---|
 | Logs | `docker logs -f vedha-agent` |
 | Status | the portal's Fleet page (heartbeat, current job) |
+| Upgrade | Run the newer installer with a new token: the container is replaced and the agent keeps its identity |
 | Remove | `sudo sh vedha-install.sh --uninstall` (add `PROBE_PURGE=true` to delete its identity) |
 
 ## Access dates

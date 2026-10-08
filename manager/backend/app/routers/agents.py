@@ -1576,6 +1576,21 @@ async def enqueue_agent_job(
             f"if this is not actually an OT/ICS segment.",
         )
 
+    # Organisation scan policy. A blackout window pauses scanning (an admin may
+    # override it when the policy allows, and that override is audited below).
+    from app.services import org_settings
+    scan_policy = await org_settings.get_section(db, current_user.tenant_id, "scan")
+    blackout = org_settings.active_blackout(scan_policy)
+    blackout_override = None
+    if blackout is not None:
+        if scan_policy.admin_override and current_user.role == "admin":
+            blackout_override = {"window": blackout.name}
+        else:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Scanning is paused by the blackout window '{blackout.name}'."
+                + (" An admin can override it." if scan_policy.admin_override else ""))
+
     # Merge use_case_id into params so the probe can read it from the job payload.
     # Also embed the engagement's scope so the probe has it without a second round-trip
     # (the probe still independently fetches /scope for re-validation — this is
@@ -1651,6 +1666,16 @@ async def enqueue_agent_job(
                                                            fragile_plan.cidrs)
             job_params["_fragile_excluded"] = fragile_plan.hosts
 
+    # Organisation-wide exclusions ride the same field the probe's ScopeGuard
+    # enforces. A scan whose every target is excluded would do nothing: say so.
+    if scan_policy.global_exclusions:
+        if org_settings.entirely_excluded(requested_scope, scan_policy.global_exclusions):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Every requested target is covered by the organisation's global exclusions.")
+        job_params["_excluded_cidrs"] = org_settings.merge_global_exclusions(
+            job_params.get("_excluded_cidrs"), scan_policy)
+
     job = ScanJob(
         engagement_id=body.engagement_id,
         job_type=body.job_type,
@@ -1664,6 +1689,11 @@ async def enqueue_agent_job(
     db.add(job)
     await db.flush()
     await db.refresh(job)
+    if blackout_override is not None:
+        from app.services.audit import record_audit
+        record_audit(db, actor_id=current_user.user_id, action="scan.blackout_override",
+                     engagement_id=eng.id, resource_type="scan_job", resource_id=job.id,
+                     detail={**blackout_override, "scan_type": resolved_scan_type})
     if fragile_override is not None:
         from app.services.audit import record_audit
         record_audit(db, actor_id=current_user.user_id, action="scan.fragile_override",

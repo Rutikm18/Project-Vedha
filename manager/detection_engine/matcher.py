@@ -41,8 +41,22 @@ def _safe_compare(a: str, b: str) -> int | None:
     return dpkg_compare(a, b)
 
 
-def _version_in_ranges(version: str, ranges: list[dict]) -> tuple[bool, str | None]:
-    """Returns (matched, matched_interval_desc) — the latter for evidence_reason.
+def _version_in_ranges(
+    version: str, ranges: list[dict]
+) -> tuple[bool, str | None, str | None]:
+    """Returns (matched, matched_interval_desc, range_kind).
+
+    `range_kind` records how *specific* the matched interval is — the axis the
+    false-positive fix (gap #4) turns on:
+        "bounded"  [introduced, fixed)        — a real upper version bound
+        "capped"   [introduced, last_affected]— a known greatest-affected bound
+        "open"     [introduced, unbounded)    — NO upper bound; matches every
+                                                version from `introduced` onward
+    and is None when nothing matched. An open interval carries no version
+    discrimination (an `introduced:"0"` open range matches literally every
+    version), so the caller must treat an inferred-source open match as
+    product-presence, not a version-range vulnerability — see match_candidate.
+
     A range boundary this version's epoch can't be safely compared against
     is treated as "cannot determine" (skipped), never as a coincidental
     match or non-match — see _safe_compare.
@@ -59,22 +73,68 @@ def _version_in_ranges(version: str, ranges: list[dict]) -> tuple[bool, str | No
                 if introduced is not None:
                     lo, hi = _safe_compare(introduced, version), _safe_compare(version, ev["fixed"])
                     if lo is not None and hi is not None and lo <= 0 and hi < 0:
-                        return True, f"[{introduced}, {ev['fixed']})"
+                        return True, f"[{introduced}, {ev['fixed']})", "bounded"
                 introduced = None
             elif "last_affected" in ev:
                 if introduced is not None:
                     lo = _safe_compare(introduced, version)
                     hi = _safe_compare(version, ev["last_affected"])
                     if lo is not None and hi is not None and lo <= 0 and hi <= 0:
-                        return True, f"[{introduced}, {ev['last_affected']}]"
+                        return True, f"[{introduced}, {ev['last_affected']}]", "capped"
                 introduced = None
         # Sequence ended with an open lower bound and no closing event —
-        # OSV convention: still vulnerable from `introduced` onward.
+        # OSV convention: still vulnerable from `introduced` onward. The match
+        # stands (so an authoritative dpkg finding for an unfixed package is not
+        # lost), but it is tagged "open" so an inferred match can be demoted.
         if introduced is not None:
             lo = _safe_compare(introduced, version)
             if lo is not None and lo <= 0:
-                return True, f"[{introduced}, unbounded)"
-    return False, None
+                return True, f"[{introduced}, unbounded)", "open"
+    return False, None, None
+
+
+def _nvd_excludes_version(version: str, affected_entries: list[dict]) -> bool:
+    """True iff an upstream NVD/CPE-ecosystem *bounded* range exists for this CVE
+    and the version is confidently OUTSIDE every one of them — i.e. the host is
+    not vulnerable to this CVE by its upstream version (gap #4 phase 2: "bound
+    the open-ended distro records with upstream NVD data").
+
+    Only the NVD/CPE companion is consulted here, on purpose: its ranges are
+    clean upstream SEMVER (``introduced:"0" → fixed:X``) with no Debian epoch /
+    revision, so comparing a network-banner version against them is reliable —
+    exactly the comparison the Debian ecosystem cannot do for a banner. Never
+    suppresses on an ambiguous/undeterminable comparison (``_safe_compare`` None)
+    or when no evaluable NVD bounded range is present: absence of proof is not
+    proof of safety.
+    """
+    saw_evaluable_bounded = False
+    for aff in affected_entries:
+        if aff.get("package", {}).get("ecosystem") != "NVD/CPE":
+            continue
+        for rng in aff.get("ranges", []):
+            if rng.get("type") not in ("ECOSYSTEM", "SEMVER"):
+                continue
+            introduced = None
+            for ev in rng.get("events", []):
+                if "introduced" in ev:
+                    introduced = ev["introduced"]
+                elif "fixed" in ev:
+                    lo = _safe_compare(introduced, version) if introduced is not None else 0
+                    hi = _safe_compare(version, ev["fixed"])
+                    if lo is not None and hi is not None:
+                        saw_evaluable_bounded = True
+                        if lo <= 0 and hi < 0:
+                            return False  # vulnerable per upstream NVD — never suppress
+                    introduced = None
+                elif "last_affected" in ev:
+                    lo = _safe_compare(introduced, version) if introduced is not None else 0
+                    hi = _safe_compare(version, ev["last_affected"])
+                    if lo is not None and hi is not None:
+                        saw_evaluable_bounded = True
+                        if lo <= 0 and hi <= 0:
+                            return False
+                    introduced = None
+    return saw_evaluable_bounded
 
 
 def _fixed_bound(interval: str | None) -> str | None:
@@ -115,45 +175,78 @@ def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[
     # (e.g. "apache2" vs "http_server"). See cpe_normalizer.py's
     # _PACKAGE_TO_CPE module comment for the full explanation.
     records = db.lookup(candidate.lookup_key)
-    findings: list[Finding] = []
+    is_authoritative = candidate.source_confidence == SourceConfidence.authoritative
+
+    # Gap #4 phase 2: aggregate every matching range PER CVE before emitting, so
+    # the most *specific* verdict wins. A bounded match ([intro,fixed) /
+    # [intro,last_affected]) is a real version signal and beats an open-ended
+    # match (which matches every version and is only product-presence). This also
+    # collapses the old one-finding-per-record duplication into one finding per
+    # CVE. Insertion order is preserved for deterministic output.
+    agg: dict[str, dict] = {}
     for rec in records:
         cve_ids = rec.get("upstream") or [rec["id"]]
         for aff in rec.get("affected", []):
             if aff.get("package", {}).get("name") != candidate.lookup_key:
                 continue
-            matched, interval = _version_in_ranges(version, aff.get("ranges", []))
-            if not matched:
-                continue
-
+            matched, interval, range_kind = _version_in_ranges(version, aff.get("ranges", []))
             for cve_id in cve_ids:
-                # Confirmed requires authoritative evidence, not just a range
-                # match — see module docstring. This is the spec's "Rule: if
-                # source_confidence != authoritative, the finding is
-                # suspected, never confirmed" applied directly. Keyed off
-                # Fact.source_confidence (threaded through onto the
-                # candidate by cpe_normalizer.py), NOT candidate.confidence
-                # — those are different axes (product/version identification
-                # certainty vs. observation-method authoritativeness).
-                is_authoritative = candidate.source_confidence == SourceConfidence.authoritative
-                state = FindingState.confirmed if is_authoritative else FindingState.suspected
-                fid = make_finding_id(asset_ip, cve_id, candidate.cpe23())
-                findings.append(Finding(
-                    finding_id=fid,
-                    asset_ip=asset_ip,
-                    cpe=candidate.cpe23(),
-                    cve_id=cve_id,
-                    match_basis="range",
-                    state=state,
-                    source_confidence=(SourceConfidence.authoritative if is_authoritative
-                                       else SourceConfidence.inferred),
-                    evidence_refs=[candidate.source_ref],
-                    db_snapshot_hash=db.meta.content_hash,
-                    created_at=datetime.now(timezone.utc).isoformat(),
-                    matched_version=version,
-                    fixed_version=_fixed_bound(interval),
-                    ai_assisted=candidate.ai_assisted,
-                    notes=[f"{candidate.basis} | matched range {interval}"]
-                          + (["version-inferred, backport-possible"] if not is_authoritative else [])
-                          + (["AI-assisted normalization — extra scrutiny advised"] if candidate.ai_assisted else []),
-                ))
+                slot = agg.setdefault(cve_id, {"bounded": None, "open": None, "affected": []})
+                slot["affected"].append(aff)
+                if matched and range_kind in ("bounded", "capped") and slot["bounded"] is None:
+                    slot["bounded"] = interval
+                elif matched and range_kind == "open" and slot["open"] is None:
+                    slot["open"] = interval
+
+    findings: list[Finding] = []
+    for cve_id, slot in agg.items():
+        if slot["bounded"] is not None:
+            interval, open_ended = slot["bounded"], False
+        elif slot["open"] is not None:
+            # Open-ended match only. For an inferred (banner) source, consult the
+            # upstream NVD/CPE companion: if a bounded upstream range confidently
+            # excludes this version, the host is NOT vulnerable to this CVE —
+            # suppress the finding entirely rather than emit open-ended noise. An
+            # authoritative (dpkg) finding against the distro is kept regardless:
+            # the distro's "no fix released" verdict is the authority there.
+            if not is_authoritative and _nvd_excludes_version(version, slot["affected"]):
+                continue
+            interval, open_ended = slot["open"], True
+        else:
+            continue  # no range matched for this CVE — a correct negative
+
+        # Confirmed requires authoritative evidence, not just a range match (see
+        # module docstring). An open-ended match from an inferred source is
+        # demoted to `potential` under a distinct `range-open` basis so it never
+        # sits in the suspected queue beside real bounded matches; an
+        # authoritative open-ended match keeps its confirmed state (a genuine "no
+        # fix released yet" distro fact), only annotated.
+        if open_ended and not is_authoritative:
+            state, basis = FindingState.potential, "range-open"
+        else:
+            state = FindingState.confirmed if is_authoritative else FindingState.suspected
+            basis = "range"
+        findings.append(Finding(
+            finding_id=make_finding_id(asset_ip, cve_id, candidate.cpe23()),
+            asset_ip=asset_ip,
+            cpe=candidate.cpe23(),
+            cve_id=cve_id,
+            match_basis=basis,
+            state=state,
+            source_confidence=(SourceConfidence.authoritative if is_authoritative
+                               else SourceConfidence.inferred),
+            evidence_refs=[candidate.source_ref],
+            db_snapshot_hash=db.meta.content_hash,
+            created_at=datetime.now(timezone.utc).isoformat(),
+            matched_version=version,
+            fixed_version=_fixed_bound(interval),
+            ai_assisted=candidate.ai_assisted,
+            notes=[f"{candidate.basis} | matched range {interval}"]
+                  + (["version-inferred, backport-possible"] if not is_authoritative else [])
+                  + (["open-ended range (no fixed release) — product-presence only, "
+                      "version not discriminated"] if open_ended and not is_authoritative else [])
+                  + (["distro lists no fixed release for this package (open-ended range)"]
+                     if open_ended and is_authoritative else [])
+                  + (["AI-assisted normalization — extra scrutiny advised"] if candidate.ai_assisted else []),
+        ))
     return findings

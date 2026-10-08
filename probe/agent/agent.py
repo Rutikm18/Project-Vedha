@@ -2218,7 +2218,12 @@ def _obtain_identity(
                     json={"email": email, "password": password},
                 )
                 r.raise_for_status()
-                operator_token = r.json()["access_token"]
+                login = r.json()
+                if "access_token" not in login:
+                    # Two-step sign-in cannot be completed unattended.
+                    say("This operator account uses two-step sign-in. Set PROBE_PAT (or PROBE_BOOTSTRAP_KEY) instead of a password.")
+                    raise SystemExit(1)
+                operator_token = login["access_token"]
 
             # Register as agent (send X25519 public key for scope encryption)
             data = transport.register(

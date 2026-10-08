@@ -38,7 +38,7 @@ endif
 # it into the backend image via the VEDHA_VERSION build arg.
 export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
 
-.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed admin-show admin-reset shell venv test probe-build probe-run probe-pat seal seal-parity agent-keygen agent-keygen-p256 agent-release agent-publish agent-verify agent-pull onprem-bundle clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback prod-diagnose
+.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed admin-show admin-reset shell venv test probe-build probe-run probe-pat seal seal-parity agent-keygen agent-keygen-p256 agent-release agent-publish agent-verify agent-client-kit agent-pull onprem-bundle clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback prod-diagnose
 
 version: ## Print the current deployed version
 	@echo $(VEDHA_VERSION)
@@ -230,6 +230,13 @@ agent-pull: ## On the manager host: pull the newest signed release from GitHub: 
 agent-publish: ## Copy the built release to the manager: make agent-publish TO=user@host:/path (or a local dir)
 	@test -n "$(TO)" || { echo "TO is required, e.g. TO=ubuntu@1.2.3.4:/opt/Project-Vedha/manager/agent-releases (local dev: TO=manager/agent-releases)"; exit 2; }
 	@$(RELEASE_PY) scripts/agent_release.py publish dist/agent-release --to "$(TO)"
+
+# The folder you email a client: signed installer + filled-in guide + checksums
+# (never the image). The token and the installer checksum go by another channel.
+#   make agent-client-kit CUSTOMER="ACME Bank" MANAGER=https://api.vedhasec.com PUB=<AGENT_RELEASE_PUBLIC_KEY> [CONTACT="…"]
+agent-client-kit: ## Client install kit for one customer: make agent-client-kit CUSTOMER=... MANAGER=https://api... PUB=<release public key> [CONTACT=...]
+	@test -n "$(CUSTOMER)" -a -n "$(MANAGER)" -a -n "$(PUB)" || { echo "CUSTOMER, MANAGER (https://api.<domain>) and PUB (AGENT_RELEASE_PUBLIC_KEY) are required"; exit 2; }
+	@$(RELEASE_PY) scripts/agent_client_kit.py --customer "$(CUSTOMER)" --manager "$(MANAGER)" --public-key "$(PUB)" --contact "$(CONTACT)"
 
 # On request only: an encrypted, signed platform bundle for ONE on-prem customer.
 #   make onprem-bundle CUSTOMER="ACME Bank" RECIPIENT=age1...   (their `age-keygen` public key)

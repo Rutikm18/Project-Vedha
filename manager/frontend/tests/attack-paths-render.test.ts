@@ -221,7 +221,7 @@ describe("the page is wired to the backend, not to demo data", () => {
   });
 
   test("the engagement page links to it for operators only", () => {
-    const src = read("app/engagements/[id]/page.tsx");
+    const src = read("app/engagements/[id]/workspace.tsx");       // page.tsx re-exports it
     assert.match(src, /surface === "manager" && \(\s*<Link href=\{`\/engagements\/\$\{encodeURIComponent\(id\)\}\/attack-paths`\}/);
   });
 });

@@ -331,8 +331,12 @@ async def test_service_vulnerability_finding_uses_probe_scan_context() -> None:
                     {
                         "status": "open",
                         "target": "10.0.0.8",
-                        "port": 23,
-                        "data": {"service": "telnet"},
+                        "port": 22,
+                        # SSH weak-crypto is a retained service_vuln rule (the
+                        # cleartext rule was retired — gap #2); banner advertises
+                        # ssh-dss, so exactly one finding is produced.
+                        "data": {"service": "ssh",
+                                 "banner": "SSH-2.0-OpenSSH_7.4\nkex: ssh-dss"},
                     }
                 ],
             },

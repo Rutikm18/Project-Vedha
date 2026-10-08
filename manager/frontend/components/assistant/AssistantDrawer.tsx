@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Brain, Loader2, Search, Send, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
+import { useModalFocus } from "../../hooks/useModalFocus";
 import { useAssistant } from "./AssistantProvider";
 import { FactCard } from "./FactCard";
 import { AdvisorFlow } from "./AdvisorFlow";
@@ -20,6 +21,8 @@ type ExplainResponse = {
 
 export function AssistantDrawer() {
   const { open, findingId, close } = useAssistant();
+  const dialogRef = useRef<HTMLElement>(null);
+  useModalFocus(dialogRef, open, close, ".assistant-orb");
   const [input, setInput] = useState("");
   const [activeId, setActiveId] = useState<string | null>(findingId);
   const [card, setCard] = useState<FactCardVM | null>(null);
@@ -157,8 +160,8 @@ export function AssistantDrawer() {
   if (!open) return null;
   return (
     <>
-      <div onClick={close} className="assistant-drawer-backdrop" />
-      <aside role="dialog" aria-modal="true" aria-label="Ask Vedha assistant" className="assistant-drawer">
+      <div data-modal-backdrop onClick={close} className="assistant-drawer-backdrop" />
+      <aside ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Ask Vedha assistant" className="assistant-drawer">
         <header className="assistant-drawer-header">
           <span className="assistant-drawer-logo"><Brain size={17} /></span>
           <div>

@@ -229,6 +229,8 @@ curl --proto '=https' --tlsv1.2 -fsSL https://api.vedhasec.com/agent/install.sh 
 - The panel flips from "waiting for install" to "agent enrolled" by itself.
   Revoke an unused command there.
 - Customer-facing instructions: [`probe/CUSTOMER_AGENT_INSTALL.md`](../probe/CUSTOMER_AGENT_INSTALL.md).
+- Sending the agent to a client (what to send, code exposure, checklist, `make agent-client-kit`):
+  [`SHARING_THE_AGENT.md`](SHARING_THE_AGENT.md).
 
 ## The Windows agent
 

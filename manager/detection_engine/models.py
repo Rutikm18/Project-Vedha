@@ -140,7 +140,12 @@ class Finding:
     asset_ip: str
     cpe: str
     cve_id: str
-    match_basis: str              # "range" | "exact"
+    match_basis: str              # "range" | "range-open" | "exact" | "composite"
+                                   # "range-open": matched an open-ended
+                                   # [introduced, unbounded) range from an inferred
+                                   # source — product-presence, not a version
+                                   # signal (gap #4); always paired with
+                                   # state=potential.
     state: FindingState
     source_confidence: SourceConfidence
     evidence_refs: list[str]

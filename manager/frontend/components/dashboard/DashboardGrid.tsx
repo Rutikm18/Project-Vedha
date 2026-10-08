@@ -59,6 +59,8 @@ interface AttentionFindingSummary { criticalOpen?: number; highOpen?: number }
 interface AttentionSlaSummary { summary?: { breached?: number; atRisk?: number } }
 
 function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
+  const findingsPath = useConsolePath("findings");
+  const fleetPath = useConsolePath("fleet");
   const findings = useConsoleQuery<AttentionFindingSummary>("findingsSummary", { refetchInterval: 60_000 });
   const sla = useConsoleQuery<AttentionSlaSummary>("sla", { refetchInterval: 60_000 });
   const agents = useConsoleQuery<Array<{ status?: string }>>("agents", { refetchInterval: 15_000 });
@@ -74,21 +76,21 @@ function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
       detail: "Triage and contain first",
       tone: "var(--sev-critical-color)",
       icon: AlertOctagon,
-      href: "/findings?severity=CRITICAL&status=open",
+      href: `${findingsPath}?severity=CRITICAL&status=open`,
     } : null,
     breached > 0 ? {
       label: `${breached} SLA ${breached === 1 ? "breach" : "breaches"}`,
       detail: "Past remediation target",
       tone: "var(--sev-high-color)",
       icon: ClockAlert,
-      href: "/findings?sla=breached",
+      href: `${findingsPath}?sla=breached`,
     } : null,
     offline > 0 ? {
       label: `${offline} ${offline === 1 ? "probe" : "probes"} offline`,
       detail: "Coverage may be incomplete",
       tone: "var(--sev-medium-color)",
       icon: WifiOff,
-      href: "/fleet",
+      href: fleetPath,
     } : null,
   ].filter(Boolean) as Array<{
     label: string; detail: string; tone: string; icon: React.ElementType; href: string;
@@ -105,19 +107,19 @@ function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
   return (
     <section
       className="attention-strip"
-      data-clear={items.length === 0 || undefined}
+      data-clear={(items.length === 0 && failed === 0) || undefined}
       aria-labelledby="attention-title"
     >
       <div className="attention-strip__intro">
         <span className="attention-strip__icon" aria-hidden>
-          {items.length > 0 ? <AlertOctagon size={16} /> : <CheckCircle2 size={16} />}
+          {items.length > 0 || failed > 0 ? <AlertOctagon size={16} /> : <CheckCircle2 size={16} />}
         </span>
         <div>
           <h2 id="attention-title">Needs attention now</h2>
           <p>
             {items.length > 0
               ? "Evidence-backed work ordered by immediate operational impact."
-              : "No critical findings, SLA breaches, or offline probes are recorded."}
+              : failed > 0 ? "Urgent work cannot be fully assessed while signals are unavailable." : "No critical findings, SLA breaches, or offline probes are recorded."}
           </p>
         </div>
       </div>

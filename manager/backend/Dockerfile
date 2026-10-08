@@ -29,6 +29,14 @@ COPY . .
 # DETECTION_ENGINE_PATH points here.
 COPY --from=detection_engine . /opt/detection_engine
 
+# Run as an unprivileged user. The code stays root-owned and read-only to it: the
+# API never writes under /app. /var/lib/vedha is where offline intel bundles are
+# written when VEDHA_INTEL_DIR points there; /tmp is always writable.
+RUN useradd --system --uid 10001 --no-create-home vedha \
+    && mkdir -p /var/lib/vedha \
+    && chown vedha /var/lib/vedha
+USER vedha
+
 EXPOSE 8000
 
 # Default command serves the API. The compose `migrate` service overrides this
