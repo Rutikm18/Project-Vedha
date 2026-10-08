@@ -526,10 +526,16 @@ async def process_job_result(
     promoted = 0
     findings_created = 0
     if success and isinstance(result, dict):
+        # Asset identity for this submission (P1b): global by default; per-site for
+        # private IPs when the engagement opts in. Resolved ONCE so the three paths
+        # below can never disagree about which asset a host belongs to.
+        from app.services.asset_resolution import identity_context
+        identity = await identity_context(db, row.engagement_id, agent_id=agent_id)
         if result.get("hosts"):
             try:
                 async with db.begin_nested():
-                    promoted = await _promote_assets(db, row.engagement_id, result)
+                    promoted = await _promote_assets(db, row.engagement_id, result,
+                                                     identity=identity)
             except Exception as exc:  # noqa: BLE001 — best-effort, never fail the submit
                 logger.warning("job.promote_failed", job_id=str(job_id), error=str(exc))
 
@@ -544,6 +550,7 @@ async def process_job_result(
                     scan_result_id=scan_result_row.id if scan_result_row else None,
                     scan_job_id=row.id,
                     recorded_at=row.completed_at,
+                    identity=identity,
                 )
         except Exception as exc:  # noqa: BLE001
             logger.warning("job.findings_failed", job_id=str(job_id), error=str(exc))
@@ -562,6 +569,7 @@ async def process_job_result(
                     scan_result_id=scan_result_row.id if scan_result_row else None,
                     scan_job_id=row.id,
                     recorded_at=row.completed_at,
+                    identity=identity,
                 )
         except Exception as exc:  # noqa: BLE001
             logger.warning("job.service_vuln_failed", job_id=str(job_id), error=str(exc))
@@ -667,13 +675,19 @@ async def _promote_assets(
     db: AsyncSession,
     engagement_id: uuid.UUID,
     result: dict,
+    *,
+    identity=None,
 ) -> int:
     """Upsert discovered hosts/services into the asset inventory.
 
-    Keyed by (engagement_id, ip) for assets and (asset, port, protocol) for
-    services, so repeated scans update in place instead of duplicating.
+    Assets are matched by the engagement's identity policy (services/
+    asset_resolution: the IP alone by default, (site, IP) for private IPs under
+    per-site identity) and services by (asset, port, protocol), so repeated
+    scans update in place instead of duplicating.
     Returns the number of newly-created assets.
     """
+    from app.services.asset_resolution import GLOBAL_IDENTITY, find_assets_batch
+    identity = identity or GLOBAL_IDENTITY
     hosts = (result or {}).get("hosts") or []
     if not hosts:
         return 0
@@ -700,15 +714,9 @@ async def _promote_assets(
     ips = list(dict.fromkeys(h.get("ip") for h in hosts if h.get("ip")))
     if not ips:
         return 0
-    known: dict[str, Asset] = {
-        a.ip_address: a
-        for a in (await db.execute(
-            select(Asset).where(
-                Asset.engagement_id == engagement_id,
-                Asset.ip_address.in_(ips),
-            )
-        )).scalars().all()
-    }
+    # ONE query, policy-aware and duplicate-safe (a dict built straight from the
+    # rows would keep an arbitrary one when an IP has several).
+    known: dict[str, Asset] = await find_assets_batch(db, engagement_id, ips, identity)
     assets_by_ip: dict[str, Asset] = {}
 
     for h in hosts:
@@ -728,6 +736,7 @@ async def _promote_assets(
             asset = Asset(
                 engagement_id=engagement_id,
                 ip_address=ip,
+                site_id=identity.scope_for(ip),
                 hostname=h.get("hostname"),
                 os=h.get("os"),
                 # Use the classified role when the probe evidenced one, else the

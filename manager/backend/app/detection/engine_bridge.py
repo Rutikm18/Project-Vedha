@@ -461,6 +461,7 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                                     cache: dict | None = None,
                                     open_index: dict | None = None,
                                     remediated_index: dict | None = None,
+                                    identity=None,
                                     ) -> tuple[int, int]:
     """Translate posture/config-exposure findings (from the VERIFIED scanners) into
     backend Finding rows, reusing the SAME dedup + regression-reopen lifecycle as
@@ -472,7 +473,8 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
         try:
             title = _posture_title(p)
             manager_risk = _posture_risk_on_manager_scale(p)
-            asset = await _resolve_asset(db, engagement_id, p.get("asset_ip"), cache=cache)
+            asset = await _resolve_asset(db, engagement_id, p.get("asset_ip"), cache=cache,
+                                         identity=identity)
             asset_id = asset.id if asset else None
 
             dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
@@ -582,6 +584,7 @@ async def _persist_attack_paths(
     cache: dict | None = None, open_index: dict | None = None,
     remediated_index: dict | None = None,
     touched: list | None = None,
+    identity=None,
 ) -> int:
     """Correlate composite attack paths from the run's facts and persist them as
     Finding rows (deduped by title, reaffirmed across runs). Returns NEW count."""
@@ -589,7 +592,8 @@ async def _persist_attack_paths(
     created = 0
     for d in attack_path_findings(facts, device_roles):
         try:
-            asset = await _resolve_asset(db, engagement_id, d.get("target"), cache=cache)
+            asset = await _resolve_asset(db, engagement_id, d.get("target"), cache=cache,
+                                         identity=identity)
             asset_id = asset.id if asset else None
             title = d["title"][:500]
             evidence = {
@@ -782,6 +786,11 @@ async def create_findings_from_facts(
         # One asset cache shared by the CVE, posture and attack-path loops: the same
         # host is resolved ONCE per run instead of once per finding (kills the N+1).
         asset_cache: dict = {}
+        # Asset identity for this submission (P1b): global by default; private IPs
+        # scoped to the submitting probe's site when the engagement opts in.
+        # Resolved ONCE so the CVE, posture and composite loops agree.
+        from app.services.asset_resolution import identity_context
+        identity = await identity_context(db, engagement_id, scan_result_id=scan_result_id)
         # The same treatment for the dedup/regression lookups, which were the
         # other N+1 in these loops: TWO queries load this engagement's existing
         # findings, instead of one or two per finding produced (~12 per host, so
@@ -800,7 +809,8 @@ async def create_findings_from_facts(
             try:
                 cve = d.get("cve_id") or "finding"
                 title = f"{cve} — {d.get('cpe', '').split(':')[4] if d.get('cpe') else ''}".strip(" —")[:500]
-                asset = await _resolve_asset(db, engagement_id, d.get("asset_ip"), cache=asset_cache)
+                asset = await _resolve_asset(db, engagement_id, d.get("asset_ip"),
+                                             cache=asset_cache, identity=identity)
                 asset_id = asset.id if asset else None
 
                 dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
@@ -876,7 +886,7 @@ async def create_findings_from_facts(
             p_created, p_reaffirmed = await _persist_posture_findings(
                 db, engagement_id, run.id, now, posture_dicts, touched, db_version,
                 cache=asset_cache, open_index=open_index,
-                remediated_index=remediated_index)
+                remediated_index=remediated_index, identity=identity)
             created += p_created
             reaffirmed += p_reaffirmed
         except Exception as exc:  # noqa: BLE001 — posture must not sink the run
@@ -897,7 +907,7 @@ async def create_findings_from_facts(
             corr_new = await _persist_attack_paths(
                 db, engagement_id, run, detect_meta.get("accepted_facts") or [], now,
                 cache=asset_cache, open_index=open_index,
-                remediated_index=remediated_index, touched=touched)
+                remediated_index=remediated_index, touched=touched, identity=identity)
             created += corr_new
         except Exception as exc:  # noqa: BLE001 — correlation must not sink the run
             logger.warning("detection_run.correlation_failed", error=str(exc))

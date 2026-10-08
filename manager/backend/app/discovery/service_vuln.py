@@ -147,6 +147,7 @@ async def create_service_vuln_findings(
     scan_result_id: uuid.UUID | None = None,
     scan_job_id: uuid.UUID | None = None,
     recorded_at: datetime | None = None,
+    identity=None,
 ) -> int:
     """Scan the result's `facts` for weak/outdated network services and persist
     Finding rows. Idempotent per (engagement, asset, title). Returns the count
@@ -179,7 +180,7 @@ async def create_service_vuln_findings(
         if not candidates:
             continue
 
-        asset = await _resolve_asset(db, engagement_id, target)
+        asset = await _resolve_asset(db, engagement_id, target, identity=identity)
         for c in candidates:
             duplicate = await _find_open_duplicate(
                 db, engagement_id, asset.id if asset else None, c["title"]

@@ -25,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.asset import Asset
-from app.models.enums import AssetType, FindingSeverity, FindingStatus
+from app.models.enums import FindingSeverity, FindingStatus
 from app.models.finding import Finding
 from app.models.service import Service
 from app.services.finding_scan_provenance import record_scan_observation
@@ -53,36 +53,20 @@ def _map_severity(raw: str | None) -> FindingSeverity:
 
 
 async def _resolve_asset(db: AsyncSession, engagement_id: uuid.UUID, target: str | None,
-                         *, cache: dict | None = None) -> Asset | None:
+                         *, cache: dict | None = None, identity=None) -> Asset | None:
     """Find the Asset for a probe-reported target IP, creating a minimal one if needed.
 
     A probe's tls_scan/smb_enum/etc. can run standalone (no prior discovery job
     promoted this host yet), so the asset may not exist — create a bare-bones
     row rather than dropping the finding for lack of somewhere to attach it.
 
-    `cache` (a caller-owned {host: Asset} dict for one detection run) eliminates the
-    N+1 where every finding on the same host re-queried/re-created the asset — a
-    host with 20 findings did 20 identical lookups; with the cache it does one.
+    Delegates to services/asset_resolution.resolve_asset, the single identity
+    policy (global by default; per-site for private IPs when the engagement opts
+    in). `identity` is the submission's IdentityContext; None = global. `cache`
+    (caller-owned, one run) resolves each host once instead of per finding.
     """
-    if not target:
-        return None
-    host = target.split(":", 1)[0] if target.count(":") == 1 else target
-    if cache is not None and host in cache:
-        return cache[host]
-    existing = (await db.execute(
-        select(Asset).where(Asset.engagement_id == engagement_id, Asset.ip_address == host)
-    )).scalar_one_or_none()
-    if existing:
-        if cache is not None:
-            cache[host] = existing
-        return existing
-    asset = Asset(engagement_id=engagement_id, ip_address=host,
-                  asset_type=AssetType.server, last_seen=datetime.now(timezone.utc))
-    db.add(asset)
-    await db.flush()
-    if cache is not None:
-        cache[host] = asset
-    return asset
+    from app.services.asset_resolution import resolve_asset
+    return await resolve_asset(db, engagement_id, target, identity=identity, cache=cache)
 
 
 def _finding_port(f: dict) -> int | None:
@@ -195,6 +179,7 @@ async def create_findings_from_probe_result(
     scan_result_id: uuid.UUID | None = None,
     scan_job_id: uuid.UUID | None = None,
     recorded_at: datetime | None = None,
+    identity=None,
 ) -> int:
     """Convert a probe's self-assessed `findings` list into persisted Finding rows.
 
@@ -216,7 +201,7 @@ async def create_findings_from_probe_result(
         if not isinstance(f, dict):
             continue
         try:
-            asset = await _resolve_asset(db, engagement_id, f.get("target"))
+            asset = await _resolve_asset(db, engagement_id, f.get("target"), identity=identity)
             title = (f.get("title") or f"{scan_type} finding")[:500]
             asset_id = asset.id if asset else None
 
