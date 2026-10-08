@@ -25,6 +25,10 @@ from app.graph.neo4j_client import Neo4jClient
 
 logger = structlog.get_logger()
 
+# Service.exposure value set by exposure fusion when an EXTERNAL-vantage probe saw
+# the port open (app/detection/vantage_fusion.py).
+SERVICE_EXPOSURE_EXTERNAL = "external"
+
 # Environments that imply an internet-facing asset (attack source).
 _EXPOSED_ENVIRONMENTS: frozenset[str] = frozenset(
     {"dmz", "external", "internet", "public", "perimeter", "edge"}
@@ -47,6 +51,10 @@ def service_node_id(service_id: Any) -> str:
 
 def finding_node_id(finding_id: Any) -> str:
     return f"finding:{finding_id}"
+
+
+def segment_node_id(key: Any) -> str:
+    return f"segment:{key}"
 
 
 def _enum_value(v: Any, default: str = "") -> str:
@@ -78,6 +86,27 @@ def exploit_complexity(finding: Any) -> float:
             return _AC_COMPLEXITY.get(token[3:].upper(), 2.0)
     sev = _enum_value(getattr(finding, "severity", None), "medium")
     return _SEVERITY_COMPLEXITY.get(sev, 2.5)
+
+
+def _attack_complexity(finding: Any) -> str | None:
+    """CVSS Attack Complexity token (L/M/H) from the vector, or None."""
+    for token in str(getattr(finding, "cvss_vector", None) or "").split("/"):
+        if token.startswith("AC:"):
+            ac = token[3:].upper()
+            return ac if ac in _AC_COMPLEXITY else None
+    return None
+
+
+# Finding statuses that still describe a live weakness. Remediated, accepted and
+# false-positive findings must never become attack steps (FM-06).
+LIVE_FINDING_STATUSES: frozenset[str] = frozenset({"open", "confirmed"})
+
+
+def is_live_finding(finding: Any) -> bool:
+    status = getattr(finding, "status", None)
+    if status is None:
+        return True          # in-memory / demo findings carry no status
+    return _enum_value(status) in LIVE_FINDING_STATUSES
 
 
 def is_internet_exposed(asset: Any) -> bool:
@@ -115,7 +144,7 @@ class GraphBuilder:
 
         assets = list(assets)
         services = list(services)
-        findings = list(findings)
+        findings = [f for f in findings if is_live_finding(f)]
 
         # ── Asset nodes ──
         for a in assets:
@@ -127,6 +156,9 @@ class GraphBuilder:
                 ip=getattr(a, "ip_address", None),
                 criticality=_enum_value(getattr(a, "criticality", None), "medium"),
                 internet_exposed=is_internet_exposed(a),
+                exposure_basis="asset_tag" if is_internet_exposed(a) else None,
+                device_role=getattr(a, "device_role", None),
+                role_detail=getattr(a, "role_detail", None),
                 compromised=False,
             )
 
@@ -143,6 +175,22 @@ class GraphBuilder:
             aid = asset_node_id(getattr(s, "asset_id", None))
             if g.has_node(aid):
                 g.add_edge(aid, sid, type="HAS_SERVICE")
+                # P4a: the fleet-fused, multi-probe exposure verdict (vantage_fusion)
+                # is the real "reachable from the internet" signal. It was stamped
+                # on Service rows but never read here, so no asset was ever an entry
+                # point (FM-02). An externally-exposed service makes its host an
+                # internet ENTRY candidate — reachable, not yet owned.
+                exposure = str(getattr(s, "exposure", None) or "").lower()
+                g.nodes[sid]["exposure"] = exposure or None
+                if exposure == SERVICE_EXPOSURE_EXTERNAL:
+                    node = g.nodes[aid]
+                    node["internet_exposed"] = True
+                    node["exposure_basis"] = node.get("exposure_basis") or "service_exposure"
+                    ports = set(node.get("exposed_ports") or [])
+                    port = getattr(s, "port", None)
+                    if isinstance(port, int):
+                        ports.add(port)
+                    node["exposed_ports"] = sorted(ports)
 
         # ── Finding nodes + HAS_FINDING ──
         for f in findings:
@@ -158,6 +206,11 @@ class GraphBuilder:
                 exploitable=bool(getattr(f, "exploitable", False)),
                 exploit_validated=bool(getattr(f, "exploit_validated", False)),
                 mitre=list(getattr(f, "mitre_techniques", None) or []),
+                # Inputs to the analyzer's step-likelihood model (EPSS is a measured
+                # exploitation probability; AC and confidence refine the estimate).
+                epss=_to_float(getattr(f, "epss_score", None)),
+                attack_complexity=_attack_complexity(f),
+                confidence=getattr(f, "verification_confidence", None),
             )
             aid = asset_node_id(getattr(f, "asset_id", None))
             if getattr(f, "asset_id", None) is not None and g.has_node(aid):
@@ -241,6 +294,49 @@ class GraphBuilder:
                 added += 1
         return added
 
+    def add_segment_topology(self, topology: dict[str, Any]) -> int:
+        """
+        Add subnet HUB nodes from reachability.derive_topology (P1a).
+
+          asset  -IN_SEGMENT->   segment        membership (O(n), not O(n²))
+          segment -SEGMENT_LINK-> segment       inter-subnet link (basis, confidence)
+          asset  -ROUTES->       segment        a gateway routing into another subnet
+
+        Hosts on one subnet reach each other THROUGH the hub; the analyzer turns
+        hub hops into movement only toward hosts the attacker can compromise.
+        Returns edges added.
+        """
+        added = 0
+        segments = topology.get("segments") or {}
+        for key, seg in segments.items():
+            node = segment_node_id(key)
+            self.graph.add_node(
+                node, type="NetworkSegment", entity_id=key, label=seg.get("cidr", key),
+                cidr=seg.get("cidr", key), inferred=bool(seg.get("inferred")),
+                scoped=bool(seg.get("scoped", True)),
+                gateways=list(seg.get("gateways") or []))
+            for member in seg.get("members") or []:
+                aid = asset_node_id(member)
+                if self.graph.has_node(aid):
+                    self.graph.add_edge(aid, node, type="IN_SEGMENT")
+                    self.graph.nodes[aid]["segment"] = key
+                    added += 1
+        for link in topology.get("links") or []:
+            src, dst = segment_node_id(link["src"]), segment_node_id(link["dst"])
+            if self.graph.has_node(src) and self.graph.has_node(dst):
+                self.graph.add_edge(src, dst, type="SEGMENT_LINK", basis=link.get("basis"),
+                                    reachability_confidence=link.get("confidence", 1.0))
+                added += 1
+        for route in topology.get("routes") or []:
+            gw, dst = asset_node_id(route["gateway"]), segment_node_id(route["segment"])
+            if self.graph.has_node(gw) and self.graph.has_node(dst):
+                self.graph.add_edge(gw, dst, type="ROUTES", basis=route.get("basis"),
+                                    reachability_confidence=route.get("confidence", 1.0))
+                added += 1
+        self.graph.graph["reachability_posture"] = topology.get("posture")
+        self.graph.graph["unplaced_assets"] = list(topology.get("unplaced") or [])
+        return added
+
     def _add_credential_edges(self, credentials: Iterable[dict[str, Any]]) -> int:
         """
         CREDENTIAL_REUSE edges between assets sharing a credential.
@@ -276,8 +372,12 @@ class GraphBuilder:
         asset_ids = [a.id for a in assets]
 
         services = []
+        from app.models.enums import FindingStatus
         findings = list((await db.execute(
-            select(Finding).where(Finding.engagement_id == engagement_id)
+            select(Finding).where(
+                Finding.engagement_id == engagement_id,
+                Finding.status.in_([FindingStatus.open, FindingStatus.confirmed]),
+            )
         )).scalars().all())
         if asset_ids:
             services = list((await db.execute(
@@ -285,6 +385,20 @@ class GraphBuilder:
             )).scalars().all())
 
         graph = self.build_asset_graph(engagement_id, assets, services, findings)
+
+        # P1a: derive the subnet topology from the engagement scope and assets.
+        # Before this, no topology was ever supplied, so no lateral movement
+        # existed and every multi-host path was impossible (FM-01).
+        from app.detection.reachability import derive_topology, posture_from_roe
+        from app.models.engagement import Engagement
+        engagement = await db.get(Engagement, engagement_id)
+        topology = derive_topology(
+            assets,
+            getattr(engagement, "scope_cidrs", None) or [],
+            posture_from_roe(getattr(engagement, "rules_of_engagement", None)),
+        )
+        self.add_segment_topology(topology)
+
         if self._neo4j is not None:
             self.sync_to_neo4j(engagement_id)
         return graph
