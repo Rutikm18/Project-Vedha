@@ -1,10 +1,8 @@
 # Engagement-wide, multi-subnet attack-path generation — plan (for review)
 
-Status: **P0, P1a, P4a implemented; P1b partly** (2026-10-08). P1b done: identity policy, migration 0055,
-shared resolver wired into every asset path. P1b pending: site-aware exposure fusion, site-keyed
-segments / multi-NIC linking / staleness, identity report endpoint. P2, P4b, P3, P5 pending. Decisions: §8 recommendations accepted
-(flat-internal labelled `assumed`, crown-jewel auto-fallback with override, engagement-scoped,
-(site, IP) identity).
+Status (2026-10-08): **P0, P1a, P1b, P4a and P5 implemented.** P2, P3 and P4b are **not implemented**
+(see §7). Decisions: §8 recommendations accepted (flat-internal labelled `assumed`, engagement-scoped,
+(site, IP) identity). Operator-defined crown jewels remain the only path targets.
 Revised 2026-10-06 with a failure-mode analysis (§9): 32 failure modes found,
 4 of which make the feature silently empty in production today. Phasing (§7)
 now starts with a **P0 engine-correctness** phase.
@@ -226,12 +224,64 @@ So a **P0 correctness phase** now comes first, and P1/P5 designs changed.
 |---|---|---|
 | **P0 — engine correctness** ✅ done | Filter findings to live statuses; **monotonic compromise** (pivot only FROM a compromised node); replace `all_simple_paths` with **Yen k-shortest / Dijkstra**; **multiplicative likelihood** scoring; stable path IDs (upsert by deterministic hash, `refresh=False` default); **explain-empty** result; drop/scope dead Neo4j Cypher. | FM-04, 07, 10, 11, 12, 13, 17, 18, 19, 22, 23 |
 | **P1a — subnet model + topology** ✅ done | `app/detection/reachability.py`: subnet per scope CIDR (/24 or /64 buckets for broad scopes, marked `inferred`); subnet **hub** nodes (O(n) edges); inter-subnet links `assumed` (flat posture) or only via a compromised gateway (segmented, `rules_of_engagement.attack_path_reachability`); hops count hosts; each hop carries `via` subnets, `basis`, likelihood. Wired into `build_from_db`. | FM-01, 11, 21 |
-| **P1b — site-aware identity** | `(site, ip)` asset identity (migration + the 5 asset-creation paths), multi-NIC linking, stale-asset ageing. Split out of P1: it changes asset identity across discovery, job results, findings and two routers, so it gets its own review. | FM-14, 15, 16 |
-| **P2 — finding→capability map** | Posture/IOA/misconfig findings as foothold/lateral/priv-esc steps with ATT&CK + per-step success likelihood (confidence × EPSS/KEV × state). | FM-03, 05, 06 |
-| **P3 — credential & relay edges** | Relay edges with **full precondition checks** (target signing off + coercion source + protocol); shared-admin edges **only when LAPS absent**, labelled `possible`. | FM-08, 09 |
+| **P1b — site-aware identity** ✅ done | `(site, ip)` asset identity (migration + the 5 asset-creation paths), multi-NIC linking, stale-asset ageing. Split out of P1: it changes asset identity across discovery, job results, findings and two routers, so it gets its own review. | FM-14, 15, 16 |
+| **P2 — finding→capability map** ⛔ not implemented | Posture/IOA/misconfig findings as foothold/lateral/priv-esc steps with ATT&CK + per-step success likelihood (confidence × EPSS/KEV × state). | FM-03, 05, 06 |
+| **P3 — credential & relay edges** ⛔ not implemented | Relay edges with **full precondition checks** (target signing off + coercion source + protocol); shared-admin edges **only when LAPS absent**, labelled `possible`. | FM-08, 09 |
 | **P4a — internet entry points** ✅ done | Assets with a service the fleet-fused exposure verdict marks `external` become entry candidates (`exposure_basis`, `exposed_ports` recorded). An entry point must ALSO carry an existing exploitable finding — exposure is reachability, not compromise. `diagnose` separates "nothing exposed" from "exposed but not compromisable". | FM-02 |
-| **P4b — crown-jewel selection** | Not implemented. Targets remain operator-defined (`criticality=critical`); without them the result is empty and `why_empty` reports `no_targets`. | FM-04 |
-| **P5 — choke points, output, validation** | **Min-cut / betweenness** choke points (not path-frequency); subnet-grouped D3; recompute-after-scan (async, not on GET); **validation harness** with ground-truth fixtures + cascade-failure path validity metric. | FM-24, 25, 26 |
+| **P4b — crown-jewel selection** ⛔ not implemented | Not implemented. Targets remain operator-defined (`criticality=critical`); without them the result is empty and `why_empty` reports `no_targets`. | FM-04 |
+| **P5 — choke points, output, validation** ✅ done | **Min-cut / betweenness** choke points (not path-frequency); subnet-grouped D3; recompute-after-scan (async, not on GET); **validation harness** with ground-truth fixtures + cascade-failure path validity metric. | FM-24, 25, 26 |
+
+### 7.1 What P1b and P5 delivered (and what they do not claim)
+
+**P1b — site-aware identity.** `rules_of_engagement.asset_identity` is `global` (default, the old
+behaviour) or `per_site`. Under `per_site` only a **non-globally-routable** address is partitioned by probe
+site, so two sites' `10.0.0.5` are two hosts while a public address stays one host everywhere. One
+resolver (`pick_asset` / `find_asset` / `resolve_asset`) serves every asset-creation path, and legacy rows
+with no site are adopted on first sight. Exposure fusion runs per asset scope, so one site's exposure is
+never stamped on another site's machine. In the graph, subnets are keyed `{cidr}@{site}`; links between two
+sites' private networks are `assumed_cross_site` (confidence 0.3) and a gateway never routes into another
+site's private network. A machine seen on several addresses is linked by `SAME_HOST` only on a conservative
+match (FQDN 0.9, short name 0.7; capped at 4 NICs) and never merged. Hosts not seen within
+`rules_of_engagement.attack_path_freshness_days` (default 30; `0` disables) halve their step likelihood and
+mark the hop and path `stale`. `GET /engagements/{id}/asset-identity` reports the evidence for choosing a
+mode: sites with overlapping private ranges, private IPs that different sites report under different host
+names, addresses that already map to more than one asset, machines seen at several addresses, and stale
+assets. Migration `0055`.
+
+**P5 — choke points, output, validation.**
+- *Choke points* are ranked by **risk removed if that one host were fixed** (best remaining path, not a
+  sum), not by how often a host appears in a truncated path list. A separate **minimum vertex cut**
+  (max-flow with vertex splitting; entry hosts cost slightly more than shared infrastructure so a tie goes
+  to the shared host) gives the smallest set whose fix disconnects every target, with the number of
+  vertex-disjoint routes (Menger) as the evidence that one fix is or is not enough.
+- *Stored once per engagement* in `attack_path_analyses` (migration `0056`), read by `GET .../chokepoints`
+  and `GET .../attack-path-analysis`; per-path rows keep only the choke points that are on that path.
+- *Coverage and freshness* are reported alongside every analysis: hosts observed and stale hosts per subnet,
+  scope CIDRs with no observed host, hosts observed outside scope, hosts with no subnet. Coverage is
+  `partial` or `observed`, never "complete" — the scanned address space itself is not tracked, so a subnet
+  with no path may simply be one nobody scanned.
+- *Subnet-grouped D3 output* (`groups`, node `site`/`stale`, edge `basis`).
+- *Validation harness* (`python -m app.graph.validation tests/fixtures/attack_paths`): nine hand-built
+  networks with their true paths written down, scored for recall, forbidden hops, unreachable targets,
+  freshness, independent routes, minimum fix set, top choke point, and a **cascade validity** metric (a path
+  is credited only up to its first invalid hop). The harness is tested against deliberately wrong fixtures.
+- *Recompute after detection*: a detection run that created or resolved findings refreshes the stored paths
+  and analysis (in a savepoint, only for engagements that already have stored results; failures never fail
+  the run). Reading still never recomputes.
+- *Neo4j mirror hygiene* (FM-28/29): `:GraphNode(engagement_id, type)` and `(engagement_id, key)` indexes,
+  per-engagement atomic replace, node identity `(engagement_id, key)`, parallel edges kept distinct.
+
+**Limits that still apply.**
+- Likelihoods and link confidences are **ordering weights, not measured probabilities**; they rank paths and
+  say which assumptions a path rests on. They are not a prediction that an attack would succeed.
+- Reachability between subnets is **inferred** (no firewall rules are read) and labelled `assumed`.
+- The validation fixtures are hand-written, so they show the model is internally consistent and regresses
+  loudly; they do not measure accuracy on real networks. Only an engagement with a known ground truth can.
+- Migrations `0055` and `0056` and the Neo4j statements have been exercised against fakes and static checks,
+  **not against a live PostgreSQL or Neo4j**. The Neo4j mirror is not wired into the product by default
+  (`neo4j_enabled` is off and nothing reads it); P5 only makes it correct if enabled.
+- P2, P3 and P4b are not built, so only findings already marked exploitable create attacker steps, relay and
+  shared-credential edges beyond what the AD modules emit do not exist, and targets are chosen by the operator.
 
 Each phase ships with unit tests (pure functions, fixture graphs) and keeps the
 backend detection suite green; no probe changes (detection stays on the manager).
