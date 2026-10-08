@@ -6,11 +6,14 @@
     powershell -ExecutionPolicy Bypass -File package-zip.ps1
     powershell -ExecutionPolicy Bypass -File package-zip.ps1 -Manager https://manager.example.com
 
+  Without -Manager the launchers keep their placeholder and the ZIP is the RELEASE package:
+  the one-command installer (install-remote.ps1) passes -Manager and -Token to install.ps1 itself.
+
   Output: probe\windows\dist\vedha-probe-win.zip
 #>
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory = $true)][string]$Manager,
+  [string]$Manager = '',          # bake a manager URL in for a hand-delivered ZIP; leave empty for the release package
   [string]$AgentDir = "$PSScriptRoot\dist\vedha-agent",
   [string]$OutZip  = "$PSScriptRoot\dist\vedha-probe-win.zip"
 )
@@ -30,10 +33,12 @@ Copy-Item (Join-Path $PSScriptRoot 'uninstall.ps1')  $stage
 Copy-Item (Join-Path $PSScriptRoot 'uninstall.cmd')  $stage
 Copy-Item (Join-Path $PSScriptRoot 'README-CUSTOMER.txt') (Join-Path $stage 'README.txt')
 
-# Bake the chosen manager URL into the staged launchers.
-foreach ($f in @('run.cmd','install.ps1')) {
-  $p = Join-Path $stage $f
-  (Get-Content $p) -replace '__VEDHA_MANAGER_URL__', $Manager | Set-Content $p
+# Bake the chosen manager URL into the staged launchers (skipped for the release package).
+if ($Manager) {
+  foreach ($f in @('run.cmd','install.ps1')) {
+    $p = Join-Path $stage $f
+    (Get-Content $p) -replace '__VEDHA_MANAGER_URL__', $Manager | Set-Content $p
+  }
 }
 
 if (Test-Path $OutZip) { Remove-Item $OutZip -Force }
@@ -42,5 +47,9 @@ Remove-Item $stage -Recurse -Force
 
 Write-Host ''
 Write-Host "Packaged: $OutZip" -ForegroundColor Green
-Write-Host "  Manager baked in: $Manager"
-Write-Host '  Send this ZIP to the customer. They unzip and run run.cmd (test) or install.cmd (permanent).'
+if ($Manager) {
+  Write-Host "  Manager baked in: $Manager"
+  Write-Host '  Send this ZIP to the customer. They unzip and run run.cmd (test) or install.cmd (permanent).'
+} else {
+  Write-Host '  No manager baked in: this is the release package, installed with the one-command installer.'
+}

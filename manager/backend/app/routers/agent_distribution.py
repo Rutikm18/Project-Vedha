@@ -123,20 +123,23 @@ def windows_install_commands(manager_url: str, token: str | None = None) -> dict
     manager = manager_url.rstrip("/")
     if not manager or not _SAFE_ARG.fullmatch(manager) or (token and not _SAFE_ARG.fullmatch(token)):
         return {}
-    ps_args = f"-Manager '{manager}'" + (f" -Token '{token}'" if token else "")
+    insecure = manager.startswith("http://")
+    ps_args = (f"-Manager '{manager}'" + (f" -Token '{token}'" if token else "")
+               + (" -AllowInsecureHttp" if insecure else ""))
     ps = (
         "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; "
         f"& ([scriptblock]::Create((irm '{manager}/agent/install.ps1'))) {ps_args}"
     )
-    https_only = "--proto =https --tlsv1.2 " if manager.startswith("https://") else ""
-    cmd_args = f'"{manager}"' + (f' "{token}"' if token else "")
-    return {
-        "windows_powershell": f'powershell -NoProfile -ExecutionPolicy Bypass -Command "{ps}"',
-        "windows_cmd": (
-            f'curl.exe {https_only}-fsSL "{manager}/agent/install.cmd" -o "%TEMP%\\vedha-install.cmd" '
+    commands = {"windows_powershell": f'powershell -NoProfile -ExecutionPolicy Bypass -Command "{ps}"'}
+    if not insecure:
+        # The cmd launcher never forwards -AllowInsecureHttp, so an http:// (lab) manager
+        # gets the PowerShell form only; offering a command that refuses to run helps no one.
+        cmd_args = f'"{manager}"' + (f' "{token}"' if token else "")
+        commands["windows_cmd"] = (
+            f'curl.exe --proto =https --tlsv1.2 -fsSL "{manager}/agent/install.cmd" -o "%TEMP%\\vedha-install.cmd" '
             f'&& "%TEMP%\\vedha-install.cmd" {cmd_args}'
-        ),
-    }
+        )
+    return commands
 
 
 @router.api_route("/install.sh", methods=["GET", "HEAD"], include_in_schema=False)

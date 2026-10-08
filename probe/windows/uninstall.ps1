@@ -1,5 +1,5 @@
 <#
-  Vedha Agent — remove the Scheduled Task. Add -Purge to also delete the
+  Vedha Agent - remove the Scheduled Task. Add -Purge to also delete the
   identity/state/logs under C:\ProgramData\vedha-agent.
 #>
 [CmdletBinding()]

@@ -350,9 +350,11 @@ class TestWindowsCommands:
         assert cmd.endswith('"https://api.vedhasec.com" "vet_abc123"')
         assert c["one_line"].startswith("curl --proto '=https'")        # Linux commands unchanged
 
-    def test_http_dev_manager_does_not_force_https(self):
-        cmd = dist.install_commands("http://10.0.0.5:18080", "vet_x")["windows_cmd"]
-        assert "--proto" not in cmd
+    def test_http_lab_manager_gets_powershell_only_and_says_so(self):
+        c = dist.install_commands("http://10.0.0.5:18080", "vet_x")
+        assert c["windows_powershell"].rstrip('"').endswith("-AllowInsecureHttp")
+        assert "windows_cmd" not in c          # the cmd launcher refuses http, so it is not offered
+        assert "-AllowInsecureHttp" not in dist.install_commands("https://m.example.com", "vet_x")["windows_powershell"]
 
     def test_without_a_token_the_arguments_are_omitted(self):
         ps = dist.install_commands("https://m.example.com")["windows_powershell"]
