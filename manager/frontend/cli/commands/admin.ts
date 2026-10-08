@@ -1,6 +1,11 @@
 import { Command }             from 'commander';
 import { requireAuth, apiFetch } from '../auth';
-import type { PermittedUser }  from '../../lib/permissions-store';
+
+interface PermittedUser {
+  email:         string;
+  role:          'admin' | 'operator';
+  allowedScopes: string[];
+}
 
 const c = {
   bold:  (s: string) => `\x1b[1m${s}\x1b[0m`,

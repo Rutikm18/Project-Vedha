@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { useModalFocus } from "../hooks/useModalFocus";
 import { usePathname } from "next/navigation";
 import {
   Shield, Brain, AlertTriangle, FileText,
@@ -82,58 +83,35 @@ interface SidebarProps {
   surface?: "manager" | "portal";
 }
 
+function subscribeToMobile(onChange: () => void) {
+  const media = window.matchMedia("(max-width: 767px)");
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+
 export function Sidebar({ open, onClose, surface = "manager" }: SidebarProps) {
+  const sidebarRef = useRef<HTMLElement>(null);
+  const mobile = useSyncExternalStore(subscribeToMobile, () => window.matchMedia("(max-width: 767px)").matches, () => false);
+  useModalFocus(sidebarRef, mobile && open, onClose, '[aria-controls="operator-navigation"]');
   const pathname = usePathname();
   const [hoveredHref, setHoveredHref] = useState<string | null>(null);
-  const sidebarRef = useRef<HTMLElement>(null);
   const sections = surface === "portal" ? PORTAL_NAV_SECTIONS : NAV_SECTIONS;
 
   const handleHover = useCallback((href: string | null) => {
     setHoveredHref(href);
   }, []);
 
-  useEffect(() => {
-    if (!open || window.matchMedia("(min-width: 768px)").matches) return;
-    const sidebar = sidebarRef.current;
-    if (!sidebar) return;
-    const priorFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const focusable = () => Array.from(sidebar.querySelectorAll<HTMLElement>(
-      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    )).filter((element) => element.offsetParent !== null);
-    focusable()[0]?.focus();
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const items = focusable();
-      if (!items.length) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      priorFocus?.focus();
-    };
-  }, [onClose, open]);
 
   return (
     <aside
       ref={sidebarRef}
       data-open={open}
-      role={open ? "dialog" : undefined}
-      aria-modal={open ? true : undefined}
-      aria-label={open ? "Primary navigation" : undefined}
+      id="operator-navigation"
+      tabIndex={-1}
+      role={mobile && open ? "dialog" : undefined}
+      aria-modal={mobile && open ? true : undefined}
+      aria-label={mobile && open ? "Navigation" : undefined}
+      inert={mobile && !open}
       className={[
         "vedha-sidebar fixed md:static z-50",
         "transition-transform duration-200 ease-in-out",
@@ -248,7 +226,7 @@ export function Sidebar({ open, onClose, surface = "manager" }: SidebarProps) {
       </div>
 
       {/* ── Navigation ─── */}
-      <nav style={{ paddingTop: 10, flex: 1 }}>
+      <nav aria-label="Operator navigation" style={{ paddingTop: 10, flex: 1 }}>
         {sections.map((section, si) => (
           <div key={section.label} style={{ marginBottom: 6 }}>
             {/* Section label */}
@@ -265,13 +243,14 @@ export function Sidebar({ open, onClose, surface = "manager" }: SidebarProps) {
 
             {section.items.map((item, ii) => {
               const Icon = item.icon;
-              const isActive  = pathname === item.href;
+              const isActive  = pathname === item.href || (item.href !== "/" && item.href !== "/portal" && pathname.startsWith(`${item.href}/`));
               const isHovered = hoveredHref === item.href;
 
               return (
                 <Link
                   key={item.label}
                   href={item.href}
+                  aria-current={isActive ? "page" : undefined}
                   onClick={onClose}
                   className="stagger-item"
                   style={{
@@ -355,19 +334,6 @@ export function Sidebar({ open, onClose, surface = "manager" }: SidebarProps) {
         borderTop: "0.5px solid var(--border-subtle)",
         flexShrink: 0,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
-          <div className="status-dot" style={{ width: 8, height: 8 }}>
-            <span className="status-dot-ring" style={{ background: "var(--accent-pulse)" }} />
-            <span className="status-dot-core" style={{ background: "var(--accent)", width: 6, height: 6 }} />
-          </div>
-          <span style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: "var(--accent)",
-          }}>
-            System Nominal
-          </span>
-        </div>
         <div style={{
           display: "flex",
           alignItems: "baseline",

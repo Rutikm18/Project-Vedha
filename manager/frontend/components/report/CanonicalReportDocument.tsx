@@ -806,10 +806,10 @@ export function FindingReport({ finding, ordinal, anchor = true }: { finding: Re
         <dl className="cr-meta-grid">
           <div><dt>Severity</dt><dd>{finding.severity}</dd></div>
           <div><dt>Status</dt><dd>{finding.status}</dd></div>
-          <div><dt>CVSS score</dt><dd>{finding.cvss_score ?? "Not recorded"}</dd></div>
+          <div><dt>CVSS · 0–10, higher is worse</dt><dd>{finding.cvss_score ?? "Not recorded"}</dd></div>
           <div><dt>CVSS vector</dt><dd>{finding.cvss_vector ?? "Not recorded"}</dd></div>
-          <div><dt>EPSS score</dt><dd>{finding.epss_score ?? "Not recorded"}</dd></div>
-          <div><dt>Risk score</dt><dd>{finding.risk_score ?? "Not recorded"}</dd></div>
+          <div><dt>EPSS · 0–1, higher likelihood</dt><dd>{finding.epss_score ?? "Not recorded"}</dd></div>
+          <div><dt>Manager risk · 0–1000, higher is worse</dt><dd>{finding.risk_score ?? "Not recorded"}</dd></div>
           <div><dt>Exploitable</dt><dd>{finding.exploitable ? "Yes" : "No"}</dd></div>
           <div><dt>Exploit validated</dt><dd>{finding.exploit_validated ? "Yes" : "No"}</dd></div>
           <div><dt>Detection status</dt><dd>{finding.detection_status}</dd></div>

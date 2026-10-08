@@ -5,6 +5,8 @@ import { Menu, Sun, Moon, LogOut, User } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { useTheme } from "./ThemeProvider";
 import { RefreshButton } from "./RefreshButton";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { clearAuth } from "../lib/fetcher";
 
 interface PageShellProps {
@@ -23,9 +25,13 @@ interface PageShellProps {
 
 export function PageShell({
   title, subtitle, headerActions, statusItems, children, noPadding, hideRefresh,
-  surface = "manager", live = true,
+  surface = "manager",
 }: PageShellProps) {
+  const pathname = usePathname();
+  const detailParent = pathname.startsWith("/engagements/") ? { href: "/engagements", label: "Engagements" }
+    : pathname.startsWith("/campaign/") ? { href: "/campaign", label: "VA Campaigns" } : null;
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const [utcTime, setUtcTime]         = useState("");
   const [userEmail, setUserEmail]     = useState<string | null>(
     surface === "portal" ? "Customer" : null,
@@ -89,6 +95,7 @@ export function PageShell({
       {sidebarOpen && (
         <div
           className="md:hidden"
+          data-modal-backdrop
           onClick={() => setSidebarOpen(false)}
           style={{
             position: "fixed",
@@ -101,7 +108,7 @@ export function PageShell({
         />
       )}
 
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} surface={surface} />
+      <Sidebar open={sidebarOpen} onClose={closeSidebar} surface={surface} />
 
       <div className="vedha-shell-body" style={{
         flex: 1,
@@ -112,7 +119,9 @@ export function PageShell({
       }}>
         {/* ── Header ── */}
         <header className="vedha-page-header" style={{
-          height: 50,
+          height: "auto",
+          minHeight: 50,
+          flexWrap: "wrap",
           flexShrink: 0,
           background: "var(--bg-panel)",
           borderBottom: "0.5px solid var(--border-default)",
@@ -120,7 +129,7 @@ export function PageShell({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 18px",
+          padding: "8px 18px",
           gap: 12,
         }}>
           {/* Left */}
@@ -132,6 +141,8 @@ export function PageShell({
               className="md:hidden touch-icon"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open sidebar"
+              aria-expanded={sidebarOpen}
+              aria-controls="operator-navigation"
               style={{
                 background: "none",
                 border: "none",
@@ -186,21 +197,6 @@ export function PageShell({
                 </>
               )}
             </div>
-
-            {/* Live indicator — signals the console is connected and auto-refreshing */}
-            <span
-              title="Live — console connected, data auto-refreshing"
-              aria-label="Live"
-              style={{
-                width: 5,
-                height: 5,
-                borderRadius: "50%",
-                background: live ? "var(--accent)" : "var(--text-faint)",
-                flexShrink: 0,
-                animation: live ? "pulse 2s ease-in-out infinite" : "none",
-                boxShadow: live ? "0 0 6px var(--accent-glow)" : "none",
-              }}
-            />
           </div>
 
           {/* Right */}
@@ -381,7 +377,10 @@ export function PageShell({
           // paying desktop-sized margins. See "Responsive page container".
           padding: noPadding ? 0 : "var(--page-pad-y) var(--page-pad-x)",
         }}>
-          {noPadding ? children : <div className="vedha-page-container">{children}</div>}
+          {noPadding ? children : <div className="vedha-page-container">
+            {detailParent && <nav aria-label="Breadcrumb" className="vedha-breadcrumb"><Link href={detailParent.href}>{detailParent.label}</Link><span aria-hidden>/</span><span aria-current="page">{title}</span></nav>}
+            {children}
+          </div>}
         </main>
 
         {/* ── Footer ── */}
@@ -396,30 +395,7 @@ export function PageShell({
           padding: "0 18px",
           gap: 12,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {[
-              { label: "ENGINE", color: "var(--accent)" },
-              { label: "API",    color: "var(--accent)" },
-              { label: "DB",     color: "var(--accent)" },
-            ].map((s, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <div style={{ width: 0.5, height: 9, background: "var(--border-subtle)" }} />}
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span style={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: "50%",
-                    background: s.color,
-                    display: "inline-block",
-                    boxShadow: `0 0 3px ${s.color}`,
-                  }} />
-                  <span style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 500 }}>
-                    {s.label}
-                  </span>
-                </div>
-              </React.Fragment>
-            ))}
-          </div>
+          <span style={{ fontSize: 9, color: "var(--text-muted)" }}>Vedha operator console</span>
 
           <div className="vedha-page-footer-time" style={{
             fontFamily: "var(--font-mono)",
@@ -435,6 +411,10 @@ export function PageShell({
 }
 
 const SHELL_RESPONSIVE_STYLES = `
+.vedha-page-header-left { flex-shrink: 0; max-width: 100%; }
+.vedha-page-header-tools { max-width: 100%; min-width: 0; overflow-x: auto; }
+.vedha-page-header-tools > * { flex-shrink: 0; }
+
 /* Tablet: 768px–1023px — sidebar always visible, but content is tighter */
 .vedha-page-header-scroll::-webkit-scrollbar { display: none; }
 .vedha-page-header-scroll > *, .vedha-page-header-tools > :not(.vedha-page-header-scroll) { flex-shrink: 0; }

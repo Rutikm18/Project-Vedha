@@ -48,9 +48,15 @@ def test_a_non_dict_data_payload_is_quarantined_not_fatal():
     at the same gate as any other malformed fact, and counted."""
     facts = [
         _fact(target="10.0.0.1", data="not-a-dict"),
+        # A well-formed banner whose version maps to real CVE findings through the
+        # NVD/CPE companion (Dropbear uses upstream-version ranges). An OpenSSH
+        # banner no longer works here: a network-banner (inferred) version only
+        # matches open-ended Debian ranges, which are withheld as product-presence
+        # rather than asserted as version-range CVEs (gap #4), so it would produce
+        # no customer CVE regardless of the quarantine behaviour under test.
         _fact(scanner="service_banner", target="10.0.0.2", port=22,
-              data={"service": "ssh", "product": "OpenSSH", "version": "7.2",
-                    "banner": "SSH-2.0-OpenSSH_7.2"}),
+              data={"service": "ssh", "product": "Dropbear", "version": "2016.73",
+                    "banner": "SSH-2.0-dropbear_2016.73"}),
     ]
     cve, _posture, meta = EB.detect_all_from_facts_traced(facts)
     census = meta["ingest"]

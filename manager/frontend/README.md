@@ -41,8 +41,7 @@ npm ci
 npm run dev
 ```
 
-Set `BACKEND_INTERNAL_URL` to the Manager API. `AUTH_SECRET` must match the
-Manager JWT secret. Browser access and refresh tokens are stored only in
+Set `BACKEND_INTERNAL_URL` to the Manager API. Browser access and refresh tokens are stored only in
 `HttpOnly`, `SameSite=Strict` cookies. Set `AUTH_COOKIE_SECURE=true` whenever
 the dashboard is served over HTTPS; local HTTP Compose defaults it to `false`.
 

@@ -254,7 +254,7 @@ export default function EngagementsPage() {
                 <td data-label="Progress" style={{ padding: "12px 14px", minWidth: 100 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <div style={{ flex: 1, height: 5, background: "var(--adv-panel)", borderRadius: 3, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${eng.progress}%`, background: eng.progress === 100 ? "var(--nominal-color)" : "var(--accent)", borderRadius: 3, transition: "width 0.4s ease" }} />
+                      <div style={{ height: "100%", width: "100%", transform: `scaleX(${Math.min(100, Math.max(0, eng.progress)) / 100})`, transformOrigin: "left center", background: eng.progress === 100 ? "var(--nominal-color)" : "var(--accent)", borderRadius: 3, transition: "transform 0.4s ease" }} />
                     </div>
                     <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-muted)", flexShrink: 0 }}>{eng.progress}%</span>
                   </div>

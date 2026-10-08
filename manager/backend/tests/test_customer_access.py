@@ -163,7 +163,7 @@ class TestApproveScanRequest:
         eng = SimpleNamespace(id=eng_id, tenant_id=op.tenant_id,
                               assigned_agent_id=agent, scope_cidrs=["10.0.0.0/24"])
         sr = _pending_request(eng_id, op.tenant_id)
-        db = _mock_db([eng, sr, None])   # 3rd: fragile-asset lookup (no tagged assets)
+        db = _mock_db([eng, sr, None, None])   # 3rd: fragile-asset lookup (no tagged assets); 4th: tenant scan policy (defaults)
 
         out = asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, op))
 
@@ -255,7 +255,7 @@ class TestApproveScanRequestFragileGuard:
         eng = SimpleNamespace(id=eng_id, tenant_id=op.tenant_id, assigned_agent_id=uuid.uuid4(),
                               scope_cidrs=["10.0.0.0/24"], excluded_cidrs=["10.0.0.99/32"])
         sr = _pending_request(eng_id, op.tenant_id)
-        db = _mock_db([eng, sr])
+        db = _mock_db([eng, sr, None])     # 3rd: the tenant's scan policy (defaults)
         asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, op))
         job = _added(db, ScanJob)
         assert job.result["_excluded_cidrs"] == ["10.0.0.99/32", "10.0.0.20/32"]

@@ -147,10 +147,10 @@ def test_untested_versions_are_surfaced_in_the_fact(tmp_path, monkeypatch):
     cert, key = _self_signed(tmp_path)
     real = ts._try_version
 
-    def _fake(host, port, version, timeout):
+    def _fake(host, port, version, timeout, connect=None):
         if version == ssl.TLSVersion.TLSv1:
             return ts._UNTESTABLE
-        return real(host, port, version, timeout)
+        return real(host, port, version, timeout, connect=connect)
 
     monkeypatch.setattr(ts, "_try_version", _fake)
     with _LegacyTLSServer(cert, key, ssl.TLSVersion.TLSv1_2) as srv:

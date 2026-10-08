@@ -1,6 +1,6 @@
 "use client";
 
-import { FindingsWorkspace } from "../../findings/page";
+import { FindingsWorkspace } from "../../findings/workspace";
 
 /** Customer route adapter: the manager-owned workspace supplies all UI/UX. */
 export default function PortalFindingsPage() {

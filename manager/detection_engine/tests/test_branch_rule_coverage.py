@@ -34,9 +34,6 @@ _PROBE = Path(__file__).resolve().parents[3] / "probe"
 # Branch components that legitimately have no posture rule TODAY. Each is a
 # known gap with a reason, not a permanent exemption.
 KNOWN_UNASSESSED = {
-    # Collects AI/MCP endpoint discovery facts. No rule pack written yet — the
-    # security model for an exposed inference endpoint is still being defined.
-    "mcp_ai_scan",
     # Confirms a printer via a real PJL handshake. The facts support findings
     # (unauthenticated PJL control, exposed web admin) but none are written yet.
     "printer_scan",

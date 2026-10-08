@@ -81,6 +81,8 @@ class EntitlementOut(BaseModel):
     # "repeat" = the same asset may be deep-scanned again.
     deep_repeat_policy: Literal["distinct", "repeat"] = "distinct"
     deep_scanned_targets: list[str] = []
+    # Who to contact for more (set by the organisation; portal only). None = generic wording.
+    support_contact: str | None = None
     # Portal locks (see app/services/portal_locks.py). A locked severity's
     # findings appear only as teaser rows; a locked feature answers "available on
     # a licensed plan". Written reports are withheld while any severity is locked.

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveTenantSubdomain, TENANT_HEADER } from "./lib/tenant";
+import { buildScriptCsp, makeNonce } from "./lib/csp";
 
 // Routes that don't need an auth token
 const PUBLIC_PATHS = new Set(["/login", "/portal/login"]);
@@ -48,7 +49,18 @@ export function proxy(req: NextRequest) {
   if (sub) reqHeaders.set(TENANT_HEADER, sub);
   else reqHeaders.delete(TENANT_HEADER);
 
+  // ── Script CSP ───────────────────────────────────────────────────────────
+  // A fresh nonce per request. Next reads it from the request's CSP header and
+  // stamps it on its own scripts; the root layout reads `x-nonce` for its inline
+  // theme script. Reading it there also makes every page render per request,
+  // which a nonce requires.
+  const nonce = makeNonce();
+  const csp = buildScriptCsp(nonce, process.env.NODE_ENV === "development");
+  reqHeaders.set("x-nonce", nonce);
+  reqHeaders.set("Content-Security-Policy", csp);
+
   const res = NextResponse.next({ request: { headers: reqHeaders } });
+  res.headers.set("Content-Security-Policy", csp);
   if (queryTenant) {
     res.cookies.set("tenant", queryTenant.toLowerCase(), { sameSite: "lax", path: "/" });
   }

@@ -24,22 +24,26 @@ export function DashboardWorkspace() {
   const statusItems = [
     {
       label: "AGENTS",
-      value: agentsQuery.isLoading ? "—" : `${agentsOnline}/${agents.length}`,
-      color: agentsQuery.isLoading ? "var(--text-faint)" : "var(--accent)",
-      ariaLabel: agentsQuery.isLoading ? "Agent status loading" : `${agentsOnline} of ${agents.length} agents online`,
+      value: (agentsQuery.isLoading || agentsQuery.error) ? "—" : `${agentsOnline}/${agents.length}`,
+      color: (agentsQuery.isLoading || agentsQuery.error) ? "var(--text-faint)" : "var(--accent)",
+      ariaLabel: agentsQuery.error ? "Agent status unavailable" : agentsQuery.isLoading ? "Agent status loading" : `${agentsOnline} of ${agents.length} agents online`,
     },
     {
       label: "SLA",
-      value: slaQuery.isLoading ? "—" : tracked === 0 ? "NONE TRACKED" : breached > 0 ? `${breached} BREACHED` : "ON TRACK",
-      color: slaQuery.isLoading ? "var(--text-faint)" : breached > 0 ? "var(--sev-critical-color)" : "var(--accent)",
-      ariaLabel: slaQuery.isLoading ? "S L A status loading" : breached > 0
+      value: (slaQuery.isLoading || slaQuery.error) ? "—" : tracked === 0 ? "NONE TRACKED" : breached > 0 ? `${breached} BREACHED` : "ON TRACK",
+      color: (slaQuery.isLoading || slaQuery.error) ? "var(--text-faint)" : breached > 0 ? "var(--sev-critical-color)" : "var(--accent)",
+      ariaLabel: slaQuery.error ? "S L A status unavailable" : slaQuery.isLoading ? "S L A status loading" : breached > 0
         ? `${breached} findings past their remediation deadline`
-        : "All tracked findings within their remediation deadline",
+        : tracked === 0 ? "No S L A tracked findings" : "All tracked findings within their remediation deadline",
     },
   ];
 
   const content = (
     <div className="console-scope" style={{ display: "flex", flexDirection: "column" }}>
+      {(agentsQuery.error || slaQuery.error) && <div role="status" className="ui-recovery">
+        {agentsQuery.error && "Agent status unavailable. "}{slaQuery.error && "SLA status unavailable. "}
+        Last known data may be out of date. <button type="button" className="btn btn-secondary" onClick={() => { void agentsQuery.refetch(); void slaQuery.refetch(); }}>Retry status</button>
+      </div>}
       <DashboardGrid />
       <section
         aria-labelledby="trends-heading"

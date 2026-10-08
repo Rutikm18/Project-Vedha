@@ -68,7 +68,7 @@ test("scope wording follows the audience", () => {
 });
 
 test("the operator Scanner renders the Deep scan card and launches through the shared builder", () => {
-  const page = readFileSync(join(process.cwd(), "app/scan/page.tsx"), "utf8");
+  const page = readFileSync(join(process.cwd(), "app/scan/workspace.tsx"), "utf8");
   assert.match(page, /\{!isPortal && \(\s*<DeepScanCard plan=\{null\}/);
   assert.match(page, /buildDeepScanLaunch\(/);
   assert.doesNotMatch(page, /params: \{ scan_mode: "deep" \}/);   // no hand-built body left

@@ -32,6 +32,7 @@ from app.models.tenant import Tenant
 from app.ratelimit import client_ip
 from app.schemas.engagement import validate_scope_entries
 from app.services.audit import record_audit
+from app.services.notification_rules import notify_event_safe
 
 router = APIRouter(prefix="/probe-enrollment", tags=["probe-enrollment"])
 logger = structlog.get_logger()
@@ -330,6 +331,11 @@ async def _provision_agent_for_site(
         },
         timestamp=now,
     ))
+    await notify_event_safe(
+        db, tenant_id, "probe_enrolled",
+        f"Vedha: new probe '{agent.name}' enrolled",
+        f"Probe '{agent.name}' was approved{' automatically' if auto else ''} for site '{site.name}'. "
+        "If you did not expect it, review Settings → Probe Fleet.")
     return agent
 
 

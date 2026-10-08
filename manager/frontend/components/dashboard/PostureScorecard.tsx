@@ -198,7 +198,7 @@ export function PostureScorecard() {
             {s.posture_score}<span style={{ color: "var(--text-faint)" }}>/100</span>
           </span>
         </div>
-        <span className="sr-only">Posture score {s.posture_score} out of 100, grade {s.grade} — {g.read}.</span>
+        <span className="sr-only">Posture score {s.posture_score} out of 100, higher is better, grade {s.grade} — {g.read}.</span>
       </div>
 
       {/* ---- verdict + supporting metrics ---------------------------------- */}
@@ -213,6 +213,7 @@ export function PostureScorecard() {
           </span>
         </div>
 
+        <p style={{ margin: "8px 0", fontSize: 12, color: "var(--text-secondary)" }}>Posture: 0–100 · Higher is better.</p>
         <div className="posture-scorecard__metrics">
           {/* Both are 0–100 indices on the same log scale as the grade, NOT
               percentages — a 10x change in open risk moves either by ~25.

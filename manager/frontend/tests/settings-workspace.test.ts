@@ -10,7 +10,9 @@ test("customer Settings renders the manager Settings workspace", () => {
   assert.doesNotMatch(portal, /usePortalEngagement|SLA_POLICY|AppearanceSection/);
 });
 
-test("portal Settings exposes only engagement-scoped shared sections", () => {
-  const source = readFileSync(join(process.cwd(), "app/settings/page.tsx"), "utf8");
-  assert.match(source, /\["workspace", "probe-fleet", "ai", "audit-log"\]/);
+test("portal Settings exposes the engagement-scoped shared sections", () => {
+  const source = readFileSync(join(process.cwd(), "app/settings/workspace.tsx"), "utf8");
+  // "account" is the customer's own sign-in security (TOTP, gap from #3); it is a
+  // customer-facing section, so the portal nav includes it alongside the shared ones.
+  assert.match(source, /\["workspace", "account", "probe-fleet", "ai", "audit-log"\]/);
 });

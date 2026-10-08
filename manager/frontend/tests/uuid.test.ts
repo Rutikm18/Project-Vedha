@@ -21,7 +21,7 @@ test("falls back to getRandomValues when randomUUID is absent", () => {
 
 test("no browser code calls crypto.randomUUID directly", () => {
   for (const f of ["lib/findings-workspace-api.ts", "lib/scanner-workspace-api.ts", "lib/remediation.ts",
-                   "lib/engagement-workspace-api.ts", "app/aibrain/page.tsx"]) {
+                   "lib/engagement-workspace-api.ts", "app/aibrain/workspace.tsx"]) {
     assert.doesNotMatch(readFileSync(f, "utf8"), /crypto\.randomUUID\(/, f);
   }
 });
