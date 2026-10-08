@@ -268,6 +268,11 @@ assets. Migration `0055`.
 - *Recompute after detection*: a detection run that created or resolved findings refreshes the stored paths
   and analysis (in a savepoint, only for engagements that already have stored results; failures never fail
   the run). Reading still never recomputes.
+- *Operator UI*: `/engagements/{id}/attack-paths` (frontend `app/engagements/[id]/attack-paths/`) reads the
+  stored list and analysis through the BFF and shows, in decision order: status and recompute, what the paths
+  do not cover, fix first, a map of how the highest-risk routes converge, the route table and a step-by-step
+  view. An empty list is explained with the backend's reasons and never reads as safe; a failed load is an
+  error, never an empty list. Operators only: the customer portal has no attack-path page.
 - *Neo4j mirror hygiene* (FM-28/29): `:GraphNode(engagement_id, type)` and `(engagement_id, key)` indexes,
   per-engagement atomic replace, node identity `(engagement_id, key)`, parallel edges kept distinct.
 
@@ -277,8 +282,9 @@ assets. Migration `0055`.
 - Reachability between subnets is **inferred** (no firewall rules are read) and labelled `assumed`.
 - The validation fixtures are hand-written, so they show the model is internally consistent and regresses
   loudly; they do not measure accuracy on real networks. Only an engagement with a known ground truth can.
-- Migrations `0055` and `0056` and the Neo4j statements have been exercised against fakes and static checks,
-  **not against a live PostgreSQL or Neo4j**. The Neo4j mirror is not wired into the product by default
+- Migrations `0055` and `0056` were run against a live PostgreSQL 16 (all 56 migrations upgrade from empty,
+  0056/0055 downgrade and re-upgrade, and the real API served the stored paths and analysis from it). The Neo4j
+  statements have been exercised against fakes only, **not against a live Neo4j**. The Neo4j mirror is not wired into the product by default
   (`neo4j_enabled` is off and nothing reads it); P5 only makes it correct if enabled.
 - P2, P3 and P4b are not built, so only findings already marked exploitable create attacker steps, relay and
   shared-credential edges beyond what the AD modules emit do not exist, and targets are chosen by the operator.

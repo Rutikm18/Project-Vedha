@@ -1,10 +1,16 @@
-import { NextResponse } from "next/server";
-import { graphStore } from "../../../../../lib/graph-store";
+import { engagementGet, QUERY } from "../../../../../lib/attack-paths-proxy";
 
-// GET /engagements/{id}/attack-paths?page=1&pageSize=10
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const page     = Math.max(1, parseInt(searchParams.get("page")     ?? "1",  10));
-  const pageSize = Math.max(1, parseInt(searchParams.get("pageSize") ?? "10", 10));
-  return NextResponse.json(graphStore.listPaths(page, pageSize));
-}
+/**
+ * GET /api/engagements/{id}/attack-paths → FastAPI /engagements/{id}/attack-paths
+ * The stored list. `refresh=true` makes the backend recompute and store first.
+ */
+export const GET = engagementGet({
+  uuids: ["id"],
+  path: (p) => `/engagements/${p.id}/attack-paths`,
+  query: {
+    refresh: QUERY.boolean,
+    target_asset_id: QUERY.uuid,
+    page: QUERY.positiveInt(10_000),
+    page_size: QUERY.positiveInt(100),
+  },
+});

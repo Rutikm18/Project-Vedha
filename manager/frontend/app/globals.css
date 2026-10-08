@@ -1214,6 +1214,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   box-shadow: var(--shadow-sm);
 }
 .engagement-back,
+.engagement-attack-link,
 .engagement-report-link {
   min-height: 38px;
   padding: 0 10px;
@@ -1227,10 +1228,12 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   font-weight: 650;
   transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
 }
-.engagement-report-link { justify-self: end; }
+.engagement-toolbar-links { justify-self: end; display: flex; align-items: center; gap: 2px; }
 .engagement-back:hover,
+.engagement-attack-link:hover,
 .engagement-report-link:hover { color: var(--accent); background: var(--accent-ghost); }
 .engagement-back:focus-visible,
+.engagement-attack-link:focus-visible,
 .engagement-report-link:focus-visible,
 .engagement-toolbar nav button:focus-visible {
   outline: 2px solid var(--accent);
@@ -1501,6 +1504,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   .engagement-toolbar { grid-template-columns: 1fr; gap: 2px; padding: 6px; }
   .engagement-toolbar nav { width: 100%; justify-content: flex-start; border-top: 1px solid var(--border-subtle); padding-top: 5px; }
   .engagement-report-link { display: none; }
+  .engagement-toolbar-links { justify-self: start; }
 }
 @media (max-width: 680px) {
   .engagement-actions .engagement-action:not(:last-child) {

@@ -1,12 +1,7 @@
-import { NextResponse } from "next/server";
-import { graphStore } from "../../../../../../lib/graph-store";
+import { engagementGet } from "../../../../../../lib/attack-paths-proxy";
 
-// GET /engagements/{id}/blast-radius/{assetId}
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string; assetId: string }> }
-) {
-  const { assetId } = await params;
-  const result = graphStore.getBlastRadius(assetId);
-  return NextResponse.json(result);
-}
+/** GET /api/engagements/{id}/blast-radius/{assetId} → hosts reachable if this one is owned. */
+export const GET = engagementGet({
+  uuids: ["id", "assetId"],
+  path: (p) => `/engagements/${p.id}/blast-radius/${p.assetId}`,
+});
