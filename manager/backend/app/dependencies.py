@@ -23,6 +23,19 @@ async def get_redis() -> aioredis.Redis:
     return _redis_pool
 
 
+_cache_pool: aioredis.Redis | None = None
+
+
+async def get_cache_redis() -> aioredis.Redis:
+    """Redis for disposable caches: REDIS_CACHE_URL when set, else the main one."""
+    global _cache_pool
+    if not settings.redis_cache_url:
+        return await get_redis()
+    if _cache_pool is None:
+        _cache_pool = aioredis.from_url(settings.redis_cache_url, decode_responses=True)
+    return _cache_pool
+
+
 async def close_redis() -> None:
     """Close the global Redis connection pool. Call during app shutdown."""
     global _redis_pool
@@ -30,6 +43,10 @@ async def close_redis() -> None:
         await _redis_pool.close()
         _redis_pool = None
         logger.info("redis.pool.closed")
+    global _cache_pool
+    if _cache_pool is not None:
+        await _cache_pool.close()
+        _cache_pool = None
 
 
 def get_current_user(request: Request) -> CurrentUser:
