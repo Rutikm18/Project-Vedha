@@ -74,11 +74,12 @@ async def list_attack_paths(
         select(AttackPath.id).where(AttackPath.engagement_id == engagement_id)
     )).all())
 
+    labels = await _asset_labels(db, engagement_id) if rows else {}
     body = {
         "total": total,
         "page": page,
         "page_size": page_size,
-        "items": [_path_summary(r) for r in rows],
+        "items": [_path_summary(r, labels) for r in rows],
     }
     if total == 0:
         # An empty list must say WHY (FM-30): "no paths" and "nothing to compute
@@ -428,14 +429,28 @@ def path_freshness(edges: list[dict]) -> str:
     return "stale" if all(flags) else "partly_stale"
 
 
-def _path_summary(r: AttackPath) -> dict:
+def _path_summary(r: AttackPath, labels: dict[str, str] | None = None) -> dict:
+    """One row of the path list. `source`/`target` stay the authoritative node ids;
+    the labels are what a person reads (a host name, or its address, with its site
+    when the address alone is ambiguous)."""
+    labels = labels or {}
+    source = str(r.path_nodes[0]) if r.path_nodes else None
+    target = str(r.path_nodes[-1]) if r.path_nodes else None
     return {
         "id": str(r.id),
         "risk_score": float(r.risk_score) if r.risk_score is not None else None,
         "hops": max(len(r.path_nodes or []) - 1, 0),
-        "source": str(r.path_nodes[0]) if r.path_nodes else None,
-        "target": str(r.path_nodes[-1]) if r.path_nodes else None,
+        "source": source,
+        "target": target,
+        "source_label": labels.get(source, source) if source else None,
+        "target_label": labels.get(target, target) if target else None,
+        "freshness": path_freshness(r.path_edges or []),
         "chokepoint_count": len(r.chokepoints or []),
+        # The whole route, host by host, so a list can draw how routes converge
+        # without one request per path. `asset_id` is the asset's own id (the one
+        # the choke-point analysis uses), not the graph node key.
+        "nodes": [{"asset_id": str(n).removeprefix("asset:"), "label": labels.get(str(n), str(n))}
+                  for n in (r.path_nodes or [])],
     }
 
 

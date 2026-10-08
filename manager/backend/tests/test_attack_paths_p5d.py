@@ -320,3 +320,37 @@ async def test_detection_that_resolved_something_refreshes_stored_paths():
 async def test_detection_that_changed_nothing_does_not_recompute():
     refresh = await _run_detection(resolved=0)
     refresh.assert_not_awaited()
+
+
+# ── the list endpoint's rows are readable (UI contract) ──────────────────────
+
+def test_path_summary_carries_labels_and_freshness_beside_the_authoritative_ids():
+    from types import SimpleNamespace
+    row = SimpleNamespace(
+        id=uuid.UUID(int=1), risk_score=Decimal("42.5"),
+        path_nodes=["asset:a", "asset:b", "asset:c"], chokepoints=["asset:b"],
+        path_edges=[{"stale": False}, {"stale": True}])
+    out = R._path_summary(row, {"asset:a": "web-1", "asset:c": "db-1 @ HQ"})
+    assert out["source"] == "asset:a" and out["target"] == "asset:c"          # ids stay authoritative
+    assert out["source_label"] == "web-1" and out["target_label"] == "db-1 @ HQ"
+    assert out["freshness"] == "partly_stale" and out["hops"] == 2 and out["chokepoint_count"] == 1
+    # the whole route, with the asset's own id (what the choke-point analysis names), not the node key
+    assert out["nodes"] == [{"asset_id": "a", "label": "web-1"}, {"asset_id": "b", "label": "asset:b"},
+                            {"asset_id": "c", "label": "db-1 @ HQ"}]
+
+
+def test_path_summary_without_labels_falls_back_to_the_ids():
+    from types import SimpleNamespace
+    row = SimpleNamespace(id=uuid.UUID(int=2), risk_score=None, path_nodes=["asset:a", "asset:b"],
+                          chokepoints=None, path_edges=None)
+    out = R._path_summary(row)
+    assert out["source_label"] == "asset:a" and out["target_label"] == "asset:b"
+    assert out["risk_score"] is None and out["freshness"] == "fresh" and out["chokepoint_count"] == 0
+
+
+def test_no_targets_message_does_not_claim_an_auto_selection():
+    """Targets are operator-defined; nothing auto-selects crown jewels."""
+    from app.graph.analyzer import PathAnalyzer
+    reasons = PathAnalyzer(nx.MultiDiGraph()).diagnose([])["reasons"]
+    detail = next(r["detail"] for r in reasons if r["code"] == "no_targets")
+    assert "auto" not in detail.lower() and "marked critical" in detail

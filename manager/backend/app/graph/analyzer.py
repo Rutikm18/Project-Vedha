@@ -685,8 +685,8 @@ class PathAnalyzer:
                                           "from an external vantage), so no path has a starting point"})
         if not targets:
             reasons.append({"code": "no_targets",
-                            "detail": "no crown-jewel target: none is marked critical and none "
-                                      "was auto-selected (domain controller, hypervisor, data store)"})
+                            "detail": "no crown-jewel target: no asset in this engagement is marked "
+                                      "critical"})
         if movement_rels == 0:
             reasons.append({"code": "no_reachability",
                             "detail": "no network reachability or credential edges between assets"})
