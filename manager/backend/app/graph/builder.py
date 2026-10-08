@@ -398,6 +398,46 @@ class GraphBuilder:
                     added += 2
         return added
 
+    # ── assembly: the engagement graph from plain objects (no DB) ───────────────
+
+    def assemble(
+        self,
+        engagement_id: Any,
+        assets: Iterable[Any],
+        services: Iterable[Any] = (),
+        findings: Iterable[Any] = (),
+        *,
+        scope_cidrs: Iterable[str] = (),
+        rules_of_engagement: dict | None = None,
+        now: datetime | None = None,
+    ) -> nx.MultiDiGraph:
+        """Everything build_from_db does after loading rows, from plain objects: assets,
+        services and findings, then subnet topology (per-site aware), same-machine
+        links and the freshness window. The validation harness (app/graph/validation.py)
+        calls this too, so it measures the code that really runs."""
+        from app.detection.asset_identity import link_machines, mode_from_roe
+        from app.detection.reachability import derive_topology, posture_from_roe
+
+        assets = list(assets)
+        scope = list(scope_cidrs or [])
+        identity_mode = mode_from_roe(rules_of_engagement)
+        freshness_days = freshness_days_from_roe(rules_of_engagement)
+
+        graph = self.build_asset_graph(engagement_id, assets, services, findings,
+                                       freshness_days=freshness_days, now=now)
+        graph.graph["freshness_days"] = freshness_days
+        graph.graph["scope_cidrs"] = scope
+
+        # P1a: derive the subnet topology from the engagement scope and assets.
+        # Before this, no topology was ever supplied, so no lateral movement
+        # existed and every multi-host path was impossible (FM-01). P1b-4: under
+        # per-site identity a private subnet belongs to its site.
+        self.add_segment_topology(derive_topology(
+            assets, scope, posture_from_roe(rules_of_engagement), identity_mode=identity_mode))
+        # P1b-4: one machine seen at several addresses (the dual-homed pivot).
+        self.add_machine_links(link_machines(assets, identity_mode, now=now, freshness_days=freshness_days))
+        return graph
+
     # ── PostgreSQL loader ───────────────────────────────────────────────────────
 
     async def build_from_db(self, db: Any, engagement_id: Any) -> nx.MultiDiGraph:
@@ -426,32 +466,13 @@ class GraphBuilder:
                 select(Service).where(Service.asset_id.in_(asset_ids))
             )).scalars().all())
 
-        from app.detection.asset_identity import link_machines, mode_from_roe
-        from app.detection.reachability import derive_topology, posture_from_roe
         from app.models.engagement import Engagement
         engagement = await db.get(Engagement, engagement_id)
-        roe = getattr(engagement, "rules_of_engagement", None)
-        identity_mode = mode_from_roe(roe)
-        freshness_days = freshness_days_from_roe(roe)
-
-        graph = self.build_asset_graph(engagement_id, assets, services, findings,
-                                       freshness_days=freshness_days)
-        graph.graph["freshness_days"] = freshness_days
-        graph.graph["scope_cidrs"] = list(getattr(engagement, "scope_cidrs", None) or [])
-
-        # P1a: derive the subnet topology from the engagement scope and assets.
-        # Before this, no topology was ever supplied, so no lateral movement
-        # existed and every multi-host path was impossible (FM-01). P1b-4: under
-        # per-site identity a private subnet belongs to its site.
-        topology = derive_topology(
-            assets,
-            getattr(engagement, "scope_cidrs", None) or [],
-            posture_from_roe(roe),
-            identity_mode=identity_mode,
+        graph = self.assemble(
+            engagement_id, assets, services, findings,
+            scope_cidrs=getattr(engagement, "scope_cidrs", None) or [],
+            rules_of_engagement=getattr(engagement, "rules_of_engagement", None),
         )
-        self.add_segment_topology(topology)
-        # P1b-4: one machine seen at several addresses (the dual-homed pivot).
-        self.add_machine_links(link_machines(assets, identity_mode, freshness_days=freshness_days))
 
         if self._neo4j is not None:
             self.sync_to_neo4j(engagement_id)

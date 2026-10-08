@@ -1,0 +1,61 @@
+{
+  "name": "two independent routes: one fix is not enough",
+  "description": "FM-20/25. Two gateways and two exposed hosts give two vertex-disjoint routes; fixing any single host leaves the jewel reachable, and the smallest cut needs two hosts.",
+  "scope": [
+    "10.0.1.0/24",
+    "10.0.2.0/24"
+  ],
+  "posture": "segmented",
+  "assets": [
+    {
+      "id": "e1",
+      "ip": "10.0.1.5",
+      "environment": "dmz"
+    },
+    {
+      "id": "e2",
+      "ip": "10.0.1.6",
+      "environment": "dmz"
+    },
+    {
+      "id": "gw1",
+      "ip": "10.0.1.1",
+      "role": "network_device"
+    },
+    {
+      "id": "gw2",
+      "ip": "10.0.1.2",
+      "role": "network_device"
+    },
+    {
+      "id": "jewel",
+      "ip": "10.0.2.9",
+      "criticality": "critical"
+    }
+  ],
+  "exploitable": [
+    "e1",
+    "e2",
+    "gw1",
+    "gw2",
+    "jewel"
+  ],
+  "targets": [
+    "jewel"
+  ],
+  "truth": {
+    "independent_routes": {
+      "jewel": 2
+    },
+    "forbidden_hops": [
+      [
+        "e1",
+        "jewel"
+      ],
+      [
+        "e2",
+        "jewel"
+      ]
+    ]
+  }
+}

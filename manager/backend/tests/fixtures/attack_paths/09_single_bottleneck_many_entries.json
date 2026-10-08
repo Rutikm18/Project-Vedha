@@ -1,0 +1,119 @@
+{
+  "name": "eight exposed hosts, one gateway",
+  "description": "FM-25. However many entry points there are, the single gateway is the bottleneck and the smallest fix.",
+  "scope": [
+    "10.0.1.0/24",
+    "10.0.2.0/24"
+  ],
+  "posture": "segmented",
+  "assets": [
+    {
+      "id": "e0",
+      "ip": "10.0.1.10",
+      "environment": "dmz"
+    },
+    {
+      "id": "e1",
+      "ip": "10.0.1.11",
+      "environment": "dmz"
+    },
+    {
+      "id": "e2",
+      "ip": "10.0.1.12",
+      "environment": "dmz"
+    },
+    {
+      "id": "e3",
+      "ip": "10.0.1.13",
+      "environment": "dmz"
+    },
+    {
+      "id": "e4",
+      "ip": "10.0.1.14",
+      "environment": "dmz"
+    },
+    {
+      "id": "e5",
+      "ip": "10.0.1.15",
+      "environment": "dmz"
+    },
+    {
+      "id": "e6",
+      "ip": "10.0.1.16",
+      "environment": "dmz"
+    },
+    {
+      "id": "e7",
+      "ip": "10.0.1.17",
+      "environment": "dmz"
+    },
+    {
+      "id": "gw",
+      "ip": "10.0.1.1",
+      "role": "network_device"
+    },
+    {
+      "id": "jewel",
+      "ip": "10.0.2.9",
+      "criticality": "critical"
+    }
+  ],
+  "exploitable": [
+    "e0",
+    "e1",
+    "e2",
+    "e3",
+    "e4",
+    "e5",
+    "e6",
+    "e7",
+    "gw",
+    "jewel"
+  ],
+  "targets": [
+    "jewel"
+  ],
+  "truth": {
+    "min_fix_set": [
+      "gw"
+    ],
+    "top_choke": "gw",
+    "independent_routes": {
+      "jewel": 1
+    },
+    "forbidden_hops": [
+      [
+        "e0",
+        "jewel"
+      ],
+      [
+        "e1",
+        "jewel"
+      ],
+      [
+        "e2",
+        "jewel"
+      ],
+      [
+        "e3",
+        "jewel"
+      ],
+      [
+        "e4",
+        "jewel"
+      ],
+      [
+        "e5",
+        "jewel"
+      ],
+      [
+        "e6",
+        "jewel"
+      ],
+      [
+        "e7",
+        "jewel"
+      ]
+    ]
+  }
+}

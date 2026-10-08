@@ -515,12 +515,18 @@ class PathAnalyzer:
         if not sources or not targets:
             return {"size": 0, "assets": [], "independent_routes": {}}
 
+        source_set = set(sources)
+
         def build(target_set: list[str]) -> nx.DiGraph:
             h = nx.DiGraph()
             for n in mv.nodes:
                 cuttable = _is_asset(mv, n) and n not in target_set
                 if cuttable:
-                    h.add_edge((n, "in"), (n, "out"), capacity=1)
+                    # Every host costs one unit (scaled), but an ENTRY host costs a hair more:
+                    # when fixing the entry and fixing shared infrastructure cut the same
+                    # routes, prefer the infrastructure — an entry fix removes only that entry.
+                    h.add_edge((n, "in"), (n, "out"),
+                               capacity=_CUT_UNIT + (1 if n in source_set else 0))
                 else:
                     h.add_edge((n, "in"), (n, "out"))          # no capacity attribute = unbounded
             for u, v in mv.edges:
@@ -540,7 +546,7 @@ class PathAnalyzer:
             except nx.NetworkXUnbounded:                        # a route made only of uncuttable nodes
                 return 0, []
             cut = sorted(n for n in mv.nodes if (n, "in") in reach and (n, "out") in other)
-            return int(value), cut
+            return int(value) // _CUT_UNIT, cut
 
         size, cut = solve(targets)
         routes = {mv.nodes[t].get("entity_id"): solve([t])[0] for t in targets}
@@ -596,7 +602,10 @@ class PathAnalyzer:
                 "targets_cut_off": cut_off,
                 "remediation_priority": _priority_from_reduction(reduction, sum(impact[t] * base[t] for t in targets)),
             })
-        ranked.sort(key=lambda r: (-r["risk_removed"], -len(r["targets_cut_off"]), str(r["asset_id"])))
+        source_ids = {mv.nodes[s].get("entity_id") for s in sources}
+        # Equal effect: shared infrastructure before an entry host, then by id (deterministic).
+        ranked.sort(key=lambda r: (-r["risk_removed"], -len(r["targets_cut_off"]),
+                                   r["asset_id"] in source_ids, str(r["asset_id"])))
 
         return {
             "ranked": ranked[:top],
@@ -703,6 +712,8 @@ class PathAnalyzer:
             "reasons": reasons,
         }
 
+
+_CUT_UNIT = 1000                      # scale of one host in the minimum-cut flow network (see min_fix_set)
 
 _BASIS_RANK = {"observed": 4, "same_subnet": 3, "same_host_fqdn": 3, "same_host_name": 2,
                "assumed": 2, "assumed_cross_site": 1, "possible": 1}
