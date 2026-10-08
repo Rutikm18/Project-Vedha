@@ -95,6 +95,23 @@ def host_of(target: Any) -> str | None:
     return t.split(":", 1)[0] if t.count(":") == 1 else t
 
 
+class AssetCache(dict):
+    """{key: Asset} for one detection run, where key is the host (global identity)
+    or (site, host) (per-site), plus the keys prime_asset_cache has already checked
+    and found absent — so resolve_asset need not look them up again."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.known_absent: set[Any] = set()
+
+
+def cache_key(host: str, identity: "IdentityContext") -> Any:
+    """The key a host is cached under: the host itself under global identity, a
+    (site, host) pair when the policy scopes it to a site."""
+    scope = identity.scope_for(host)
+    return host if scope is None else (scope, host)
+
+
 def _ordered(rows: Iterable[Asset]) -> list[Asset]:
     return sorted(rows, key=lambda a: (getattr(a, "created_at", None) or datetime.min.replace(tzinfo=timezone.utc),
                                        str(getattr(a, "id", ""))))
@@ -107,12 +124,12 @@ def pick_asset(rows: Iterable[Asset], scope: Any) -> tuple[Asset | None, bool]:
     can never disagree."""
     rows = _ordered(rows)
     if scope is None:
-        unscoped = [a for a in rows if a.site_id is None]
+        unscoped = [a for a in rows if getattr(a, "site_id", None) is None]
         return (unscoped[0] if unscoped else (rows[0] if rows else None)), False
-    exact = [a for a in rows if a.site_id == scope]
+    exact = [a for a in rows if getattr(a, "site_id", None) == scope]
     if exact:
         return exact[0], False
-    legacy = [a for a in rows if a.site_id is None]
+    legacy = [a for a in rows if getattr(a, "site_id", None) is None]
     if legacy:
         return legacy[0], True
     return None, False
@@ -142,8 +159,11 @@ async def resolve_asset(db: AsyncSession, engagement_id: uuid.UUID, target: Any,
     """Find or create the Asset for a probe-reported target.
 
     `cache` is a caller-owned dict for one run — keyed by the host (global
-    identity) or (site, host) (per-site) — so a host with many findings is
-    resolved once."""
+    identity) or (site, host) (per-site) — so a host with many findings is resolved
+    once. When it is an AssetCache primed by prime_asset_cache, a host the prime
+    step already found absent is created without another lookup. New assets get
+    their id here (not from the database), so creating one costs no flush and a
+    run's new assets go out in one batched INSERT."""
     host = host_of(target)
     if not host:
         return None
@@ -152,21 +172,49 @@ async def resolve_asset(db: AsyncSession, engagement_id: uuid.UUID, target: Any,
     key = host if scope is None else (scope, host)
     if cache is not None and key in cache:
         return cache[key]
-    # A host the caller already primed (one batched query) and found absent needs no
-    # lookup; its new row gets its id here, so creating it costs no flush and a run's
-    # new assets go out in one batched INSERT.
-    if cache is not None and host in getattr(cache, "known_absent", ()):
-        asset = None
-    else:
+    asset = None
+    if cache is None or key not in getattr(cache, "known_absent", ()):
         asset = await find_asset(db, engagement_id, host, identity)
     if asset is None:
-        asset = Asset(id=uuid.uuid4(), engagement_id=engagement_id, ip_address=host,
-                      site_id=scope, asset_type=AssetType.server,
-                      last_seen=datetime.now(timezone.utc))
+        asset = Asset(id=uuid.uuid4(), engagement_id=engagement_id, ip_address=host, site_id=scope,
+                      asset_type=AssetType.server, last_seen=datetime.now(timezone.utc))
         db.add(asset)
     if cache is not None:
         cache[key] = asset
     return asset
+
+
+async def prime_asset_cache(db: AsyncSession, engagement_id: uuid.UUID, targets: Iterable[Any],
+                            cache: dict, identity: IdentityContext | None = None) -> int:
+    """Fill `cache` with the engagement's existing assets for `targets` in ONE query
+    per 1,000 hosts, so resolve_asset only has to create what is genuinely new
+    instead of looking every host up one by one. Applies the same identity policy as
+    find_asset (including adopting a legacy unscoped row), and records every key it
+    checked and found absent on an AssetCache. Returns how many hosts were found."""
+    identity = identity or GLOBAL_IDENTITY
+    hosts = list(dict.fromkeys(
+        h for h in (host_of(t) for t in targets) if h and cache_key(h, identity) not in cache))
+    found = 0
+    for start in range(0, len(hosts), 1000):
+        chunk = hosts[start:start + 1000]
+        by_ip: dict[str, list[Asset]] = {}
+        for a in (await db.execute(
+            select(Asset).where(Asset.engagement_id == engagement_id, Asset.ip_address.in_(chunk))
+        )).scalars().all():
+            by_ip.setdefault(a.ip_address, []).append(a)
+        for host in chunk:
+            scope = identity.scope_for(host)
+            key = host if scope is None else (scope, host)
+            asset, adopt = pick_asset(by_ip.get(host, []), scope)
+            if asset is None:
+                if isinstance(cache, AssetCache):
+                    cache.known_absent.add(key)
+                continue
+            if adopt:
+                _adopt(asset, scope)
+            cache.setdefault(key, asset)
+            found += 1
+    return found
 
 
 async def find_assets_batch(db: AsyncSession, engagement_id: uuid.UUID,
