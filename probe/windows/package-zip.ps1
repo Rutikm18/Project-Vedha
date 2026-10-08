@@ -6,14 +6,19 @@
     powershell -ExecutionPolicy Bypass -File package-zip.ps1
     powershell -ExecutionPolicy Bypass -File package-zip.ps1 -Manager https://manager.example.com
 
-  Without -Manager the launchers keep their placeholder and the ZIP is the RELEASE package:
-  the one-command installer (install-remote.ps1) passes -Manager and -Token to install.ps1 itself.
+    powershell -ExecutionPolicy Bypass -File package-zip.ps1 -Release
+
+  -Release builds the package the manager serves: the launchers keep their placeholder because the
+  one-command installer (install-remote.ps1) passes -Manager and -Token to install.ps1 itself.
 
   Output: probe\windows\dist\vedha-probe-win.zip
 #>
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'Customer')]
 param(
-  [string]$Manager = '',          # bake a manager URL in for a hand-delivered ZIP; leave empty for the release package
+  # A hand-delivered ZIP must name its manager (the launchers refuse to run without one).
+  [Parameter(Mandatory = $true, ParameterSetName = 'Customer')][string]$Manager,
+  # The release package has no manager baked in: the one-command installer passes it at install time.
+  [Parameter(Mandatory = $true, ParameterSetName = 'Release')][switch]$Release,
   [string]$AgentDir = "$PSScriptRoot\dist\vedha-agent",
   [string]$OutZip  = "$PSScriptRoot\dist\vedha-probe-win.zip"
 )
