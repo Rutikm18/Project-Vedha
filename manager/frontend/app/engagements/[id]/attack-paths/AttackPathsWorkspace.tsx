@@ -12,7 +12,7 @@ import { attackPathsApi } from "../../../../lib/attack-paths-api";
 import { fixPointIds, type Analysis, type Diagnostics } from "../../../../lib/attack-paths";
 import { errorMessage, fetchJson } from "../../../../lib/fetcher";
 import { PathMap } from "./PathMap";
-import { CoveragePanel, EmptyExplainer, FixFirstPanel, PathDetailPanel, PathTable } from "./Panels";
+import { BetaNotice, CoveragePanel, EmptyExplainer, FixFirstPanel, PathDetailPanel, PathTable } from "./Panels";
 import { ATTACK_PATH_STYLES } from "./styles";
 
 const PAGE_SIZE = 50;
@@ -67,7 +67,7 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
   const name = engagement.data?.name;
 
   return (
-    <PageShell title="Attack paths" subtitle={name ? `${name} · how an attacker could reach your crown jewels` : "How an attacker could reach your crown jewels"} hideRefresh>
+    <PageShell title="Attack paths" headerActions={<span className="badge badge-info" title="Attack paths is in beta">Beta</span>} subtitle={name ? `${name} · how an attacker could reach your crown jewels` : "How an attacker could reach your crown jewels"} hideRefresh>
       <style>{ATTACK_PATH_STYLES}</style>
       <div className="ap-page">
         <Link href={`/engagements/${encodeURIComponent(engagementId)}`} className="ap-back">
@@ -100,6 +100,7 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
                 {recompute.isPending ? "Recomputing…" : "Recompute paths"}
               </button>
             </div>
+            <BetaNotice />
             <p className="ap-fine">
               Routes between subnets are inferred from addressing and the engagement scope, not read from
               firewall rules. A step marked “assumed” has not been observed. Paths refresh when a detection run

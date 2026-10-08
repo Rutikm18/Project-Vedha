@@ -69,11 +69,11 @@ Two apps share this frontend:
 - Detection validation: `.../detection-validation/{coverage,gaps,results,run,siem-config}/route.ts`
 - Attack paths page: see 4a.
 
-### 4a. Engagement → Attack paths
+### 4a. Engagement → Attack paths (Beta)
 - Page: `app/engagements/[id]/attack-paths/page.tsx` → `AttackPathsWorkspace.tsx` (data + layout),
   `Panels.tsx` (coverage, empty-state explanation, fix-first, route table, step detail),
   `PathMap.tsx` (route map), `styles.ts`
-- Linked from the engagement toolbar (operators only, not the customer portal)
+- Linked from the engagement toolbar with a Beta badge (operators only, not the customer portal); the page header carries the same badge and a notice that says what beta means here
 - API client: `lib/attack-paths-api.ts` · view-model and types: `lib/attack-paths.ts`
   (wording rules, empty-state reasons, fix-first sentence, route-map layout)
 - Backend: `manager/backend/app/routers/attack_paths.py` (list, detail, analysis, recompute)

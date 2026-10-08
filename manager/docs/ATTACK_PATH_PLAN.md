@@ -1,6 +1,6 @@
 # Engagement-wide, multi-subnet attack-path generation — plan (for review)
 
-Status (2026-10-08): **P0, P1a, P1b, P4a and P5 implemented.** P2, P3 and P4b are **not implemented**
+Status (2026-10-08): **P0, P1a, P1b, P4a and P5 implemented; the feature is released as Beta** (UI badge, API tag). P2, P3 and P4b are **not implemented**
 (see §7). Decisions: §8 recommendations accepted (flat-internal labelled `assumed`, engagement-scoped,
 (site, IP) identity). Operator-defined crown jewels remain the only path targets.
 Revised 2026-10-06 with a failure-mode analysis (§9): 32 failure modes found,
@@ -246,7 +246,7 @@ match (FQDN 0.9, short name 0.7; capped at 4 NICs) and never merged. Hosts not s
 mark the hop and path `stale`. `GET /engagements/{id}/asset-identity` reports the evidence for choosing a
 mode: sites with overlapping private ranges, private IPs that different sites report under different host
 names, addresses that already map to more than one asset, machines seen at several addresses, and stale
-assets. Migration `0055`.
+assets. Migration `0059`.
 
 **P5 — choke points, output, validation.**
 - *Choke points* are ranked by **risk removed if that one host were fixed** (best remaining path, not a
@@ -254,7 +254,7 @@ assets. Migration `0055`.
   (max-flow with vertex splitting; entry hosts cost slightly more than shared infrastructure so a tie goes
   to the shared host) gives the smallest set whose fix disconnects every target, with the number of
   vertex-disjoint routes (Menger) as the evidence that one fix is or is not enough.
-- *Stored once per engagement* in `attack_path_analyses` (migration `0056`), read by `GET .../chokepoints`
+- *Stored once per engagement* in `attack_path_analyses` (migration `0060`), read by `GET .../chokepoints`
   and `GET .../attack-path-analysis`; per-path rows keep only the choke points that are on that path.
 - *Coverage and freshness* are reported alongside every analysis: hosts observed and stale hosts per subnet,
   scope CIDRs with no observed host, hosts observed outside scope, hosts with no subnet. Coverage is
@@ -282,8 +282,9 @@ assets. Migration `0055`.
 - Reachability between subnets is **inferred** (no firewall rules are read) and labelled `assumed`.
 - The validation fixtures are hand-written, so they show the model is internally consistent and regresses
   loudly; they do not measure accuracy on real networks. Only an engagement with a known ground truth can.
-- Migrations `0055` and `0056` were run against a live PostgreSQL 16 (all 56 migrations upgrade from empty,
-  0056/0055 downgrade and re-upgrade, and the real API served the stored paths and analysis from it). The Neo4j
+- Migrations `0059` and `0060` were run against a live PostgreSQL 16 (all 60 migrations upgrade from empty,
+  0060/0059 downgrade and re-upgrade, and the real API served the stored paths and analysis from it). They were
+  numbered 0055/0056 until the integration branch took those numbers; see the merge commit. The Neo4j
   statements have been exercised against fakes only, **not against a live Neo4j**. The Neo4j mirror is not wired into the product by default
   (`neo4j_enabled` is off and nothing reads it); P5 only makes it correct if enabled.
 - P2, P3 and P4b are not built, so only findings already marked exploitable create attacker steps, relay and

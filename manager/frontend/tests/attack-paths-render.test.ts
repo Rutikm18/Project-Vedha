@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { PathMap } from "../app/engagements/[id]/attack-paths/PathMap";
 import {
-  CoveragePanel, EmptyExplainer, FixFirstPanel, PathDetailPanel, PathTable,
+  BetaNotice, CoveragePanel, EmptyExplainer, FixFirstPanel, PathDetailPanel, PathTable,
 } from "../app/engagements/[id]/attack-paths/Panels";
 import type {
   Analysis, ChokeAnalysis, Diagnostics, PathDetail, PathSummary,
@@ -223,5 +223,26 @@ describe("the page is wired to the backend, not to demo data", () => {
   test("the engagement page links to it for operators only", () => {
     const src = read("app/engagements/[id]/workspace.tsx");       // page.tsx re-exports it
     assert.match(src, /surface === "manager" && \(\s*<Link href=\{`\/engagements\/\$\{encodeURIComponent\(id\)\}\/attack-paths`\}/);
+  });
+});
+
+describe("attack paths is labelled Beta", () => {
+  const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
+
+  test("the notice says it is beta and what that means, not a generic disclaimer", () => {
+    const out = html(createElement(BetaNotice));
+    assert.match(out, />Beta</);
+    assert.match(out, /Attack paths is in beta/);
+    assert.match(out, /already marked exploitable/);
+    assert.match(out, /without being safe/);
+    assert.match(out, /assets you mark critical/);
+  });
+
+  test("the page header and the engagement toolbar link both carry the Beta badge", () => {
+    const page = read("app/engagements/[id]/attack-paths/AttackPathsWorkspace.tsx");
+    assert.match(page, /headerActions=\{<span className="badge badge-info"[^>]*>Beta<\/span>\}/);
+    assert.match(page, /<BetaNotice \/>/);
+    const toolbar = read("app/engagements/[id]/workspace.tsx");
+    assert.match(toolbar, /Attack paths <span className="badge badge-info">Beta<\/span>/);
   });
 });
