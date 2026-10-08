@@ -1,0 +1,32 @@
+name: vedha-agent-version-gate
+
+# The agent has its own version (probe/agent/version.py). If a pull request changes
+# anything the agent ships (its code or its dependency list) the version must go up
+# in the same pull request, or two different agents would carry one number and the
+# manager could never tell a running agent that a newer one exists.
+# The agent's code lives in probe/agent, probe/scanner and probe/workflow, which is
+# wider than the agent unit-test workflow watches, hence a workflow of its own.
+on:
+  pull_request:
+    paths:
+      - "probe/agent/**"
+      - "probe/scanner/**"
+      - "probe/workflow/**"
+      - "probe/requirements-runtime.txt"
+  workflow_dispatch:
+
+jobs:
+  gate:
+    # A manual run has no pull request to compare against.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the comparison needs the base branch history
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Shipped agent code changed => AGENT_VERSION bumped
+        run: python probe/tools/check_agent_version.py --base "origin/${{ github.base_ref }}"

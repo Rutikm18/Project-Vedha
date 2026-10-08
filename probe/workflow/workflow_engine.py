@@ -319,7 +319,12 @@ def _default_host_concurrency(concurrency: int) -> int:
             return max(1, min(64, int(raw)))
         except ValueError:
             LOG.warning("ignoring non-numeric PROBE_HOST_CONCURRENCY=%r", raw)
-    return max(1, min(8, concurrency))
+    # Each host makes several calls on asyncio's default thread pool, which is
+    # min(32, cpu + 4) workers. More hosts than workers just queue and starve
+    # each other (the saturation _recheck_alive documents), and a small customer
+    # machine has few cores, so the default follows the pool when it is smaller.
+    pool = min(32, (os.cpu_count() or 1) + 4)
+    return max(1, min(8, concurrency, pool))
 
 
 @contextmanager

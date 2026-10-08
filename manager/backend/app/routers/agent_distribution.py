@@ -209,6 +209,7 @@ def release_status(*, detailed: bool, request: Request | None = None) -> dict:
     body.update(
         available=True,
         version=release.version,
+        agent_version=release.agent_version or None,
         created_at=release.created_at,
         arches=release.arches,
         signed=release.signed,
