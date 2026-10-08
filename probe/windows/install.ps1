@@ -7,7 +7,8 @@
 param(
   [string]$Manager = '__VEDHA_MANAGER_URL__',
   [string]$Scope   = '',   # CIDR; empty = auto-detect this host's /24
-  [string]$Token   = ''    # install token (vet_...) from Fleet -> Add agent: enrols this agent without a pairing code
+  [string]$Token   = '',   # install token (vet_...) from Fleet -> Add agent: enrols this agent without a pairing code
+  [int]$EnrolWaitSeconds = 120   # how long to wait for the token enrolment before reporting it as pending
 )
 $ErrorActionPreference = 'Stop'
 if ($Manager -like '__*') { Write-Error 'No manager address. Re-create the package with package-zip.ps1 -Manager https://api.your-domain.com, or pass -Manager.'; exit 1 }
@@ -94,7 +95,7 @@ Start-ScheduledTask -TaskName 'VedhaAgent'
 $enrolled = $false
 if ($Token) {
   Write-Host 'Waiting for the agent to enrol with the manager ...'
-  for ($i = 0; $i -lt 60 -and -not $enrolled; $i++) {
+  for ($i = 0; $i -lt [math]::Ceiling($EnrolWaitSeconds / 2) -and -not $enrolled; $i++) {
     Start-Sleep -Seconds 2
     # state.json is replaced atomically by the agent; a read that races it just retries.
     try { $enrolled = (Test-Path $stateFile) -and [bool](Select-String -Path $stateFile -Pattern 'device_refresh_secret' -Quiet) } catch { $enrolled = $false }

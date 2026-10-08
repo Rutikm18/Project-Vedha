@@ -1,0 +1,483 @@
+name: agent-release
+
+# Builds, SIGNS and publishes a Vedha agent release.
+#
+#   tag  agent-v<version>   (must equal the VERSION file)     -> build, sign, verify, publish a GitHub Release
+#   manual dispatch                                            -> build, sign, verify; publish only if asked
+#
+# Trust boundaries (why the jobs are split):
+#   * plan / test / images / windows-package / sbom   BUILD things. They run code from the
+#     repo and its dependencies, so they never see a signing key.
+#   * sign        is the ONLY job that holds the release signing keys. It runs the release
+#     tool (scripts/agent_release.py) over the build outputs and nothing else, in the
+#     `agent-release` environment so the keys can be restricted to it and a reviewer can be
+#     required. It verifies its own output against the PUBLIC keys pinned in repo variables,
+#     so a rotated or wrong key fails here instead of in the field.
+#   * windows-verify  runs the signed release's REAL install.ps1 on Windows PowerShell 5.1
+#     against a stub manager: it must accept the release and refuse every tampered variant.
+#   * publish     attaches the already-signed files to a GitHub Release. It builds nothing.
+#
+# One-time setup, key rotation and manual verification: manager/docs/AGENT_RELEASE.md.
+#
+#   Secrets (environment `agent-release`)       AGENT_RELEASE_SIGNING_KEY       Ed25519 PEM  (Linux installs)
+#                                               AGENT_RELEASE_P256_KEY          P-256 PEM    (Windows installs)
+#                                               WINDOWS_CODESIGN_PFX_BASE64     optional, base64 of the code-signing .pfx
+#                                               WINDOWS_CODESIGN_PFX_PASSWORD   optional
+#   Variables (public values)                   AGENT_RELEASE_PUBLIC_KEY        from `agent_release.py keygen`
+#                                               AGENT_RELEASE_P256_PUBLIC_KEY   from `agent_release.py keygen --p256-out`
+#                                               AGENT_REQUIRE_AUTHENTICODE      optional: "true" fails the release if it cannot be Authenticode-signed
+#                                               WINDOWS_CODESIGN_TIMESTAMP_URL  optional, default http://timestamp.digicert.com
+on:
+  push:
+    tags: ["agent-v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (default: the VERSION file)"
+        required: false
+        type: string
+      publish:
+        description: "Also publish a GitHub Release (tag agent-v<version>)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          file_version="$(tr -d '[:space:]' < VERSION)"
+          if [ "$EVENT" = "push" ]; then
+            version="${REF_NAME#agent-v}"
+            publish=true
+            if [ "$version" != "$file_version" ]; then
+              echo "::error title=Tag does not match VERSION::tag $REF_NAME releases $version but the VERSION file says $file_version. Bump VERSION in the tagged commit."
+              exit 1
+            fi
+          else
+            version="${INPUT_VERSION:-$file_version}"
+            publish="${INPUT_PUBLISH:-false}"
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9A-Za-z][0-9A-Za-z._-]{0,63}$'; then
+            echo "::error title=Invalid version::'$version' is not a valid release version"
+            exit 1
+          fi
+          {
+            echo "version=$version"
+            echo "tag=agent-v$version"
+            echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install cryptography pytest
+      - name: Release tool, installer contracts and the stub manager
+        run: >-
+          python -m pytest -q -p no:cacheprovider
+          manager/backend/tests/test_agent_release_windows.py
+          manager/backend/tests/test_agent_stub_manager.py
+          probe/tests/test_windows_scripts.py
+          probe/tests/test_windows_remote_install.py
+          probe/tests/test_windows_installer_pwsh.py
+      - name: install.sh is valid POSIX sh
+        run: sh -n probe/install.sh
+
+  images:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the agent image
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          docker buildx build --platform "linux/$ARCH" --load -t "vedha-agent:build-$ARCH" probe
+          docker save "vedha-agent:build-$ARCH" | gzip -n > "image-$ARCH.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-${{ matrix.arch }}
+          path: image-${{ matrix.arch }}.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  sbom:
+    needs: plan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: probe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements-runtime.txt
+      - name: Generate the CycloneDX SBOM
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: python -m agent.release sbom --version "$VERSION" --out sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: probe/sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 7
+
+  windows-package:
+    needs: plan
+    runs-on: windows-latest
+    timeout-minutes: 75
+    outputs:
+      thumbprint: ${{ steps.sign.outputs.thumbprint }}
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: probe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Closure check (only the agent's own code is compiled)
+        run: python tools/agent_closure.py --check
+
+      - name: Build the compiled agent (Nuitka)
+        run: powershell -ExecutionPolicy Bypass -File windows\build-agent-exe.ps1
+
+      - name: Smoke test the compiled agent
+        run: |
+          $exe = 'windows\dist\vedha-agent\vedha-agent.exe'
+          & $exe version;       if ($LASTEXITCODE -ne 0) { exit 1 }
+          & $exe hostid;        if ($LASTEXITCODE -ne 0) { exit 1 }
+          & $exe runtime-check; if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: No source or bytecode of ours in the output
+        run: |
+          $dist = (Resolve-Path 'windows\dist\vedha-agent').Path
+          $bad = Get-ChildItem $dist -Recurse -File -Include *.py,*.pyc |
+            Where-Object { $_.FullName.Substring($dist.Length + 1) -match '^(agent|scanner|workflow|main_scripts|cve|tests)\\' }
+          if ($bad) { $bad | ForEach-Object { Write-Error "shipped: $($_.FullName)" }; exit 1 }
+          if (Get-ChildItem $dist -Recurse -File -Filter 'findings*') { Write-Error 'findings module present'; exit 1 }
+
+      # Authenticode: sign the agent's own executable BEFORE it is packaged, then prove the
+      # signature. With no certificate configured the package ships unsigned and says so
+      # loudly - unless AGENT_REQUIRE_AUTHENTICODE=true, which turns that into a failure.
+      - name: Authenticode-sign vedha-agent.exe (when a certificate is configured)
+        id: sign
+        env:
+          PFX_BASE64: ${{ secrets.WINDOWS_CODESIGN_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PFX_PASSWORD }}
+          REQUIRE_SIGNING: ${{ vars.AGENT_REQUIRE_AUTHENTICODE }}
+          TIMESTAMP_URL: ${{ vars.WINDOWS_CODESIGN_TIMESTAMP_URL }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:PFX_BASE64) {
+            if ($env:REQUIRE_SIGNING -eq 'true') {
+              Write-Error 'AGENT_REQUIRE_AUTHENTICODE is true but no WINDOWS_CODESIGN_PFX_BASE64 secret is configured.'
+              exit 1
+            }
+            Write-Host '::warning title=Windows package is NOT Authenticode-signed::No code-signing certificate is configured. Windows installs rely on TLS, the SHA-256 pin and the signed manifest only, and SmartScreen / EDR will treat vedha-agent.exe as unsigned. Add WINDOWS_CODESIGN_PFX_BASE64 to sign it.'
+            "thumbprint=" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            exit 0
+          }
+          $pfx = Join-Path $env:RUNNER_TEMP 'codesign.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:PFX_BASE64))
+          $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My `
+                    -Password (ConvertTo-SecureString $env:PFX_PASSWORD -AsPlainText -Force)
+          $stamp = if ($env:TIMESTAMP_URL) { $env:TIMESTAMP_URL } else { 'http://timestamp.digicert.com' }
+          $exe = (Resolve-Path 'windows\dist\vedha-agent\vedha-agent.exe').Path
+          $result = Set-AuthenticodeSignature -FilePath $exe -Certificate $cert -HashAlgorithm SHA256 -TimestampServer $stamp
+          if ($result.Status -ne 'Valid') { Write-Error "Authenticode signing failed: $($result.Status) $($result.StatusMessage)"; exit 1 }
+          $check = Get-AuthenticodeSignature -FilePath $exe
+          if ($check.Status -ne 'Valid' -or $check.SignerCertificate.Thumbprint -ne $cert.Thumbprint) {
+            Write-Error 'signed executable does not verify against the certificate that signed it'; exit 1
+          }
+          "thumbprint=$($cert.Thumbprint)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "signed vedha-agent.exe with certificate $($cert.Thumbprint) ($($cert.Subject))"
+
+      - name: Remove the signing certificate from this runner
+        if: always()
+        run: |
+          Remove-Item (Join-Path $env:RUNNER_TEMP 'codesign.pfx') -Force -ErrorAction SilentlyContinue
+          Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.HasPrivateKey } |
+            Remove-Item -DeleteKey -ErrorAction SilentlyContinue
+
+      - name: Package (the release package has no manager baked in)
+        run: powershell -ExecutionPolicy Bypass -File windows\package-zip.ps1 -Release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: probe/windows/dist/vedha-probe-win.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  sign:
+    needs: [plan, test, images, sbom, windows-package]
+    runs-on: ubuntu-latest
+    environment: agent-release
+    outputs:
+      version: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install cryptography
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: staging
+
+      - name: Load the images built earlier
+        run: |
+          set -euo pipefail
+          for arch in amd64 arm64; do
+            gunzip -c "staging/image-$arch/image-$arch.tar.gz" | docker load
+          done
+
+      - name: Assemble, sign and verify the release
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          THUMBPRINT: ${{ needs.windows-package.outputs.thumbprint }}
+          ED25519_KEY: ${{ secrets.AGENT_RELEASE_SIGNING_KEY }}
+          P256_KEY: ${{ secrets.AGENT_RELEASE_P256_KEY }}
+          ED25519_PUB: ${{ vars.AGENT_RELEASE_PUBLIC_KEY }}
+          P256_PUB: ${{ vars.AGENT_RELEASE_P256_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          for name in ED25519_KEY P256_KEY ED25519_PUB P256_PUB; do
+            if [ -z "${!name}" ]; then
+              echo "::error title=Release signing is not configured::$name is empty. See manager/docs/AGENT_RELEASE.md (one-time setup)."
+              exit 1
+            fi
+          done
+          keys="$RUNNER_TEMP/release-keys"
+          ( umask 077; mkdir -p "$keys"
+            printf '%s\n' "$ED25519_KEY" > "$keys/ed25519.pem"
+            printf '%s\n' "$P256_KEY"    > "$keys/p256.pem" )
+          trap 'rm -rf "$keys"' EXIT
+
+          thumb_args=()
+          if [ -n "$THUMBPRINT" ]; then thumb_args=(--authenticode-thumbprint "$THUMBPRINT"); fi
+
+          python3 scripts/agent_release.py build \
+            --key "$keys/ed25519.pem" --p256-key "$keys/p256.pem" \
+            --out dist/agent-release --version "$VERSION" --arch amd64,arm64 \
+            --from-image "amd64=vedha-agent:build-amd64" --from-image "arm64=vedha-agent:build-arm64" \
+            --windows-zip staging/windows-package/vedha-probe-win.zip "${thumb_args[@]}" \
+            --sbom staging/sbom/sbom.cdx.json
+
+          # Verify against the PUBLIC keys pinned in repo variables, not against the key just used.
+          python3 scripts/agent_release.py verify "dist/agent-release/$VERSION" \
+            --public-key "$ED25519_PUB" --p256-public-key "$P256_PUB"
+
+      - name: Summary
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          THUMBPRINT: ${{ needs.windows-package.outputs.thumbprint }}
+        run: |
+          {
+            echo "### Agent release $VERSION"
+            echo
+            echo "| file | sha256 |"
+            echo "|---|---|"
+            for f in dist/agent-release/"$VERSION"/*; do
+              echo "| \`$(basename "$f")\` | \`$(sha256sum "$f" | cut -d' ' -f1)\` |"
+            done
+            echo
+            if [ -n "$THUMBPRINT" ]; then
+              echo "Windows executable Authenticode-signed, pinned thumbprint \`$THUMBPRINT\`."
+            else
+              echo "> **Windows executable is NOT Authenticode-signed** (no certificate configured)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-release-${{ needs.plan.outputs.version }}
+          path: dist/agent-release/${{ needs.plan.outputs.version }}
+          if-no-files-found: error
+          retention-days: 30
+
+  windows-verify:
+    needs: [plan, sign]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install cryptography
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-release-${{ needs.plan.outputs.version }}
+          path: release
+
+      # The signed release's own install.ps1, run exactly as a customer does (Windows PowerShell
+      # 5.1, scriptblock form) against a stub manager. Accept the honest release, refuse each lie.
+      - name: Honest release verifies (Windows PowerShell 5.1)
+        shell: pwsh
+        run: scripts/ci/windows-installer-e2e.ps1 -ReleaseDir release -ExpectOutput 'VERIFY-ONLY OK'
+
+      - name: Honest release verifies (PowerShell 7)
+        shell: pwsh
+        run: scripts/ci/windows-installer-e2e.ps1 -ReleaseDir release -Shell pwsh -ExpectOutput 'VERIFY-ONLY OK'
+
+      - name: Tampered releases and bad tokens are refused
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cases = @(
+            @{ Tamper = 'manifest';  Expect = 'manifest signature does not verify' },
+            @{ Tamper = 'signature'; Expect = 'manifest signature does not verify' },
+            @{ Tamper = 'package';   Expect = 'does not match the signed manifest' },
+            @{ Tamper = 'truncated'; Expect = 'signed manifest says' },
+            @{ Tamper = 'oversize';  Expect = 'larger than the signed manifest' },
+            @{ Tamper = 'redirect';  Expect = 'Redirects are refused' }
+          )
+          foreach ($c in $cases) {
+            scripts/ci/windows-installer-e2e.ps1 -ReleaseDir release -Tamper $c.Tamper -ExpectFailure $c.Expect
+          }
+          scripts/ci/windows-installer-e2e.ps1 -ReleaseDir release -ClientToken 'vet_not_the_token' -ExpectFailure 'install token was refused'
+
+      - name: cmd launcher validates its inputs
+        shell: cmd
+        run: |
+          call release\install.cmd http://127.0.0.1:1 vet_x
+          if %errorlevel% neq 2 (echo expected exit 2 for an http manager & exit /b 1)
+          call release\install.cmd https://m.example.com not-a-token
+          if %errorlevel% neq 2 (echo expected exit 2 for a bad token & exit /b 1)
+          call release\install.cmd
+          if %errorlevel% neq 1 (echo expected exit 1 for no arguments & exit /b 1)
+
+      # The Authenticode path would otherwise stay untested until a real certificate exists:
+      # sign the package with a throwaway self-signed certificate (trusted on this ephemeral
+      # runner only), wrap it in a throwaway-keyed test release that pins that certificate,
+      # and require the installer to accept it - and to refuse a wrong pin and an unsigned exe.
+      - name: Authenticode pinning (throwaway certificate)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $work = Join-Path $env:RUNNER_TEMP 'authenticode-selftest'
+          New-Item -ItemType Directory -Force -Path $work | Out-Null
+          $manifest = Get-Content (Join-Path 'release' 'manifest.json') -Raw | ConvertFrom-Json
+          $pkgFile = ($manifest.packages | Where-Object { $_.os -eq 'windows' }).file
+          $unsigned = Join-Path $work 'unsigned'
+          Expand-Archive -Path (Join-Path 'release' $pkgFile) -DestinationPath $unsigned
+
+          $cert = New-SelfSignedCertificate -Subject 'CN=Vedha CI Test Signing' -Type CodeSigningCert `
+                    -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(2)
+          $cer = Join-Path $work 'ci-test.cer'
+          Export-Certificate -Cert $cert -FilePath $cer | Out-Null
+          Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+          Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
+
+          $exe = Join-Path $unsigned 'vedha-agent\vedha-agent.exe'
+          $signedDir = Join-Path $work 'signed'
+          Copy-Item $unsigned $signedDir -Recurse
+          $r = Set-AuthenticodeSignature -FilePath (Join-Path $signedDir 'vedha-agent\vedha-agent.exe') -Certificate $cert -HashAlgorithm SHA256
+          if ($r.Status -ne 'Valid') { Write-Error "test signing failed: $($r.Status) $($r.StatusMessage)"; exit 1 }
+          $signedZip = Join-Path $work 'signed.zip'
+          $unsignedZip = Join-Path $work 'unsigned.zip'
+          Compress-Archive -Path (Join-Path $signedDir '*') -DestinationPath $signedZip
+          Compress-Archive -Path (Join-Path $unsigned '*') -DestinationPath $unsignedZip
+
+          python scripts/ci/make_test_release.py --windows-zip $signedZip --out (Join-Path $work 'pinned-ok') --thumbprint $cert.Thumbprint
+          python scripts/ci/make_test_release.py --windows-zip $signedZip --out (Join-Path $work 'wrong-pin') --thumbprint ('A' * 40)
+          python scripts/ci/make_test_release.py --windows-zip $unsignedZip --out (Join-Path $work 'unsigned-pinned') --thumbprint $cert.Thumbprint
+          $ok = Join-Path $work 'pinned-ok\release\0.0.0-ci'
+
+          scripts/ci/windows-installer-e2e.ps1 -ReleaseDir $ok -ExpectOutput 'Authenticode signature OK'
+          scripts/ci/windows-installer-e2e.ps1 -ReleaseDir (Join-Path $work 'wrong-pin\release\0.0.0-ci') -ExpectFailure 'not the one this release pins'
+          scripts/ci/windows-installer-e2e.ps1 -ReleaseDir (Join-Path $work 'unsigned-pinned\release\0.0.0-ci') -ExpectFailure 'meant to be Authenticode-signed'
+
+      # A real install of the real package: Scheduled Task, locked folder, token handling.
+      - name: Install smoke (packaged install.ps1, then uninstall)
+        shell: pwsh
+        run: |
+          $manifest = Get-Content (Join-Path 'release' 'manifest.json') -Raw | ConvertFrom-Json
+          $pkgFile = ($manifest.packages | Where-Object { $_.os -eq 'windows' }).file
+          scripts/ci/windows-install-smoke.ps1 -Package (Join-Path 'release' $pkgFile)
+
+  publish:
+    needs: [plan, sign, windows-verify]
+    if: needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # create the release and attach the files
+      id-token: write       # build-provenance attestation
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-release-${{ needs.plan.outputs.version }}
+          path: release
+      - name: Create the GitHub Release (releases are immutable)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            echo "::error title=Release exists::$TAG is already published. Releases are immutable; bump VERSION and tag again."
+            exit 1
+          fi
+          cat > notes.md <<NOTES
+          Vedha agent **$VERSION** - signed release.
+
+          Every file is covered by \`manifest.json\`, which carries an Ed25519 signature (Linux installs)
+          and an ECDSA P-256 signature (Windows installs). Do not install from these files by hand: pull
+          the release into your manager, which re-verifies both signatures, and use the one-command
+          installers from Fleet -> Add agent.
+
+              python3 scripts/agent_release.py pull --repo $REPO --tag $TAG --to <AGENT_RELEASE_DIR>
+
+          See manager/docs/AGENT_RELEASE.md.
+          NOTES
+          gh release create "$TAG" release/* --repo "$REPO" --target "$SHA" \
+            --title "Vedha agent $VERSION" --notes-file notes.md
+      - uses: actions/attest-build-provenance@v2
+        if: ${{ !github.event.repository.private }}
+        with:
+          subject-path: "release/*"

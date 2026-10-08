@@ -80,9 +80,11 @@ function Assert-CleanScope {
 }
 
 function Assert-Environment {
-  $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
-  if (-not $VerifyOnly -and -not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    throw 'Administrator rights are required (the agent is installed as a service). Open PowerShell with "Run as administrator" and run the command again, or use install.cmd.'
+  if (-not $VerifyOnly) {
+    $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+      throw 'Administrator rights are required (the agent is installed as a service). Open PowerShell with "Run as administrator" and run the command again, or use install.cmd.'
+    }
   }
   if (-not [Environment]::Is64BitOperatingSystem) { throw 'A 64-bit version of Windows is required.' }
   if ($PSVersionTable.PSVersion.Major -lt 5) { throw 'Windows PowerShell 5.1 or later is required.' }
@@ -268,7 +270,8 @@ function Protect-Directory([string]$Path) {
 function Expand-SafeZip([string]$ZipPath, [string]$Destination) {
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   New-Item -ItemType Directory -Force -Path $Destination | Out-Null
-  $root = [System.IO.Path]::GetFullPath($Destination).TrimEnd('\') + '\'
+  $sep = [System.IO.Path]::DirectorySeparatorChar
+  $root = [System.IO.Path]::GetFullPath($Destination).TrimEnd($sep) + $sep
   $zip = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
   try {
     if ($zip.Entries.Count -gt $script:MaxEntries) { throw 'The package holds an unreasonable number of files; refusing it.' }
@@ -279,7 +282,7 @@ function Expand-SafeZip([string]$ZipPath, [string]$Destination) {
       if ($name.StartsWith('/') -or $name.Contains(':') -or $name -match '(^|/)\.\.(/|$)' -or $name.IndexOf([char]0) -ge 0) {
         throw ("The package contains an unsafe path: '" + $entry.FullName + "'.")
       }
-      $target = [System.IO.Path]::GetFullPath((Join-Path $root $name.Replace('/', '\')))
+      $target = [System.IO.Path]::GetFullPath((Join-Path $root $name.Replace('/', $sep)))
       if (-not $target.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw ("The package contains a path outside the target folder: '" + $entry.FullName + "'.")
       }
@@ -309,7 +312,7 @@ function Install-VedhaAgent {
     $stage = Join-Path ([System.IO.Path]::GetTempPath()) ('vedha-verify-' + [guid]::NewGuid().ToString('N'))
   } else {
     Protect-Directory $root
-    $stage = Join-Path $root ('staging\' + [guid]::NewGuid().ToString('N'))
+    $stage = Join-Path (Join-Path $root 'staging') ([guid]::NewGuid().ToString('N'))
   }
   New-Item -ItemType Directory -Force -Path $stage | Out-Null
   try {
@@ -324,7 +327,7 @@ function Install-VedhaAgent {
 
     $unpacked = Join-Path $stage 'unpacked'
     Expand-SafeZip $zipPath $unpacked
-    $exe = Join-Path $unpacked 'vedha-agent\vedha-agent.exe'
+    $exe = Join-Path (Join-Path $unpacked 'vedha-agent') 'vedha-agent.exe'
     $inner = Join-Path $unpacked 'install.ps1'
     if (-not (Test-Path -LiteralPath $exe) -or -not (Test-Path -LiteralPath $inner)) {
       throw 'The package is incomplete (vedha-agent.exe or install.ps1 missing). If security software quarantined a file, allow it and run the command again.'
