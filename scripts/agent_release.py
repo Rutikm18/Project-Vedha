@@ -5,9 +5,10 @@ Vedha is centrally hosted, so customers never pull the agent from a public
 registry: the manager serves it (manager/backend/app/routers/agent_distribution.py)
 from a signed release built here.
 
-    keygen  --out FILE                 new Ed25519 release key (keep it OFF the server)
+    keygen  --out FILE [--p256-out FILE]   new Ed25519 release key (+ P-256 key for Windows)
     build   --key FILE [--arch amd64,arm64] [--out DIR] [--from-image TAG]
-    verify  DIR --public-key B64       what the manager checks, before you ship
+            [--p256-key FILE --windows-zip ZIP [--authenticode-thumbprint HEX]] [--sbom FILE]
+    verify  DIR --public-key B64 [--p256-public-key B64]
     publish DIR --to DEST              DEST = local dir or user@host:/path (rsync)
 
 A release directory looks like:
@@ -17,6 +18,15 @@ A release directory looks like:
     <out>/<version>/manifest.json.sig  base64 Ed25519 signature of manifest.json
     <out>/<version>/install.sh         probe/install.sh with the release key embedded
     <out>/<version>/vedha-agent-<version>-<arch>.tar.gz
+    # Windows (only when --windows-zip is given; schema 2):
+    <out>/<version>/manifest.json.p256.sig   ECDSA P-256 signature of manifest.json
+    <out>/<version>/install.ps1 + install.cmd   the Windows installer + launcher
+    <out>/<version>/vedha-agent-<version>-windows-amd64.zip
+    <out>/<version>/sbom.cdx.json
+
+Why two signatures: install.sh verifies Ed25519 with OpenSSL. Windows PowerShell
+5.1 / .NET Framework cannot verify Ed25519, but can verify ECDSA P-256 through
+CNG, so Windows installs check the same manifest against a P-256 signature.
 
 Signing needs Python's `cryptography` (the backend venv has it). macOS's
 LibreSSL cannot do Ed25519, which is why this is Python and not openssl.
@@ -41,6 +51,13 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 PROBE_DIR = REPO / "probe"
 INSTALLER = PROBE_DIR / "install.sh"
+WIN_INSTALLER = PROBE_DIR / "windows" / "install-remote.ps1"
+WIN_LAUNCHER = PROBE_DIR / "windows" / "install-remote.cmd"
+P256_SIG_FILE = "manifest.json.p256.sig"
+WIN_PACKAGE_OS, WIN_PACKAGE_CPU = "windows", "amd64"
+P256_MARKER = re.compile(r"^\$script:VedhaReleaseP256Spki = ''(.*)$", re.MULTILINE)
+WIN_VERSION_MARKER = re.compile(r"^\$script:VedhaReleaseVersion = ''(.*)$", re.MULTILINE)
+_THUMBPRINT_RE = re.compile(r"[0-9A-Fa-f]{40}")
 ARCHES = ("amd64", "arm64")
 IMAGE_REPO = "vedha-agent"
 SPKI_MARKER = re.compile(r'^VEDHA_RELEASE_SPKI=""(.*)$', re.MULTILINE)
@@ -123,6 +140,79 @@ def keygen(out: Path) -> str:
     return public_raw_b64(key)
 
 
+
+# ── P-256 key (Windows verification) ─────────────────────────────────────────
+
+def _ec():
+    try:
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.primitives.asymmetric.utils import (
+            decode_dss_signature, encode_dss_signature,
+        )
+    except ImportError as exc:  # pragma: no cover - environment dependent
+        raise ReleaseError("Python 'cryptography' is required to sign releases.") from exc
+    return hashes, serialization, ec, decode_dss_signature, encode_dss_signature
+
+
+def load_p256_private_key(path: Path):
+    _, serialization, ec, _, _ = _ec()
+    key = serialization.load_pem_private_key(path.read_bytes(), password=None)
+    if not isinstance(key, ec.EllipticCurvePrivateKey) or not isinstance(key.curve, ec.SECP256R1):
+        raise ReleaseError(f"{path} is not a P-256 (secp256r1) private key")
+    return key
+
+
+def p256_spki_b64(private_key) -> str:
+    """Base64 DER SubjectPublicKeyInfo — the form installers embed and the manager
+    is configured with (AGENT_RELEASE_P256_PUBLIC_KEY)."""
+    _, serialization, _, _, _ = _ec()
+    der = private_key.public_key().public_bytes(
+        serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
+    return base64.b64encode(der).decode()
+
+
+def p256_key_id(spki_b64: str) -> str:
+    return hashlib.sha256(base64.b64decode(spki_b64, validate=True)).hexdigest()[:16]
+
+
+def keygen_p256(out: Path) -> str:
+    _, serialization, ec, _, _ = _ec()
+    if out.exists():
+        raise ReleaseError(f"{out} already exists — refusing to overwrite a release key")
+    key = ec.generate_private_key(ec.SECP256R1())
+    pem = key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(pem)
+    return p256_spki_b64(key)
+
+
+def sign_manifest_p256(private_key, manifest_bytes: bytes) -> str:
+    """ECDSA-SHA256 as base64 of the 64-byte IEEE P1363 form (r || s). That is the
+    encoding .NET's ECDsa.VerifyData expects; OpenSSL/Python emit ASN.1 DER."""
+    hashes, _, ec, decode_dss_signature, _ = _ec()
+    r, s = decode_dss_signature(private_key.sign(manifest_bytes, ec.ECDSA(hashes.SHA256())))
+    return base64.b64encode(r.to_bytes(32, "big") + s.to_bytes(32, "big")).decode()
+
+
+def verify_manifest_p256(spki_b64: str, signature_b64: str, manifest_bytes: bytes) -> None:
+    hashes, serialization, ec, _, encode_dss_signature = _ec()
+    try:
+        raw = base64.b64decode(signature_b64.strip(), validate=True)
+        if len(raw) != 64:
+            raise ValueError("signature must be 64 bytes")
+        public = serialization.load_der_public_key(base64.b64decode(spki_b64, validate=True))
+        if not isinstance(public, ec.EllipticCurvePublicKey) or not isinstance(public.curve, ec.SECP256R1):
+            raise ValueError("not a P-256 key")
+        public.verify(encode_dss_signature(int.from_bytes(raw[:32], "big"), int.from_bytes(raw[32:], "big")),
+                      manifest_bytes, ec.ECDSA(hashes.SHA256()))
+    except Exception as exc:
+        raise ReleaseError("manifest P-256 signature does not verify with this public key") from exc
+
+
 # ── build ────────────────────────────────────────────────────────────────────
 
 def embed_installer(source: Path, dest: Path, *, spki_b64: str, version: str) -> None:
@@ -137,6 +227,21 @@ def embed_installer(source: Path, dest: Path, *, spki_b64: str, version: str) ->
     text = VERSION_MARKER.sub(lambda m: f'VEDHA_RELEASE_VERSION="{version}"{m.group(1)}', text, count=1)
     dest.write_text(text, encoding="utf-8")
     dest.chmod(0o755)
+
+
+
+def embed_windows_installer(source: Path, dest: Path, *, p256_spki: str, version: str) -> None:
+    """Copy install-remote.ps1 with the P-256 release key and version baked in.
+    Exactly-one-marker rule, same as embed_installer."""
+    if not source.is_file():
+        raise ReleaseError(f"Windows installer source {source} not found")
+    text = source.read_text(encoding="utf-8")
+    for marker, label in ((P256_MARKER, "VedhaReleaseP256Spki"), (WIN_VERSION_MARKER, "VedhaReleaseVersion")):
+        if len(marker.findall(text)) != 1:
+            raise ReleaseError(f"{source} must contain exactly one `$script:{label} = ''` line")
+    text = P256_MARKER.sub(lambda m: f"$script:VedhaReleaseP256Spki = '{p256_spki}'{m.group(1)}", text, count=1)
+    text = WIN_VERSION_MARKER.sub(lambda m: f"$script:VedhaReleaseVersion = '{version}'{m.group(1)}", text, count=1)
+    dest.write_text(text, encoding="utf-8", newline="\r\n")
 
 
 def host_arch() -> str:
@@ -194,7 +299,22 @@ def build_release(
     builder=build_image,
     saver=save_image,
     installer_source: Path = INSTALLER,
+    p256_key_path: Path | None = None,
+    windows_zip: Path | None = None,
+    authenticode_thumbprint: str | None = None,
+    sbom_path: Path | None = None,
+    windows_installer_source: Path = WIN_INSTALLER,
+    windows_launcher_source: Path = WIN_LAUNCHER,
 ) -> Path:
+    if windows_zip is not None:
+        if p256_key_path is None:
+            raise ReleaseError("a Windows package needs --p256-key: Windows verifies the P-256 signature")
+        if not windows_zip.is_file():
+            raise ReleaseError(f"Windows package {windows_zip} not found")
+    if authenticode_thumbprint is not None and not _THUMBPRINT_RE.fullmatch(authenticode_thumbprint):
+        raise ReleaseError("--authenticode-thumbprint must be the 40-hex SHA-1 thumbprint of the signing certificate")
+    if authenticode_thumbprint is not None and windows_zip is None:
+        raise ReleaseError("--authenticode-thumbprint only applies with --windows-zip")
     for arch in arches:
         if arch not in ARCHES:
             raise ReleaseError(f"unsupported architecture {arch!r} (supported: {', '.join(ARCHES)})")
@@ -202,6 +322,8 @@ def build_release(
         raise ReleaseError(f"invalid version {version!r}")
     private_key = load_private_key(key_path)
     raw_b64 = public_raw_b64(private_key)
+    p256_key = load_p256_private_key(p256_key_path) if p256_key_path else None
+    p256_spki = p256_spki_b64(p256_key) if p256_key else ""
 
     out.mkdir(parents=True, exist_ok=True)
     final = out / version
@@ -239,10 +361,47 @@ def build_release(
             "images": images,
             "signing_key_id": key_id(raw_b64),
         }
+
+        # ── schema 2 additions (Windows package, SBOM). Without them the manifest
+        # stays exactly the schema-1 shape older managers and install.sh expect.
+        if windows_zip is not None:
+            win_installer = staging / "install.ps1"
+            embed_windows_installer(windows_installer_source, win_installer,
+                                    p256_spki=p256_spki, version=version)
+            launcher = staging / "install.cmd"
+            if not windows_launcher_source.is_file():
+                raise ReleaseError(f"Windows launcher source {windows_launcher_source} not found")
+            launcher.write_bytes(windows_launcher_source.read_bytes())
+            pkg_name = f"{IMAGE_REPO}-{version}-{WIN_PACKAGE_OS}-{WIN_PACKAGE_CPU}.zip"
+            shutil.copyfile(windows_zip, staging / pkg_name)
+            # Entries use "cpu", never "arch": install.sh's awk reader keys on
+            # `"arch":` to find a Docker image and must not see these.
+            package = {
+                "os": WIN_PACKAGE_OS, "cpu": WIN_PACKAGE_CPU, "file": pkg_name,
+                "sha256": sha256_file(staging / pkg_name),
+                "size": (staging / pkg_name).stat().st_size,
+            }
+            if authenticode_thumbprint:
+                package["authenticode_thumbprint"] = authenticode_thumbprint.upper()
+            manifest["packages"] = [package]
+            manifest["windows_installer"] = {"file": "install.ps1", "sha256": sha256_file(win_installer)}
+            manifest["windows_launcher"] = {"file": "install.cmd", "sha256": sha256_file(launcher)}
+            manifest["p256_key_id"] = p256_key_id(p256_spki)
+        if sbom_path is not None:
+            if not sbom_path.is_file():
+                raise ReleaseError(f"SBOM {sbom_path} not found")
+            shutil.copyfile(sbom_path, staging / "sbom.cdx.json")
+            manifest["sbom"] = {"file": "sbom.cdx.json", "sha256": sha256_file(staging / "sbom.cdx.json")}
+        if "packages" in manifest or "sbom" in manifest:
+            manifest["schema"] = 2
+
         manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode()
         (staging / "manifest.json").write_bytes(manifest_bytes)
         (staging / "manifest.json.sig").write_text(sign_manifest(private_key, manifest_bytes) + "\n")
-        verify_release_dir(staging, raw_b64, expect_version=version)
+        if p256_key is not None:
+            (staging / P256_SIG_FILE).write_text(sign_manifest_p256(p256_key, manifest_bytes) + "\n")
+        verify_release_dir(staging, raw_b64, expect_version=version,
+                           p256_public_key_b64=p256_spki or None)
         staging.rename(final)
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)
@@ -259,8 +418,11 @@ def _write_current(root: Path, version: str) -> None:
 
 # ── verify ───────────────────────────────────────────────────────────────────
 
-def verify_release_dir(directory: Path, public_key_b64: str, *, expect_version: str | None = None) -> dict:
-    """Signature, file names and hashes — the same checks the manager runs."""
+def verify_release_dir(directory: Path, public_key_b64: str, *, expect_version: str | None = None,
+                       p256_public_key_b64: str | None = None) -> dict:
+    """Signature(s), file names and hashes — the same checks the manager runs.
+    A manifest that lists a Windows package must also carry a P-256 signature,
+    and the caller must supply the P-256 key to check it against."""
     _, _, Ed25519PublicKey = _crypto()
     manifest_bytes = (directory / "manifest.json").read_bytes()
     signature = base64.b64decode((directory / "manifest.json.sig").read_bytes().strip(), validate=True)
@@ -273,6 +435,19 @@ def verify_release_dir(directory: Path, public_key_b64: str, *, expect_version: 
     if expect_version is not None and manifest.get("version") != expect_version:
         raise ReleaseError("manifest version mismatch")
     entries = [("installer", manifest["installer"])] + [(f"{i['arch']} image", i) for i in manifest["images"]]
+    has_windows = bool(manifest.get("packages"))
+    if has_windows:
+        if not p256_public_key_b64:
+            raise ReleaseError("release has a Windows package: pass the P-256 public key to verify it")
+        p256_sig = directory / P256_SIG_FILE
+        if not p256_sig.is_file():
+            raise ReleaseError(f"release has a Windows package but no {P256_SIG_FILE}")
+        verify_manifest_p256(p256_public_key_b64, p256_sig.read_text(encoding="utf-8"), manifest_bytes)
+        entries += [("windows installer", manifest["windows_installer"]),
+                    ("windows launcher", manifest["windows_launcher"])]
+        entries += [(f"{p['os']}/{p['cpu']} package", p) for p in manifest["packages"]]
+    if manifest.get("sbom"):
+        entries.append(("sbom", manifest["sbom"]))
     for label, entry in entries:
         name = entry["file"]
         if "/" in name or name.startswith("."):
@@ -285,6 +460,12 @@ def verify_release_dir(directory: Path, public_key_b64: str, *, expect_version: 
     installer_text = (directory / manifest["installer"]["file"]).read_text(encoding="utf-8")
     if f'VEDHA_RELEASE_SPKI="{spki_b64_from_raw(public_key_b64)}"' not in installer_text:
         raise ReleaseError("installer does not embed this release key")
+    if has_windows:
+        win_text = (directory / manifest["windows_installer"]["file"]).read_text(encoding="utf-8")
+        if f"$script:VedhaReleaseP256Spki = '{p256_public_key_b64}'" not in win_text:
+            raise ReleaseError("Windows installer does not embed this release key")
+        if f"$script:VedhaReleaseVersion = '{manifest['version']}'" not in win_text:
+            raise ReleaseError("Windows installer does not embed this release version")
     return manifest
 
 
@@ -339,6 +520,7 @@ def main(argv: list[str] | None = None) -> int:
 
     kg = sub.add_parser("keygen", help="create a new Ed25519 release signing key")
     kg.add_argument("--out", required=True, type=Path)
+    kg.add_argument("--p256-out", type=Path, help="also create the P-256 key Windows installs verify")
 
     bd = sub.add_parser("build", help="build + sign a release")
     bd.add_argument("--key", required=True, type=Path)
@@ -347,10 +529,16 @@ def main(argv: list[str] | None = None) -> int:
     bd.add_argument("--version", default=None)
     bd.add_argument("--from-image", action="append", default=[], metavar="ARCH=TAG",
                     help="package an existing local image instead of building (repeatable)")
+    bd.add_argument("--p256-key", type=Path, help="P-256 key (needed with --windows-zip)")
+    bd.add_argument("--windows-zip", type=Path, help="built Windows agent package to include")
+    bd.add_argument("--authenticode-thumbprint", default=None,
+                    help="SHA-1 thumbprint of the cert the Windows exe is Authenticode-signed with")
+    bd.add_argument("--sbom", type=Path, help="CycloneDX SBOM to include")
 
     vf = sub.add_parser("verify", help="verify a release directory")
     vf.add_argument("path", type=Path)
     vf.add_argument("--public-key", required=True)
+    vf.add_argument("--p256-public-key", default=None, help="base64 SPKI; needed for releases with a Windows package")
 
     pb = sub.add_parser("publish", help="copy a release into the manager's store")
     pb.add_argument("path", type=Path)
@@ -364,6 +552,11 @@ def main(argv: list[str] | None = None) -> int:
             print("Add this line to the manager's .env, then restart the api:")
             print(f"AGENT_RELEASE_PUBLIC_KEY={pub}")
             print(f"(key id {key_id(pub)})")
+            if args.p256_out:
+                spki = keygen_p256(args.p256_out)
+                print(f"\nP-256 key (Windows) written to {args.p256_out} (mode 600).")
+                print(f"AGENT_RELEASE_P256_PUBLIC_KEY={spki}")
+                print(f"(key id {p256_key_id(spki)})")
         elif args.cmd == "build":
             arches = [a.strip() for a in args.arch.split(",") if a.strip()]
             from_images = {}
@@ -375,12 +568,17 @@ def main(argv: list[str] | None = None) -> int:
                 if arch in ARCHES and image_arch(tag) not in (arch, ""):
                     raise ReleaseError(f"{tag} is {image_arch(tag)}, not {arch}")
             final = build_release(key_path=args.key, out=args.out, arches=arches,
-                                  version=args.version or read_version(), from_images=from_images)
+                                  version=args.version or read_version(), from_images=from_images,
+                                  p256_key_path=args.p256_key, windows_zip=args.windows_zip,
+                                  authenticode_thumbprint=args.authenticode_thumbprint,
+                                  sbom_path=args.sbom)
             print(f"\nRelease ready: {final}")
             print(f"Publish:  python3 scripts/agent_release.py publish {final} --to <user@manager:/path or dir>")
         elif args.cmd == "verify":
-            manifest = verify_release_dir(resolve_release_dir(args.path), args.public_key)
-            arches = ", ".join(i["arch"] for i in manifest["images"])
+            manifest = verify_release_dir(resolve_release_dir(args.path), args.public_key,
+                                          p256_public_key_b64=args.p256_public_key)
+            arches = ", ".join([i["arch"] for i in manifest["images"]]
+                               + [f"{p['os']}/{p['cpu']}" for p in manifest.get("packages", [])])
             print(f"OK: release {manifest['version']} ({arches}) is signed by key {key_id(args.public_key)} and intact")
         elif args.cmd == "publish":
             publish(args.path, args.to)
