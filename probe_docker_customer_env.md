@@ -591,7 +591,7 @@ the exe *is* the daemon). Full guide: `probe/windows/README.md`.
 | T2 | `install.ps1` + `install.cmd` | SYSTEM scheduled task (reboot-surviving), UAC-elevated | customer |
 | T3 | `uninstall.ps1` + `uninstall.cmd` | remove task; `-Purge` wipes identity | customer |
 | T4 | `build-agent-exe.ps1` | compile `agent/agent.py` → `vedha-agent.exe` (PyInstaller/Nuitka) | you (Windows) |
-| T5 | `package-zip.ps1` | assemble `vedha-probe-win.zip` | you (Windows) |
+| T5 | `package-zip.ps1` | assemble `vedha-agent-win.zip` | you (Windows) |
 | T6 | `README-CUSTOMER.txt`, `probe.env.template` | in-zip instructions + config | ship |
 | T7 | `README.md`, `.gitignore` | operator guide; keep artifacts out of git | repo |
 
@@ -600,7 +600,7 @@ the exe *is* the daemon). Full guide: `probe/windows/README.md`.
 cd probe\windows
 powershell -ExecutionPolicy Bypass -File build-agent-exe.ps1     # -> dist\vedha-agent.exe
 .\dist\vedha-agent.exe hostid                                    # smoke test
-powershell -ExecutionPolicy Bypass -File package-zip.ps1         # -> dist\vedha-probe-win.zip
+powershell -ExecutionPolicy Bypass -File package-zip.ps1         # -> dist\vedha-agent-win.zip
 ```
 
 **Customer runs (from the ZIP):** `run.cmd` to test → `install.cmd` (Run as

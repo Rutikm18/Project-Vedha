@@ -1,0 +1,12 @@
+# Gitleaks configuration for Project-Vedha. The default ruleset stays on; this only
+# allowlists deliberately fake credentials used to test the redaction code.
+title = "Project-Vedha gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake credentials that exist to prove the support-bundle redaction works"
+paths = [
+  '''probe/tests/test_diagnostics\.py''',
+]
