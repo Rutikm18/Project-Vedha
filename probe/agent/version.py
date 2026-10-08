@@ -10,4 +10,4 @@ tools/check_agent_version.py (run in CI) fails a change that alters the agent's
 code without changing this value.
 """
 
-AGENT_VERSION = "2.2.2"
+AGENT_VERSION = "2.2.3"
