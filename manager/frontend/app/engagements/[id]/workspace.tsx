@@ -584,7 +584,7 @@ export function EngagementWorkspace({
           </nav>
           <div className="engagement-toolbar-links">
             {surface === "manager" && (
-              <Link href={`/engagements/${encodeURIComponent(id)}/attack-paths`} className="engagement-attack-link"><Route size={15} /> Attack paths</Link>
+              <Link href={`/engagements/${encodeURIComponent(id)}/attack-paths`} className="engagement-attack-link"><Route size={15} /> Attack paths <span className="badge badge-info">Beta</span></Link>
             )}
             <Link href={surface === "portal" ? "/portal/reports" : "/reports"} className="engagement-report-link"><FileText size={15} /> Reports <span className="badge badge-info">Beta</span></Link>
           </div>
