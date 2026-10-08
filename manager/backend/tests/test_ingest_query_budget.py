@@ -72,7 +72,7 @@ def test_new_hosts_cost_a_constant_number_of_queries(hosts):
 def test_known_hosts_are_updated_without_per_host_lookups():
     known = [SimpleNamespace(id=uuid.uuid4(), ip_address=f"10.1.0.{i + 1}", hostname=None, os=None,
                              last_seen=None, asset_type=None, device_role=None, role_detail=None,
-                             role_confidence=None, tags=None) for i in range(200)]
+                             role_confidence=None, tags=None, site_id=None) for i in range(200)]
     db = CountingDB(assets=known)
     promoted = _run(db, _result(200))
     assert promoted == 0 and db.executes <= 2
@@ -104,7 +104,7 @@ class AssetDB(CountingDB):
 
 
 def _existing(n):
-    return [SimpleNamespace(id=uuid.uuid4(), ip_address=f"10.5.0.{i}") for i in range(1, n + 1)]
+    return [SimpleNamespace(id=uuid.uuid4(), ip_address=f"10.5.0.{i}", site_id=None) for i in range(1, n + 1)]
 
 
 def test_priming_resolves_a_whole_run_in_one_query_per_thousand_hosts():
