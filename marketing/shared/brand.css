@@ -1,0 +1,16 @@
+/* Vedha brand, shared by all marketing assets (tokens from manager/frontend/app/globals.css). */
+@font-face { font-family: "Instrument Serif"; src: url(/node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "Geist Sans"; font-weight: 400; src: url(/node_modules/@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "Geist Sans"; font-weight: 500; src: url(/node_modules/@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2) format("woff2"); }
+@font-face { font-family: "Geist Sans"; font-weight: 600; src: url(/node_modules/@fontsource/geist-sans/files/geist-sans-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: "Geist Mono"; font-weight: 500; src: url(/node_modules/@fontsource/geist-mono/files/geist-mono-latin-500-normal.woff2) format("woff2"); }
+@font-face { font-family: "Tiro Devanagari Hindi"; src: url(/node_modules/@fontsource/tiro-devanagari-hindi/files/tiro-devanagari-hindi-devanagari-400-normal.woff2) format("woff2"); unicode-range: U+0900-097F, U+200C-200D, U+25CC; }
+:root {
+  --blue: #1D4ED8; --blue-night: #60A5FA; --teal: #0F766E; --night: #060B14; --day: #F3F6FA;
+  --text: #0F172A; --text-2: #475569; --border: #DCE3EC;
+  --serif: "Instrument Serif", "Tiro Devanagari Hindi", serif;
+  --sans: "Geist Sans", "Tiro Devanagari Hindi", sans-serif;
+  --mono: "Geist Mono", monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { -webkit-font-smoothing: antialiased; }
