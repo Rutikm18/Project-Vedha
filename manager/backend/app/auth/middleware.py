@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import ipaddress
 import json
 import re
 import uuid
@@ -102,6 +103,25 @@ def agent_jwt_path_allows(path: str, method: str) -> bool:
     return False
 
 
+# Loopback, RFC 1918 and IPv6 unique-local. Not ipaddress.is_private, which also
+# counts documentation and other special-purpose ranges as "private".
+_INTERNAL_NETWORKS = tuple(ipaddress.ip_network(n) for n in (
+    "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "::1/128", "fc00::/7",
+))
+
+
+def _internal_caller(request: Request) -> bool:
+    """True for loopback and private-network callers (the Docker network, a LAN
+    scraper). Behind Caddy the client is the real visitor, because uvicorn only
+    trusts forwarded addresses from the Docker networks."""
+    host = request.client.host if request.client else ""
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return any(ip in net for net in _INTERNAL_NETWORKS)
+
+
 class TenantIsolationMiddleware(BaseHTTPMiddleware):
     """
     Extracts JWT from Authorization header and injects tenant_id + user
@@ -111,6 +131,10 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         path = request.url.path
+        if path == "/metrics" and not _internal_caller(request):
+            # Prometheus metrics (routes, traffic, latencies) are for the scraper
+            # on the internal network, not for anyone on the public API host.
+            return Response(content='{"detail":"Not Found"}', status_code=404, media_type="application/json")
         if (
             path in _PUBLIC_PATHS
             or path.startswith(_PUBLIC_PREFIXES)

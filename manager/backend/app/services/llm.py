@@ -26,7 +26,7 @@ from app.ai.failures import (
 )
 from app.ai.headroom import headroom_cooldown
 from app.ai.health import ProviderHealth
-from app.ai.kv import KvStore, default_kv
+from app.ai.kv import KvStore, answer_kv, default_kv
 from app.ai.spend import SpendMeter
 from app.ai.routing import (
     FREE,
@@ -523,7 +523,8 @@ class ManagerLlmService:
         self._kv = kv or default_kv()
         self.health = ProviderHealth(self._kv)
         self.spend = SpendMeter(self._kv, self.settings)
-        self.answers = AnswerStore(self._kv, self.settings.ai_answer_cache_ttl_seconds)
+        # An injected kv (tests) holds everything; otherwise answers use the cache store.
+        self.answers = AnswerStore(self._kv if kv else answer_kv(), self.settings.ai_answer_cache_ttl_seconds)
 
     def _sovereign(self) -> bool:
         return (self.settings.deployment_profile or "").strip().lower() == "sovereign"
