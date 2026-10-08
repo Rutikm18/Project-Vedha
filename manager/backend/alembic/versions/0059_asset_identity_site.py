@@ -9,8 +9,8 @@
 Every existing row keeps site_id NULL, so behaviour is unchanged until an
 engagement opts in. ON DELETE SET NULL: retiring a site must not delete assets.
 
-Revision ID: 0055
-Revises: 0054
+Revision ID: 0059
+Revises: 0058
 """
 from typing import Sequence, Union
 
@@ -18,8 +18,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0055"
-down_revision: Union[str, None] = "0054"
+revision: str = "0059"
+down_revision: Union[str, None] = "0058"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
