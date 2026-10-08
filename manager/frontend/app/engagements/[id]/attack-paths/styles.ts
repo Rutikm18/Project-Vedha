@@ -16,6 +16,7 @@ export const ATTACK_PATH_STYLES = `
 .ap-status-text strong { color: var(--text-primary); font-size: 13px; }
 .ap-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .ap-fine { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--text-muted); }
+.ap-beta { color: var(--text-secondary); }
 
 .ap-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: var(--r-pill); font-size: 11px; font-weight: 600; border: 0.5px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); white-space: nowrap; }
 .ap-chip[data-tone="firm"] { color: var(--nominal-color); border-color: var(--nominal-color); }

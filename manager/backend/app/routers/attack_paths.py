@@ -1,5 +1,6 @@
 """
-Attack path analysis API (AttackPathService).
+Attack path analysis API (AttackPathService) — BETA: the model, ranking and
+response shapes may still change.
 
 GET /engagements/{id}/attack-paths            — paginated paths sorted by risk
 GET /engagements/{id}/attack-paths/{path_id}  — full path detail, hop-by-hop
@@ -37,7 +38,7 @@ from app.models.enums import AssetCriticality
 from app.models.probe_site import ProbeSite
 from app.utils.db import get_or_404
 
-router = APIRouter(prefix="/engagements/{engagement_id}", tags=["attack-paths"])
+router = APIRouter(prefix="/engagements/{engagement_id}", tags=["attack-paths (beta)"])
 logger = structlog.get_logger()
 
 

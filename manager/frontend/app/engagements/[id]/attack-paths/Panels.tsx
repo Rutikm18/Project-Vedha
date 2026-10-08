@@ -8,6 +8,21 @@ import {
   type Analysis, type ChokeAnalysis, type Diagnostics, type PathDetail, type PathSummary,
 } from "../../../../lib/attack-paths";
 
+// ── Beta ─────────────────────────────────────────────────────────────────────
+
+/** Attack paths is a beta feature. Says so, and says what that means in practice:
+ *  the specific limits of today's model, not a generic "may change". */
+export function BetaNotice() {
+  return (
+    <p className="ap-fine ap-beta">
+      <span className="badge badge-info">Beta</span>{" "}
+      Attack paths is in beta. Routes use only findings already marked exploitable and network
+      reachability inferred from addressing, so a network can show few or no routes without being safe.
+      Crown jewels are the assets you mark critical. Wording, ranking and the API may change.
+    </p>
+  );
+}
+
 // ── What these paths do not cover ────────────────────────────────────────────
 
 export function CoveragePanel({ analysis }: { analysis: Analysis | undefined }) {

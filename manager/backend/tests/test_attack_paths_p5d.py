@@ -354,3 +354,8 @@ def test_no_targets_message_does_not_claim_an_auto_selection():
     reasons = PathAnalyzer(nx.MultiDiGraph()).diagnose([])["reasons"]
     detail = next(r["detail"] for r in reasons if r["code"] == "no_targets")
     assert "auto" not in detail.lower() and "marked critical" in detail
+
+
+def test_the_api_is_labelled_beta():
+    assert R.router.tags == ["attack-paths (beta)"]
+    assert "BETA" in (R.__doc__ or "")
