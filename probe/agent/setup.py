@@ -141,7 +141,20 @@ def cmd_collect_diagnostics(args) -> int:
     return 0
 
 
+def _force_utf8_streams() -> None:
+    """Same guard as agent.agent: a cp1252 Windows console cannot encode the arrows and check
+    marks that doctor/connect print, and that used to crash `setup doctor` with UnicodeEncodeError."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _force_utf8_streams()
     args = build_parser().parse_args(argv)
     # thread the security mode down (connect reads args.strict/insecure directly)
     return {
