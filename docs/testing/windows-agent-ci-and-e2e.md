@@ -17,6 +17,7 @@ installer refuses: **never send a package from a pull request run.**
 | 1 | Closure check (`tools/agent_closure.py --check`) | only the agent's own 77 modules are compiled; no blocked module or dynamic import |
 | 2 | PowerShell scripts parse | all installer, packaging and test scripts are valid PowerShell |
 | 3 | Installer logic tests, PowerShell 7 **and** Windows PowerShell 5.1 | the installer's helper functions (settings text, token and scope checks, integrity check, permission check, hashing, folder removal) behave; 5.1 is what customers run |
+| 3b | **Hosted one-command download tests** (PowerShell 7 and 5.1): `windows/hosting/tests/Test-Get.ps1` | `hosting/get.ps1`'s checks and its whole download, hash check and unpack against a web server on the runner (51 assertions) |
 | 4 | Restore Nuitka cache | warm compile |
 | 5 | **Build the compiled agent (Nuitka)** | the agent compiles with MinGW gcc, then `runtime-check` runs on the compiled exe |
 | 6 | Save Nuitka cache | kept even if a later step fails |
@@ -25,7 +26,7 @@ installer refuses: **never send a package from a pull request run.**
 | 9 | No source or bytecode of ours in the output | no `.py`/`.pyc` from our packages, no `findings` module |
 | 10 | Package | `package-zip.ps1` builds the zip with the manager address, checksums and allow-list |
 | 11 | **Install the customer package for real (end to end)** | section 3 |
-| 12 | Upload artifact `vedha-agent-windows` | the zip and its `.sha256` |
+| 12 | Upload artifact `vedha-agent-windows` | the zip, its `.sha256` and `vedha-agent-win.release.json` (read by `publish-to-s3.sh`) |
 
 Typical time: a warm build about 5 minutes of compiling plus about 2 minutes of tests; a cold build
 28-38 minutes; the first run after adding new modules (for example the `websockets` package) compiles
@@ -58,7 +59,7 @@ a manager address where nothing listens (`https://127.0.0.1:9`), and then remove
 **installs and removes the agent on the machine it runs on**, so it refuses to run anywhere except
 GitHub Actions unless `-Force` is given, and refuses if an agent is already installed.
 
-The 22 checks:
+The 25 checks:
 
 | Group | Check |
 |---|---|
@@ -68,6 +69,7 @@ The 22 checks:
 | The running agent | starts and reports "cannot reach the manager" with why and the fix · writes a readable log file |
 | Troubleshooting | `doctor` explains and exits non-zero · `status` prints a summary · `support-bundle` has the diagnosis and no secret |
 | Repair and removal | `-Repair` keeps the settings and removes the leftover token · `-Uninstall` removes the program and task, keeps identity and logs · `-Uninstall -Purge` deletes everything |
+| One command from a hosted location | a hosted download whose hash does not match the command is refused and nothing is installed · one command downloads, verifies and installs the hosted package (run under Windows PowerShell 5.1 against a web server on the runner, as `get.ps1` would be run against S3) and leaves no downloaded files · the hosted install can be removed again |
 
 **What it cannot prove**, and the manual checks that remain: a real enrolment and a live connection to a
 manager (the test's manager is unreachable on purpose), a reboot, the UAC prompt (the runner is
@@ -86,6 +88,8 @@ because by the end of the run everything has been uninstalled.
 | Installer logic tests (any machine with PowerShell 7) | `pwsh -NoProfile -File probe/windows/tests/Test-Install.ps1` |
 | Agent tests | `cd probe && python -m pytest tests/test_diagnostics.py tests/test_runtime_gate.py tests/test_update_check.py tests/test_check_agent_version.py tests/test_windows_scripts.py tests/test_agent_closure.py` |
 | Closure check | `python probe/tools/agent_closure.py --check` |
+| The hosted-download tests (any machine with PowerShell and Python) | `pwsh -NoProfile -File probe/windows/hosting/tests/Test-Get.ps1` |
+| The publish script and the CloudFormation template | `cd probe && python -m pytest tests/test_hosting.py` |
 | The real-install test on a throwaway Windows machine | `pwsh -NoProfile -File probe\windows\tests\Test-InstallE2E.ps1 -ZipPath <zip> -Force` (it installs and removes the agent there) |
 | Agent version gate | `python probe/tools/check_agent_version.py --base origin/main` |
 
@@ -105,6 +109,9 @@ Linux, macOS and Windows.
 | The test crashed calling an installer helper | dot-sourcing `install.ps1` into the test would overwrite the test's own `$Token` and `$Manager` | a test parses `agent.env` with its own function |
 | Agent "starting" then gone, nothing in the log | the agent gave up after six manager checks (exit 2) and a Scheduled Task has no console | `PROBE_KEEP_RETRYING`, crash recording, and evidence capture in the test |
 | Registered, never in Fleet, `status` ONLINE | `websockets.asyncio` missing from the compiled build; `status` never went back down | include the package, exercise entry points in `runtime-check`, fall back to polling, record lost connections |
+| `gitleaks` fails on a pull request with "GITHUB_TOKEN is now required" | the action needs the token on `pull_request` events | pass `GITHUB_TOKEN` and `pull-requests: read` in `secret-scan.yml` |
+| `test_stage_fanout_policy` fails on a small runner | the scanner defaulted to 8 hosts at once, more than the default thread pool (`min(32, cpu + 4)` = 6 on 2 CPUs) can serve | the default follows the pool when it is smaller (fails the same way on a clean `main` with 2 CPUs) |
+| `test_service` fails only on Windows | `macos_log_path()` joined a macOS path with `os.path` | use `posixpath` for a macOS path |
 | Every run warns `git ... exit code 128` | a stray `probe copy` entry in the repo with no `.gitmodules`; harmless | `git rm --cached "probe copy"` removes it |
 
 ## 6. Test counts (7 Oct 2026, local, before the last rebuild)

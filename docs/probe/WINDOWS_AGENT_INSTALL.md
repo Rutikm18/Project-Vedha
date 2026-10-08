@@ -15,6 +15,29 @@ See also: [reference](WINDOWS_AGENT_REFERENCE.md) (files, settings, commands, st
 [bring-up report](../reports/2026-10-07-windows-agent-bringup-report.md) ·
 [pipeline](../planning/2026-10-07-windows-agent-pipeline.md).
 
+## Start here: the whole flow in five steps
+
+| # | Step | Where it is explained |
+|---|---|---|
+| 1 | **Build** the package: GitHub -> Actions -> *vedha-agent-windows-build* -> Run workflow | [section 1](#1-build-the-package-once-per-release) |
+| 2 | **Create a one-time install token** for the customer (Fleet, or the API if Fleet's button is blocked) | [section 2](#2-create-the-customers-install-token) |
+| 3 | **Deliver** it, by one of two routes (below) | [section 3](#3-send-it), [hosting guide](../operations/WINDOWS_AGENT_HOSTING.md) |
+| 4 | The customer runs **one command** as administrator | [section 4](#4-what-the-customer-does) |
+| 5 | **Confirm** it is online (`status`, Fleet) and fix anything with the built-in checks | [section 5](#5-when-something-is-wrong) |
+
+Two ways to deliver; the agent and the installer are identical:
+
+| | **A. One command from S3 (recommended once set up)** | **B. A zip you send** |
+|---|---|---|
+| Customer runs | one pasted line in an Administrator PowerShell, e.g. `... get.ps1 ... -Version 2.2.2 -Sha256 <hash> -Token vet_...` | unzip, then `install.cmd -Token vet_...` |
+| You do once | deploy the S3 + CloudFront stack ([hosting guide, section 3](../operations/WINDOWS_AGENT_HOSTING.md#3-one-time-aws-setup-about-15-minutes)) | nothing |
+| You do per release | run `publish-to-s3.sh` (it prints the customer's command) | send the zip, and its SHA-256 by another channel |
+| Best when | many customers, or you want the least friction | locked-down customers (endpoint protection that flags a "download and run" command), or before S3 is set up |
+
+Where everything lives: [reference](WINDOWS_AGENT_REFERENCE.md) (files, settings, commands) ·
+[CI and the real-install test](../testing/windows-agent-ci-and-e2e.md) · [decisions](../adr/0005-windows-agent-delivery.md) ·
+[what is parked](../planning/2026-10-07-windows-agent-pipeline.md) · [bring-up report](../reports/2026-10-07-windows-agent-bringup-report.md).
+
 ## 1. Build the package (once per release)
 
 1. GitHub → **Actions** → **vedha-agent-windows-build** → **Run workflow**.
@@ -26,6 +49,7 @@ See also: [reference](WINDOWS_AGENT_REFERENCE.md) (files, settings, commands, st
 4. Open the run → **Artifacts** → download `vedha-agent-windows`. It holds:
    - `vedha-agent-win.zip` — what you send
    - `vedha-agent-win.zip.sha256` — the zip's SHA-256
+   - `vedha-agent-win.release.json` — version, hashes and size; the S3 publish script reads it
 
 A run that is green has already, on a real Windows runner: compiled the agent,
 checked it contains none of our source, started it, run the troubleshooting
@@ -90,6 +114,10 @@ sets what the agent *may* scan on the machine itself (default: the machine's own
 `-Scope 10.0.5.0/24` changes it). A job outside either is rejected.
 
 ## 3. Send it
+
+> **Route A (S3):** skip this table. Publish with `publish-to-s3.sh`, which prints a ready-made command; you only add the token. See the [hosting guide](../operations/WINDOWS_AGENT_HOSTING.md).
+
+**Route B (zip):**
 
 | What | Channel |
 |---|---|

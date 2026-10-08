@@ -22,7 +22,7 @@ Related: [ADR-0005](../adr/0005-windows-agent-delivery.md) · [operator guide](.
 
 | # | Step | What goes wrong | Handled now | Still open |
 |---|---|---|---|---|
-| 1 | Receive the zip | tampering or a damaged download | zip SHA-256 sent by another channel; every file re-checked by the installer | the zip is not signed |
+| 1 | Receive the zip | tampering or a damaged download | zip SHA-256 sent by another channel (or, with the S3 route, carried in the command itself); every file re-checked by the installer | the zip is not signed |
 | 2 | Unzip | Windows marks downloaded files; SmartScreen may warn on first run | README says "More info -> Run anyway" | needs Authenticode signing |
 | 3 | Run `install.cmd` | not an administrator; execution policy | the installer asks for administrator rights itself and bypasses the execution policy for that script only | UAC path not yet tried by hand |
 | 4 | Endpoint protection | quarantines or blocks the agent or a file in the package | the installer detects a missing or non-running program and names the folder to allow; `ALLOWLIST.txt` carries the hash | real behaviour with a customer's product is untested |
@@ -54,7 +54,7 @@ Verified by reading the repository; none reproduced on a running system unless s
 | The release-signing key is a file on a build machine | `scripts/agent_release.py`, `make agent-keygen` | open; pipeline "release key in a KMS" |
 | The Fleet install command carries the token on the command line | `install_commands` | single-use and short-lived; `-TokenFile` on Windows |
 | The customer PDF guide documents `--token-file` and a `SHA256SUMS` check that the Linux `install.sh` does not implement | the vendor PDF vs `probe/install.sh` | the **Windows** installer implements both; the Linux gap is open |
-| **F-1** scan results archived indefinitely in a user-readable folder | `task_runner.py` | open, needs an owner decision ([ADR-0005](../adr/0005-windows-agent-delivery.md#5-open-findings)) |
+| **F-1** scan results archived indefinitely in a user-readable folder | `task_runner.py` | **fixed 8 Oct** (archive moved into the locked data folder); no retention limit yet |
 | Manager "Add agent" cannot mint a token until a Linux release is published | `AddAgent.tsx` | open; workaround via the API (operator guide) |
 
 ## 4. What other vendors and incidents suggest (from search results)
@@ -84,7 +84,7 @@ Npcap and nmap OEM licensing (npcap.com, nmap.org/oem); Nuitka vs PyInstaller wr
 
 1. **Sign the build** (Authenticode / Azure Trusted Signing). It removes the SmartScreen warning and is the foundation of
    being trusted by endpoint products.
-2. **Decide and fix F-1** (scan results at rest) and **unblock Fleet's token button** from the Linux release.
+2. ~~Fix F-1~~ (done: scan results now stay in the locked data folder; add a retention limit) and **unblock Fleet's token button** from the Linux release.
 3. **Try it on a clean machine with a real enrolment and a reboot**, then with one customer's endpoint product.
 4. **Then, and only then, auto-update**: agent-authenticated download, client-side signature and hash check,
    anti-rollback, restore on failure, channels with a pause, and a Fleet badge.

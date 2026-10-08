@@ -93,7 +93,19 @@ The install itself (installer, task, permissions, log) behaved as the real-insta
 | `e854f03` | `websockets` shipped; polling fallback; status tells the truth; agent 2.2.1 |
 | `13b3dbb` and later | documentation |
 
-## 7. Honest limits of this report
+## 8. Round 2 (8 October 2026): clear the PR, close F-1, host it on S3
+
+| Item | What was done |
+|---|---|
+| PR #10's three red checks | `gitleaks` now gets the `GITHUB_TOKEN` it requires on pull requests; `macos_log_path` uses `posixpath`; the scanner's default host concurrency follows the thread pool (a real defect on small machines, found by a test that fails on any 2-CPU machine, including a clean `main`). Agent 2.2.2 |
+| F-1 (defect 9) | **Fixed.** The installer sets `PROBE_RESULT_DIR` to the locked data folder; the real-install test fails if a result folder appears under Program Files. Not fixed: the archive has no retention limit |
+| One command from S3 | `probe/windows/hosting/`: `get.ps1` (must be run from an Administrator prompt; requires the version and SHA-256 that come with the command), `publish-to-s3.sh`, `cloudformation.yaml`, and `package-zip.ps1` now writes `release.json`. 41 Python tests, 51 PowerShell tests (PS7 and 5.1), and 3 new real-install checks. See the [hosting guide](../operations/WINDOWS_AGENT_HOSTING.md) |
+| Docs | a "start here" flow at the top of the operator guide; the hosting guide; decision D14; the reference, pipeline, research memo and STATUS updated |
+
+Not done in this round, and why: nothing was deployed to AWS (no access from the build environment), so the
+template is structurally checked only; the owner has not yet confirmed agent 2.2.1/2.2.2 on a real machine.
+
+## 9. Honest limits of this report
 
 - Everything marked "proven" ran on a GitHub-hosted `windows-latest` runner or, for one install, on the
   owner's machine. Nothing was run against a customer's environment or a customer's endpoint product.

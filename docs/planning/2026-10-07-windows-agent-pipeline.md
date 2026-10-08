@@ -13,10 +13,11 @@ Size: S under a day, M a few days, L a week or more. "Needs you" marks an owner 
 
 | # | Item | Why | Size | Needs you |
 |---|---|---|---|---|
-| N1 | **Decide and fix F-1: scan results archived in `C:\Program Files\Vedha Agent\result`** (indefinite, readable by standard users). Options: point `PROBE_RESULT_DIR` at the locked data folder; turn the archive off for customer installs; add a retention limit | privacy and security of customer scan data at rest | S | **Yes: which option** |
+| N1 | ~~Decide and fix F-1~~ **Done (8 Oct): the installer archives scan results in the locked data folder** (`PROBE_RESULT_DIR`). Remaining: a **retention limit**, because the archive is never pruned and grows with every scan | the archive is customer scan data at rest | S | Yes: how long to keep results (or turn the archive off) |
 | N2 | **Fleet's "Generate install command" is blocked until a Linux release is published** | you cannot mint a token from the UI today. Either publish a Linux release (`make agent-release`, `make agent-publish`, `AGENT_RELEASE_PUBLIC_KEY`), or let the panel mint tokens without one (backend already allows it) and add a Windows card | S-M | **Yes: which route** |
 | N3 | Manual field checks that CI cannot do: clean machine, **real enrolment**, reboot, UAC prompt, one customer endpoint product, `ALLOWLIST.txt` claims | the first real install already found two bugs CI could not | S | **Yes: you run them** |
 | N4 | Remove the stray `probe copy` entry (`git rm --cached "probe copy"`) | every run warns exit code 128 | XS | no |
+| N5 | **Deploy the S3 hosting once and try it** ([hosting guide](../operations/WINDOWS_AGENT_HOSTING.md)): the template has never run in AWS, and a real download from a clean Windows machine has not been tried | the whole hosted route is verified except the AWS side | S | **Yes: you run the AWS steps** |
 
 ## Next - make it trustworthy and testable
 
@@ -34,7 +35,7 @@ Size: S under a day, M a few days, L a week or more. "Needs you" marks an owner 
 
 | # | Item | Why | Size | Needs you |
 |---|---|---|---|---|
-| L1 | **Manager-hosted Windows package** (`windows-amd64` in the signed release manifest), a Fleet OS switch, and a one-line install (the earlier QW2) | the customer downloads from the manager, not from a zip you send | M | depends on X1 |
+| L1 | **Manager-hosted Windows package** (`windows-amd64` in the signed release manifest) and a Fleet OS switch. **Partly done differently (8 Oct): an S3 + CloudFront route with a one-line install exists** ([hosting guide](../operations/WINDOWS_AGENT_HOSTING.md)); what is left is serving it from the manager with the signed manifest and an OS switch in Fleet | the customer downloads from the manager, with Fleet generating the command | M | depends on X1 |
 | L2 | **Update download and apply**: agent-authenticated route, signature and hash checked inside the agent, anti-rollback, restore on failure ([design](../design/agent-version-management.md#7-not-built-download-and-apply-the-design-to-follow)) | automatic updates | L | depends on L1 |
 | L3 | **Channels, a staged rollout and a pause**, and a Fleet "update available" badge | an update must never reach every agent at once | M | depends on L2 |
 | L4 | A real Windows service / MSI (Intune, group policy) | managed deployment | M-L | depends on X1 |
@@ -53,7 +54,7 @@ L1 -> L2 -> L3 once the build is signed. Each item above that changes shipped ag
 
 ## Decisions needed from the owner
 
-1. **F-1:** relocate the scan-result archive, turn it off, or add retention? (N1)
+1. **Retention for the scan-result archive** (F-1 is fixed; the archive still grows without limit): how many days or scans to keep, or off? (N1)
 2. **Fleet token button:** publish a Linux release, or change the panel? (N2)
 3. **Signing identity and budget** for Authenticode / Azure Trusted Signing. (X1)
 4. **Npcap OEM licence:** worth buying for Windows SYN scans, or recommend a Linux VM for depth? (L9)

@@ -7,6 +7,10 @@ named below are the ones to read when this page and the code disagree.
 
 ## 1. What is in the package
 
+Built by `probe/windows/package-zip.ps1`, which also writes two files beside the zip that are **not** inside it:
+`vedha-agent-win.zip.sha256` and `vedha-agent-win.release.json` (version, hashes, size; read by the
+[S3 publish script](../operations/WINDOWS_AGENT_HOSTING.md)).
+
 `vedha-agent-win.zip`, built by `probe/windows/package-zip.ps1`:
 
 | Item | What it is |
@@ -31,15 +35,19 @@ named below are the ones to read when this page and the code disagree.
 | `...\state.json` | the agent's identity (agent id, tokens, keys). **Never shared**; never in a support bundle | |
 | `...\status.json` | what the agent is doing now (section 5) | |
 | `...\spool\` | results waiting to be delivered to the manager | |
+| `...\results\` | the archive of every submitted scan payload (never pruned; see the note below) | |
 | `...\logs\agent.log` | the agent's log; rotates at 10 MB, 5 old files kept | |
 | `...\logs\install-YYYYMMDD-HHMMSS.log` | one log per installer run, with the install token masked | |
 | `...\ca-bundle.pem` | the company root certificate, only if `-CaBundle` was used | |
 | Scheduled task `VedhaAgent` | see section 6 | |
 
-> **Known gap (finding F-1, [ADR-0005](../adr/0005-windows-agent-delivery.md#5-open-findings)):**
-> the agent also archives every submitted scan payload to `C:\Program Files\Vedha Agent\result\`
-> (`PROBE_RESULT_DIR` unset), indefinitely, in a folder standard users can read. Until that is
-> decided and fixed, treat the install folder as holding scan data.
+> **Scan results (finding F-1, fixed in agent package 2.2.2):** the agent keeps a copy of every scan
+> payload it submits, for offline review. The installer now points `PROBE_RESULT_DIR` at
+> `C:\ProgramData\vedha-agent\results` (inside the locked data folder), and the real-install test fails if a
+> `result` folder appears under Program Files. Still true: the archive is **never pruned by the agent**, so
+> it grows with every scan; a retention limit is a [pipeline item](../planning/2026-10-07-windows-agent-pipeline.md).
+> Setting `PROBE_RESULT_DIR=` (empty) turns the archive off. An older install left a `result` folder under
+> Program Files; upgrading with `-Repair` removes it with the old program folder.
 
 ## 3. `agent.env` - settings
 
@@ -57,6 +65,7 @@ already set wins over the file**. Written by the installer (do not edit while th
 | `PROBE_NETWORK_SEGMENTS` | the machine's own /24 (or `-Scope`) | the networks this agent may scan, a local ceiling in addition to the engagement's scope |
 | `STATE_FILE` | `...\state.json` | identity file |
 | `RESULT_SPOOL_DIR` | `...\spool` | delivery queue |
+| `PROBE_RESULT_DIR` | `...\results` | archive of submitted scan payloads, inside the locked data folder |
 | `PROBE_LOG_FILE` | `...\logs\agent.log` | log file |
 | `PROBE_STATUS_FILE` | `...\status.json` | status file |
 | `PROBE_INSTALLER_VERSION` | the package version | reported to the manager at enrolment |
@@ -70,7 +79,6 @@ Other settings the agent honours (not written by the installer; add a line to us
 | Key | Effect |
 |---|---|
 | `PROBE_WS_ENABLED=false` | skip the live (WebSocket) connection and use HTTPS polling only |
-| `PROBE_RESULT_DIR=<path>` | where scan payloads are archived; empty turns the archive off (see F-1) |
 | `PROBE_UPDATE_CHECK=off` | do not ask the manager whether a newer agent exists |
 | `PROBE_UPDATE_CHECK_INTERVAL_HOURS` | how often (1-168, default 6) |
 | `HEARTBEAT_INTERVAL`, `POLL_INTERVAL` | seconds (5-300 and 1-300; defaults 30 and 10) |
