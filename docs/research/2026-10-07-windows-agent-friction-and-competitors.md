@@ -80,6 +80,27 @@ docs and known issues (elastic.co); Rapid7 Insight Agent docs and forum (docs.ra
 Npcap and nmap OEM licensing (npcap.com, nmap.org/oem); Nuitka vs PyInstaller write-ups; Claude Code install docs
 (code.claude.com); Microsoft Defender false-positive submission guidance (learn.microsoft.com).
 
+## 4b. How other vendors install on Windows (8 Oct 2026, search results, not full page reads)
+
+| Vendor | Install pattern | Token / key | Notes |
+|---|---|---|---|
+| Datadog | A one-line PowerShell command **generated in their app** (Fleet Automation > Install Agents > Windows). It downloads their signed MSI from their own download host and installs silently | API key inside the generated command | Closest to our S3 one-liner. Needs an elevated shell, PowerShell 5.1+ |
+| Tenable Nessus Agent | Signed MSI, `msiexec /i ... NESSUS_KEY=... NESSUS_GROUPS=... /qn`; pushed by AD / SCCM / Intune / RMM | Linking key as an install property | Retries linking by itself (hourly if the manager is unreachable, every 24 h if the link fails); offline-install and custom-CA properties |
+| Rapid7 Insight Agent | Signed MSI, `msiexec /i agentInstaller-x86_64.msi /quiet CUSTOMTOKEN=<region>:<token>` | Token as an install property | Community threads show Intune quoting and filename pitfalls: test the exact command in the tool you deploy with |
+| Wazuh | `msiexec.exe /i wazuh-agent-<version>.msi /q WAZUH_MANAGER="<manager>"`, then start the service | Manager address (and optional registration password) as properties | Open source, MSI |
+| Qualys Cloud Agent | `QualysCloudAgent.exe CustomerId=... ActivationId=... WebServiceUri=...`; also an MSI for Intune / GPO / SCCM | Customer ID + activation ID | Proxy argument supported |
+
+What they share: a **signed installer** (MSI or EXE), the **enrolment secret passed as an install property**, a **silent switch**, and
+**delivery through the customer's own software-distribution tool** (Intune, GPO, SCCM, RMM) for anything beyond a handful of machines. Only Datadog-style
+vendors also offer a pasted one-liner, and they generate it per customer inside their product. Their keys are reusable group keys; ours is single-use per engagement, which is safer and less convenient for mass rollout.
+
+Where we differ: unsigned build (all of them sign); a zip and scripts instead of an MSI (L4 in the pipeline); the command is made by hand through the API
+(N2 in the pipeline), not generated in Fleet.
+
+**Azure Trusted / Artifact Signing eligibility (sources disagree):** Microsoft's Artifact Signing quickstart lists organizations in the US, Canada, the EU, the UK, Australia,
+New Zealand, Japan, South Korea, Singapore, Switzerland, Norway and Israel, and individual developers only in the US and Canada; an older page and a June 2026 answer name only the US, Canada, the EU and the UK.
+India is on none of these lists. An organization outside the listed places should expect to use an EV/OV certificate with a cloud signing service instead. Check the live Microsoft Learn page before buying anything.
+
 ## 5. Recommendation (order of work)
 
 1. **Sign the build** (Authenticode / Azure Trusted Signing). It removes the SmartScreen warning and is the foundation of
