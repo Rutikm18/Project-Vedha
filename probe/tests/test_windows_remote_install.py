@@ -105,7 +105,7 @@ def test_remote_installer_never_puts_the_token_on_a_child_command_line():
     code = re.sub(r"<#.*?#>", "", _text("install-remote.ps1"), flags=re.S)
     assert not re.search(r"Start-Process|&\s*['\"]?powershell|powershell(\.exe)?\s+-", code, re.I)
     # the token reaches the packaged installer as a parameter of an in-process call
-    assert "& $inner -Manager $managerUrl -Scope $Scope -Token $Token" in code
+    assert "Token = $Token" in code and "& $inner @innerArgs" in code
 
 
 def test_zip_extraction_rejects_traversal_and_streams():
@@ -149,38 +149,6 @@ def _wrapper_here_string(text: str) -> str:
     return m.group(1)
 
 
-def test_service_wrapper_never_embeds_the_token():
-    wrapper = _wrapper_here_string(_text("install.ps1"))
-    assert "$Token" not in wrapper
-    assert "set /p PROBE_ENROLL_TOKEN=<" in wrapper                 # read from the locked file
-    assert "vet_" not in wrapper
-
-
-def test_token_is_removed_once_the_agent_has_enrolled():
-    text = _text("install.ps1")
-    wrapper = _wrapper_here_string(text)
-    assert "device_refresh_secret" in wrapper and "del /q" in wrapper
-    assert "Remove-Item $tokenFile" in text
-
-
-def test_install_folder_is_locked_to_system_and_administrators():
-    text = _text("install.ps1")
-    assert "*S-1-5-18:(OI)(CI)F" in text and "*S-1-5-32-544:(OI)(CI)F" in text
-    assert "/inheritance:r" in text
-    assert text.index("icacls.exe") < text.index("Set-Content -Path $tokenFile")      # locked before a token is written
-
-
-def test_token_format_is_validated_in_both_scripts():
-    for name in ("install.ps1", "install-remote.ps1"):
-        assert r"^vet_[A-Za-z0-9_\-]+$" in _text(name)
-
-
-def test_package_zip_release_switch_skips_baking_a_manager():
-    text = _text("package-zip.ps1")
-    assert "ParameterSetName = 'Release'" in text and "[switch]$Release" in text
-    assert "if ($Manager)" in text          # the placeholder is only replaced when a manager was given
-
-
 # ── install-remote.cmd ───────────────────────────────────────────────────────
 
 def test_launcher_never_splices_arguments_into_a_powershell_command():
@@ -212,7 +180,58 @@ def test_scripts_parse_in_powershell(name):
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_the_uninstaller_is_kept_with_the_install():
-    text = _text("install.ps1")
-    assert "'uninstall.ps1', 'uninstall.cmd'" in text and "Copy-Item $source (Join-Path $installDir $name)" in text
-    assert "uninstall.ps1" in _text("package-zip.ps1")          # and the package carries it
+# ── the contract between install-remote.ps1 and the packaged installer (install.ps1) ──────────
+
+def test_the_packaged_installer_accepts_every_argument_install_remote_passes():
+    inner = _text("install.ps1")
+    start = inner.index("param(")
+    params = inner[start:inner.index("\n)", start)]
+    for name in ("Manager", "Token", "Scope", "NoPause"):
+        assert re.search(rf"\${name}\b", params), name
+    remote = re.sub(r"<#.*?#>", "", _text("install-remote.ps1"), flags=re.S)
+    assert "Manager = $managerUrl" in remote and "NoPause = $true" in remote and "innerArgs.Scope = $Scope" in remote
+
+
+def test_install_remote_understands_the_packaged_installers_exit_codes():
+    """install.ps1: 0 = connected / waiting for approval, 3 = installed but not connected yet."""
+    inner = _text("install.ps1")
+    assert "return 3" in inner and "return 0" in inner
+    remote = _text("install-remote.ps1")
+    assert "$innerExit -ne 0 -and $innerExit -ne 3" in remote
+    assert "InstalledNotConnected" in remote and "exit 3" in remote
+
+
+def test_the_packaged_installer_keeps_the_token_out_of_the_task_and_removes_it_after_use():
+    inner = _text("install.ps1")
+    assert "Remove-VedhaTokenLine" in inner                          # the token line leaves agent.env once online
+    assert "Set-VedhaAcl" in inner and "*S-1-5-18" in inner          # data folder: SYSTEM and Administrators only
+    task = inner[inner.index("function Register-VedhaTask"):inner.index("# The installer\n")]
+    assert "Token" not in task                                       # never in the Scheduled Task definition
+
+
+def test_the_installer_and_uninstaller_are_kept_with_the_install():
+    remote = _text("install-remote.ps1")
+    assert "'install.ps1', 'install.cmd', 'uninstall.ps1', 'uninstall.cmd'" in remote
+    assert "Join-Path $root 'tools'" in remote
+    # and those are the files the packaged uninstall path needs
+    assert "-Uninstall" in _text("uninstall.ps1") and "-Uninstall" in _text("uninstall.cmd")
+
+
+def test_the_windows_agent_needs_an_https_manager_everywhere():
+    assert "^https://" in _text("install.ps1")                       # the packaged installer's rule
+    remote = _text("install-remote.ps1")
+    assert "The Windows agent needs an https:// manager address" in remote
+    assert "-AllowInsecureHttp" not in _text("install-remote.cmd")
+
+
+def test_package_zip_release_switch_skips_baking_a_manager():
+    text = _text("package-zip.ps1")
+    assert "ParameterSetName = 'Release'" in text and "[switch]$Release" in text
+    assert re.search(r"Mandatory\s*=\s*\$true,\s*ParameterSetName\s*=\s*'Customer'\)\]\[string\]\$Manager", text)
+    release_branch = text[text.index("if ($Release) {\n  # The manager placeholder stays"):]
+    assert "__VEDHA_MANAGER_URL__" not in release_branch.split("} else {")[0]          # not replaced for a release
+
+
+def test_token_shape_is_checked_before_anything_is_downloaded():
+    assert r"^vet_[A-Za-z0-9_\-]{8,}$" in _text("install-remote.ps1")
+    assert r"^vet_[A-Za-z0-9_\-]{8,}$" in _text("install-remote.cmd")

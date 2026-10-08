@@ -145,5 +145,6 @@ team to allow `vedha-agent.exe` (and the folder above) before installing. If a f
 install, security software removed it: allow it and run the command again.
 
 **Upgrade:** run a fresh command from the portal. **Remove:** from an administrator prompt run
-`powershell -ExecutionPolicy Bypass -File C:\ProgramData\vedha-agent\uninstall.ps1 -Purge`
-(without `-Purge` the identity and logs are kept).
+`C:\ProgramData\vedha-agent\tools\uninstall.cmd` (add `-Purge` to also delete the agent's identity and
+logs; without it they are kept). For the other commands (`-Repair`, proxy and certificate options, support
+bundle) see `WINDOWS_AGENT_INSTALL.md`.

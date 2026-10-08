@@ -178,3 +178,16 @@ def test_the_runbook_the_workflow_points_at_exists_and_covers_the_pipeline():
         assert needle in doc, needle
     for secret in (*SIGNING_SECRETS, "WINDOWS_CODESIGN_PFX_BASE64"):
         assert secret in doc, secret                         # every secret the workflow reads is documented
+
+
+def test_windows_verify_runs_the_packaged_installers_own_end_to_end_test():
+    text = "\n".join(_runs("windows-verify"))
+    assert "Test-InstallE2E.ps1" in text and "-ZipPath" in text
+
+
+def test_the_release_package_is_built_without_a_baked_manager_and_named_consistently():
+    text = "\n".join(_runs("windows-package"))
+    assert "package-zip.ps1 -Release" in text
+    uploads = [s["with"]["path"] for s in JOBS["windows-package"]["steps"] if "upload-artifact" in s.get("uses", "")]
+    assert uploads == ["probe/windows/dist/vedha-agent-win.zip"]
+    assert "staging/windows-package/vedha-agent-win.zip" in "\n".join(_runs("sign"))

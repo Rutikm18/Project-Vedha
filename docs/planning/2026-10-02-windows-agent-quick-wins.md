@@ -1,7 +1,23 @@
 # Windows-first agent: quick wins now, everything else in the pipeline
 
-Date: 2026-10-02 · Status: **approach for review — not implemented**
+Date: 2026-10-02 · Status: **partly built; see the status table below** (updated 2026-10-07)
 Builds on: [agent install approach §10](2026-10-01-agent-install-approach.md#10-decisions-2-oct-2026-and-what-phase-1-built) (Linux/Docker path, built on `feat/agent-install`)
+
+## Status on 7 October 2026
+
+Built on `claude/fervent-brahmagupta-o0g44u` (not merged). The delivery model changed from the one-line
+`irm | iex` below to **a zip you send plus one command** (`install.cmd -Token vet_...`), the owner's choice;
+see [ADR-0005](../adr/0005-windows-agent-delivery.md), the [operator guide](../probe/WINDOWS_AGENT_INSTALL.md)
+and the [pipeline](2026-10-07-windows-agent-pipeline.md).
+
+| Item | State |
+|---|---|
+| QW1 compiled, minimal Windows agent + CI job + "no source" check | **Built and proven on a Windows runner** (Nuitka folder build with MinGW, 77-module closure, `runtime-check` that exercises the real connection paths) |
+| QW2 Windows artifact in the signed release, download route, Fleet OS switch | **Not built** (pipeline L1). The package is a zip you send; Fleet's Add agent still shows the Linux command and its button is blocked until a Linux release is published |
+| QW3 installer that checks, never installs | **Built, as a local `install.cmd` / `install.ps1` inside the zip** rather than a hosted script: preflight (`doctor --preinstall`), checksums, install to Program Files, locked data folder, SYSTEM task, wait for online, `-Repair`, `-Uninstall [-Purge]`, `-Proxy`, `-CaBundle`. Differences from the plan below: the task restarts up to 999 times (not 10); the integrity check is the `SHA256SUMS.txt` inside the zip plus the zip's hash sent by another channel |
+| QW4 expiry set from Fleet | Built earlier (2 Oct, migration 0053) |
+| QW5 retire risky Windows defaults | Done earlier (2 Oct) |
+| Failure points W1-W11, C1-C8 | W2/W3/W9 are changed by the zip model; W1 (unsigned) is still open and is the first pipeline item; the others are as described |
 
 ## Why this note
 

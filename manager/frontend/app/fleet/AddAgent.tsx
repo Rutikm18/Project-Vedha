@@ -366,11 +366,11 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
       </button>
       {showReqs && target === "windows" && (
         <ul className="aa-reqs">
-          <li><strong>Host:</strong> 64-bit Windows 10 / 11 or Windows Server 2016+, Windows PowerShell 5.1 or later, an account that can run PowerShell as administrator.</li>
+          <li><strong>Host:</strong> 64-bit Windows 10 / 11 or Windows Server 2016+, Windows PowerShell 5.1 or later, an account that can run PowerShell as administrator. The manager must be reachable over https.</li>
           <li><strong>Placement:</strong> on the same network segment as the systems in scope, with a fixed IP (DHCP reservation).</li>
           <li><strong>Network:</strong> outbound HTTPS (443) to <span className="flt-mono">{host}</span>; working time sync. No inbound ports.</li>
           <li><strong>Security tools:</strong> a network scanner can look like malware to antivirus/EDR. Allow-list <span className="flt-mono">vedha-agent.exe</span> with your security team before installing.</li>
-          <li><strong>Where it lives:</strong> a background task named VedhaAgent running as SYSTEM; its identity key is in <span className="flt-mono">C:\ProgramData\vedha-agent</span>, readable by administrators only. Remove it with <span className="flt-mono">uninstall.ps1 -Purge</span>.</li>
+          <li><strong>Where it lives:</strong> a background task named VedhaAgent running as SYSTEM; its identity key is in <span className="flt-mono">C:\ProgramData\vedha-agent</span>, readable by administrators only. Remove it with <span className="flt-mono">C:\ProgramData\vedha-agent\tools\uninstall.cmd -Purge</span>.</li>
           <li><strong>Integrity:</strong> the installer verifies the signed release manifest, the package checksum and (when the release pins one) the Authenticode signature before installing.</li>
         </ul>
       )}

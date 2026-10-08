@@ -8,7 +8,7 @@ here can be mistaken for (or substituted for) a production release. CI uses it t
 the installer's Authenticode path with a self-signed test certificate, which would otherwise
 stay untested until a real certificate exists.
 
-    python scripts/ci/make_test_release.py --windows-zip vedha-probe-win.zip --out rel \
+    python scripts/ci/make_test_release.py --windows-zip vedha-agent-win.zip --out rel \
         [--version 0.0.0-ci] [--thumbprint <40 hex>]
 
 Prints the release directory on the last line.

@@ -144,7 +144,7 @@ describe("Fleet install UI", () => {
     assert.deepEqual(windowsCommands({ one_line: "a", download: "b", run: "c" }), []);
     const both = windowsCommands({ one_line: "a", download: "b", run: "c", windows_powershell: "ps", windows_cmd: "cmd" });
     assert.deepEqual(both.map((c) => [c.key, c.command]), [["powershell", "ps"], ["cmd", "cmd"]]);
-    // a plain-http (lab) manager gets the PowerShell form only
+    // the cmd form can be absent on its own; whatever is present is shown
     assert.deepEqual(windowsCommands({ one_line: "a", download: "b", run: "c", windows_powershell: "ps" }).map((c) => c.key), ["powershell"]);
   });
 

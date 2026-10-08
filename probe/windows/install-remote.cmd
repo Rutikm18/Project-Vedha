@@ -24,7 +24,7 @@ if not defined VEDHA_TOKEN goto :usage
 
 rem The values travel to PowerShell through the environment, never spliced into a
 rem command line, and PowerShell checks each against a strict pattern first.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "if (($env:VEDHA_MANAGER -notmatch '^https://[A-Za-z0-9.\-]+(:[0-9]{1,5})?$') -or ($env:VEDHA_TOKEN -notmatch '^vet_[A-Za-z0-9_\-]+$') -or ($env:VEDHA_SCOPE -and $env:VEDHA_SCOPE -notmatch '^[0-9A-Fa-f:.,/]+$')) { exit 2 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "if (($env:VEDHA_MANAGER -notmatch '^https://[A-Za-z0-9.\-]+(:[0-9]{1,5})?$') -or ($env:VEDHA_TOKEN -notmatch '^vet_[A-Za-z0-9_\-]{8,}$') -or ($env:VEDHA_SCOPE -and $env:VEDHA_SCOPE -notmatch '^[0-9A-Fa-f:.,/]+$')) { exit 2 }"
 if errorlevel 1 (
   echo ERROR: the manager address, token or scope has an unexpected format. The manager must be an https:// address. Copy the command again from Fleet - Add agent.
   exit /b 2

@@ -80,7 +80,7 @@ def agent_jwt_path_allows(path: str, method: str) -> bool:
     the route handlers.
     """
     method = method.upper()
-    if path == "/agents/heartbeat":
+    if path in ("/agents/heartbeat", "/agents/update-check"):
         return method == "POST"
     if _AGENT_REFRESH_PATH.fullmatch(path):
         return method == "POST"

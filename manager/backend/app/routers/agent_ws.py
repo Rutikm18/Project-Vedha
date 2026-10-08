@@ -26,7 +26,7 @@ import structlog
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
-from app import agent_access
+from app import agent_access, agent_release
 from app.auth.jwt import decode_token
 from app.database import AsyncSessionLocal
 from app.models.agent import Agent, AgentStatus
@@ -252,6 +252,9 @@ async def agent_websocket_endpoint(websocket: WebSocket):
                         break
                     if ag:
                         ag.last_heartbeat = datetime.now(timezone.utc)
+                        reported = agent_release.clean_agent_version(data.get("agent_version"))
+                        if reported and ag.agent_version != reported:
+                            ag.agent_version = reported
                         try:
                             ag.status = AgentStatus(status)
                         except ValueError:

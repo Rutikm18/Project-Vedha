@@ -1,0 +1,198 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Vedha Windows agent downloads. A PRIVATE S3 bucket that can be read only through CloudFront
+  (HTTPS only), plus an IAM policy for whoever publishes. Nothing in the bucket is a secret:
+  it holds the agent package (the manager address and the build's hashes) and a small script.
+  Deploy with:
+    aws cloudformation deploy --stack-name vedha-agent-downloads \
+      --template-file probe/windows/hosting/cloudformation.yaml --capabilities CAPABILITY_IAM
+  (see docs/operations/WINDOWS_AGENT_HOSTING.md)
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: ""
+    Description: "Optional. Leave empty to use vedha-agent-downloads-<account id>-<region>."
+  DomainName:
+    Type: String
+    Default: ""
+    Description: "Optional custom name, e.g. downloads.example.com. Needs CertificateArn. You create the DNS CNAME yourself."
+  CertificateArn:
+    Type: String
+    Default: ""
+    Description: "ACM certificate for DomainName. It MUST be in us-east-1 (a CloudFront rule), whatever region this stack is in."
+  PriceClass:
+    Type: String
+    Default: PriceClass_100
+    AllowedValues: [PriceClass_100, PriceClass_200, PriceClass_All]
+    Description: "PriceClass_100 = US, Canada, Europe. Use PriceClass_200 or PriceClass_All to include Asia (e.g. India)."
+
+Conditions:
+  HasBucketName: !Not [!Equals [!Ref BucketName, ""]]
+  HasDomain: !And
+    - !Not [!Equals [!Ref DomainName, ""]]
+    - !Not [!Equals [!Ref CertificateArn, ""]]
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !If
+        - HasBucketName
+        - !Ref BucketName
+        - !Sub "vedha-agent-downloads-${AWS::AccountId}-${AWS::Region}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-old-object-versions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 90
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-oac"
+        Description: CloudFront reads the private bucket with signed requests
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  SecurityHeaders:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub "${AWS::StackName}-security-headers"
+        SecurityHeadersConfig:
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Override: true
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: no-referrer
+            Override: true
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Vedha Windows agent downloads
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: !Ref PriceClass
+        Aliases: !If [HasDomain, [!Ref DomainName], !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - HasDomain
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        Origins:
+          - Id: bucket
+            DomainName: !GetAtt Bucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: bucket
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          # AWS managed "CachingOptimized": honours the Cache-Control the publish script sets
+          # (versions are cached for a year, get.ps1 and latest.json are never cached).
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          ResponseHeadersPolicyId: !Ref SecurityHeaders
+
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontToRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${Bucket.Arn}/*"
+            Condition:
+              StringEquals:
+                "AWS:SourceArn": !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+          - Sid: DenyPlainHttp
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt Bucket.Arn
+              - !Sub "${Bucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
+  # Attach this to the user or role that runs publish-to-s3.sh. It can write only under windows/
+  # and invalidate this one distribution. It cannot read other prefixes or change the bucket.
+  PublisherPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Publish Vedha Windows agent packages
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: WriteWindowsPrefix
+            Effect: Allow
+            Action: [s3:PutObject, s3:GetObject]
+            Resource: !Sub "${Bucket.Arn}/windows/*"
+          - Sid: ListBucket
+            Effect: Allow
+            Action: s3:ListBucket
+            Resource: !GetAtt Bucket.Arn
+          - Sid: InvalidateCache
+            Effect: Allow
+            Action: cloudfront:CreateInvalidation
+            Resource: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+Outputs:
+  BucketName:
+    Description: Pass to publish-to-s3.sh --bucket
+    Value: !Ref Bucket
+  DistributionId:
+    Description: Pass to publish-to-s3.sh --distribution-id
+    Value: !Ref Distribution
+  DistributionDomain:
+    Description: Point your DNS CNAME (if you use DomainName) at this
+    Value: !GetAtt Distribution.DomainName
+  DownloadBaseUrl:
+    Description: Pass to publish-to-s3.sh --base-url
+    Value: !If
+      - HasDomain
+      - !Sub "https://${DomainName}/windows"
+      - !Sub "https://${Distribution.DomainName}/windows"
+  PublisherPolicyArn:
+    Description: Attach to the publishing user or role
+    Value: !Ref PublisherPolicy

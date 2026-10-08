@@ -104,28 +104,84 @@ else
 fi
 echo ""
 
-# ── 6. Migration version check ───────────────────────────────────────────────
+# ── 6. Migration version check + heal ────────────────────────────────────────
+# Handles three classes of mismatch:
+#   A. DB version not in codebase (unmerged branch left a stale version_num)
+#      → stamp DB to code head via psql
+#   B. DB version < code head but schema already has the columns
+#      (sparse-checkout hid migration files; DB was applied from a feature branch)
+#      → detected by DuplicateColumnError on upgrade → stamp to code head
+#   C. DB version < code head and schema genuinely missing
+#      → upgrade runs normally; if it fails for another reason, we warn
 echo "--- Migration status ---"
 if docker ps --filter "name=vedha-postgres-1" --format "{{.Names}}" 2>/dev/null | grep -qF "vedha-postgres-1"; then
-  DB_USER=$(grep -m1 '^POSTGRES_USER=' .env 2>/dev/null | cut -d= -f2- || echo "vedha")
-  DB_NAME=$(grep -m1 '^POSTGRES_DB='   .env 2>/dev/null | cut -d= -f2- || echo "vedha")
-  DB_VER=$(docker exec vedha-postgres-1 psql -U "${DB_USER}" -d "${DB_NAME}" -tAc \
-    "SELECT version_num FROM alembic_version LIMIT 1;" 2>/dev/null | tr -d '[:space:]' || echo "")
+  DB_USER=$(grep -m1 '^POSTGRES_USER=' .env 2>/dev/null | cut -d= -f2- || echo "vapt")
+  DB_NAME=$(grep -m1 '^POSTGRES_DB='   .env 2>/dev/null | cut -d= -f2- || echo "vapt_db")
+
+  DB_VER=$(docker exec vedha-postgres-1 \
+    psql -U "${DB_USER}" -d "${DB_NAME}" -tAc \
+    "SELECT version_num FROM alembic_version LIMIT 1;" 2>/dev/null \
+    | tr -d '[:space:]' || echo "")
+
   CODE_HEAD=$(docker compose --project-directory . --env-file .env \
-    -f manager/docker-compose.yml run --rm --no-deps migrate alembic heads 2>/dev/null \
+    -f manager/docker-compose.yml \
+    run --rm --no-deps migrate alembic heads 2>/dev/null \
     | grep -Eo '^[0-9a-f]+' | head -1 || echo "")
+
   if [ -z "${DB_VER}" ]; then
-    warn "Could not read alembic_version from DB"
+    warn "Could not read alembic_version from DB (table may not exist yet)"
   elif [ -z "${CODE_HEAD}" ]; then
-    warn "DB version: ${DB_VER} — could not determine code head"
+    warn "DB version: ${DB_VER} — could not determine code head (migration files missing?)"
   elif [ "${DB_VER}" = "${CODE_HEAD}" ]; then
-    ok "DB migration version matches code head (${DB_VER})"
+    ok "DB migration at code head (${DB_VER})"
   else
-    fail "DB at ${DB_VER} but code head is ${CODE_HEAD} — stamping DB to ${CODE_HEAD}..."
-    docker exec vedha-postgres-1 psql -U "${DB_USER}" -d "${DB_NAME}" \
-      -c "UPDATE alembic_version SET version_num = '${CODE_HEAD}';" >/dev/null 2>&1 && \
-      done_ "DB stamped to ${CODE_HEAD} — migrations will apply cleanly on next restart" || \
-      warn "psql stamp failed — run manually: docker exec vedha-postgres-1 psql -U ${DB_USER} -d ${DB_NAME} -c \"UPDATE alembic_version SET version_num = '${CODE_HEAD}';\""
+    fail "Version mismatch: DB=${DB_VER}  code head=${CODE_HEAD}"
+
+    # Case A: DB version doesn't exist in the codebase at all — just stamp
+    if ! docker compose --project-directory . --env-file .env \
+        -f manager/docker-compose.yml \
+        run --rm --no-deps migrate \
+        alembic show "${DB_VER}" >/dev/null 2>&1; then
+      heal "DB version '${DB_VER}' not found in codebase — stamping to code head ${CODE_HEAD}..."
+      _stamp_result=$(docker exec vedha-postgres-1 \
+        psql -U "${DB_USER}" -d "${DB_NAME}" \
+        -c "UPDATE alembic_version SET version_num = '${CODE_HEAD}';" 2>&1)
+      if echo "${_stamp_result}" | grep -q "UPDATE 1"; then
+        done_ "DB stamped to ${CODE_HEAD}"
+      else
+        warn "psql stamp failed: ${_stamp_result}"
+        warn "Manual fix: docker exec vedha-postgres-1 psql -U ${DB_USER} -d ${DB_NAME} -c \"UPDATE alembic_version SET version_num = '${CODE_HEAD}';\""
+      fi
+
+    else
+      # Case B/C: DB version exists in code but is behind head — try upgrade
+      heal "Running alembic upgrade head..."
+      UPGRADE_LOG=$(docker compose --project-directory . --env-file .env \
+        -f manager/docker-compose.yml \
+        run --rm migrate alembic upgrade head 2>&1)
+      UPGRADE_EXIT=$?
+
+      if [ "${UPGRADE_EXIT}" -eq 0 ]; then
+        done_ "Migrations applied successfully"
+      elif echo "${UPGRADE_LOG}" | grep -q "DuplicateColumnError\|already exists\|DuplicateTableError"; then
+        # Case B: schema already applied from a feature-branch migration
+        heal "Schema already present (DuplicateColumn) — stamping DB to code head ${CODE_HEAD}..."
+        _stamp_result=$(docker exec vedha-postgres-1 \
+          psql -U "${DB_USER}" -d "${DB_NAME}" \
+          -c "UPDATE alembic_version SET version_num = '${CODE_HEAD}';" 2>&1)
+        if echo "${_stamp_result}" | grep -q "UPDATE 1"; then
+          done_ "DB stamped to ${CODE_HEAD} — schema was already applied by a prior branch"
+        else
+          warn "psql stamp failed: ${_stamp_result}"
+        fi
+      else
+        # Case C: genuine migration failure
+        warn "Migration failed with unexpected error:"
+        echo "${UPGRADE_LOG}" | tail -8 | sed 's/^/    /'
+        warn "Run manually: docker compose -f manager/docker-compose.yml run --rm migrate alembic upgrade head"
+      fi
+    fi
+
     ISSUES=$((ISSUES + 1))
   fi
 else

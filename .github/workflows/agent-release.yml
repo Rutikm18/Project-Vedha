@@ -242,7 +242,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows-package
-          path: probe/windows/dist/vedha-probe-win.zip
+          path: probe/windows/dist/vedha-agent-win.zip
           if-no-files-found: error
           retention-days: 7
 
@@ -299,7 +299,7 @@ jobs:
             --key "$keys/ed25519.pem" --p256-key "$keys/p256.pem" \
             --out dist/agent-release --version "$VERSION" --arch amd64,arm64 \
             --from-image "amd64=vedha-agent:build-amd64" --from-image "arm64=vedha-agent:build-arm64" \
-            --windows-zip staging/windows-package/vedha-probe-win.zip "${thumb_args[@]}" \
+            --windows-zip staging/windows-package/vedha-agent-win.zip "${thumb_args[@]}" \
             --sbom staging/sbom/sbom.cdx.json
 
           # Verify against the PUBLIC keys pinned in repo variables, not against the key just used.
@@ -429,13 +429,14 @@ jobs:
           scripts/ci/windows-installer-e2e.ps1 -ReleaseDir (Join-Path $work 'wrong-pin\release\0.0.0-ci') -ExpectFailure 'not the one this release pins'
           scripts/ci/windows-installer-e2e.ps1 -ReleaseDir (Join-Path $work 'unsigned-pinned\release\0.0.0-ci') -ExpectFailure 'meant to be Authenticode-signed'
 
-      # A real install of the real package: Scheduled Task, locked folder, token handling.
-      - name: Install smoke (packaged install.ps1, then uninstall)
+      # A real install of the real package on this runner, by the packaged installer's own end-to-end
+      # test: Scheduled Task, folder permissions, token handling, logs, repair, uninstall.
+      - name: Packaged installer end to end (install, repair, uninstall)
         shell: pwsh
         run: |
           $manifest = Get-Content (Join-Path 'release' 'manifest.json') -Raw | ConvertFrom-Json
           $pkgFile = ($manifest.packages | Where-Object { $_.os -eq 'windows' }).file
-          scripts/ci/windows-install-smoke.ps1 -Package (Join-Path 'release' $pkgFile)
+          probe/windows/tests/Test-InstallE2E.ps1 -ZipPath (Join-Path 'release' $pkgFile)
 
   publish:
     needs: [plan, sign, windows-verify]

@@ -16,9 +16,11 @@
 param(
   [Parameter(Mandatory = $true)][string]$Installer,
   [int]$Port = 0,
-  [string]$Token = 'vet_local',
+  [string]$Token = 'vet_localtoken1',
   [switch]$NoAllowHttp,
-  [string]$ZipDir = ''
+  [string]$ZipDir = '',
+  [switch]$Install,          # run the real install path (not -VerifyOnly) against an https stub
+  [string]$Scope = ''
 )
 $text = Get-Content -Raw -LiteralPath $Installer
 $cut = $text.IndexOf('$failed = $false')
@@ -27,8 +29,25 @@ $tmp = Join-Path ([IO.Path]::GetTempPath()) ('installer-' + [guid]::NewGuid().To
 Set-Content -LiteralPath $tmp -Value $text.Substring(0, $cut)
 if (-not $env:ProgramData) { $env:ProgramData = Join-Path ([IO.Path]::GetTempPath()) 'programdata-harness' }
 
-$loadArgs = @{ Manager = "http://127.0.0.1:$Port"; Token = $Token; VerifyOnly = $true }
-if (-not $NoAllowHttp) { $loadArgs.AllowInsecureHttp = $true }
+if ($Install) {
+  # The stub's certificate is self-signed: trust it for this process only (test harness, never the product).
+  # (A compiled callback: a PowerShell scriptblock has no runspace on the TLS thread.)
+  Add-Type -TypeDefinition @"
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+public static class HarnessTrustAll {
+  public static bool Yes(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors) { return true; }
+}
+"@
+  [System.Net.ServicePointManager]::ServerCertificateValidationCallback =
+    [System.Net.Security.RemoteCertificateValidationCallback][Delegate]::CreateDelegate(
+      [System.Net.Security.RemoteCertificateValidationCallback], [HarnessTrustAll].GetMethod('Yes'))
+  $loadArgs = @{ Manager = "https://127.0.0.1:$Port"; Token = $Token }
+  if ($Scope) { $loadArgs.Scope = $Scope }
+} else {
+  $loadArgs = @{ Manager = "http://127.0.0.1:$Port"; Token = $Token; VerifyOnly = $true }
+  if (-not $NoAllowHttp) { $loadArgs.AllowInsecureHttp = $true }
+}
 . $tmp @loadArgs
 
 $unix = ($PSVersionTable['Platform'] -eq 'Unix')      # the key does not exist in Windows PowerShell 5.1
@@ -52,6 +71,12 @@ if ($unix) {
   }
 }
 
+if ($Install -and $unix) {
+  # Windows-only pieces replaced by recording stand-ins: the administrator check and icacls.exe.
+  function Assert-Environment { }
+  function icacls.exe { $global:LASTEXITCODE = 0; Add-Content -LiteralPath (Join-Path $env:VEDHA_TEST_OUT 'icacls.log') -Value ($args -join ' ') }
+}
+
 if ($ZipDir) {
   foreach ($zip in (Get-ChildItem -LiteralPath $ZipDir -Filter *.zip | Sort-Object Name)) {
     $dest = Join-Path ([IO.Path]::GetTempPath()) ('extract-' + [guid]::NewGuid().ToString('N'))
@@ -62,9 +87,11 @@ if ($ZipDir) {
   exit 0
 }
 
+$script:InstalledNotConnected = $false
 try {
   Install-VedhaAgent
   Write-Host 'RESULT: PASS'
+  Write-Host ('INSTALLED-NOT-CONNECTED: ' + $script:InstalledNotConnected)
 } catch {
   Write-Host ('RESULT: FAIL: ' + $_.Exception.Message)
   exit 3

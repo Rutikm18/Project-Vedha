@@ -1,0 +1,48 @@
+Vedha agent - information for your security team
+================================================
+
+What it is
+  A network assessment agent that your organisation has authorised Vedha to run.
+  It connects OUT to your Vedha manager and scans only the networks it was approved
+  for. It opens no listening port and installs nothing on the systems it scans.
+
+Where it lives after installation
+  Program   : C:\Program Files\Vedha Agent\vedha-agent.exe   (and the files beside it)
+  Data      : C:\ProgramData\vedha-agent\                    (settings, identity, logs)
+  Runs as   : scheduled task "VedhaAgent", account SYSTEM, started at boot
+  Process   : vedha-agent.exe
+  Version   : {{VERSION}}
+  SHA-256 of vedha-agent.exe : {{EXE_SHA256}}
+
+Network
+  Outbound  : TCP 443 to {{MANAGER_HOST}} (HTTPS and WebSocket). Nothing else leaves.
+  Inbound   : none.
+  Scan traffic: from this computer to the networks the engagement covers (TCP
+  connections to common ports, service banner reads, DNS / LDAP / SMB / SNMP
+  queries). It will look like a vulnerability scanner, because it is one.
+
+What to allow
+  1. The folder C:\Program Files\Vedha Agent\ and the process vedha-agent.exe in
+     antivirus / EDR, if it is blocked or quarantined.
+  2. This computer's IP address in IPS / NAC / firewall rules for the engagement
+     period. Otherwise scans may be blocked part-way through.
+  3. Outbound HTTPS to {{MANAGER_HOST}}, preferably exempt from TLS inspection.
+     If HTTPS must be inspected, install with -CaBundle <your company root .pem>.
+  4. Tell your SOC before the first scan so the traffic is expected.
+
+What the agent does NOT do
+  - It does not change your firewall, proxy, antivirus or certificate settings.
+  - It does not read files, documents or user data, and it does not capture traffic.
+  - It sends back facts about the systems it scans (addresses, open ports, service
+    names and versions, configuration observations) to your manager only.
+  - It holds no password. Its identity is a key pair created on this computer.
+
+About warnings on first run
+  This build is not yet digitally signed, so some products may warn on first run
+  or flag it as unknown. Compare the SHA-256 above with the file on disk
+  (Get-FileHash "C:\Program Files\Vedha Agent\vedha-agent.exe") before allowing it.
+
+Stopping or removing it
+  Stop now      : Stop-ScheduledTask -TaskName VedhaAgent        (as Administrator)
+  Remove        : install.cmd -Uninstall      (add -Purge to delete its identity and logs)
+  Your Vedha contact can also revoke the agent from their side at any time.

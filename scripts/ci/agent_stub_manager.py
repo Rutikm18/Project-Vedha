@@ -26,7 +26,8 @@ reject without installing anything:
     oversize    append bytes to the package            -> larger than the signed size
     redirect    answer the package request with a 302  -> redirects are refused
 
-Plain http on 127.0.0.1 only; this is a test fixture, not a server to deploy.
+Plain http on 127.0.0.1 by default; --tls-cert/--tls-key serve https (the Windows installer refuses an
+http:// manager for a real install). This is a test fixture, not a server to deploy.
 
 Usage:
     python scripts/ci/agent_stub_manager.py --release dist/agent-release/1.0.371 \
@@ -37,6 +38,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import ssl
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -126,8 +128,10 @@ class _Handler(BaseHTTPRequestHandler):
         return self.do_GET()
 
 
-def serve(release: Path, token: str, *, port: int = 0, tamper: str = "none") -> ThreadingHTTPServer:
-    """Start the stub on 127.0.0.1 (port 0 = any free port) in a daemon thread."""
+def serve(release: Path, token: str, *, port: int = 0, tamper: str = "none",
+          tls: tuple[Path, Path] | None = None) -> ThreadingHTTPServer:
+    """Start the stub on 127.0.0.1 (port 0 = any free port) in a daemon thread.
+    `tls` = (certificate, key) PEM files to serve https."""
     if tamper not in TAMPER_MODES:
         raise ValueError(f"tamper must be one of {TAMPER_MODES}")
     manifest = json.loads((release / "manifest.json").read_text(encoding="utf-8"))
@@ -143,6 +147,10 @@ def serve(release: Path, token: str, *, port: int = 0, tamper: str = "none") -> 
     Handler.tamper = tamper
     Handler.package_name = packages[0]["file"]
     httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    if tls:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(str(tls[0]), str(tls[1]))
+        httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
     httpd.requests = []
     Handler.requests = httpd.requests
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
@@ -155,9 +163,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--token", default="vet_ci_test")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--tamper", choices=TAMPER_MODES, default="none")
+    ap.add_argument("--tls-cert", type=Path)
+    ap.add_argument("--tls-key", type=Path)
     args = ap.parse_args(argv)
-    httpd = serve(args.release, args.token, port=args.port, tamper=args.tamper)
-    print(f"stub manager on http://127.0.0.1:{httpd.server_address[1]} (tamper={args.tamper})", flush=True)
+    tls = (args.tls_cert, args.tls_key) if args.tls_cert and args.tls_key else None
+    httpd = serve(args.release, args.token, port=args.port, tamper=args.tamper, tls=tls)
+    scheme = "https" if tls else "http"
+    print(f"stub manager on {scheme}://127.0.0.1:{httpd.server_address[1]} (tamper={args.tamper})", flush=True)
     try:
         threading.Event().wait()
     except KeyboardInterrupt:

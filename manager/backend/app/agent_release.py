@@ -122,6 +122,11 @@ class AgentRelease:
     p256_key_id: str = ""
     windows_unavailable: str = ""
 
+    # The agent's OWN version (probe/agent/version.py), distinct from `version`,
+    # which names the platform release. "" for a release built before the field
+    # existed: such a release offers no update.
+    agent_version: str = ""
+
     @property
     def windows_available(self) -> bool:
         return "windows" in self.packages and self.windows_installer is not None \
@@ -292,6 +297,12 @@ def load_release(root: Path, public_key_b64: str = "", *, require_signature: boo
     windows = _load_windows(directory, manifest, version, raw_packages, manifest_bytes,
                             p256_public_key_b64, require_signature)
 
+    agent_version = manifest.get("agent_version", "")
+    if agent_version != "" and (
+        not isinstance(agent_version, str) or parse_agent_version(agent_version) is None
+    ):
+        raise ReleaseUnavailable(f"release {version} manifest has an invalid agent_version")
+
     return AgentRelease(
         version=version,
         directory=directory.resolve(),
@@ -301,6 +312,7 @@ def load_release(root: Path, public_key_b64: str = "", *, require_signature: boo
         signed=signed,
         signing_key_id=key_id(public_key_b64) if signed else "",
         sbom=sbom,
+        agent_version=agent_version,
         **windows,
     )
 
@@ -357,6 +369,31 @@ def _load_windows(directory: Path, manifest: dict, version: str, raw_packages: o
             "windows_launcher": launcher, "p256_signed": p256_signed,
             "p256_key_id": p256_key_id(p256_public_key_b64) if p256_signed else ""}
 
+# ── agent version comparison ─────────────────────────────────────────────────
+
+_AGENT_VERSION_RE = re.compile(r"\d+(\.\d+){0,3}")
+
+
+def parse_agent_version(text: object) -> tuple[int, ...] | None:
+    """'2.1.0' -> (2, 1, 0). Tolerates a leading 'v' and a '-rc1'/'+build' suffix
+    (ignored). Anything else is None, never a guess. Mirrors the agent's own
+    parser (probe/agent/update_check.py) so both sides agree on what is newer."""
+    if not isinstance(text, str):
+        return None
+    core = re.split(r"[-+]", text.strip().lstrip("vV"), maxsplit=1)[0]
+    if not _AGENT_VERSION_RE.fullmatch(core):
+        return None
+    return tuple(int(part) for part in core.split("."))
+
+
+def agent_version_is_newer(latest: object, current: object) -> bool:
+    """True only when both parse and `latest` is strictly greater."""
+    a, b = parse_agent_version(latest), parse_agent_version(current)
+    if a is None or b is None:
+        return False
+    width = max(len(a), len(b))
+    return a + (0,) * (width - len(a)) > b + (0,) * (width - len(b))
+
 
 # ── stat-keyed cache ─────────────────────────────────────────────────────────
 
@@ -411,3 +448,45 @@ def current_release(root: Path | str, public_key_b64: str = "", *, require_signa
 def clear_cache() -> None:
     with _cache_lock:
         _cache.clear()
+
+
+_AGENT_VERSION_TEXT_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z._+-]{0,63}")
+
+
+def clean_agent_version(text: object) -> str | None:
+    """A version string an agent reported, or None if it is not a plain, short
+    version-like token. Stored as given; never interpreted as anything else."""
+    if not isinstance(text, str):
+        return None
+    text = text.strip()
+    return text if _AGENT_VERSION_TEXT_RE.fullmatch(text) else None
+
+
+def update_offer(release: "AgentRelease | None", current: object) -> dict:
+    """What to tell an agent that asks "is there a newer agent than mine?".
+
+    Always a normal answer, never an error: an agent must be able to ask whenever
+    it likes. A manager with no release, or a release that predates the
+    agent_version field, simply offers nothing.
+    """
+    current_text = current if isinstance(current, str) else ""
+    offer = {
+        "update_available": False,
+        "current": current_text,
+        "latest": None,
+        "manager_release": release.version if release else None,
+        "message": "",
+    }
+    if release is None:
+        offer["message"] = "No agent release is published on this manager."
+    elif not release.agent_version:
+        offer["message"] = "This manager's release does not state an agent version."
+    elif agent_version_is_newer(release.agent_version, current_text):
+        offer.update(
+            update_available=True,
+            latest=release.agent_version,
+            message=f"Agent {release.agent_version} is available on this manager.",
+        )
+    else:
+        offer["latest"] = release.agent_version
+    return offer

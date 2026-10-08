@@ -34,9 +34,9 @@ export interface InstallCommands {
   one_line: string;
   download: string;
   run: string;
-  /** Windows PowerShell form — run from an elevated prompt. Absent when the values cannot be embedded safely. */
+  /** Windows PowerShell form — run from an elevated prompt. Absent for a non-https manager or values that cannot be embedded safely. */
   windows_powershell?: string;
-  /** cmd.exe form (self-elevating). Absent for a plain-http manager. */
+  /** cmd.exe form (self-elevating). Absent whenever the PowerShell form is. */
   windows_cmd?: string;
 }
 

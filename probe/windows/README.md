@@ -28,13 +28,17 @@ The installer (`install-remote.ps1`, served as `/agent/install.ps1`) first verif
 manifest's ECDSA P-256 signature against the key baked into the script, then downloads the package
 with your token and checks its size and SHA-256 against that signed manifest, checks the Authenticode
 signature when the release pins a certificate, unpacks it (refusing any path that escapes the target
-folder) and runs the packaged `install.ps1`. It stops at the first mismatch and installs nothing.
-The token is kept only in an access-restricted file until the agent has enrolled, then removed.
+folder) and runs the packaged `install.ps1` (the same installer as in the hand-delivered ZIP: package
+checksums, connection check, locked data folder, Scheduled Task, wait-for-connect, diagnostics). It stops at
+the first mismatch and installs nothing. The token goes only into the agent's settings file inside the
+locked data folder and is removed once the agent is online. The manager must be an `https://` address.
 
 `C:\ProgramData\vedha-agent` is restricted to SYSTEM and Administrators (it holds the agent's
-identity key). Run `run.cmd` from an administrator prompt afterwards, or use a `STATE_FILE` of your own.
+identity key). The installer and uninstaller stay in `C:\ProgramData\vedha-agent\tools`.
 
-Update: run the same command again with a fresh token. Remove: `uninstall.cmd` / `uninstall.ps1 -Purge`.
+Update: run the same command again with a fresh token. Remove: `C:\ProgramData\vedha-agent\tools\uninstall.cmd`
+(add `-Purge` to also delete the identity and logs). Audit a release without installing it: add `-VerifyOnly`
+to the PowerShell command (no administrator rights needed).
 
 ---
 

@@ -273,7 +273,7 @@ missing packages.
 | amd64 release proven live | Only arm64 was run end to end | Build `make agent-release` on the release machine and install once on an x86 VM |
 | Podman / RHEL (F5) | RHEL ships Podman | Test the installer with `podman-docker`; document |
 | Reachability test, clock / DNS preflight (F8–F10) | Faster diagnosis | Add to the installer and the Fleet panel |
-| Version, upgrade, support bundle, duplicates (F12, F15, F17, G9) | Phase 2 "supportable" | As planned in §7 |
+| Version, upgrade, support bundle, duplicates (F12, F15, F17, G9) | Phase 2 "supportable" | **Version management built (7 Oct):** the agent's own version (`probe/agent/version.py`), the running version on every heartbeat, `POST /agents/update-check`, `agent_version` in the signed manifest, a CI version gate, and a y/N prompt at start. See [AGENT_DISTRIBUTION.md](../operations/AGENT_DISTRIBUTION.md#agent-versions-and-the-update-check). **Still open:** the authenticated download and swap (needs an agent-credential route), per-OS artifacts, channels/hold/staged rollout, release pipeline, support bundle, duplicates |
 | Virtual appliance | No-Docker customers | Phase 3 |
 
 

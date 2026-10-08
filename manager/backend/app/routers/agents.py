@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func, select
 
-from app import agent_access
+from app import agent_access, agent_release
 from app.auth.jwt import create_access_token
 from app.auth.rbac import require_role
 from app.config import get_settings
@@ -244,6 +244,9 @@ class HeartbeatRequest(BaseModel):
     attempt_id: uuid.UUID | None = None
     fence: int | None = Field(default=None, ge=1)
     status: str = "online"
+    # The version the agent is actually running, so Fleet stays right after an
+    # upgrade. Optional: older agents do not send it.
+    agent_version: str | None = Field(default=None, max_length=64)
 
     @model_validator(mode="after")
     def require_fence_for_running_job(self):
@@ -941,6 +944,9 @@ async def heartbeat(body: HeartbeatRequest, db: DB, request: Request):
 
     now = datetime.now(timezone.utc)
     agent.last_heartbeat = now
+    reported = agent_release.clean_agent_version(body.agent_version)
+    if reported and agent.agent_version != reported:
+        agent.agent_version = reported
     try:
         agent.status = AgentStatus(body.status)
     except ValueError:
@@ -968,6 +974,38 @@ async def heartbeat(body: HeartbeatRequest, db: DB, request: Request):
 
     await db.flush()
     return {"ok": True, "lease_valid": True}
+
+
+class UpdateCheckRequest(BaseModel):
+    agent_id: str
+    agent_version: str = Field(..., min_length=1, max_length=64)
+    platform: str = Field(default="", max_length=32)
+    architecture: str = Field(default="", max_length=32)
+
+
+@router.post("/update-check", summary="Agent asks whether a newer agent version exists")
+async def update_check(body: UpdateCheckRequest, db: DB, request: Request):
+    """Version management only: tells the agent what this manager would serve.
+    Nothing is downloaded here. Behind the same agent authentication as the
+    heartbeat, so an expired or revoked agent is refused before reaching it."""
+    _agent_ownership_check(request, body.agent_id)
+    agent = (await db.execute(
+        select(Agent).where(Agent.id == uuid.UUID(body.agent_id))
+    )).scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    reported = agent_release.clean_agent_version(body.agent_version)
+    if reported and agent.agent_version != reported:
+        agent.agent_version = reported
+
+    from app.routers.agent_distribution import load_current_release  # avoid an import cycle
+    try:
+        release = load_current_release()
+    except agent_release.ReleaseUnavailable:
+        release = None
+    await db.flush()
+    return agent_release.update_offer(release, body.agent_version)
 
 
 @router.post(

@@ -1908,7 +1908,7 @@ function spotlight(e: React.MouseEvent<HTMLElement>) {
 function FixFirstStrip({
   findings, slaFor, total, loading, failed, onRetry, onSelect,
   exploitedActive, slaActive, onToggleExploited, onToggleSla,
-  severityCounts, severityActive, onSelectSeverity, countsUnavailable,
+  severityCounts, severityActive, onSelectSeverity, countsUnavailable, someLocked = false,
 }: {
   findings: Finding[];
   slaFor: (f: Finding) => Sla;
@@ -1918,6 +1918,8 @@ function FixFirstStrip({
   severityActive: Severity | "ALL";
   onSelectSeverity: (s: Severity) => void;
   countsUnavailable: boolean;
+  /** Portal plan hides some severities: counts then cover only what the plan includes. */
+  someLocked?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -1996,7 +1998,7 @@ function FixFirstStrip({
               ? "Vedha could not verify the current queue, so it makes no claim about safety."
               : loading
                 ? "Waiting on finding and SLA signals."
-                : `Counts cover every open finding in scope. The queue below shows ${findings.length} of ${total} matching findings.`}
+                : `${someLocked ? "Counts cover the severities included in your plan; locked severities are listed separately." : "Counts cover every open finding in scope."} The queue below shows ${findings.length} of ${total} matching findings.`}
           </p>
           {failed && (
             <button type="button" className="findings-inline-action" onClick={onRetry}>
@@ -3630,6 +3632,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     setSelectedId(null);
     storeQueueView("list");
   }, [setSearch, setPage, setSelectedId]);
+  const lockedPlan = usePortalEntitlement(surface === "portal");
   const Shell = surface === "portal" ? PortalShell : PageShell;
 
   return (
@@ -3722,6 +3725,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
         severityCounts={severityCounts}
         severityActive={filterSev}
         countsUnavailable={summaryUnavailable}
+        someLocked={surface === "portal" && (lockedPlan.data?.locked_severities?.length ?? 0) > 0}
         onSelectSeverity={(s) => applyFilter(() => setFilterSev((current) => current === s ? "ALL" : s))}
       />
 

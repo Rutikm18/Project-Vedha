@@ -102,6 +102,20 @@ def read_version() -> str:
     return (REPO / "VERSION").read_text(encoding="utf-8").strip()
 
 
+AGENT_VERSION_FILE = REPO / "probe" / "agent" / "version.py"
+_AGENT_VERSION_LINE = re.compile(r'^AGENT_VERSION\s*=\s*["\']([0-9][0-9A-Za-z.+-]{0,63})["\']\s*$', re.MULTILINE)
+
+
+def read_agent_version(path: Path = AGENT_VERSION_FILE) -> str:
+    """The agent's own version (probe/agent/version.py), read as text so the release
+    tool never imports the agent. This is separate from the platform release
+    version above, which only names the release directory."""
+    match = _AGENT_VERSION_LINE.search(path.read_text(encoding="utf-8"))
+    if not match:
+        raise ReleaseError(f"could not find AGENT_VERSION in {path}")
+    return match.group(1)
+
+
 # ── keys ─────────────────────────────────────────────────────────────────────
 
 def load_private_key(path: Path):
@@ -312,6 +326,7 @@ def build_release(
     sbom_path: Path | None = None,
     windows_installer_source: Path = WIN_INSTALLER,
     windows_launcher_source: Path = WIN_LAUNCHER,
+    agent_version: str | None = None,
 ) -> Path:
     if windows_zip is not None:
         if p256_key_path is None:
@@ -327,6 +342,9 @@ def build_release(
             raise ReleaseError(f"unsupported architecture {arch!r} (supported: {', '.join(ARCHES)})")
     if not re.fullmatch(r"[0-9A-Za-z][0-9A-Za-z._-]{0,63}", version):
         raise ReleaseError(f"invalid version {version!r}")
+    agent_version = agent_version if agent_version is not None else read_agent_version()
+    if not re.fullmatch(r"[0-9][0-9A-Za-z.+-]{0,63}", agent_version):
+        raise ReleaseError(f"invalid agent version {agent_version!r}")
     private_key = load_private_key(key_path)
     raw_b64 = public_raw_b64(private_key)
     p256_key = load_p256_private_key(p256_key_path) if p256_key_path else None
@@ -363,6 +381,9 @@ def build_release(
         manifest = {
             "schema": 1,
             "version": version,
+            # The agent's own version, so a manager can tell a running agent
+            # whether a newer one exists. Signed with the rest of the manifest.
+            "agent_version": agent_version,
             "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "installer": {"file": "install.sh", "sha256": sha256_file(installer)},
             "images": images,

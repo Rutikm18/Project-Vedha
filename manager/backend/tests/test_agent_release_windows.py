@@ -190,7 +190,8 @@ def test_release_without_windows_is_unchanged_schema_1(tmp_path, keys, sources):
     final = _build(tmp_path, keys, sources, windows=False)
     manifest = json.loads((final / "manifest.json").read_text())
     assert manifest["schema"] == 1
-    assert set(manifest) == {"schema", "version", "created_at", "installer", "images", "signing_key_id"}
+    # schema 1 is the original shape plus the agent version (an additive field older readers ignore)
+    assert set(manifest) == {"schema", "version", "agent_version", "created_at", "installer", "images", "signing_key_id"}
     assert not (final / "manifest.json.p256.sig").exists()
     assert not (final / "install.ps1").exists()
     tool.verify_release_dir(final, keys[1])               # no P-256 key needed

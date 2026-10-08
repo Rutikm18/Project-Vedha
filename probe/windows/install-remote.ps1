@@ -36,7 +36,7 @@ param(
   [string]$Manager = '',
   [string]$Token   = '',
   [string]$Scope   = '',          # CIDR list; empty = auto-detect this host's /24
-  [switch]$AllowInsecureHttp,     # lab use: allow an http:// manager (the token is sent in clear text)
+  [switch]$AllowInsecureHttp,     # testing only: lets -VerifyOnly talk to a local http:// test server
   [switch]$VerifyOnly,            # download and verify everything, install nothing (no administrator needed)
   [switch]$PauseAtEnd             # keep the window open (set by install.cmd after it elevates)
 )
@@ -62,8 +62,13 @@ function Get-CleanManager {
   if ($m -notmatch '^(?<scheme>https?)://[A-Za-z0-9.\-]+(:[0-9]{1,5})?$') {
     throw "Manager must look like https://host or https://host:port (got '$Manager')."
   }
-  if ($Matches['scheme'] -eq 'http' -and -not $AllowInsecureHttp) {
-    throw 'Refusing an http:// manager: the install token would cross the network in clear text. Use the https:// address (or pass -AllowInsecureHttp for a lab).'
+  if ($Matches['scheme'] -eq 'http') {
+    if (-not $VerifyOnly) {
+      throw 'The Windows agent needs an https:// manager address: the install token and everything the agent sends must be encrypted.'
+    }
+    if (-not $AllowInsecureHttp) {
+      throw 'Refusing an http:// manager: the install token would cross the network in clear text. (-AllowInsecureHttp exists only so -VerifyOnly can talk to a local test server.)'
+    }
   }
   return $m
 }
@@ -72,7 +77,7 @@ function Assert-CleanToken {
   if (-not $Token) {
     throw 'An install token is required to download the agent. In Fleet -> Add agent, create one and copy the command it prints.'
   }
-  if ($Token -notmatch '^vet_[A-Za-z0-9_\-]+$') { throw 'The install token is malformed (expected vet_...). Copy it again from Fleet -> Add agent.' }
+  if ($Token -notmatch '^vet_[A-Za-z0-9_\-]{8,}$') { throw 'The install token is malformed (expected vet_...). Copy it again from Fleet -> Add agent.' }
 }
 
 function Assert-CleanScope {
@@ -350,18 +355,38 @@ function Install-VedhaAgent {
     [System.IO.File]::WriteAllBytes((Join-Path $relDir 'manifest.json'), $release.ManifestBytes)
     [System.IO.File]::WriteAllText((Join-Path $relDir 'manifest.json.p256.sig'), $release.SignatureText, [System.Text.Encoding]::ASCII)
 
+    # The packaged installer does the real work (checks the package again, locks the data folder,
+    # registers the task, waits for the agent to connect, removes the token). It exits 0 when the
+    # agent is connected or waiting for approval, 3 when it is installed but not connected yet.
     $global:LASTEXITCODE = 0
+    $innerArgs = @{ Manager = $managerUrl; Token = $Token; NoPause = $true }
+    if ($Scope) { $innerArgs.Scope = $Scope }
     try {
-      & $inner -Manager $managerUrl -Scope $Scope -Token $Token
+      & $inner @innerArgs
     } catch [System.Management.Automation.PSSecurityException] {
       throw ('PowerShell policy blocked the packaged installer (' + $_.Exception.Message + '). Run the command exactly as Fleet shows it: it starts PowerShell with -ExecutionPolicy Bypass for this one process, which is all that is needed.')
     }
-    if ($LASTEXITCODE -ne 0) { throw "The packaged installer failed (exit code $LASTEXITCODE)." }
+    $innerExit = $LASTEXITCODE
+    if ($innerExit -ne 0 -and $innerExit -ne 3) { throw "The packaged installer failed (exit code $innerExit)." }
+
+    # Keep the installer and uninstaller with the install (the package is deleted below), so the
+    # agent can be repaired or removed later without downloading anything.
+    $tools = Join-Path $root 'tools'
+    New-Item -ItemType Directory -Force -Path $tools | Out-Null
+    foreach ($name in 'install.ps1', 'install.cmd', 'uninstall.ps1', 'uninstall.cmd') {
+      $source = Join-Path $unpacked $name
+      if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination (Join-Path $tools $name) -Force }
+    }
+    if ($innerExit -eq 3) {
+      $script:InstalledNotConnected = $true
+      Write-Step 'the agent is installed but has not connected yet; it keeps retrying by itself (see the checks above)'
+    }
   } finally {
     Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
   }
 }
 
+$script:InstalledNotConnected = $false
 $failed = $false
 try {
   Install-VedhaAgent
@@ -372,3 +397,4 @@ try {
 }
 if ($PauseAtEnd) { Read-Host 'Press Enter to close this window' | Out-Null }
 if ($failed) { exit 1 }
+if ($script:InstalledNotConnected) { exit 3 }
