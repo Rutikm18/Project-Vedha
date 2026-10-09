@@ -28,8 +28,12 @@ echo "→ 1/4  plaintext manifest"
 echo "→ 2/4  building sealed image (Nuitka; a few minutes)…"
 [ -f tools/vendor_private.key ] || "$PY" tools/issue_license.py keygen >/dev/null
 PUBKEY="$("$PY" tools/issue_license.py pubkey)"
+# LTO off by default: it only changes how gcc links the objects, never which
+# modules Nuitka compiled in, and its link alone overran the 45-min CI budget.
+# SEAL_PARITY_LTO=yes reproduces the hardened build exactly.
 docker build -f Dockerfile.sealed -t "$IMAGE" \
-  --build-arg PROBE_LICENSE_PUBKEY="$PUBKEY" . >/dev/null
+  --build-arg PROBE_LICENSE_PUBKEY="$PUBKEY" \
+  --build-arg NUITKA_LTO="${SEAL_PARITY_LTO:-no}" . >/dev/null
 
 echo "→ 3/4  sealed smoke (runs with NO source: version / hostid / manifest)"
 docker run --rm -e LICENSE_ENFORCED=false "$IMAGE" version

@@ -71,7 +71,10 @@ RUN if [ -n "${MTLS_CERT}" ]; then \
 # Compile: all Python → C → machine code → single executable.
 # Hardening for IP protection (verified: nothing in the probe reads __doc__ at
 # runtime, so stripping docstrings is safe):
-#   --lto=yes            link-time optimization — smaller + harder to analyze
+#   --lto=yes            link-time optimization — smaller + harder to analyze.
+#                        NUITKA_LTO=no skips it: the link then takes minutes, not
+#                        30+ on 2 cores. Module inclusion is decided before the C
+#                        link, so seal-parity builds without it (seal_parity.sh).
 #   no_docstrings        strips your algorithm explanations out of the binary
 #   no_asserts           strips assert statements (they leak intent/invariants)
 # HONEST NOTE: the FREE Nuitka still leaves string/number CONSTANTS (port lists,
@@ -79,9 +82,10 @@ RUN if [ -n "${MTLS_CERT}" ]; then \
 # anti-debugging, use Nuitka Commercial's protection plugin. Even so, this build
 # already removes ALL source, bytecode, and docstrings — a large step up from
 # shipping .py/.pyc (which decompile trivially).
+ARG NUITKA_LTO=yes
 RUN python3 -m nuitka --onefile --standalone --output-dir=/out \
       --output-filename=vedha-agent --follow-imports \
-      --lto=yes --python-flag=no_docstrings --python-flag=no_asserts \
+      --lto=${NUITKA_LTO} --python-flag=no_docstrings --python-flag=no_asserts \
       --include-package=scanner --include-package=workflow --include-package=agent \
       --include-package=cryptography --include-package=httpx \
       --include-package=websockets \
