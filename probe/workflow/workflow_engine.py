@@ -305,6 +305,16 @@ def _record(
         )
 
 
+def _default_executor_workers() -> int:
+    """Size of asyncio's default thread pool on THIS machine.
+
+    Mirrors concurrent.futures.ThreadPoolExecutor's own default, min(32, cpu+4),
+    using the CPUs this process may actually run on where Python exposes that.
+    """
+    cpus = getattr(os, "process_cpu_count", os.cpu_count)() or 1
+    return min(32, cpus + 4)
+
+
 def _default_host_concurrency(concurrency: int) -> int:
     """Hosts scanned in parallel during the deep-branch stage.
 
@@ -312,6 +322,12 @@ def _default_host_concurrency(concurrency: int) -> int:
     dominated by waiting rather than bandwidth — a modest fan-out reclaims nearly
     all of the wall time, while a large one just multiplies simultaneous load on
     the customer network for no gain.
+
+    Also capped by the default thread pool: every scanner offloads its blocking
+    socket work there, so more hosts in flight than workers only queues work
+    (and the fallback liveness re-check) behind itself. On a 2-core probe the
+    pool is 6, below the fixed cap of 8. An explicit override is the operator's
+    call and is not clamped.
     """
     raw = (os.environ.get("PROBE_HOST_CONCURRENCY") or "").strip()
     if raw:
@@ -319,7 +335,7 @@ def _default_host_concurrency(concurrency: int) -> int:
             return max(1, min(64, int(raw)))
         except ValueError:
             LOG.warning("ignoring non-numeric PROBE_HOST_CONCURRENCY=%r", raw)
-    return max(1, min(8, concurrency))
+    return max(1, min(8, concurrency, _default_executor_workers()))
 
 
 @contextmanager
