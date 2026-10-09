@@ -286,6 +286,14 @@ assets. Migration `0059`.
   and whether each is on the fix list; each step's basis), the fix set and the top hosts as a bounded **share** of modelled
   risk (`risk_removed` itself is a sum over crown jewels and exceeds 100 with several). Read-only by construction, unlike the path
   list, which recomputes and writes when no routes are stored. Plan and review: `docs/planning/2026-10-09-attack-paths-dashboard-plan.md`.
+- *History* (migration `0061`, `attack_path_snapshots`): the headline numbers of every computation, written beside the analysis;
+  retention keeps every computation for 7 days, then the latest of each UTC day, at most 90 per engagement. The overview returns the
+  last 12 points and a neutral `change` between the last two, flagged `inputs_changed` when the hosts seen or the coverage differed:
+  a rise can mean more of the network was seen, so it is reported as a difference, never as better or worse. One computation is no trend.
+- *Zones* (`GET /engagements/{id}/attack-path-zones`, `app/graph/zones.py`): the stored routes grouped into the subnets they cross,
+  the aggregation the attack-graph literature recommends. A hop's `via` list says where the model placed each host, so the builder's
+  placement rule is not copied; a host a route does not place, and a machine with a second address, stay unplaced and are counted.
+  Counts are of stored routes (a capped list).
 - *Neo4j mirror hygiene* (FM-28/29): `:GraphNode(engagement_id, type)` and `(engagement_id, key)` indexes,
   per-engagement atomic replace, node identity `(engagement_id, key)`, parallel edges kept distinct.
 
