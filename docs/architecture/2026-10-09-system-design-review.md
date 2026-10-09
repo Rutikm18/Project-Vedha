@@ -67,6 +67,12 @@ jobs. The agent only ever dials out.
 
 ## 3. Fixed in this change
 
+> **`dev` already had some of these.** Work merged into `dev` on 2026-10-07 to 10-09 fixed #1
+> (the same cap), #5 (stamping the platform `VERSION` rather than the agent's), #7 and #8, and
+> added a fuller `backend-ci.yml` with an Alembic migrations job (#3). When `test` was merged into
+> `dev`, `dev`'s versions were kept. This change added only what `dev` lacked: the detection-engine
+> CI job, the `probe/workflow/**` and `probe/scanner/**` triggers (#4), and #2, #6, #9 and #10.
+
 | # | Problem | Root cause | Fix | Proof |
 |---|---|---|---|---|
 | 1 | Agent overcommits its thread pool on small machines (**real product bug**, surfaced by CI as a "flaky" test) | `_default_host_concurrency` returned `min(8, concurrency)` regardless of CPUs. On a 2-core probe the default thread pool has 6 workers, so 8 hosts queued blocking work behind each other and behind the liveness re-check. | Cap the default by the actual pool size, `min(32, cpus + 4)`. An explicit `PROBE_HOST_CONCURRENCY` still wins. `probe/workflow/workflow_engine.py` | Simulated 2-core run: original code **1 failed** (`8 <= 6`), fixed code **7 passed**. |
