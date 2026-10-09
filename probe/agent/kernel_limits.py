@@ -42,6 +42,7 @@ emitting a warning per missing file.
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -172,11 +173,30 @@ def check_fd_headroom(soft: int | None, concurrency: int) -> Check | None:
     return Check("fd", "pass", detail)
 
 
-def check_syn_capability(syn_capable: bool, port_count: int) -> Check | None:
+def check_syn_capability(syn_capable: bool, port_count: int,
+                         platform: str | None = None) -> Check | None:
     if syn_capable:
         return Check("raw_socket", "pass", "CAP_NET_RAW available — SYN scan usable")
     if port_count < WIDE_SWEEP_PORTS:
         return None                    # narrow sweep over connect() is normal
+    platform = platform if platform is not None else sys.platform
+    if platform == "win32":
+        # Windows will not send TCP over raw sockets at all, so there is nothing
+        # to grant. The advice that fits Linux ("grant NET_RAW") is wrong here.
+        return Check(
+            "raw_socket", "warn",
+            f"Windows has no SYN scan — a {port_count}-port sweep uses connect()",
+            "one connect() per port: with Windows' SYN retry turned off (see "
+            "doctor: connect_fast_fail) a few hosts' full sweep fits the job "
+            "budget; for full-port sweeps of a whole subnet use a Linux agent",
+        )
+    if not platform.startswith("linux"):
+        return Check(
+            "raw_socket", "warn",
+            f"no SYN scan on {platform} — a {port_count}-port sweep uses connect()",
+            "raw sockets here cannot receive TCP replies; for full-port sweeps of "
+            "a whole subnet use a Linux agent",
+        )
     return Check(
         "raw_socket", "warn",
         f"no CAP_NET_RAW — a {port_count}-port sweep falls back to connect scan",

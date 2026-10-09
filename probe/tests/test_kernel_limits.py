@@ -258,3 +258,28 @@ def test_probe_limits_never_raises_on_this_platform():
     limits = kl.probe_limits()
     assert isinstance(limits, kl.KernelLimits)
     assert isinstance(limits.syn_capable, bool)
+
+
+# ── the advice must fit the platform (it once told a Windows agent to grant
+#    NET_RAW and run docker network_mode: host) ─────────────────────────────
+
+def test_linux_advice_is_unchanged():
+    warn = kl.check_syn_capability(False, port_count=65535, platform="linux")
+    assert "NET_RAW" in warn.remediation and "CAP_NET_RAW" in warn.detail
+
+
+def test_windows_advice_names_what_windows_can_do():
+    warn = kl.check_syn_capability(False, port_count=65535, platform="win32")
+    assert warn.status == "warn" and "connect" in warn.detail.lower()
+    assert "NET_RAW" not in warn.remediation and "network_mode" not in warn.remediation
+    assert "Linux agent" in warn.remediation and "connect_fast_fail" in warn.remediation
+
+
+def test_macos_advice_names_the_real_limit():
+    warn = kl.check_syn_capability(False, port_count=65535, platform="darwin")
+    assert "NET_RAW" not in warn.remediation and "Linux agent" in warn.remediation
+
+
+def test_narrow_sweeps_stay_quiet_everywhere():
+    for plat in ("linux", "win32", "darwin"):
+        assert kl.check_syn_capability(False, port_count=15, platform=plat) is None
