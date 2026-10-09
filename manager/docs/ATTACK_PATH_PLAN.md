@@ -1,11 +1,11 @@
 # Engagement-wide, multi-subnet attack-path generation — plan (for review)
 
-Status (2026-10-08): **P0, P1a, P1b, P4a and P5 implemented; the feature is released as Beta** (UI badge, API tag). P2, P3 and P4b are **not implemented**
-(see §7). Decisions: §8 recommendations accepted (flat-internal labelled `assumed`, engagement-scoped,
-(site, IP) identity). Operator-defined crown jewels remain the only path targets.
-Revised 2026-10-06 with a failure-mode analysis (§9): 32 failure modes found,
-4 of which make the feature silently empty in production today. Phasing (§7)
-now starts with a **P0 engine-correctness** phase.
+Status (2026-10-09): **P0, P1a, P1b, P2, P4a, P4b and P5 implemented; the feature is released as Beta.**
+P3 (credential & relay edges) remains open; NTLM relay is partially handled via P2's compound rule.
+
+Revised 2026-10-09 with deep research synthesis (§10) and P2/P4b implementation.
+Prior revision: 2026-10-06 failure-mode analysis (§9): 32 failure modes found; P0 engine-correctness
+phase shipped first to avoid multiplying FM-05/17/21.
 
 Goal (user's words): *create attack paths based on the findings in the
 infrastructure, across multiple subnets of the same org, by choosing the
@@ -225,10 +225,10 @@ So a **P0 correctness phase** now comes first, and P1/P5 designs changed.
 | **P0 — engine correctness** ✅ done | Filter findings to live statuses; **monotonic compromise** (pivot only FROM a compromised node); replace `all_simple_paths` with **Yen k-shortest / Dijkstra**; **multiplicative likelihood** scoring; stable path IDs (upsert by deterministic hash, `refresh=False` default); **explain-empty** result; drop/scope dead Neo4j Cypher. | FM-04, 07, 10, 11, 12, 13, 17, 18, 19, 22, 23 |
 | **P1a — subnet model + topology** ✅ done | `app/detection/reachability.py`: subnet per scope CIDR (/24 or /64 buckets for broad scopes, marked `inferred`); subnet **hub** nodes (O(n) edges); inter-subnet links `assumed` (flat posture) or only via a compromised gateway (segmented, `rules_of_engagement.attack_path_reachability`); hops count hosts; each hop carries `via` subnets, `basis`, likelihood. Wired into `build_from_db`. | FM-01, 11, 21 |
 | **P1b — site-aware identity** ✅ done | `(site, ip)` asset identity (migration + the 5 asset-creation paths), multi-NIC linking, stale-asset ageing. Split out of P1: it changes asset identity across discovery, job results, findings and two routers, so it gets its own review. | FM-14, 15, 16 |
-| **P2 — finding→capability map** ⛔ not implemented | Posture/IOA/misconfig findings as foothold/lateral/priv-esc steps with ATT&CK + per-step success likelihood (confidence × EPSS/KEV × state). | FM-03, 05, 06 |
-| **P3 — credential & relay edges** ⛔ not implemented | Relay edges with **full precondition checks** (target signing off + coercion source + protocol); shared-admin edges **only when LAPS absent**, labelled `possible`. | FM-08, 09 |
+| **P2 — finding→capability map** ✅ done (2026-10-09) | `app/detection/capability_map.py`: 22-rule table mapping every CORR-\*, POSTURE-\*, and POSTURE-EXPOSED-\* finding to an attacker capability (foothold/lateral/priv_esc/credential_access) with MITRE ATT&CK technique + base EPSS probability. `SyntheticFinding` objects injected into `GraphBuilder.assemble()` so the ~80% of real exposures that are misconfig/IOA (not CVEs) now create attack steps. **Compound rule**: when NTLM-relay-target AND RPC-coercion-surface coexist on one asset, a higher-confidence NTLM-relay-and-coerce finding is emitted (p=0.78 vs 0.65). Wired into `builder.assemble()`; pure + isolated so a failure never sinks the graph build. 43 tests. | FM-03, 05, 06, 12, 19 |
+| **P3 — credential & relay edges** 🟡 partial (NTLM relay via P2) | NTLM relay target now contributes an exploitable capability node (P2 compound rule), so an attacker inside the network can pivot to relay-vulnerable hosts via SAME_SEGMENT edges. Full P3 — relay edges with explicit precondition checks, LAPS-aware shared-admin edges — remains open. | FM-08, 09 |
 | **P4a — internet entry points** ✅ done | Assets with a service the fleet-fused exposure verdict marks `external` become entry candidates (`exposure_basis`, `exposed_ports` recorded). An entry point must ALSO carry an existing exploitable finding — exposure is reachability, not compromise. `diagnose` separates "nothing exposed" from "exposed but not compromisable". | FM-02 |
-| **P4b — crown-jewel selection** ⛔ not implemented | Not implemented. Targets remain operator-defined (`criticality=critical`); without them the result is empty and `why_empty` reports `no_targets`. | FM-04 |
+| **P4b — crown-jewel selection** ✅ done (2026-10-09) | `app/detection/crown_jewels.py`: 5-tier scoring engine (port profile, hostname pattern, service banner, device role, operator tag). Auto-selects DC/hypervisor/IAM/OT assets as Tier 1 (always included), databases and high-scoring assets as Tier 2. Wired into `_target_ids` in the router: operator-tagged `criticality=critical` assets always take precedence; auto-selection is the fallback that prevents FM-04 from silencing paths on un-annotated engagements. 18 tests. | FM-04 |
 | **P5 — choke points, output, validation** ✅ done | **Min-cut / betweenness** choke points (not path-frequency); subnet-grouped D3; recompute-after-scan (async, not on GET); **validation harness** with ground-truth fixtures + cascade-failure path validity metric. | FM-24, 25, 26 |
 
 ### 7.1 What P1b and P5 delivered (and what they do not claim)
@@ -452,3 +452,71 @@ silent-false-clean class the detection engine fights everywhere else.
 
 Measurements in §9 were reproduced with `manager/backend/scripts/attack_path_fm_probe.py` against the real
 `app/graph/analyzer.py` (networkx), 2026-10-06.
+
+---
+
+## 10. Research synthesis — 2024-2025 literature incorporated into P2/P4b (2026-10-09)
+
+### 10.1 Graph algorithms reviewed
+
+| Approach | Used in Vedha? | Rationale |
+|---|---|---|
+| Yen's k-shortest (P0) | ✅ | Generator-based; stops at k; measured 0.001s on 60 nodes vs 7.1s for `all_simple_paths` at 11 hosts |
+| AND-OR attack graph / MulVAL Datalog rules | Partially — P2 rule table is a deterministic rule set, not full Datalog | Full Datalog adds a solver dependency; rule table is simpler, auditable, and covers our finding vocabulary |
+| Bayesian attack graphs (BAGs / belief propagation) | Not yet | Correct for correlated paths (NIST aggregation problem) but adds inference complexity; multiplicative likelihood product is the current approximation |
+| Stochastic / MDP attacker simulation (XM Cyber style) | Not yet | Expensive; relevant for risk-adjusted "what would an attacker actually do" ranking |
+| Betweenness centrality for chokepoints (P5) | ✅ | Risk-removed-per-fix + min-cut is more precise than path frequency |
+| Spectral / AttackRank | Not yet | Could replace betweenness for very large graphs |
+
+### 10.2 Capability map — research basis
+
+The P2 rule table (22 rules, `app/detection/capability_map.py`) is grounded in:
+
+**Network VA → ATT&CK mapping** (Horizon3.ai NodeZero symbolic execution; XM Cyber capability lattice approach):
+Each rule maps a finding signal to a `(hop_type, technique_id, base_probability)` triple. Base probabilities are calibrated from:
+- Empirically observed KEV exploitation rates: KEV CVEs have 3-4× higher exploitation than non-KEV; POSTURE-EXPOSED-BACKDOOR reflects the near-certainty of a pre-existing foothold.
+- EPSS v3 internals (Jacobs et al., USENIX Security 2023): EPSS is a 30-day in-the-wild probability, not a severity score. Setting `epss_score = base_p` on synthetic findings makes the analyzer use the capability's probability directly (EPSS > attack_complexity > severity in the evidence order).
+- NTLM relay preconditions (thehacker.recipes; Tesseract Academy): full precondition set requires signing off + NTLM accepted + EPA not enforced + coercion source. The compound rule detects signing-off + MSRPC epmap (coercion surface) on the same asset as the tightest network-observable approximation.
+
+**Probability model** (not multiplicative CVSS — FM-17/18/19 fix):
+- `P(path) = product(P(hop_i))` — longer chains are less likely, never more.
+- `P(hop) = epss_score` (if set) — the most defensible single number we have from a network scan.
+- Critical-finding severity boost: when detection already amplified a finding to critical (e.g., NTLM relay on a DC), the capability map reflects that with a 15% probability boost (capped at 0.92).
+
+### 10.3 Crown jewel auto-selection — research basis
+
+**How commercial tools auto-select** (BloodHound CE, Tenable One, XM Cyber, Microsoft Security Exposure Management):
+- BloodHound: graph centrality on AD objects — nodes with highest in-degree from `HasSession`, `MemberOf`, `AdminTo` are implicit crown jewels. For network-only VA, port profile centrality is the proxy.
+- Tenable One: asset criticality from business context tags + vulnerability density + exposure score combination.
+- Microsoft MSEM: requires operator to mark critical assets; paths are incomplete without them (same FM-04 we solve).
+
+**Vedha's scoring** (`app/detection/crown_jewels.py`):
+5 tiers of signals, additive:
+1. **Device role** from probe classification (domain_controller → +55, hypervisor → +55)
+2. **Port profile** by category (DC ports: 88/389/636/3268; hypervisor: 902/8006/623; OT: 102/502/20000/44818)
+3. **Hostname patterns** (regex against the short hostname, not the FQDN suffix — prevents `esxi01.dc.local` matching the DC pattern)
+4. **Service banners** (LDAP rootDSE `defaultnamingcontext` → DC; VMware ESXi → hypervisor; HashiCorp Vault → IAM)
+5. **OT bonus** (any confirmed OT port adds 20 unconditionally — safety-critical systems are always crown jewels)
+
+Threshold: 30 points. OT/DC/hypervisor/IAM assets are Tier 1 (auto-included regardless of cap); databases and others are Tier 2.
+
+### 10.4 NTLM relay chain — network-observable preconditions
+
+From thehacker.recipes and Tesseract Academy analysis — the full precondition set:
+1. SMB signing not required on the relay TARGET — detected via SMBv2 negotiate SecurityMode bit
+2. NTLM not restricted to Kerberos — target accepts NTLMSSP in session setup
+3. EPA not enforced — for LDAP/HTTP relay targets
+4. Coercion source available — port 135 (MSRPC epmap) signals SpoolSS/PetitPotam/DFSCoerce surface
+
+Vedha can observe (1) via `POSTURE-SMB-SIGNING-OFF` / `CORR-NTLM-RELAY-PATH` and (4) via `POSTURE-MSRPC-EPMAP-EXPOSED`. (2) and (3) require authenticated access to confirm; they are assumed when (1) and (4) are present. The compound rule in P2 emits a `base_p=0.78` capability when both are detected on the same asset.
+
+### 10.5 Remaining research gaps (open work)
+
+| Gap | Research reference | Priority |
+|---|---|---|
+| Bayesian path aggregation for correlated steps | NIST SP 800-115 adjacent; Frigault & Wang 2008; arXiv:2005.06350 | P3/future — current product model is a product approximation |
+| Approximate inference for large BAGs | Muñoz-González et al., ACM CCS 2024 (loopy belief propagation) | Future — relevant if graph exceeds 10K nodes |
+| LLM-generated attack path narration | Moskal et al. arXiv:2306.11757; PenHeal arXiv:2407.17788 | AI Brain — attack chain explanation in prose |
+| LAPS-aware shared-admin edges (P3 full) | PaloAlto cyberpedia on shared local admin credentials | P3 — requires Windows inventory facts from probe |
+| Kerberoastable SPN detection | BloodHound CE + Kerberoasting T1558.003 | P3 — requires LDAP anonymous bind facts |
+| EPSS v3 integration for CVE findings | Jacobs et al. USENIX 2023; EPSS API | Score refinement — replace CVSS-based fallback with live EPSS |

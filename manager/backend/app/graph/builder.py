@@ -450,16 +450,36 @@ class GraphBuilder:
         """Everything build_from_db does after loading rows, from plain objects: assets,
         services and findings, then subnet topology (per-site aware), same-machine
         links and the freshness window. The validation harness (app/graph/validation.py)
-        calls this too, so it measures the code that really runs."""
+        calls this too, so it measures the code that really runs.
+
+        P2 (capability_map): persisted findings are extended with SyntheticFinding
+        objects that carry exploitable=True for posture/IOA/misconfig findings. This
+        makes the ~80% of real exposures that are not CVEs visible as attack steps
+        (ATTACK_PATH_PLAN.md §3.3 / FM-12).
+        """
         from app.detection.asset_identity import link_machines, mode_from_roe
         from app.detection.reachability import derive_topology, posture_from_roe
 
         assets = list(assets)
+        services_list = list(services)
         scope = list(scope_cidrs or [])
         identity_mode = mode_from_roe(rules_of_engagement)
         freshness_days = freshness_days_from_roe(rules_of_engagement)
 
-        graph = self.build_asset_graph(engagement_id, assets, services, findings,
+        # P2: derive capability-based synthetic findings from posture/misconfig findings.
+        # derive_capabilities is pure and fast; failures must not sink the graph build.
+        findings_list = list(findings)
+        try:
+            from app.detection.capability_map import derive_capabilities
+            cap_findings = derive_capabilities(findings_list, assets)
+            if cap_findings:
+                logger.info("graph.capability_map.applied", count=len(cap_findings))
+            all_findings = findings_list + cap_findings
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("graph.capability_map.failed", error=str(exc))
+            all_findings = findings_list
+
+        graph = self.build_asset_graph(engagement_id, assets, services_list, all_findings,
                                        freshness_days=freshness_days, now=now)
         graph.graph["freshness_days"] = freshness_days
         graph.graph["scope_cidrs"] = scope

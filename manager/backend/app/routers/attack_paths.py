@@ -253,6 +253,38 @@ async def _critical_asset_ids(db: AsyncSession, engagement_id: uuid.UUID) -> lis
     return [str(r[0]) for r in rows]
 
 
+async def _auto_crown_jewel_ids(db: AsyncSession, engagement_id: uuid.UUID) -> list[str]:
+    """P4b: auto-select high-value targets when the operator has tagged none.
+
+    Scores every asset by port profile, hostname patterns, device role, and banner
+    signals using crown_jewels.auto_crown_jewel_ids. Returns up to 10 asset IDs.
+    Failures are silenced: if auto-selection fails we return [] (same as before).
+    """
+    try:
+        from sqlalchemy import select as sa_select
+
+        from app.detection.crown_jewels import auto_crown_jewel_ids
+        from app.models.service import Service
+
+        assets = list((await db.execute(
+            sa_select(Asset).where(Asset.engagement_id == engagement_id)
+        )).scalars().all())
+        if not assets:
+            return []
+        asset_ids = [a.id for a in assets]
+        services = list((await db.execute(
+            sa_select(Service).where(Service.asset_id.in_(asset_ids))
+        )).scalars().all())
+        selected = auto_crown_jewel_ids(assets, services)
+        if selected:
+            logger.info("graph.auto_crown_jewels.selected",
+                        engagement=str(engagement_id), count=len(selected))
+        return selected
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("graph.auto_crown_jewels.failed", error=str(exc))
+        return []
+
+
 def _all_paths_to_critical(analyzer: PathAnalyzer, critical_ids: list[str]) -> list[dict]:
     paths: list[dict] = []
     for aid in critical_ids:
@@ -284,7 +316,13 @@ async def _target_ids(db: AsyncSession, engagement_id: uuid.UUID,
                       target_asset_id: uuid.UUID | None) -> list[str]:
     if target_asset_id:
         return [str(target_asset_id)]
-    return await _critical_asset_ids(db, engagement_id)
+    tagged = await _critical_asset_ids(db, engagement_id)
+    if tagged:
+        return tagged
+    # P4b: no operator-tagged targets → auto-select from port/role/banner signals.
+    # Returns [] if the engagement has no recognisable high-value assets, in which
+    # case the analyser's diagnose() reports why_empty=no_targets as before.
+    return await _auto_crown_jewel_ids(db, engagement_id)
 
 
 async def _recompute_and_store(
