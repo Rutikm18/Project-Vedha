@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "probe/agent/**"
+      # The unit tests below also cover the stage engine and scanners
+      # (fan-out, tail budget, SYN pacing); a change there alone must run them.
+      - "probe/workflow/**"
+      - "probe/scanner/**"
       - "probe/tests/**"
       - "probe/install.*"
       - "probe/requirements-runtime.txt"
