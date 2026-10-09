@@ -1,6 +1,6 @@
 # Attack paths on the dashboard: how to represent them (research, review and plan v2, 2026-10-09)
 
-**Status:** v2. Phases 0 to 2 are being built from this version. Version 1 of this plan was reviewed
+**Status:** v2. **Phases 0 to 2 are built and checked** (section 11); Phases 3 to 5 are not started. Version 1 of this plan was reviewed
 against the code the same day; section 4 lists what was wrong with it and what changed. The first dashboard
 section it follows shipped on `claude/elegant-noether-ggdafj` (commits `27b80255`, `3a921fce`, `7df368c6`).
 
@@ -30,8 +30,8 @@ section it follows shipped on `claude/elegant-noether-ggdafj` (commits `27b80255
 
 ![v1 mock-up: Option C beside the baseline and the rejected forms, light theme](assets/2026-10-09-attack-paths-dashboard/options-light-wide.png)
 
-*v1 mock-up (not product code; real design tokens, illustrative names). Section 5 lists what v2 changes in it:
-the tiles, the row states and the card wording. Screenshots of the real build are in the appendix.*
+*v1 mock-up (not product code; real design tokens, illustrative names). Section 5 lists what v2 changed in it.
+Screenshots of the real build, on a real database and API, are in section 11.*
 
 ---
 
@@ -399,7 +399,68 @@ Dark theme (v1 mock-up):
 ![Narrow screen](assets/2026-10-09-attack-paths-dashboard/options-light-narrow.png)
 
 
-## 11. Sources
+## 11. What was built (Phases 0 to 2) and how it was checked
+
+### Built
+- **Analyzer:** `choke.targets[].exposed_directly` (R1, R2).
+- **Overview v2** (`app/graph/overview.py`, `routers/attack_paths.py`): six states, per-jewel counts, `ways_in`,
+  `top_risk`, a server-side `summary`, ranking before the limit, only the needed JSON sub-keys loaded (R3 to R7, R12).
+- **`GET /attack-paths/focus/{engagement_id}`** (read-only, operators only) and its BFF route (R8 to R11).
+- **Frontend:** `AttackPathsTiles`, `JewelMeter`, rebuilt `OverviewList` rows, `FixFirstCard` (`routeChainView`,
+  `focusBars`), container-query styles (`overview-styles.ts`), the `/attack-paths` page reusing them (R9 to R14).
+- **Engagement page** (found during the live check, not in v1 or v2): the same false statements were there.
+  An exposed-only engagement read "0 modelled routes" and "No attack paths were modelled ... the model did not have
+  what it needs"; it now says "1 crown jewel directly exposed" with an `ExposedCallout`, `fixFirstSummary` no longer
+  says "fix the gateway" for an exposed jewel, and the page says the route list is capped (5 per entry point per
+  crown jewel).
+- **Route-map edges** use `--text-muted` (3:1) instead of `--border-strong`; a test reads the real tokens.
+
+### Checked
+| Check | Result |
+| --- | --- |
+| Backend suite | 2,977 passed, 8 skipped (was 2,939; +38). Excludes the two files that need the optional `openai` package |
+| Detection engine | 518 passed |
+| Validation harness | 9 of 9 fixtures |
+| Frontend suite | 612 passed (was 567; +45) |
+| `tsc`, `eslint` | clean (0 errors; 6 warnings that are elsewhere in the app) |
+| `next build` | OK; lists `/api/attack-paths/focus/[id]` and `/attack-paths` |
+| Alembic | still one head, `0060`; no migration in this work |
+| Live stack | PostgreSQL 16, the real API, `next dev`. Engagements in every state, four of them computed by the real recompute, two built from validation fixtures with real asset rows. **40 scripted browser checks pass**, plus 3 on the engagement page |
+| Read-only | After calling the focus endpoint for every state, `attack_path_analyses` and `attack_paths` row counts and `computed_at` were unchanged. The dashboard requested only GETs, never `refresh` |
+| Isolation | The customer token gets 403 from both endpoints and the portal dashboard shows no section or menu entry; the other tenant sees only its own engagement; another tenant's focus id is 404 |
+
+Browser checks cover: tiles and their wording, ordering across all engagements before the limit ("showing 5 of 8"),
+each state's wording, the exposed card, the route card with a caveat in words and a share bar, two columns at 1360
+and one at 1024, 900 and 420 px with no horizontal scroll, a row stacking its name at 420, keyboard focus ring,
+dark theme, overview failure (error with Retry, no zeros), focus failure (card says so, ladder intact), the
+`/attack-paths` page, portal isolation.
+
+### Differences from the plan while building
+- The dashboard asks for `limit=5` (the summary still counts every engagement).
+- The card appears only when the top row is `exposed` or `reachable`; otherwise the ladder takes the full width.
+- Two cosmetic defects showed up in screenshots and were fixed: Tailwind's reset made the warning icon a block
+  (it sat on its own line), and the "·" before "N separate ways in" was orphaned on a wrapped line at 420 px.
+- Seen and left alone: the floating assistant button covers the right end of the footer link when the panel sits at
+  the bottom of the window. It is an existing element of the app shell.
+
+### Real build
+![Exposed top row, light](assets/2026-10-09-attack-paths-dashboard/built-exposed-light.png)
+![Route and share bar, light](assets/2026-10-09-attack-paths-dashboard/built-fix-first-light.png)
+![Exposed top row, dark](assets/2026-10-09-attack-paths-dashboard/built-exposed-dark.png)
+![420 px](assets/2026-10-09-attack-paths-dashboard/built-narrow.png)
+![Engagement page for an exposed-only engagement](assets/2026-10-09-attack-paths-dashboard/built-engagement-exposed.png)
+
+### Still open
+- Phases 3 to 5 (history, surfacing, zone view) and decisions D2 to D8.
+- Nobody has looked at this on real engagement data, and CI has not run on any of it.
+- `min_fix_set` in the analyzer still excludes an exposed jewel (the views handle it; fixing the analyzer is D8).
+- At tile level "reachable" can rest on assumed links between subnets; only the card's route shows each step's basis.
+- `GET /engagements/{id}/attack-paths` still **recomputes and writes** when no routes are stored (R8). The dashboard
+  never calls it, but opening the engagement page for a zero-route engagement does. Not changed here.
+
+---
+
+## 12. Sources
 
 Read as search-result summaries only (pages could not be opened from this environment):
 [Microsoft](https://learn.microsoft.com/en-us/security-exposure-management/review-attack-paths) ·

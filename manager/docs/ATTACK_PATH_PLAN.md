@@ -273,12 +273,19 @@ assets. Migration `0059`.
   do not cover, fix first, a map of how the highest-risk routes converge, the route table and a step-by-step
   view. An empty list is explained with the backend's reasons and never reads as safe; a failed load is an
   error, never an empty list. Operators only: the customer portal has no attack-path page.
-- *Tenant-wide overview* (dashboard section, sidebar entry, `/attack-paths`): `GET /attack-paths/overview`
-  returns one row per engagement built only from what is already stored (`app/graph/overview.py`): route count,
-  entry points, crown jewels, the minimum fix set (first three hosts named, the rest counted), coverage and stale
-  hosts. It never computes and never writes. An engagement with no stored analysis is `computed: false` and is
-  shown as "Not computed yet", not as zero routes; zero routes carries the analysis's own reasons. Operators
-  only; the customer portal's dashboard has no such dataset.
+- *Tenant-wide overview* (dashboard section, sidebar entry, `/attack-paths`): `GET /attack-paths/overview` returns one
+  row per engagement built only from what is already stored (`app/graph/overview.py`), ranked across ALL of the
+  tenant's engagements before the limit, with a `summary` of engagement counts. Each row is in one **state**: `exposed`
+  (a crown jewel is itself an exploitable internet-exposed host: no route to cut, so the fix sentence and "ways in" are
+  withheld), `reachable`, `unreachable`, `no_targets` (nothing marked critical), `unrecorded` (no per-jewel data: counts are
+  `null`, not 0) and `not_computed`. The route count is a capped list and is never ranked on. It never computes and never writes.
+  Analyzer addition: `choke.targets[].exposed_directly` (older stored analyses are read by `best_likelihood ≥ 0.9999`, which is exact
+  because no route can multiply to that). Reviewed on 2026-10-09: before this, such a jewel was told "fix the gateway", and an
+  exposed-only engagement read "no routes modelled".
+- *Fix-first card* (`GET /attack-paths/focus/{engagement_id}`): the highest-risk stored route (hosts tagged entry, via, jewel
+  and whether each is on the fix list; each step's basis), the fix set and the top hosts as a bounded **share** of modelled
+  risk (`risk_removed` itself is a sum over crown jewels and exceeds 100 with several). Read-only by construction, unlike the path
+  list, which recomputes and writes when no routes are stored. Plan and review: `docs/planning/2026-10-09-attack-paths-dashboard-plan.md`.
 - *Neo4j mirror hygiene* (FM-28/29): `:GraphNode(engagement_id, type)` and `(engagement_id, key)` indexes,
   per-engagement atomic replace, node identity `(engagement_id, key)`, parallel edges kept distinct.
 
