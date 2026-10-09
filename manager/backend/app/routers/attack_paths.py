@@ -7,6 +7,7 @@ GET /engagements/{id}/attack-paths/{path_id}  — full path detail, hop-by-hop
 GET /engagements/{id}/chokepoints             — chokepoint assets + remediation priority
 GET /engagements/{id}/blast-radius/{asset_id} — assets reachable if asset is owned
 GET /engagements/{id}/attack-graph            — D3-compatible graph JSON
+GET /attack-paths/overview                    — stored results for every engagement (dashboard)
 
 Paths are computed from the engagement's assets/services/findings, scored, and
 persisted to the ``attack_paths`` table so ``/{path_id}`` can return a stable,
@@ -19,16 +20,19 @@ import hashlib
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
 from app.graph.analyzer import PathAnalyzer
 from app.graph.builder import GraphBuilder
 from app.graph.coverage import coverage_report, freshness_report
+from app.graph.overview import build_row, fix_asset_ids, row_sort_key
 from app.graph.visualizer import GraphVisualizer
 from app.models.asset import Asset
 from app.models.attack_path import AttackPath
@@ -36,10 +40,102 @@ from app.models.attack_path_analysis import AttackPathAnalysis
 from app.models.engagement import Engagement
 from app.models.enums import AssetCriticality
 from app.models.probe_site import ProbeSite
+from app.schemas.auth import CurrentUser
 from app.utils.db import get_or_404
 
 router = APIRouter(prefix="/engagements/{engagement_id}", tags=["attack-paths (beta)"])
 logger = structlog.get_logger()
+
+# Tenant-wide, read-only. Operators only: the customer portal has no attack-path view.
+overview_router = APIRouter(prefix="/attack-paths", tags=["attack-paths (beta)"])
+OVERVIEW_ROLES = ["admin", "manager", "tester", "analyst", "auditor"]
+
+
+# ── GET /attack-paths/overview — what the stored analyses say, per engagement ─
+
+@overview_router.get("/overview", summary="Stored attack-path results for every engagement (beta)")
+async def attack_paths_overview(
+    db: DB,
+    current_user: Annotated[CurrentUser, require_role(OVERVIEW_ROLES)],
+    limit: int = Query(default=50, ge=1, le=200),
+):
+    """One line per engagement of the caller's tenant: how many routes the last
+    computation found, the smallest set of hosts that cuts them all, and how much
+    of the network it covered. READ-ONLY: it reads the stored analyses and never
+    computes, so an engagement nobody has opened is `computed: false` — which is not
+    the same claim as "0 routes". Routes first (most first), then engagements
+    computed with none, then never computed."""
+    tenant_id = current_user.tenant_id
+    total = (await db.execute(
+        select(func.count()).select_from(Engagement).where(Engagement.tenant_id == tenant_id)
+    )).scalar_one()
+    picked = (await db.execute(
+        select(Engagement.id, Engagement.name, Engagement.status,
+               AttackPathAnalysis.computed_at, AttackPathAnalysis.path_count, AttackPathAnalysis.analysis)
+        .select_from(Engagement)
+        .outerjoin(AttackPathAnalysis, AttackPathAnalysis.engagement_id == Engagement.id)
+        .where(Engagement.tenant_id == tenant_id)
+        .order_by(AttackPathAnalysis.path_count.desc().nullslast(), Engagement.created_at.desc())
+        .limit(limit)
+    )).all()
+
+    wanted: dict[uuid.UUID, list[str]] = {}
+    for eid, _name, _status, _at, _count, analysis in picked:
+        if analysis is not None:
+            ids, _more = fix_asset_ids(analysis)
+            if ids:
+                wanted[eid] = ids
+    labels = await _fix_asset_labels(db, wanted)
+
+    rows = [
+        build_row(engagement_id=eid, name=name, status=status, computed_at=at, path_count=count,
+                  analysis=analysis, labels=labels.get(eid))
+        for eid, name, status, at, count, analysis in picked
+    ]
+    rows.sort(key=row_sort_key)
+    return {"total": total, "shown": len(rows), "engagements": rows}
+
+
+async def _fix_asset_labels(db: AsyncSession, wanted: dict[uuid.UUID, list[str]]) -> dict[uuid.UUID, dict[str, str]]:
+    """Labels for just the hosts the overview names, with the same disambiguation as
+    the engagement page (a label two machines share gets its site appended). Two
+    bounded queries instead of loading every asset of every engagement: the named
+    hosts, then any other host that shares one of their labels."""
+    if not wanted:
+        return {}
+    asset_ids = {uuid.UUID(i) for ids in wanted.values() for i in ids if _is_uuid(i)}
+    named = (await db.execute(
+        select(Asset.id, Asset.engagement_id, Asset.hostname, Asset.ip_address, Asset.site_id)
+        .where(Asset.id.in_(asset_ids))
+    )).all() if asset_ids else []
+    names = {r[2] for r in named if r[2]}
+    ips = {r[3] for r in named if r[3]}
+    rows = named
+    if names or ips:
+        rows = (await db.execute(
+            select(Asset.id, Asset.engagement_id, Asset.hostname, Asset.ip_address, Asset.site_id)
+            .where(Asset.engagement_id.in_(list(wanted)),
+                   or_(Asset.hostname.in_(names) if names else False,
+                       Asset.ip_address.in_(ips) if ips else False))
+        )).all()
+    site_ids = {r[4] for r in rows if r[4] is not None}
+    site_names: dict[str, str] = {}
+    if site_ids:
+        site_names = {str(s.id): s.name for s in (await db.execute(
+            select(ProbeSite).where(ProbeSite.id.in_(site_ids))
+        )).scalars().all()}
+    by_engagement: dict[uuid.UUID, list[tuple]] = {}
+    for aid, eid, host, ip, site in rows:
+        by_engagement.setdefault(eid, []).append((aid, host, ip, site))
+    return {eid: disambiguated_labels(r, site_names) for eid, r in by_engagement.items()}
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(str(value))
+        return True
+    except ValueError:
+        return False
 
 
 # ── GET /attack-paths — compute (refresh) + paginated list ───────────────────
