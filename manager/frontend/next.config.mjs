@@ -43,6 +43,18 @@ const nextConfig = {
   // PDFKit performs font subsetting at request time. Keep it as a traced Node
   // dependency instead of bundling its fontkit runtime into route chunks.
   serverExternalPackages: ["pdfkit"],
+  // The Docker build sets NEXT_SKIP_TYPECHECK=1: CI runs `tsc --noEmit` on every
+  // change, so the server does not repeat the (slow, memory-hungry) check.
+  // Local `npm run build` still type-checks.
+  typescript: {
+    ignoreBuildErrors: process.env.NEXT_SKIP_TYPECHECK === "1",
+  },
+  // Images are served as-is (`images.unoptimized`) and next/image is not used, so
+  // sharp's native libvips builds (about 45 MB, for glibc AND musl) can never run.
+  // Keep them out of the standalone trace.
+  outputFileTracingExcludes: {
+    "*": ["node_modules/@img/**", "node_modules/sharp/**"],
+  },
   env: {
     NEXT_PUBLIC_APP_VERSION: APP_VERSION,
   },
