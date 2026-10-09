@@ -4,11 +4,12 @@
 Each branch below was checked against `dev` (an ancestor of it, or its commits are present
 under other SHAs), so deleting it loses nothing.
 
-## 1. Publish dev
+## 1. Publish main (and dev)
 
-`origin/dev` already exists and is an ancestor of the new `dev`, so publishing is a fast-forward.
+`main` now contains everything in `dev` (all PRs #2 to #12, `cool-cannon`, the laughing-pasteur work). `origin/main` is an ancestor of it, so both pushes are fast-forwards. Local `main` is checked out in a scratch worktree; if git refuses to switch to it, run `git worktree list` and `git worktree remove` the scratch one first.
 
 ```bash
+git push origin main
 git push -u origin dev
 ```
 
@@ -23,7 +24,7 @@ git branch -d 1209_system_ui_backend_level_changes 2809firsttest addcapabilities
 ## 3. Remote branches fully contained in dev
 
 ```bash
-git push origin --delete claude/agent-client-distribution claude/deploy-hardening claude/elegant-noether-ggdafj claude/fervent-brahmagupta-o0g44u claude/laughing-pasteur-isijb5 claude/platform-security-settings claude/serene-bardeen-1uqxzq claude/adoring-maxwell-uz71b2 codex/expert-ui-ux-enhancements feat/per-scan-findings fix/ai-brain-env-loading fix/starlette-422-constant integration/all-prs integration/all-prs-full reportingwork0510 test
+git push origin --delete claude/agent-client-distribution claude/deploy-hardening claude/elegant-noether-ggdafj claude/fervent-brahmagupta-o0g44u claude/laughing-pasteur-isijb5 claude/platform-security-settings claude/serene-bardeen-1uqxzq claude/adoring-maxwell-uz71b2 claude/cool-cannon-l598dk integration/all-prs-full codex/expert-ui-ux-enhancements feat/per-scan-findings fix/ai-brain-env-loading fix/starlette-422-constant integration/all-prs reportingwork0510 test
 ```
 
 Deleting a branch behind an open PR closes that PR. That is intended here: after step 1 their
@@ -45,6 +46,5 @@ planning docs. Switch to `dev` first, then `git branch -D docs/network-va-usecas
 
 | Branch | Why |
 | --- | --- |
-| `origin/claude/cool-cannon-l598dk` | 109 marketing and brand-film files, no product code. Not in `dev`. Delete only if that marketing work is abandoned. |
-| `origin/codex/customer-portal-engagement-parity` | Conflicts with main's migrations; only its docs were ported. Delete once you agree its remediation workspace is not needed. |
-| `main` (local, 1 commit ahead of `origin/main`) | Holds the `0055-0058` migration port, which `dev` makes unnecessary. Reset it to `origin/main` when ready. |
+| `origin/codex/customer-portal-engagement-parity` | Not merged, deliberately: based on 9 Sep, 482 commits behind, 87 of its 103 files have newer edits on `main`, and its remediation workspace is already ported. Merging would overwrite newer work. Delete it once you agree. |
+| local `main` | Now includes the `0055-0058` migration port plus everything in `dev`. |

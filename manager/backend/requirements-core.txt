@@ -16,6 +16,7 @@ redis[asyncio]==5.2.0
 structlog==24.4.0
 python-multipart==0.0.32
 python-dateutil==2.9.0.post0
+tzdata==2025.2  # zoneinfo on Alpine (no system tz database): blackout windows, report time zones
 openpyxl==3.1.5  # remediation tracker export (XLSX)
 cryptography>=49.0.0
 # Used by in-process engines that back core endpoints

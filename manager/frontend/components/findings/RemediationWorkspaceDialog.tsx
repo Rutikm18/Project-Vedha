@@ -15,7 +15,7 @@ import {
 import {
   downloadRemediationArtifact,
   type RemediationWorkspacePreview,
-} from "../../lib/remediation-workspace";
+} from "../../lib/remediation-workspace.client";
 
 interface Props {
   preview: RemediationWorkspacePreview | null;

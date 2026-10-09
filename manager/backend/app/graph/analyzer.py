@@ -607,11 +607,17 @@ class PathAnalyzer:
         ranked.sort(key=lambda r: (-r["risk_removed"], -len(r["targets_cut_off"]),
                                    r["asset_id"] in source_ids, str(r["asset_id"])))
 
+        # A crown jewel that is itself an exploitable internet-exposed host is its own entry
+        # point: it scores 1.0, has no route to cut, and is left out of `min_fix_set` (targets
+        # are what is being protected). Without this flag a reader sees "fix the gateway" for
+        # a jewel the gateway does not protect.
+        source_set = set(sources)
         return {
             "ranked": ranked[:top],
             "min_fix_set": self.min_fix_set(targets, sources),
             "targets": [{"asset_id": mv.nodes[t].get("entity_id"),
                          "best_likelihood": round(base[t], 6),
+                         "exposed_directly": t in source_set,
                          "risk": round(100 * base[t] * impact[t], 2)} for t in targets],
             "entry_points": len(sources),
             "method": "single-host removal over the control graph + minimum vertex cut",

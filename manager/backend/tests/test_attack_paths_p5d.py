@@ -284,7 +284,7 @@ async def test_stored_results_are_recomputed_in_a_savepoint(db):
     eng = uuid.uuid4()
     with patch.object(R, "_recompute_and_store", new=AsyncMock()) as rc:
         assert await R.refresh_if_materialised(db, eng) is True
-    rc.assert_awaited_once_with(db, eng, None)
+    rc.assert_awaited_once_with(db, eng, None, trigger="detection")      # history says why it was recomputed
     assert db.nested == 1                      # a failure inside rolls back only the savepoint
 
 

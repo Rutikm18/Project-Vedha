@@ -675,13 +675,12 @@ rollback_previous_release() {
   fi
 }
 
-# Build images one service at a time, then start without building. migrate, api
-# and worker all tag the SAME vedha-backend image; building them together makes
-# BuildKit race to write that tag in the containerd image store ("image already
-# exists"). Building the backend once (via api) and the frontend separately — two
-# single-target builds — avoids the collision; migrate/worker reuse the image.
-"${COMPOSE_CMD[@]}" build api 2>&1 | tee -a "$DEPLOY_LOG" || die "backend image build failed"
-"${COMPOSE_CMD[@]}" build frontend 2>&1 | tee -a "$DEPLOY_LOG" || die "frontend image build failed"
+# Build both images (concurrently, skipping any that already exist for this
+# release), then start without building. See deploy/aws/images.sh for why.
+# SERIAL_BUILD=1 builds one after the other; FORCE_REBUILD=1 ignores existing images.
+# shellcheck source=deploy/aws/images.sh
+. "$APP_DIR/deploy/aws/images.sh"
+build_images || die "image build failed (see the lines above and $DEPLOY_LOG)"
 # Remove orphaned containers from previous deploys (profile changes, service renames)
 "${COMPOSE_CMD[@]}" up -d --no-build --remove-orphans 2>&1 | tee -a "$DEPLOY_LOG"
 
@@ -692,7 +691,8 @@ log "waiting for API to become healthy..."
 DEADLINE=$(( $(date +%s) + DEPLOY_TIMEOUT ))
 HEALTHY=0
 while [ "$(date +%s)" -lt "$DEADLINE" ]; do
-  if "${COMPOSE_CMD[@]}" exec -T api curl -fsS http://localhost:8000/health >/dev/null 2>&1; then
+  # Python, not curl: the API image carries no curl (and the probe must ignore proxy variables).
+  if "${COMPOSE_CMD[@]}" exec -T api python -c "import urllib.request as u; u.build_opener(u.ProxyHandler({})).open('http://127.0.0.1:8000/health', timeout=4)" >/dev/null 2>&1; then
     HEALTHY=1
     break
   fi
@@ -735,6 +735,10 @@ RELEASEEOF
 mv "$RELEASE_TMP" "$RELEASE_STATE"
 chmod 600 "$RELEASE_STATE"
 log "promoted immutable release $RELEASE_ID ✓"
+
+# Free the disk the next deploy needs: drop older releases' images (the current and
+# the previous stay for rollback) and cap the build cache.
+prune_old_images
 
 # ── 16. Summary ───────────────────────────────────────────────────────────────
 printf '\n\033[1;32m[vedha] ✓ Deployment complete.\033[0m\n'

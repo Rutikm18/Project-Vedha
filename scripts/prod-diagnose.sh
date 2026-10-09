@@ -181,7 +181,6 @@ if docker ps --filter "name=vedha-postgres-1" --format "{{.Names}}" 2>/dev/null 
         warn "Run manually: docker compose -f manager/docker-compose.yml run --rm migrate alembic upgrade head"
       fi
     fi
-
     ISSUES=$((ISSUES + 1))
   fi
 else

@@ -6,6 +6,7 @@ from app.models.finding import Finding
 from app.models.finding_event import FindingEvent
 from app.models.attack_path import AttackPath
 from app.models.attack_path_analysis import AttackPathAnalysis
+from app.models.attack_path_snapshot import AttackPathSnapshot
 from app.models.detection import DetectionResult
 from app.models.scan_job import ScanJob
 from app.models.scan_schedule import ScanSchedule
@@ -41,7 +42,7 @@ from app.models.worker_heartbeat import WorkerHeartbeat
 
 __all__ = [
     "Tenant", "User", "Engagement", "Asset",
-    "Finding", "FindingEvent", "AttackPath", "AttackPathAnalysis", "DetectionResult", "ScanJob", "ScanJobAttempt", "ScanResult",
+    "Finding", "FindingEvent", "AttackPath", "AttackPathAnalysis", "AttackPathSnapshot", "DetectionResult", "ScanJob", "ScanJobAttempt", "ScanResult",
     "ScanResultChunk",
     "Service", "Agent",
     "ExploitResult", "ExploitApprovalRequest", "AuditLog",

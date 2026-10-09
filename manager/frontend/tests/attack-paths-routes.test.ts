@@ -5,6 +5,7 @@ import { GET as listGet } from "../app/api/engagements/[id]/attack-paths/route";
 import { GET as detailGet } from "../app/api/engagements/[id]/attack-paths/[pathId]/route";
 import { GET as chokeGet } from "../app/api/engagements/[id]/chokepoints/route";
 import { GET as analysisGet } from "../app/api/engagements/[id]/attack-path-analysis/route";
+import { GET as zonesGet } from "../app/api/engagements/[id]/attack-path-zones/route";
 import { GET as graphGet } from "../app/api/engagements/[id]/attack-graph/route";
 import { GET as blastGet } from "../app/api/engagements/[id]/blast-radius/[assetId]/route";
 
@@ -118,5 +119,31 @@ describe("attack-path BFF keeps the backend's verdict", () => {
     assert.ok(res.status >= 500, "an unreachable backend must not look like 'no paths'");
     const body = await res.json();
     assert.ok(body.error);
+  });
+});
+
+describe("attack-path zones BFF", () => {
+  test("forwards a valid engagement id to the read-only zones endpoint and nothing the browser added", async () => {
+    stubBackend({ computed: true, zones: [], links: [] });
+    const res = await zonesGet(req(`http://localhost/api/engagements/${ENG}/attack-path-zones?refresh=true&evil=1`), ctx({ id: ENG }));
+    assert.equal(res.status, 200);
+    const url = new URL(calls[0].url);
+    assert.equal(url.pathname, `/engagements/${ENG}/attack-path-zones`);
+    assert.equal(url.search, "", "no query key is forwarded: a refresh flag can never reach the backend");
+    assert.equal(calls[0].authorization, "Bearer operator-token");
+  });
+
+  test("a bad id and a missing token are refused before any backend call", async () => {
+    stubBackend();
+    assert.equal((await zonesGet(req("http://localhost/api/engagements/..%2Fadmin/attack-path-zones"), ctx({ id: "../admin" }))).status, 400);
+    assert.equal((await zonesGet(req(`http://localhost/api/engagements/${ENG}/attack-path-zones`, null), ctx({ id: ENG }))).status, 401);
+    assert.equal(calls.length, 0);
+  });
+
+  test("a refusal and an outage stay errors", async () => {
+    stubBackend({ detail: "Engagement not found" }, 404);
+    assert.equal((await zonesGet(req(`http://localhost/api/engagements/${ENG}/attack-path-zones`), ctx({ id: ENG }))).status, 404);
+    globalThis.fetch = async () => { throw new TypeError("fetch failed"); };
+    assert.ok((await zonesGet(req(`http://localhost/api/engagements/${ENG}/attack-path-zones`), ctx({ id: ENG }))).status >= 500);
   });
 });

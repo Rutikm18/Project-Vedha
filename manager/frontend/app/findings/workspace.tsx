@@ -45,7 +45,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { RemediationWorkspaceDialog } from "../../components/findings/RemediationWorkspaceDialog";
-import { previewRemediationWorkspace } from "../../lib/remediation-workspace";
+import { previewRemediationWorkspace } from "../../lib/remediation-workspace.client";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { consoleQueryKey } from "../../lib/console-source";
 import { useAssistant } from "../../components/assistant/AssistantProvider";

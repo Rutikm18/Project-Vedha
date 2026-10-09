@@ -12,6 +12,7 @@ on:
       - 'scripts/agent_client_kit.py'
       - 'scripts/onprem_bundle.py'
       - 'probe/install.sh'
+      - 'deploy/aws/**'
       - '.github/workflows/backend-ci.yml'
   pull_request:
     paths:
@@ -21,6 +22,7 @@ on:
       - 'scripts/agent_client_kit.py'
       - 'scripts/onprem_bundle.py'
       - 'probe/install.sh'
+      - 'deploy/aws/**'
       - '.github/workflows/backend-ci.yml'
   workflow_dispatch: {}
 

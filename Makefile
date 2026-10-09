@@ -125,8 +125,9 @@ up-graph: ## Start the platform + Neo4j (attack-path graph)
 
 up-ai: ## Start Manager with deployment-managed Ollama and pull OLLAMA_MODEL
 	@test -f .env || cp .env.docker.example .env
-	INSTALL_EXTRAS=1 $(COMPOSE) build api
-	OLLAMA_BASE_URL=http://ollama:11434 INSTALL_EXTRAS=1 $(COMPOSE) --profile local-ai up -d
+# (up-ai: the extras, scikit-learn/xgboost/shap..., ship glibc wheels only: Debian base.)
+	INSTALL_EXTRAS=1 BACKEND_PYTHON_BASE=python:3.12-slim $(COMPOSE) build api
+	OLLAMA_BASE_URL=http://ollama:11434 INSTALL_EXTRAS=1 BACKEND_PYTHON_BASE=python:3.12-slim $(COMPOSE) --profile local-ai up -d
 
 down: ## Stop ALL services incl. a stray probe/edge (keeps volumes)
 	$(COMPOSE) --profile graph --profile probe --profile ui --profile local-ai down --remove-orphans

@@ -5,8 +5,11 @@ response shapes may still change.
 GET /engagements/{id}/attack-paths            — paginated paths sorted by risk
 GET /engagements/{id}/attack-paths/{path_id}  — full path detail, hop-by-hop
 GET /engagements/{id}/chokepoints             — chokepoint assets + remediation priority
+GET /engagements/{id}/attack-path-zones       — the stored routes aggregated into the subnets they cross
 GET /engagements/{id}/blast-radius/{asset_id} — assets reachable if asset is owned
 GET /engagements/{id}/attack-graph            — D3-compatible graph JSON
+GET /attack-paths/overview                    — stored results for every engagement (dashboard)
+GET /attack-paths/focus/{engagement_id}       — the "fix first" card for one engagement (read-only)
 
 Paths are computed from the engagement's assets/services/findings, scored, and
 persisted to the ``attack_paths`` table so ``/{path_id}`` can return a stable,
@@ -19,27 +22,190 @@ import hashlib
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
 from app.graph.analyzer import PathAnalyzer
 from app.graph.builder import GraphBuilder
 from app.graph.coverage import coverage_report, freshness_report
+from app.graph.overview import (
+    HISTORY_POINTS, build_focus, build_row, build_summary, fix_asset_ids, row_sort_key, snapshot_facts,
+    snapshots_to_prune,
+)
 from app.graph.visualizer import GraphVisualizer
+from app.graph.zones import build_zones
 from app.models.asset import Asset
 from app.models.attack_path import AttackPath
 from app.models.attack_path_analysis import AttackPathAnalysis
+from app.models.attack_path_snapshot import AttackPathSnapshot
 from app.models.engagement import Engagement
 from app.models.enums import AssetCriticality
 from app.models.probe_site import ProbeSite
+from app.schemas.auth import CurrentUser
 from app.utils.db import get_or_404
 
 router = APIRouter(prefix="/engagements/{engagement_id}", tags=["attack-paths (beta)"])
 logger = structlog.get_logger()
+
+# Tenant-wide, read-only. Operators only: the customer portal has no attack-path view.
+overview_router = APIRouter(prefix="/attack-paths", tags=["attack-paths (beta)"])
+OVERVIEW_ROLES = ["admin", "manager", "tester", "analyst", "auditor"]
+
+
+# ── GET /attack-paths/overview — what the stored analyses say, per engagement ─
+
+# The most engagements one overview ranks. Rows are small (only the sub-keys the overview
+# reads are loaded), so this is generous; past it `summary.truncated` says so.
+MAX_RANKED_ENGAGEMENTS = 1000
+
+
+@overview_router.get("/overview", summary="Stored attack-path results for every engagement (beta)")
+async def attack_paths_overview(
+    db: DB,
+    current_user: Annotated[CurrentUser, require_role(OVERVIEW_ROLES)],
+    limit: int = Query(default=50, ge=1, le=200),
+):
+    """One line per engagement of the caller's tenant: how many crown jewels the last
+    computation could reach, whether one is exposed outright, the smallest set of hosts
+    that cuts the routes, and how much of the network it covered. READ-ONLY: it reads the
+    stored analyses and never computes, so an engagement nobody has opened is
+    `not_computed`, which is not the same claim as "0 reachable".
+
+    Every engagement of the tenant is ranked FIRST and the limit applied after, and
+    `summary` counts all of them, so neither the ordering nor the totals depend on how
+    many rows are shown."""
+    tenant_id = current_user.tenant_id
+    a = AttackPathAnalysis.analysis
+    picked = (await db.execute(
+        select(Engagement.id, Engagement.name, Engagement.status,
+               AttackPathAnalysis.computed_at, AttackPathAnalysis.path_count,
+               a["choke"]["targets"], a["choke"]["min_fix_set"], a["choke"]["entry_points"],
+               a["coverage"]["confidence"], a["freshness"]["stale_assets"], a["diagnostics"]["reasons"])
+        .select_from(Engagement)
+        .outerjoin(AttackPathAnalysis, AttackPathAnalysis.engagement_id == Engagement.id)
+        .where(Engagement.tenant_id == tenant_id)
+        .order_by(Engagement.created_at.desc())
+        .limit(MAX_RANKED_ENGAGEMENTS)
+    )).all()
+
+    history = await _history_by_engagement(db, tenant_id)
+    inputs: dict[str, dict] = {}
+    rows = []
+    for eid, name, status, at, count, targets, fix, entry, cov, stale, reasons in picked:
+        inputs[str(eid)] = dict(name=name, status=status, computed_at=at, path_count=count,
+                                analysis=_stored_subset(at, targets, fix, entry, cov, stale, reasons),
+                                history=history.get(eid))
+        rows.append(build_row(engagement_id=eid, **inputs[str(eid)]))
+    summary = build_summary(rows)
+    summary["truncated"] = len(picked) >= MAX_RANKED_ENGAGEMENTS
+    rows.sort(key=row_sort_key)
+    shown = rows[:limit]
+
+    # Host names only for the few rows that are actually returned.
+    wanted: dict[uuid.UUID, list[str]] = {}
+    for row in shown:
+        ids, _more = fix_asset_ids(inputs[row["engagement_id"]]["analysis"])
+        if ids:
+            wanted[uuid.UUID(row["engagement_id"])] = ids
+    labels = await _fix_asset_labels(db, wanted)
+    if labels:
+        shown = [build_row(engagement_id=r["engagement_id"], **inputs[r["engagement_id"]],
+                           labels=labels.get(uuid.UUID(r["engagement_id"]))) for r in shown]
+    return {"total": len(picked), "shown": len(shown), "summary": summary, "engagements": shown}
+
+
+def _stored_subset(computed_at, targets, fix, entry, coverage, stale, reasons) -> dict | None:
+    """The part of a stored analysis the overview reads, rebuilt from the projected
+    sub-keys. `None` means no analysis row at all (never computed); a key the analysis did
+    not record is left out, so the reader sees it as unknown rather than as zero."""
+    if computed_at is None:
+        return None
+    choke = {k: v for k, v in (("targets", targets), ("min_fix_set", fix), ("entry_points", entry)) if v is not None}
+    return {
+        "choke": choke,
+        "coverage": {"confidence": coverage} if coverage else None,
+        "freshness": {"stale_assets": stale} if stale is not None else None,
+        "diagnostics": {"reasons": reasons or []},
+    }
+
+
+# ── GET /attack-paths/focus/{engagement_id} — the dashboard's "fix first" card ─
+
+@overview_router.get("/focus/{engagement_id}", summary="Fix-first detail for one engagement (beta, read-only)")
+async def attack_paths_focus(
+    engagement_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[CurrentUser, require_role(OVERVIEW_ROLES)],
+):
+    """The highest-risk STORED route, the smallest fix set and the hosts whose fix removes
+    the most modelled risk. Unlike `GET /engagements/{id}/attack-paths` this never
+    recomputes: an engagement with no stored routes (computed with none, or a crown jewel
+    that is exposed outright) is answered from its stored analysis, and a GET writes nothing."""
+    engagement = await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    stored = await db.get(AttackPathAnalysis, engagement_id)
+    if stored is None:
+        return build_focus(engagement_id=engagement_id, name=engagement.name, computed_at=None,
+                           analysis=None, path_count=None, route=None, labels={})
+    top = (await db.execute(
+        select(AttackPath).where(AttackPath.engagement_id == engagement_id)
+        .order_by(AttackPath.risk_score.desc().nullslast(), AttackPath.id).limit(1)
+    )).scalars().first()
+    labels = await _asset_labels(db, engagement_id)
+    route = None
+    if top is not None:
+        route = {"id": top.id, "risk_score": float(top.risk_score) if top.risk_score is not None else None,
+                 "freshness": path_freshness(top.path_edges or []),
+                 "nodes": list(top.path_nodes or []), "edges": list(top.path_edges or [])}
+    return build_focus(engagement_id=engagement_id, name=engagement.name, computed_at=stored.computed_at,
+                       analysis=stored.analysis or {}, path_count=stored.path_count, route=route, labels=labels)
+
+
+async def _fix_asset_labels(db: AsyncSession, wanted: dict[uuid.UUID, list[str]]) -> dict[uuid.UUID, dict[str, str]]:
+    """Labels for just the hosts the overview names, with the same disambiguation as
+    the engagement page (a label two machines share gets its site appended). Two
+    bounded queries instead of loading every asset of every engagement: the named
+    hosts, then any other host that shares one of their labels."""
+    if not wanted:
+        return {}
+    asset_ids = {uuid.UUID(i) for ids in wanted.values() for i in ids if _is_uuid(i)}
+    named = (await db.execute(
+        select(Asset.id, Asset.engagement_id, Asset.hostname, Asset.ip_address, Asset.site_id)
+        .where(Asset.id.in_(asset_ids))
+    )).all() if asset_ids else []
+    names = {r[2] for r in named if r[2]}
+    ips = {r[3] for r in named if r[3]}
+    rows = named
+    if names or ips:
+        rows = (await db.execute(
+            select(Asset.id, Asset.engagement_id, Asset.hostname, Asset.ip_address, Asset.site_id)
+            .where(Asset.engagement_id.in_(list(wanted)),
+                   or_(Asset.hostname.in_(names) if names else False,
+                       Asset.ip_address.in_(ips) if ips else False))
+        )).all()
+    site_ids = {r[4] for r in rows if r[4] is not None}
+    site_names: dict[str, str] = {}
+    if site_ids:
+        site_names = {str(s.id): s.name for s in (await db.execute(
+            select(ProbeSite).where(ProbeSite.id.in_(site_ids))
+        )).scalars().all()}
+    by_engagement: dict[uuid.UUID, list[tuple]] = {}
+    for aid, eid, host, ip, site in rows:
+        by_engagement.setdefault(eid, []).append((aid, host, ip, site))
+    return {eid: disambiguated_labels(r, site_names) for eid, r in by_engagement.items()}
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(str(value))
+        return True
+    except ValueError:
+        return False
 
 
 # ── GET /attack-paths — compute (refresh) + paginated list ───────────────────
@@ -195,6 +361,45 @@ async def attack_path_analysis(
     }
 
 
+# ── GET /attack-path-zones ────────────────────────────────────────────────────
+
+# The most stored routes aggregated into one zone view (an engagement stores at most 5 per entry
+# point per crown jewel, so this is rarely reached; `routes_truncated` says when it was).
+MAX_ZONE_ROUTES = 500
+
+
+@router.get("/attack-path-zones",
+            summary="The stored routes aggregated into the subnets they cross (beta, read-only)")
+async def attack_path_zones(
+    engagement_id: uuid.UUID,
+    db: DB,
+    current_user: AuthUser,
+):
+    """Which subnets the stored routes start in, end in, cross and need fixing in, and on what
+    basis each crossing rests. Read-only: it aggregates what is stored and never computes, so an
+    engagement nobody computed answers `computed: false`."""
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    stored = await db.get(AttackPathAnalysis, engagement_id)
+    if stored is None:
+        return {**build_zones(analysis=None, routes=[], engagement_id=engagement_id), "routes_truncated": False}
+    rows = (await db.execute(
+        select(AttackPath.path_nodes, AttackPath.path_edges)
+        .where(AttackPath.engagement_id == engagement_id).limit(MAX_ZONE_ROUTES)
+    )).all()
+    routes = [{"nodes": list(nodes or []), "edges": list(edges or [])} for nodes, edges in rows]
+    analysis = stored.analysis or {}
+    site_ids = {uuid.UUID(s["site"]) for s in (analysis.get("coverage") or {}).get("segments") or []
+                if isinstance(s, dict) and s.get("site") and _is_uuid(s["site"])}
+    site_names: dict[str, str] = {}
+    if site_ids:
+        site_names = {str(s.id): s.name for s in (await db.execute(
+            select(ProbeSite).where(ProbeSite.id.in_(site_ids))
+        )).scalars().all()}
+    return {**build_zones(analysis=analysis, routes=routes, site_names=site_names,
+                          computed_at=stored.computed_at, engagement_id=engagement_id),
+            "routes_truncated": len(rows) >= MAX_ZONE_ROUTES}
+
+
 # ── GET /blast-radius/{asset_id} ──────────────────────────────────────────────
 
 @router.get("/blast-radius/{asset_id}", summary="Assets reachable if this asset is compromised")
@@ -288,7 +493,7 @@ async def _target_ids(db: AsyncSession, engagement_id: uuid.UUID,
 
 
 async def _recompute_and_store(
-    db: AsyncSession, engagement_id: uuid.UUID, target_asset_id: uuid.UUID | None
+    db: AsyncSession, engagement_id: uuid.UUID, target_asset_id: uuid.UUID | None, trigger: str = "manual"
 ) -> dict:
     """Recompute and UPSERT the engagement's paths. Returns the analyzer's
     diagnostics so the caller can explain an empty result."""
@@ -325,10 +530,12 @@ async def _recompute_and_store(
         row.risk_score = Decimal(str(p["risk_score"]))
         row.chokepoints = path_chokepoints(p["nodes"], choke)         # only the ones ON this path
     diagnostics = analyzer.diagnose(targets)
-    await _store_analysis(db, engagement_id, {
+    payload = {
         "choke": choke, "diagnostics": diagnostics,
         "coverage": coverage_report(graph), "freshness": freshness_report(graph),
-    }, len(wanted))
+    }
+    computed_at = await _store_analysis(db, engagement_id, payload, len(wanted))
+    await _record_snapshot(db, engagement_id, payload, len(wanted), trigger, computed_at)
     await db.flush()
     logger.info("graph.paths.stored", engagement=str(engagement_id), count=len(wanted),
                 removed=len(stale))
@@ -351,12 +558,12 @@ async def refresh_if_materialised(db: AsyncSession, engagement_id: uuid.UUID) ->
     if not has_paths and await db.get(AttackPathAnalysis, engagement_id) is None:
         return False
     async with db.begin_nested():
-        await _recompute_and_store(db, engagement_id, None)
+        await _recompute_and_store(db, engagement_id, None, trigger="detection")
     return True
 
 
-async def _store_analysis(db: AsyncSession, engagement_id: uuid.UUID, payload: dict, path_count: int) -> None:
-    """Replace the engagement's stored analysis (one row per engagement)."""
+async def _store_analysis(db: AsyncSession, engagement_id: uuid.UUID, payload: dict, path_count: int) -> datetime:
+    """Replace the engagement's stored analysis (one row per engagement). Returns its timestamp."""
     now = datetime.now(timezone.utc)
     row = await db.get(AttackPathAnalysis, engagement_id)
     if row is None:
@@ -364,6 +571,48 @@ async def _store_analysis(db: AsyncSession, engagement_id: uuid.UUID, payload: d
                                   path_count=path_count, analysis=payload))
     else:
         row.computed_at, row.path_count, row.analysis = now, path_count, payload
+    return now
+
+
+async def _record_snapshot(db: AsyncSession, engagement_id: uuid.UUID, payload: dict, path_count: int,
+                           trigger: str, computed_at: datetime) -> None:
+    """Add this computation's headline numbers to the engagement's history, then drop what the
+    retention rule no longer keeps (every computation for a week, then one a day, at most 90).
+    History is small and is only ever read for a trend; a failure here must not lose the analysis,
+    which is why callers run the recompute inside a savepoint where it is not a user's own click."""
+    db.add(AttackPathSnapshot(engagement_id=engagement_id, computed_at=computed_at, trigger=trigger,
+                              **snapshot_facts(payload, path_count)))
+    await db.flush()
+    rows = (await db.execute(
+        select(AttackPathSnapshot.id, AttackPathSnapshot.computed_at)
+        .where(AttackPathSnapshot.engagement_id == engagement_id)
+    )).all()
+    doomed = snapshots_to_prune([(r[0], r[1]) for r in rows], computed_at)
+    if doomed:
+        await db.execute(delete(AttackPathSnapshot).where(AttackPathSnapshot.id.in_(doomed)))
+
+
+async def _history_by_engagement(db: AsyncSession, tenant_id: uuid.UUID) -> dict[uuid.UUID, list[dict]]:
+    """The last HISTORY_POINTS computations of every engagement of the tenant, oldest first. One
+    query; tenant-scoped through the engagement."""
+    S = AttackPathSnapshot
+    rn = func.row_number().over(partition_by=S.engagement_id, order_by=S.computed_at.desc()).label("rn")
+    sub = (select(S.engagement_id, S.computed_at, S.state, S.jewels_reachable, S.jewels_exposed,
+                  S.assets_seen, S.coverage, rn)
+           .join(Engagement, Engagement.id == S.engagement_id)
+           .where(Engagement.tenant_id == tenant_id).subquery())
+    rows = (await db.execute(
+        select(sub.c.engagement_id, sub.c.computed_at, sub.c.state, sub.c.jewels_reachable, sub.c.jewels_exposed,
+               sub.c.assets_seen, sub.c.coverage)
+        .where(sub.c.rn <= HISTORY_POINTS).order_by(sub.c.engagement_id, sub.c.computed_at)
+    )).all()
+    out: dict[uuid.UUID, list[dict]] = {}
+    for eid, at, state, reachable, exposed, seen, cov in rows:
+        out.setdefault(eid, []).append({
+            "at": at.isoformat(), "state": state, "reachable": reachable, "exposed": exposed,
+            "assets_seen": seen, "coverage": cov,
+        })
+    return out
 
 
 def path_chokepoints(path_nodes: list[str], choke: dict) -> list[str]:

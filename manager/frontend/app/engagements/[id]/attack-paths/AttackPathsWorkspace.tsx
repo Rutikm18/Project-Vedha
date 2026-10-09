@@ -3,16 +3,17 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Layers, Loader2, RefreshCw, Route as RouteIcon, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Layers, Loader2, Network, RefreshCw, Route as RouteIcon, ShieldCheck } from "lucide-react";
 import { PageShell } from "../../../../components/PageShell";
 import { DataState, ErrorState, SkeletonRows } from "../../../../components/states/DataState";
 import { formatExact } from "../../../../components/portal/Timestamp";
 import { useToast } from "../../../../hooks/useToast";
 import { attackPathsApi } from "../../../../lib/attack-paths-api";
-import { fixPointIds, type Analysis, type Diagnostics } from "../../../../lib/attack-paths";
+import { fixPointIds, targetExposed, zoneSummary, type Analysis, type Diagnostics } from "../../../../lib/attack-paths";
 import { errorMessage, fetchJson } from "../../../../lib/fetcher";
 import { PathMap } from "./PathMap";
-import { BetaNotice, CoveragePanel, EmptyExplainer, FixFirstPanel, PathDetailPanel, PathTable } from "./Panels";
+import { ZoneMap } from "./ZoneMap";
+import { BetaNotice, CoveragePanel, EmptyExplainer, ExposedCallout, FixFirstPanel, PathDetailPanel, PathTable } from "./Panels";
 import { ATTACK_PATH_STYLES } from "./styles";
 
 const PAGE_SIZE = 50;
@@ -39,6 +40,13 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
     enabled: list.isSuccess,
   });
 
+  // Read-only aggregation of the stored routes; after the list so a first read has stored something to group.
+  const zones = useQuery({
+    queryKey: ["attack-path-zones", engagementId],
+    queryFn: () => attackPathsApi.zones(engagementId),
+    enabled: list.isSuccess,
+  });
+
   const items = list.data?.items ?? [];
   const activeId = picked && items.some((p) => p.id === picked) ? picked : items[0]?.id ?? null;
 
@@ -54,6 +62,7 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
       qc.setQueryData(["attack-paths", engagementId], fresh);
       setPicked(null);
       void qc.invalidateQueries({ queryKey: ["attack-path-analysis", engagementId] });
+      void qc.invalidateQueries({ queryKey: ["attack-path-zones", engagementId] });
       void qc.invalidateQueries({ queryKey: ["attack-path", engagementId] });
       toast.success("Attack paths recomputed", `${fresh.total} route${fresh.total === 1 ? "" : "s"} from current findings and assets.`);
     },
@@ -63,6 +72,7 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
   const computed = analysis.data?.computed ? analysis.data : null;
   const choke = computed?.choke ?? null;
   const chokeIds = useMemo(() => fixPointIds(choke), [choke]);
+  const exposed = useMemo(() => (choke?.targets ?? []).filter(targetExposed), [choke]);
   const whyEmpty: Diagnostics | null | undefined = list.data?.why_empty ?? computed?.diagnostics;
   const name = engagement.data?.name;
 
@@ -82,7 +92,9 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
                 <strong>
                   {list.isLoading ? "Loading attack paths…"
                     : list.isError ? "Attack paths unavailable"
-                    : `${list.data?.total ?? 0} modelled route${list.data?.total === 1 ? "" : "s"}`}
+                    : list.data?.total === 0 && exposed.length > 0
+                      ? `${exposed.length} crown jewel${exposed.length === 1 ? "" : "s"} directly exposed`
+                      : `${list.data?.total ?? 0} modelled route${list.data?.total === 1 ? "" : "s"}`}
                 </strong>
                 <span>
                   {computed
@@ -104,7 +116,8 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
             <p className="ap-fine">
               Routes between subnets are inferred from addressing and the engagement scope, not read from
               firewall rules. A step marked “assumed” has not been observed. Paths refresh when a detection run
-              changes the findings; Recompute forces it now.
+              changes the findings; Recompute forces it now. At most 5 routes are listed per entry point per
+              crown jewel, so the count follows the entry points, not how exposed anything is.
             </p>
           </div>
         </section>
@@ -129,7 +142,7 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
           isEmpty={list.data?.total === 0}
           onRetry={() => void list.refetch()}
           skeleton={<SkeletonRows rows={4} height={64} />}
-          empty={<EmptyExplainer diagnostics={whyEmpty} />}
+          empty={exposed.length > 0 ? <ExposedCallout targets={exposed} /> : <EmptyExplainer diagnostics={whyEmpty} />}
         >
           {/* Decision first: what to fix. */}
           <section className="ap-card" aria-label="Fix first">
@@ -147,6 +160,39 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
                       The fix-first ranking has not been recorded for these paths. Recompute the paths to produce it.
                     </p></div>}
           </section>
+
+          {(() => {
+            const sum = zoneSummary(zones.data);
+            if (zones.isLoading) {
+              return <section className="ap-card" aria-label="Subnets"><div className="ap-card-body"><SkeletonRows rows={2} height={48} /></div></section>;
+            }
+            if (zones.isError) {
+              return (
+                <section className="ap-card" aria-label="Subnets">
+                  <header className="ap-card-head"><h2 className="ap-card-title"><Network size={15} /> Where the routes go</h2></header>
+                  <div className="ap-card-body"><p className="ap-fine">The subnet map could not be loaded. The routes below are unaffected.</p></div>
+                </section>
+              );
+            }
+            if (!zones.data || (zones.data.zones.length === 0 && sum.notes.length === 0)) return null;
+            return (
+              <section className="ap-card" aria-label="Subnets">
+                <header className="ap-card-head">
+                  <h2 className="ap-card-title"><Network size={15} /> Where the routes go</h2>
+                  <span className="ap-card-meta">{zones.data.routes_considered ?? 0} listed route{zones.data.routes_considered === 1 ? "" : "s"}, grouped by subnet</span>
+                </header>
+                <div className="ap-card-body">
+                  {sum.lead && <p className="ap-headline">{sum.lead}</p>}
+                  <ZoneMap view={zones.data} />
+                  {sum.notes.length > 0 && <ul className="ap-routes-lines">{sum.notes.map((n) => <li key={n}>{n}</li>)}</ul>}
+                  <p className="ap-fine">
+                    A subnet here is a range the analysis placed hosts in. Counts are of the stored routes, a capped list, so they say how
+                    many listed routes use a step, not how exposed it is. A step marked assumed has not been observed.
+                  </p>
+                </div>
+              </section>
+            );
+          })()}
 
           <section className="ap-card" aria-label="Route map">
             <header className="ap-card-head">
