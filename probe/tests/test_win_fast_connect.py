@@ -99,3 +99,53 @@ def test_on_windows_a_closed_port_reports_fast():
         with pytest.raises(ConnectionRefusedError):
             s.connect(("127.0.0.1", port))
         assert time.monotonic() - t0 < 1.0   # default Windows: ~2 s
+
+
+# ── self-check (T3): did the option take effect on this machine? ─────────────
+
+def test_closed_port_measurement_is_real():
+    took = wfc.closed_port_seconds(False, timeout=2.0)
+    assert took is not None and 0 <= took < 2.0
+
+
+def test_fast_fail_measurement_needs_the_option():
+    if sys.platform == "win32":
+        pytest.skip("checks the non-Windows default")
+    assert wfc.closed_port_seconds(True) is None       # nothing to apply here
+
+
+def test_self_check_is_silent_off_windows(monkeypatch):
+    monkeypatch.setattr(wfc, "describe", lambda: {"applies": False, "mode": "default"})
+    assert wfc.self_check(include_default=True) is None
+
+
+@pytest.mark.parametrize("fast, effective", [(0.002, True), (2.1, False), (None, False)])
+def test_self_check_judges_the_timing(monkeypatch, fast, effective):
+    monkeypatch.setattr(wfc, "describe", lambda: {"applies": True, "mode": "none"})
+    timings = {True: fast, False: 2.2}
+    r = wfc.self_check(include_default=True, measure=lambda ff: timings[ff])
+    assert r["effective"] is effective and r["default_s"] == 2.2
+
+
+def test_startup_does_not_pay_for_the_slow_default(monkeypatch):
+    monkeypatch.setattr(wfc, "describe", lambda: {"applies": True, "mode": "none"})
+    asked = []
+    wfc.self_check(include_default=False, measure=lambda ff: asked.append(ff) or 0.001)
+    assert asked == [True]
+
+
+def test_doctor_reports_each_outcome():
+    from agent.doctor import check_connect_fast_fail
+    assert check_connect_fast_fail(None) is None
+    ok = check_connect_fast_fail({"fast_fail_s": 0.002, "default_s": 2.2, "effective": True})
+    assert ok.status == "pass" and "0.002s" in ok.detail and "2.2s" in ok.detail
+    bad = check_connect_fast_fail({"fast_fail_s": 2.1, "default_s": 2.2, "effective": False})
+    assert bad.status == "warn" and "Linux agent" in bad.remediation
+
+
+def test_doctor_off_windows_has_no_fast_fail_line(tmp_path):
+    if sys.platform == "win32":
+        pytest.skip("checks the non-Windows default")
+    from agent import doctor
+    names = [c.name for c in doctor.run("", is_privileged=False, state_dir=str(tmp_path))]
+    assert "connect_fast_fail" not in names

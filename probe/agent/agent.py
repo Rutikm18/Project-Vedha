@@ -295,6 +295,28 @@ def _detect_primary_ipv4() -> str | None:
         return None
 
 
+def _preflight_connect_fast_fail() -> None:
+    """Windows only: say whether scan sockets report a closed port at network
+    speed. Without it every closed port costs ~2 s and connect scans read closed
+    ports as filtered (scanner/win_fast_connect.py). One loopback connect; never
+    blocks startup."""
+    try:
+        from scanner import win_fast_connect
+        result = win_fast_connect.self_check(include_default=False)
+    except Exception:  # noqa: BLE001 — a preflight must never stop the agent
+        return
+    if result is None:
+        return
+    fast = result.get("fast_fail_s")
+    if result.get("effective"):
+        say(f"✓ Port scans: closed ports report in {fast * 1000:.0f} ms "
+            f"(Windows SYN retry off, mode {result['mode']}).", 1)
+    else:
+        say("⚠ Port scans: Windows still retries refused connections (~2 s per closed "
+            "port); full-port sweeps from this agent will be slow. "
+            "Run `doctor` for details.", 1)
+
+
 def _preflight_scope_check(network_segments: list[str]) -> None:
     """Auto-troubleshoot the single silent killer of job execution: a scan
     ceiling that doesn't match the network this probe is actually on.
@@ -612,6 +634,7 @@ def main() -> None:
     # scans" cause) at startup instead of leaving it to be discovered by a job
     # that quietly never runs. Warnings only — never blocks startup.
     _preflight_scope_check(NETWORK_SEGMENTS)
+    _preflight_connect_fast_fail()
 
     # ── Step 1: Startup gauntlet ─────────────────────────────────────────────
     # One function: HW bind → license → anti-debug.  Fails fast with clear,

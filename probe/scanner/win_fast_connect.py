@@ -33,6 +33,7 @@ import ctypes
 import logging
 import socket
 import sys
+import time
 from functools import lru_cache
 from typing import Callable
 
@@ -137,4 +138,52 @@ def describe() -> dict:
         "max_syn_retransmissions": value,
         "mode": ("none" if value == TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS
                  else "one" if value == 1 else "default"),
+    }
+
+
+def closed_port_seconds(fast_fail: bool, *, timeout: float = 5.0) -> float | None:
+    """How long a connect() to a closed loopback port takes here, with or
+    without the fast-fail option. None when it could not be measured.
+
+    Windows applies its SYN-after-RST retry to loopback too (the case OpenJDK
+    fixed), so this measures the real behaviour without touching the network.
+    """
+    try:
+        holder = socket.socket()
+        holder.bind(("127.0.0.1", 0))
+        port = holder.getsockname()[1]
+        holder.close()                       # nothing listens there now
+        with socket.socket() as s:
+            if fast_fail and not enable(s):
+                return None
+            s.settimeout(timeout)
+            t0 = time.monotonic()
+            try:
+                s.connect(("127.0.0.1", port))
+            except OSError:
+                pass
+            return time.monotonic() - t0
+    except OSError:
+        return None
+
+
+#: A refused loopback connect slower than this is still being retried.
+FAST_ENOUGH_S = 0.3
+
+
+def self_check(*, include_default: bool, measure=closed_port_seconds) -> dict | None:
+    """Did the option take effect on this machine? None off Windows.
+
+    `include_default` also times the unmodified socket (~2 s on Windows), which
+    `doctor` wants for contrast and startup does not.
+    """
+    if not describe()["applies"]:
+        return None
+    fast = measure(True)
+    default = measure(False) if include_default else None
+    return {
+        "fast_fail_s": fast,
+        "default_s": default,
+        "effective": fast is not None and fast < FAST_ENOUGH_S,
+        "mode": describe()["mode"],
     }
