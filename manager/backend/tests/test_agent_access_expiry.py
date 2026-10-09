@@ -21,7 +21,14 @@ from app.routers import agents as agents_router
 from app.routers import probe_enrollment as pe
 from app.schemas.auth import CurrentUser
 
+# Fixed instant for the pure is_expired(x, now) checks only. The routes read the
+# real clock, so anything sent through a route is built from _now() instead:
+# NOW + 7 days stopped being in the future on 2026-10-09 and broke the suite.
 NOW = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 # ── the pure helper ──────────────────────────────────────────────────────────
@@ -95,7 +102,7 @@ def test_refresh_is_refused_for_an_expired_agent(monkeypatch):
     request.client.host = "10.0.0.9"; request.headers = {}
     with pytest.raises(HTTPException) as exc:
         asyncio.run(pe.refresh_device_token(
-            _refresh_body(agent_id), request, _refresh_db(_credential(agent_id, NOW), agent), redis,
+            _refresh_body(agent_id), request, _refresh_db(_credential(agent_id, _now()), agent), redis,
         ))
     assert exc.value.status_code == 403 and "expired" in exc.value.detail.lower()
 
@@ -120,7 +127,7 @@ def test_operator_sets_and_clears_expiry():
     user = _operator()
     agent = SimpleNamespace(id=uuid.uuid4(), tenant_id=user.tenant_id, access_expires_at=None)
     db = _agent_db(agent)
-    when = NOW + timedelta(days=7)
+    when = _now() + timedelta(days=7)
     out = asyncio.run(agents_router.set_agent_access_expiry(
         agent.id, agents_router.AgentExpiryUpdate(access_expires_at=when), db, user))
     assert agent.access_expires_at == when
