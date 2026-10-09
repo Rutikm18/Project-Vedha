@@ -207,7 +207,8 @@ def test_summary_counts_engagements_not_assets():
             _row(None, count=None, name="F")]
     s = build_summary(rows)
     assert s == {"engagements": 6, "computed": 5, "assessed": 4, "with_reachable": 3, "exposed": 1, "single_fix": 1,
-                 "not_computed": 1, "no_targets": 1, "unrecorded": 0, "jewels_total": 4, "jewels_reachable": 3}
+                 "not_computed": 1, "no_targets": 1, "unrecorded": 0, "jewels_total": 4, "jewels_reachable": 3,
+                 "compared": 0, "changed": 0}
 
 
 # ── the focus card's data ────────────────────────────────────────────────────
@@ -380,6 +381,7 @@ def test_handler_ranks_every_engagement_before_it_applies_the_limit():
     acme = _picked(E1, "Acme", targets=SINGLE, count=8,
                    fix={"size": 1, "assets": [str(A)], "independent_routes": {str(A): 1}})
     db = _ScriptedDB(_Result(rows=[never, quiet, acme]),                                        # newest first
+                     _Result(rows=[]),                                                          # history
                      _Result(rows=[(A, E1, "vpn-gw", "10.0.0.5", None)]),                       # the named host
                      _Result(rows=[(A, E1, "vpn-gw", "10.0.0.5", None)]))                       # peers sharing a label
     out = _call(db, limit=1)
@@ -393,15 +395,15 @@ def test_handler_ranks_every_engagement_before_it_applies_the_limit():
 def test_handler_totals_count_all_engagements_even_when_few_are_shown():
     rows = [_picked(uuid.UUID(int=100 + i), f"E{i}", targets=SINGLE, count=1,
                     fix={"size": 1, "assets": [], "independent_routes": {}}) for i in range(5)]
-    out = _call(_ScriptedDB(_Result(rows=rows)), limit=2)
+    out = _call(_ScriptedDB(_Result(rows=rows), _Result(rows=[])), limit=2)
     assert out["shown"] == 2 and out["summary"]["with_reachable"] == 5 and out["summary"]["single_fix"] == 5
 
 
 def test_handler_reads_only_the_subkeys_it_needs_and_stays_tenant_scoped_and_read_only():
-    db = _ScriptedDB(_Result(rows=[]))
+    db = _ScriptedDB(_Result(rows=[]), _Result(rows=[]))
     out = _call(db, user=SimpleNamespace(role="manager", tenant_id=uuid.UUID(int=77)))
     assert out["total"] == 0 and out["engagements"] == [] and out["summary"]["engagements"] == 0
-    assert len(db.sql) == 1 and "engagements.tenant_id" in db.sql[0]
+    assert len(db.sql) == 2 and all("engagements.tenant_id" in q for q in db.sql)       # rows, then history
     from sqlalchemy.dialects import postgresql
     sql = str(db.stmts[0].compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})).lower()
     for key in ("'targets'", "'min_fix_set'", "'entry_points'", "'confidence'", "'stale_assets'", "'reasons'"):
@@ -414,10 +416,10 @@ def test_handler_reads_only_the_subkeys_it_needs_and_stays_tenant_scoped_and_rea
 def test_handler_labels_hosts_only_for_the_rows_it_returns():
     a = _picked(E1, "Acme", targets=SINGLE, count=1, fix={"size": 1, "assets": [str(A)], "independent_routes": {}})
     b = _picked(E2, "Beta", targets=SINGLE, count=1, fix={"size": 1, "assets": [str(B)], "independent_routes": {}})
-    db = _ScriptedDB(_Result(rows=[a, b]), _Result(rows=[(A, E1, "a-host", "10.0.0.5", None)]),
+    db = _ScriptedDB(_Result(rows=[a, b]), _Result(rows=[]), _Result(rows=[(A, E1, "a-host", "10.0.0.5", None)]),
                      _Result(rows=[(A, E1, "a-host", "10.0.0.5", None)]))
     out = _call(db, limit=1)
-    assert out["engagements"][0]["name"] == "Acme" and len(db.sql) == 3          # one rows query, two label queries
+    assert out["engagements"][0]["name"] == "Acme" and len(db.sql) == 4          # rows, history, two label queries
     assert str(B) not in " ".join(db.sql)
 
 
@@ -484,3 +486,183 @@ def test_focus_is_tenant_scoped_and_404s_for_another_tenants_engagement(no_compu
     with pytest.raises(HTTPException) as exc:
         _focus(db)
     assert exc.value.status_code == 404 and "engagements.tenant_id" in db.sql[0]
+
+
+# ── history: snapshots, retention, trend ─────────────────────────────────────
+
+from datetime import timedelta  # noqa: E402
+
+from app.graph.overview import (  # noqa: E402
+    HISTORY_POINTS, MAX_SNAPSHOTS_PER_ENGAGEMENT, snapshot_facts, snapshots_to_prune, trend,
+)
+
+
+def test_a_snapshot_holds_the_headline_numbers_of_one_computation():
+    analysis, paths = _analyse(_fixture("09_single_bottleneck_many_entries"))
+    facts = snapshot_facts(analysis, len(paths))
+    assert facts["state"] == REACHABLE
+    assert (facts["jewels_total"], facts["jewels_reachable"], facts["jewels_exposed"]) == (1, 1, 0)
+    assert (facts["fix_set_size"], facts["entry_points"], facts["path_count"]) == (1, 8, 8)
+    assert facts["assets_seen"] and facts["coverage"] in ("observed", "partial")
+
+
+def test_a_snapshot_of_an_exposed_or_unrecorded_analysis_keeps_unknown_as_unknown():
+    exposed, _ = _analyse(_exposed_jewel(_fixture("09_single_bottleneck_many_entries"), only=True))
+    assert snapshot_facts(exposed, 0)["state"] == EXPOSED and snapshot_facts(exposed, 0)["jewels_exposed"] == 1
+    legacy = snapshot_facts({"choke": {"entry_points": 1}}, 3)
+    assert legacy["state"] == UNRECORDED
+    assert legacy["jewels_total"] is None and legacy["jewels_reachable"] is None and legacy["jewels_exposed"] is None
+    assert legacy["fix_set_size"] is None and legacy["coverage"] is None and legacy["assets_seen"] is None
+
+
+NOW_UTC = datetime(2026, 10, 20, 12, 0, tzinfo=timezone.utc)
+
+
+def _snap(i, **delta):
+    return (f"s{i}", NOW_UTC - timedelta(**delta))
+
+
+def test_every_computation_of_the_last_week_is_kept():
+    rows = [_snap(i, hours=h) for i, h in enumerate([1, 5, 30, 100, 160])]
+    assert snapshots_to_prune(rows, NOW_UTC) == []
+
+
+def test_older_than_a_week_keeps_only_the_latest_of_each_day():
+    day10 = datetime(2026, 10, 10, tzinfo=timezone.utc)
+    rows = [("a", day10.replace(hour=6)), ("b", day10.replace(hour=18)), ("c", day10.replace(hour=12)),
+            ("d", datetime(2026, 10, 9, 8, tzinfo=timezone.utc)), ("recent", NOW_UTC - timedelta(days=2))]
+    assert sorted(snapshots_to_prune(rows, NOW_UTC)) == ["a", "c"]          # b (18:00) is the day's last; d is alone on its day
+
+
+def test_exactly_seven_days_old_is_still_inside_the_week():
+    assert snapshots_to_prune([("edge", NOW_UTC - timedelta(days=7)), ("edge2", NOW_UTC - timedelta(days=7, minutes=-1))], NOW_UTC) == []
+
+
+def test_no_engagement_keeps_more_than_the_cap_and_the_oldest_go_first():
+    rows = [(f"s{i}", NOW_UTC - timedelta(minutes=i)) for i in range(MAX_SNAPSHOTS_PER_ENGAGEMENT + 5)]   # all inside the week
+    doomed = snapshots_to_prune(rows, NOW_UTC)
+    assert len(doomed) == 5 and set(doomed) == {f"s{i}" for i in range(MAX_SNAPSHOTS_PER_ENGAGEMENT, MAX_SNAPSHOTS_PER_ENGAGEMENT + 5)}
+    assert snapshots_to_prune([], NOW_UTC) == []
+
+
+def _pt(day, reachable, exposed=0, seen=10, coverage="observed"):
+    return {"at": f"2026-10-{day:02d}T09:00:00+00:00", "state": "reachable", "reachable": reachable, "exposed": exposed,
+            "assets_seen": seen, "coverage": coverage}
+
+
+def test_one_computation_is_no_trend_not_no_change():
+    assert trend([]) is None and trend([_pt(1, 2)]) is None
+
+
+def test_a_computation_without_per_jewel_data_is_a_gap_not_a_zero():
+    assert trend([_pt(1, 2), {**_pt(2, 0), "reachable": None, "state": "unrecorded"}]) is None
+    assert trend([{**_pt(1, 0), "reachable": None}, _pt(2, 2)]) is None
+
+
+def test_the_trend_compares_the_last_two_and_calls_a_change_a_change():
+    flat = trend([_pt(1, 1), _pt(2, 3), _pt(3, 3)])
+    assert flat["changed"] is False and (flat["reachable_from"], flat["reachable_to"]) == (3, 3)
+    moved = trend([_pt(1, 3), _pt(2, 4)])
+    assert moved["changed"] is True and (moved["reachable_from"], moved["reachable_to"]) == (3, 4)
+    assert moved["since"] == "2026-10-01T09:00:00+00:00" and "better" not in str(moved) and "worse" not in str(moved)
+    assert trend([_pt(1, 2, exposed=0), _pt(2, 2, exposed=1)])["changed"] is True      # a newly exposed jewel is a change
+
+
+def test_a_change_that_came_with_different_inputs_says_so():
+    assert trend([_pt(1, 1, seen=10), _pt(2, 2, seen=14)])["inputs_changed"] is True      # more hosts seen
+    assert trend([_pt(1, 1, coverage="partial"), _pt(2, 2, coverage="observed")])["inputs_changed"] is True
+    assert trend([_pt(1, 1), _pt(2, 2)])["inputs_changed"] is False
+    assert trend([_pt(1, 1, seen=None), _pt(2, 2, seen=14)])["inputs_changed"] is False   # unknown is not "changed"
+
+
+def test_a_row_carries_at_most_twelve_points_and_its_change():
+    history = [_pt(d, d % 4) for d in range(1, 20)]
+    analysis, _ = _analyse(_fixture("09_single_bottleneck_many_entries"))
+    row = build_row(engagement_id=uuid.UUID(int=1), name="A", status="active", computed_at=NOW, path_count=1,
+                    analysis=analysis, history=history)
+    assert len(row["history"]) == HISTORY_POINTS and row["history"][-1] == history[-1]
+    assert row["change"]["reachable_to"] == history[-1]["reachable"]
+    never = build_row(engagement_id=uuid.UUID(int=2), name="N", status="draft", history=history)
+    assert never["history"] == [] and never["change"] is None                      # nothing to say about an uncomputed engagement
+
+
+def test_the_summary_counts_engagements_with_a_change_to_report():
+    analysis, _ = _analyse(_fixture("09_single_bottleneck_many_entries"))
+    mk = lambda name, hist: build_row(engagement_id=uuid.uuid4(), name=name, status="active", computed_at=NOW,  # noqa: E731
+                                      path_count=1, analysis=analysis, history=hist)
+    rows = [mk("moved", [_pt(1, 1), _pt(2, 2)]), mk("flat", [_pt(1, 2), _pt(2, 2)]), mk("new", [_pt(2, 2)]), mk("none", None)]
+    s = build_summary(rows)
+    assert (s["compared"], s["changed"]) == (2, 1)
+
+
+# ── history: the database side ───────────────────────────────────────────────
+
+def test_recording_a_snapshot_adds_one_row_and_prunes_what_retention_drops():
+    analysis, paths = _analyse(_fixture("09_single_bottleneck_many_entries"))
+    old = [(uuid.UUID(int=i), NOW_UTC - timedelta(days=30, hours=i)) for i in range(3)]       # three on the same old day
+    db = _ScriptedDB(_Result(rows=old), _Result())
+    added = []
+    db.add = added.append
+    async def flush(): return None
+    db.flush = flush
+    asyncio.run(R._record_snapshot(db, E1, analysis, len(paths), "detection", NOW_UTC))
+    snap = added[0]
+    assert snap.engagement_id == E1 and snap.trigger == "detection" and snap.computed_at == NOW_UTC
+    assert snap.state == REACHABLE and snap.jewels_reachable == 1 and snap.path_count == 8
+    assert len(db.sql) == 2 and db.sql[1].lstrip().lower().startswith("delete")                # two older same-day rows go
+
+
+def test_recording_a_snapshot_deletes_nothing_when_retention_keeps_everything():
+    analysis, paths = _analyse(_fixture("09_single_bottleneck_many_entries"))
+    db = _ScriptedDB(_Result(rows=[(uuid.uuid4(), NOW_UTC - timedelta(hours=2))]))
+    db.add = lambda row: None
+    async def flush(): return None
+    db.flush = flush
+    asyncio.run(R._record_snapshot(db, E1, analysis, len(paths), "manual", NOW_UTC))
+    assert len(db.sql) == 1
+
+
+def test_a_recompute_records_its_snapshot_with_the_analysis_timestamp_and_its_trigger():
+    from unittest.mock import AsyncMock, patch
+    analysis, paths = _analyse(_fixture("09_single_bottleneck_many_entries"))
+    graph = build_graph(_fixture("09_single_bottleneck_many_entries"))
+    class DB:
+        def __init__(self): self.rows = {}
+        async def execute(self, *a, **k): return SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: []), all=lambda: [])
+        def add(self, row): pass
+        async def flush(self): pass
+    async def build(_db, _eid): return PathAnalyzer(graph), graph
+    async def targets(_db, _eid, _t): return ["jewel"]
+    store = AsyncMock(return_value=NOW_UTC)
+    record = AsyncMock()
+    with patch.object(R, "_build_analyzer", build), patch.object(R, "_target_ids", targets), \
+            patch.object(R, "_lock_engagement_paths", AsyncMock()), patch.object(R, "_store_analysis", store), \
+            patch.object(R, "_record_snapshot", record):
+        asyncio.run(R._recompute_and_store(DB(), E1, None, trigger="detection"))
+    args = record.await_args.args
+    assert args[1] == E1 and args[4] == "detection" and args[5] == NOW_UTC
+    assert args[2]["choke"]["targets"][0]["asset_id"] == "jewel" and args[3] == 8
+
+
+def test_history_is_one_tenant_scoped_query_returned_oldest_first():
+    at1, at2 = NOW_UTC - timedelta(days=2), NOW_UTC - timedelta(days=1)
+    db = _ScriptedDB(_Result(rows=[(E1, at1, "reachable", 2, 0, 10, "partial"), (E1, at2, "exposed", 3, 1, 12, "observed")]))
+    out = asyncio.run(R._history_by_engagement(db, uuid.UUID(int=77)))
+    assert [p["reachable"] for p in out[E1]] == [2, 3] and out[E1][1]["state"] == "exposed"
+    assert out[E1][0]["at"] == at1.isoformat() and out[E1][1]["assets_seen"] == 12
+    from sqlalchemy.dialects import postgresql
+    sql = str(db.stmts[0].compile(dialect=postgresql.dialect())).lower()
+    assert "engagements.tenant_id" in sql and "row_number()" in sql and "partition by" in sql
+    assert _only_reads(db)
+
+
+def test_the_overview_carries_each_rows_history_and_the_summary_counts_changes():
+    a = _picked(E1, "Acme", targets=SINGLE, count=1, fix={"size": 1, "assets": [], "independent_routes": {}})
+    b = _picked(E2, "Beta", targets=SINGLE, count=1, fix={"size": 1, "assets": [], "independent_routes": {}})
+    hist = [(E1, NOW - timedelta(days=2), "reachable", 1, 0, 10, "observed"), (E1, NOW, "reachable", 2, 0, 10, "observed"),
+            (E2, NOW, "reachable", 1, 0, 10, "observed")]
+    out = _call(_ScriptedDB(_Result(rows=[a, b]), _Result(rows=hist)), limit=2)
+    rows = {r["name"]: r for r in out["engagements"]}
+    assert [p["reachable"] for p in rows["Acme"]["history"]] == [1, 2] and rows["Acme"]["change"]["changed"] is True
+    assert rows["Beta"]["change"] is None                                           # one computation: no trend
+    assert out["summary"]["compared"] == 1 and out["summary"]["changed"] == 1

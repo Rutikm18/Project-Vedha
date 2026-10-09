@@ -22,7 +22,11 @@ Other rules the rows follow:
   * `path_count` is the length of a CAPPED list (at most 5 routes per entry point per
     crown jewel). It tracks entry points, not exposure, so it is never ranked on;
   * coverage is reported as the analysis recorded it ("observed" / "partial"), or
-    None when the analysis predates the coverage report — never filled in.
+    None when the analysis predates the coverage report — never filled in;
+  * history is the headline numbers of past computations. It starts when the history table
+    does: an engagement with fewer than two computations has NO trend (not "no change"), a
+    computation that recorded no per-jewel data is a gap (not zero), and a change is reported as
+    a change, never as better or worse, because seeing more of the network raises counts too.
 """
 from __future__ import annotations
 
@@ -50,6 +54,11 @@ STATE_ORDER = {EXPOSED: 0, REACHABLE: 1, UNREACHABLE: 2, UNRECORDED: 3, NO_TARGE
 
 # States where the model assessed at least one crown jewel.
 ASSESSED = (EXPOSED, REACHABLE, UNREACHABLE)
+
+# History: how many computations a row carries, and how long every one of them is kept.
+HISTORY_POINTS = 12
+KEEP_EVERY_COMPUTATION_DAYS = 7
+MAX_SNAPSHOTS_PER_ENGAGEMENT = 90
 
 
 def _num(value: Any) -> float | None:
@@ -136,8 +145,10 @@ def build_row(
     path_count: int | None = None,
     analysis: dict[str, Any] | None = None,
     labels: dict[str, str] | None = None,
+    history: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """The overview row for one engagement. `analysis is None` = never computed."""
+    """The overview row for one engagement. `analysis is None` = never computed.
+    `history` is its past computations, oldest first (see `trend`)."""
     labels = labels or {}
     state = classify(analysis)
     row: dict[str, Any] = {
@@ -161,9 +172,13 @@ def build_row(
         "coverage": None,
         "stale_assets": None,
         "why_empty": [],
+        "history": [],
+        "change": None,
     }
     if analysis is None:
         return row
+    row["history"] = list(history or [])[-HISTORY_POINTS:]
+    row["change"] = trend(row["history"])
 
     choke = analysis.get("choke") or {}
     fix = choke.get("min_fix_set") or {}
@@ -225,6 +240,93 @@ def build_summary(rows: list[dict[str, Any]]) -> dict[str, int]:
         "unrecorded": by(UNRECORDED),
         "jewels_total": sum(int(r.get("jewels_total") or 0) for r in assessed),
         "jewels_reachable": sum(int(r.get("jewels_reachable") or 0) for r in assessed),
+        # How many engagements have two computations to compare, and how many of those differ.
+        "compared": sum(1 for r in rows if r.get("change")),
+        "changed": sum(1 for r in rows if (r.get("change") or {}).get("changed")),
+    }
+
+
+# ── history ──────────────────────────────────────────────────────────────────
+
+def snapshot_facts(analysis: dict[str, Any], path_count: int | None) -> dict[str, Any]:
+    """The headline numbers of one computation, as stored in a snapshot. Counts stay None when the
+    analysis did not record them (unknown is not zero)."""
+    facts = jewel_facts(analysis)
+    choke = analysis.get("choke") or {}
+    fix = choke.get("min_fix_set") or {}
+    freshness = analysis.get("freshness") or {}
+    coverage = analysis.get("coverage") or {}
+    seen = _num(freshness.get("assets")) if freshness else None
+    if seen is None and coverage:
+        seen = _num(coverage.get("assets_placed"))
+    entry = _num(choke.get("entry_points"))
+    fix_size = _num(fix.get("size", len(fix.get("assets") or []))) if fix else None
+    confidence = coverage.get("confidence") if coverage else None
+    return {
+        "state": classify(analysis),
+        "jewels_total": facts["total"] if facts else None,
+        "jewels_reachable": facts["reachable"] if facts else None,
+        "jewels_exposed": facts["exposed"] if facts else None,
+        "fix_set_size": int(fix_size) if fix_size is not None else None,
+        "entry_points": int(entry) if entry is not None else None,
+        "path_count": int(path_count or 0),
+        "assets_seen": int(seen) if seen is not None else None,
+        "coverage": confidence if confidence in ("observed", "partial") else None,
+    }
+
+
+def snapshots_to_prune(
+    rows: list[tuple[Any, Any]], now: Any,
+    keep_all_days: int = KEEP_EVERY_COMPUTATION_DAYS, cap: int = MAX_SNAPSHOTS_PER_ENGAGEMENT,
+) -> list[Any]:
+    """Which snapshots to delete. Every computation of the last `keep_all_days` days is kept; of
+    older ones only the LATEST of each calendar day (UTC); and never more than `cap` in all (the
+    oldest go first). `rows` are (id, computed_at) in any order."""
+    from datetime import timedelta
+
+    ordered = sorted(rows, key=lambda r: r[1], reverse=True)              # newest first
+    cutoff = now - timedelta(days=keep_all_days)
+    kept: list[Any] = []
+    doomed: list[Any] = []
+    seen_days: set[Any] = set()
+    for rid, at in ordered:
+        if at >= cutoff:
+            kept.append(rid)
+            continue
+        day = at.astimezone(now.tzinfo).date() if at.tzinfo and now.tzinfo else at.date()
+        if day in seen_days:
+            doomed.append(rid)
+        else:
+            seen_days.add(day)
+            kept.append(rid)
+    doomed.extend(kept[cap:])                                             # the oldest beyond the cap
+    return doomed
+
+
+def trend(history: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """What changed between the last two computations, or None when there is nothing to compare
+    (fewer than two computations, or either one recorded no per-jewel data). `history` is oldest
+    first, each {at, state, reachable, exposed, assets_seen, coverage}.
+
+    `changed` is a plain difference, never better or worse. `inputs_changed` says the computation
+    was also looking at something different (more hosts seen, or a different coverage), because
+    that alone can move a count."""
+    if len(history) < 2:
+        return None
+    prev, cur = history[-2], history[-1]
+    if prev.get("reachable") is None or cur.get("reachable") is None:
+        return None
+    seen = (prev.get("assets_seen"), cur.get("assets_seen"))
+    cov = (prev.get("coverage"), cur.get("coverage"))
+    inputs_changed = (seen[0] is not None and seen[1] is not None and seen[0] != seen[1]) \
+        or (cov[0] is not None and cov[1] is not None and cov[0] != cov[1])
+    prev_exposed, cur_exposed = prev.get("exposed") or 0, cur.get("exposed") or 0
+    return {
+        "since": prev.get("at"),
+        "reachable_from": prev["reachable"], "reachable_to": cur["reachable"],
+        "exposed_from": prev_exposed, "exposed_to": cur_exposed,
+        "changed": prev["reachable"] != cur["reachable"] or prev_exposed != cur_exposed,
+        "inputs_changed": bool(inputs_changed),
     }
 
 

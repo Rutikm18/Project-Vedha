@@ -33,11 +33,15 @@ from app.dependencies import DB, AuthUser
 from app.graph.analyzer import PathAnalyzer
 from app.graph.builder import GraphBuilder
 from app.graph.coverage import coverage_report, freshness_report
-from app.graph.overview import build_focus, build_row, build_summary, fix_asset_ids, row_sort_key
+from app.graph.overview import (
+    HISTORY_POINTS, build_focus, build_row, build_summary, fix_asset_ids, row_sort_key, snapshot_facts,
+    snapshots_to_prune,
+)
 from app.graph.visualizer import GraphVisualizer
 from app.models.asset import Asset
 from app.models.attack_path import AttackPath
 from app.models.attack_path_analysis import AttackPathAnalysis
+from app.models.attack_path_snapshot import AttackPathSnapshot
 from app.models.engagement import Engagement
 from app.models.enums import AssetCriticality
 from app.models.probe_site import ProbeSite
@@ -88,11 +92,13 @@ async def attack_paths_overview(
         .limit(MAX_RANKED_ENGAGEMENTS)
     )).all()
 
+    history = await _history_by_engagement(db, tenant_id)
     inputs: dict[str, dict] = {}
     rows = []
     for eid, name, status, at, count, targets, fix, entry, cov, stale, reasons in picked:
         inputs[str(eid)] = dict(name=name, status=status, computed_at=at, path_count=count,
-                                analysis=_stored_subset(at, targets, fix, entry, cov, stale, reasons))
+                                analysis=_stored_subset(at, targets, fix, entry, cov, stale, reasons),
+                                history=history.get(eid))
         rows.append(build_row(engagement_id=eid, **inputs[str(eid)]))
     summary = build_summary(rows)
     summary["truncated"] = len(picked) >= MAX_RANKED_ENGAGEMENTS
@@ -446,7 +452,7 @@ async def _target_ids(db: AsyncSession, engagement_id: uuid.UUID,
 
 
 async def _recompute_and_store(
-    db: AsyncSession, engagement_id: uuid.UUID, target_asset_id: uuid.UUID | None
+    db: AsyncSession, engagement_id: uuid.UUID, target_asset_id: uuid.UUID | None, trigger: str = "manual"
 ) -> dict:
     """Recompute and UPSERT the engagement's paths. Returns the analyzer's
     diagnostics so the caller can explain an empty result."""
@@ -483,10 +489,12 @@ async def _recompute_and_store(
         row.risk_score = Decimal(str(p["risk_score"]))
         row.chokepoints = path_chokepoints(p["nodes"], choke)         # only the ones ON this path
     diagnostics = analyzer.diagnose(targets)
-    await _store_analysis(db, engagement_id, {
+    payload = {
         "choke": choke, "diagnostics": diagnostics,
         "coverage": coverage_report(graph), "freshness": freshness_report(graph),
-    }, len(wanted))
+    }
+    computed_at = await _store_analysis(db, engagement_id, payload, len(wanted))
+    await _record_snapshot(db, engagement_id, payload, len(wanted), trigger, computed_at)
     await db.flush()
     logger.info("graph.paths.stored", engagement=str(engagement_id), count=len(wanted),
                 removed=len(stale))
@@ -509,12 +517,12 @@ async def refresh_if_materialised(db: AsyncSession, engagement_id: uuid.UUID) ->
     if not has_paths and await db.get(AttackPathAnalysis, engagement_id) is None:
         return False
     async with db.begin_nested():
-        await _recompute_and_store(db, engagement_id, None)
+        await _recompute_and_store(db, engagement_id, None, trigger="detection")
     return True
 
 
-async def _store_analysis(db: AsyncSession, engagement_id: uuid.UUID, payload: dict, path_count: int) -> None:
-    """Replace the engagement's stored analysis (one row per engagement)."""
+async def _store_analysis(db: AsyncSession, engagement_id: uuid.UUID, payload: dict, path_count: int) -> datetime:
+    """Replace the engagement's stored analysis (one row per engagement). Returns its timestamp."""
     now = datetime.now(timezone.utc)
     row = await db.get(AttackPathAnalysis, engagement_id)
     if row is None:
@@ -522,6 +530,48 @@ async def _store_analysis(db: AsyncSession, engagement_id: uuid.UUID, payload: d
                                   path_count=path_count, analysis=payload))
     else:
         row.computed_at, row.path_count, row.analysis = now, path_count, payload
+    return now
+
+
+async def _record_snapshot(db: AsyncSession, engagement_id: uuid.UUID, payload: dict, path_count: int,
+                           trigger: str, computed_at: datetime) -> None:
+    """Add this computation's headline numbers to the engagement's history, then drop what the
+    retention rule no longer keeps (every computation for a week, then one a day, at most 90).
+    History is small and is only ever read for a trend; a failure here must not lose the analysis,
+    which is why callers run the recompute inside a savepoint where it is not a user's own click."""
+    db.add(AttackPathSnapshot(engagement_id=engagement_id, computed_at=computed_at, trigger=trigger,
+                              **snapshot_facts(payload, path_count)))
+    await db.flush()
+    rows = (await db.execute(
+        select(AttackPathSnapshot.id, AttackPathSnapshot.computed_at)
+        .where(AttackPathSnapshot.engagement_id == engagement_id)
+    )).all()
+    doomed = snapshots_to_prune([(r[0], r[1]) for r in rows], computed_at)
+    if doomed:
+        await db.execute(delete(AttackPathSnapshot).where(AttackPathSnapshot.id.in_(doomed)))
+
+
+async def _history_by_engagement(db: AsyncSession, tenant_id: uuid.UUID) -> dict[uuid.UUID, list[dict]]:
+    """The last HISTORY_POINTS computations of every engagement of the tenant, oldest first. One
+    query; tenant-scoped through the engagement."""
+    S = AttackPathSnapshot
+    rn = func.row_number().over(partition_by=S.engagement_id, order_by=S.computed_at.desc()).label("rn")
+    sub = (select(S.engagement_id, S.computed_at, S.state, S.jewels_reachable, S.jewels_exposed,
+                  S.assets_seen, S.coverage, rn)
+           .join(Engagement, Engagement.id == S.engagement_id)
+           .where(Engagement.tenant_id == tenant_id).subquery())
+    rows = (await db.execute(
+        select(sub.c.engagement_id, sub.c.computed_at, sub.c.state, sub.c.jewels_reachable, sub.c.jewels_exposed,
+               sub.c.assets_seen, sub.c.coverage)
+        .where(sub.c.rn <= HISTORY_POINTS).order_by(sub.c.engagement_id, sub.c.computed_at)
+    )).all()
+    out: dict[uuid.UUID, list[dict]] = {}
+    for eid, at, state, reachable, exposed, seen, cov in rows:
+        out.setdefault(eid, []).append({
+            "at": at.isoformat(), "state": state, "reachable": reachable, "exposed": exposed,
+            "assets_seen": seen, "coverage": cov,
+        })
+    return out
 
 
 def path_chokepoints(path_nodes: list[str], choke: dict) -> list[str]:
