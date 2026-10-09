@@ -1,35 +1,37 @@
-# Attack paths on the dashboard: how to represent them (research and plan, 2026-10-09)
+# Attack paths on the dashboard: how to represent them (research, review and plan v2, 2026-10-09)
 
-**Status:** plan for your review. Nothing in this document is built. It follows the first dashboard
-section (shipped on `claude/elegant-noether-ggdafj`, three commits `27b80255`, `3a921fce`, `7df368c6`).
+**Status:** v2. Phases 0 to 2 are being built from this version. Version 1 of this plan was reviewed
+against the code the same day; section 4 lists what was wrong with it and what changed. The first dashboard
+section it follows shipped on `claude/elegant-noether-ggdafj` (commits `27b80255`, `3a921fce`, `7df368c6`).
 
-## 0. The decision in eight lines
+## 0. The decision in ten lines
 
 1. **Do not put a graph on the dashboard.** The products I could find summarise attack paths with
-   counts and ranked lists (Microsoft and Tenable add change over time) and keep the graph in a drill-down. Our own research agrees:
-   a graph at dashboard size becomes unreadable at 18 hosts (see the mock-up below).
-2. **Lead with "crown jewels reachable in the model", not "N routes".** The route count I shipped is
-   the length of a *capped* list (at most 5 routes per entry point per crown jewel), so it measures the
-   search limit as much as the network. Eight exposed hosts behind one gateway read as "8 routes"
-   while the real answer is "fix one host".
-3. **Recommended layout (Option C):** three triage tiles, a ranked list of engagements where each row
-   shows a one-glance jewel meter, and a "Fix first" card for the top engagement: the highest-risk route
-   as a short vertical chain, and the hosts ranked by modelled risk removed.
-4. **Zero new libraries.** The chain, the meters and the bars are HTML and CSS. I measured the
-   alternatives (section 2.4): 17 KB to 440 KB gzipped for layout and graph engines we do not need.
-5. **Honesty rules carry over unchanged** and get stricter: "reachable in the model", "separate ways
-   in", "modelled, not a probability", and bars that are never added up.
-6. **One existing accessibility defect found:** the engagement route map draws its edges in a colour
-   that fails the 3:1 non-text contrast minimum (2.68:1 light, 2.22:1 dark). Fixed in Phase 0.
-7. **A trend ("is it getting better?") is the one thing both Microsoft and Tenable show that we cannot,**
-   because we keep only the latest analysis. It needs a small history table (Phase 3, migration `0061`).
-8. **Six decisions are yours** (section 8). Phases 0 to 2 need none of them.
+   counts and ranked lists (Microsoft and Tenable add change over time) and keep the graph in a drill-down.
+   A graph at dashboard size is unreadable at 18 hosts (mock-up below).
+2. **Lead with reachability, not "N routes".** The route count I shipped is the length of a *capped* list
+   (at most 5 routes per entry point per crown jewel), so it measures the search limit as much as the network.
+3. **Review of v1 found 16 failures** (section 4). The most serious is already shipped: **when a crown jewel is
+   itself exposed to the internet, the dashboard and the engagement page say "Fixing gw alone cuts every
+   route", and when it is the only exposed host they say "No routes modelled"**, although the analyzer scores
+   that jewel at the maximum. Phase 0 fixes both.
+4. **Tiles now count engagements, not assets.** v1 added crown jewels and hosts across different networks,
+   which is not a meaningful number and can double count. Per-network counts live on each row.
+5. **Rows have six honest states** (exposed, reachable, unreachable, no crown jewel marked, not computed,
+   unrecorded) instead of three, so "nothing to assess" never reads as "0 reachable".
+6. **The overview is computed on the server across all engagements, then limited.** v1 limited first (ordering
+   by the capped count) and loaded every analysis in full.
+7. **The "Fix first" card gets its own read-only endpoint.** v1 reused the path-list endpoint, which *writes on
+   a GET* for any engagement with no stored routes.
+8. **Bars show the share of modelled risk removed** (bounded, already used on the engagement page), not a
+   "0 to 100" number that can exceed 100.
+9. **Zero new libraries**; history and trend stay in Phase 3, behind your decision.
+10. **Eight decisions are yours** (section 9). Phases 0 to 2 need none of them.
 
-![Option C beside the baseline and the rejected forms, light theme](assets/2026-10-09-attack-paths-dashboard/options-light-wide.png)
+![v1 mock-up: Option C beside the baseline and the rejected forms, light theme](assets/2026-10-09-attack-paths-dashboard/options-light-wide.png)
 
-*Mock-up page, not product code. Colours, type and spacing are the app's real tokens copied from
-`globals.css`. Host names and counts are illustrative but shaped like the analyzer's real output.
-Dark theme and a 420 px screen are in the appendix.*
+*v1 mock-up (not product code; real design tokens, illustrative names). Section 5 lists what v2 changes in it:
+the tiles, the row states and the card wording. Screenshots of the real build are in the appendix.*
 
 ---
 
@@ -39,7 +41,7 @@ The operator on this dashboard runs several engagements. In a few seconds they n
 
 | # | Question | Where the answer comes from |
 | --- | --- | --- |
-| 1 | Can an attacker reach a crown jewel? How many of them? | `choke.targets[].best_likelihood > 0` out of all targets |
+| 1 | Can an attacker reach a crown jewel? How many of them? Is one exposed outright? | `choke.targets[]`: `best_likelihood > 0`, and `exposed_directly` |
 | 2 | How many separate ways in? (one fix, or several?) | `choke.min_fix_set.independent_routes` (vertex-disjoint, by Menger's theorem) |
 | 3 | What do I do first? | `choke.min_fix_set.assets`, `choke.ranked` |
 | 4 | Can I trust this? | `coverage.confidence`, `freshness.stale_assets`, `computed_at`, "not computed yet" |
@@ -191,174 +193,213 @@ colours are reserved for state, no dual axes, marks are thin with 2 px gaps.
 | H | Zone-level aggregated map | 3, 6; the literature's answer to hairballs | yes | L | optional Phase 5, engagement page |
 | I | Item in "Needs attention now" | 3 | yes if neutral wording | S | decision D3 |
 
-## 4. Recommended design (Option C)
+## 4. Review of plan v1: what was wrong
 
-### 4.1 Anatomy
+Each item was checked against the code or by running the analyzer on the repo's validation fixtures
+(`manager/backend/tests/fixtures/attack_paths`). Severity: **High** = a wrong statement reaches the operator,
+**Medium** = a wrong or unbounded aggregate or a performance risk, **Low** = polish.
+
+| # | Sev | Area | What was wrong | Evidence | v2 resolution |
+| --- | --- | --- | --- | --- | --- |
+| R1 | **High, shipped** | Honesty | A crown jewel that is itself exposed and exploitable is counted as a *source*, so the analyzer scores it 100 (`best_likelihood 1.0`) but excludes it from the fix set. The dashboard and engagement page then say "Fixing `gw` alone cuts every route" (false: the jewel is exposed regardless) | Fixture `09` with the jewel also exposed: `risk 100`, `ranked []`, `min_fix_set {size 1, [gw]}`, 8 stored routes | Analyzer records `exposed_directly` per crown jewel; fix sentence and "ways in" are replaced by "a crown jewel is itself exposed; remove that exposure first" |
+| R2 | **High, shipped** | Honesty | When the jewel is the *only* exposed host there are 0 stored routes, so the dashboard row reads "No routes modelled ... not evidence the network is safe" for the worst case there is | Same fixture, only the jewel exposed: `path_count 0`, `best_likelihood 1.0`, `reasons []`, `min_fix_set size 0` | New `exposed` state, ranked first, red rail, own wording |
+| R3 | Medium | Design | Tiles summed jewels and hosts across engagements. Different networks (often different customers) do not add, and two engagements over the same network double count | Design review of 4.2 in v1 | Tiles count **engagements**; per-network numbers stay on the row |
+| R4 | Medium | Design | Engagements with no crown jewel marked were counted as "computed", so they inflated the denominator of "reachable" | v1 tile 1 | `no_targets` is its own state and is excluded from "assessed" |
+| R5 | Medium | API | The overview orders by the capped `path_count` **in SQL, then applies the limit**; any new ranking is applied after engagements were already dropped | `ORDER BY path_count DESC ... LIMIT` in `attack_paths_overview` | Light rows for all of the tenant's engagements (capped at 1000), rank in Python, then slice |
+| R6 | Medium | API / perf | The overview loads each engagement's whole `analysis` JSON (coverage segments, 20 ranked hosts, diagnostics) every 120 s | `select(... AttackPathAnalysis.analysis)` | Project only the sub-keys the row needs (`#>` paths in SQL) |
+| R7 | Medium | API | Tile totals computed from the visible rows would be wrong whenever `total > limit` | Dashboard requests a slice | `summary` computed on the server over all rows |
+| R8 | **High (in v1's plan)** | Safety | v1's card called `GET /engagements/{id}/attack-paths`, which **recomputes and writes** when no route rows are stored (`refresh or stored is None`). That is every computed-empty or exposed-only engagement, on every dashboard load | `list_attack_paths` | Dedicated read-only `GET /attack-paths/focus/{id}`; a test proves it never calls the recompute path and issues no write |
+| R9 | Medium | Honesty | v1 labelled risk bars "0 to 100". `risk_removed` is `100 × Σ impact × Δlikelihood` over crown jewels, so it is **not bounded by 100** (the type comment in `attack-paths.ts` is wrong too) | `choke_analysis`; fixture `09` with 3 jewels gives 36.45 where each jewel alone is 12.15 | Bars use the existing bounded `riskShare` (share of the engagement's modelled risk); the comment is corrected |
+| R10 | Medium | Honesty | The chain tagged the second node "Fix here" by position. The best host to fix is not necessarily on the highest-risk route | `fixPointIds` already exists for the map | Tag a node only if it is in `fixPointIds`; if none is, say "none of this route's hosts is on the fix list" |
+| R11 | Low | Honesty | Card text asserted a reason the data does not hold ("other entry points remain") | v1 mock-up | Neutral wording: "Cuts off 0 of 2 crown jewels on its own" |
+| R12 | Medium | Honesty | Older stored analyses may lack per-jewel fields; treating a missing value as 0 would read as "unreachable" | v1 did not handle it | `unrecorded` state; counts are `null`, never 0 |
+| R13 | Low | UX | A route can have up to 10 hops, so the chain card could grow very tall | `max_hops=10` in the analyzer | Show at most 5 nodes; collapse the middle into "+N more hosts" but never hide a fix-list host |
+| R14 | Low | Layout | Breakpoints were by viewport. The 216 px sidebar (plus page padding) means the panel is narrower than the viewport, so the two-column layout would break too late | Layout shell | Container query on the panel's own width |
+| R15 | Low | Process | A "visual baselines in `test:visual`" step cannot run (no CI, needs seeded data) and would be flaky | CI state | Dropped; scripted browser checks plus committed screenshots instead |
+| R16 | Low | Product | Completed or paused engagements rank like active ones and add noise | `EngagementStatus` has `completed`, `paused` | Status is shown on each row; filtering is decision D7 |
+
+**Reviewed and fine:** tenant scoping (every query filters `Engagement.tenant_id`), operator-only role gating,
+customer-portal exclusion (the portal source has no such dataset), escaping of host and engagement names
+(rendered as React text), refetch behaviour (previous data kept), and that additive API fields keep older
+clients working.
+
+**Known limitations that remain after v2** (said on screen, not hidden):
+- "Reachable" includes routes that rest on **assumed** links between subnets. The route card shows the basis of
+  each hop; the tiles say "in the model".
+- Only findings already marked exploitable create attacker steps; P2, P3 and P4b are not built. A scan-only
+  engagement can show few routes without being safe.
+- No history yet (Phase 3), so no "is it getting better?".
+
+---
+
+## 5. Design v2
+
+### 5.1 What changed from the v1 mock-up
+
+| Part | v1 | v2 |
+| --- | --- | --- |
+| Tile 1 | "Crown jewels reachable 4 of 5" (sum over engagements) | "Engagements with a reachable crown jewel: X of N assessed"; below it, "directly exposed" count if any, else jewels reachable across them |
+| Tile 2 | "Hosts to fix 3" (sum) | "Cut by fixing one host: K of X" (engagements where a single host cuts every route) |
+| Tile 3 | "Not computed yet" | "Can't be assessed yet": not computed + no crown jewel marked + unrecorded, with the parts below |
+| Row states | routes / empty / not computed | **exposed**, reachable, unreachable, no crown jewel marked, unrecorded, not computed |
+| Fix sentence | from `min_fix_set` only | suppressed and replaced when a jewel is itself exposed |
+| Card | chain by position, 0–100 bars, three existing endpoints | chain tagged by `fixPointIds`, share bars, one read-only endpoint |
+
+### 5.2 Anatomy
 
 ```
-Panel "Attack paths"                         [Beta]  updated 2 min ago
-┌ tile ───────────────┬ tile ───────────────────┬ tile ──────────────┐
-│ Crown jewels        │ Hosts to fix to cut     │ Not computed yet   │
-│ reachable           │ every route             │                    │
-│ 4 of 5 in the model │ 3 hosts                 │ 2 of 5 engagements │
-└─────────────────────┴─────────────────────────┴────────────────────┘
-┌ engagement ladder (top 5) ──────────────────┬ Fix first · <top engagement> ┐
-│ Acme prod   ◆◆◇ 2 of 3 reachable · 1 way in │ ① ENTRY POINT  web-dmz-03    │
-│   Fixing edge-gw-01 alone cuts every route. │   │ Observed                  │
-│   [Coverage partial] [2 hosts not seen]     │ ② FIX HERE     edge-gw-01    │
-│ Initech     ◆◆  2 of 2 reachable · 2 ways   │   │ Assumed route (verify)    │
-│   No single host fixes this: gw1 and gw2    │ ③ CROWN JEWEL  fin-db-01     │
-│ Globex      ◇  No crown jewels marked       │ Hosts ranked by risk removed │
-│ Umbrella    ◇  Not computed yet             │ edge-gw-01 ████████░ 78      │
-└─────────────────────────────────────────────┴──────────────────────────────┘
- footnote: what "no routes" and "not computed" mean         All engagements →
+Panel "Attack paths"                         [Beta]  updated 2 min ago     (container: min 760 px = two columns)
+┌ tile ─────────────────────────┬ tile ───────────────────────┬ tile ───────────────────────┐
+│ Engagements with a reachable  │ Cut by fixing one host      │ Can't be assessed yet       │
+│ crown jewel                   │                             │                             │
+│ 2 of 3 assessed               │ 1 of 2                      │ 2                           │
+│ 1 has a jewel directly exposed│ The rest need several fixes │ 1 not computed · 1 no jewel │
+└───────────────────────────────┴─────────────────────────────┴─────────────────────────────┘
+┌ engagement ladder (top 5) ─────────────────────┬ Fix first · <top engagement> ─────────────┐
+│ ▍Acme  ◆◆◇ 2 of 3 crown jewels reachable       │ ① ENTRY POINT   web-dmz-03                │
+│        1 separate way in · Fixing edge-gw-01   │   │ Observed                              │
+│        alone cuts every route.                 │ ② ON THE FIX LIST edge-gw-01              │
+│ ▍Initech ◆◆ 2 of 2 · 2 separate ways in        │   │ Assumed route (verify segmentation)   │
+│        No single host fixes this: gw1, gw2     │ ③ CROWN JEWEL   fin-db-01                 │
+│ ▍Hooli ◆ Directly exposed (listed first)       │ Share of modelled risk removed            │
+│ ▍Globex ◇ No crown jewels marked               │ edge-gw-01 ████████░ 82%  cuts off 2 of 2 │
+│ ▍Umbrella ◇ Not computed yet                   │ Each bar is that host alone; do not add.  │
+└────────────────────────────────────────────────┴───────────────────────────────────────────┘
+ footnote                                                              All engagements →
 ```
 
-### 4.2 Each element, its data and its rule
+### 5.3 Row states (server-side `state`, one claim each)
+
+| State | Rule | Rail | Headline | Notes |
+| --- | --- | --- | --- | --- |
+| `exposed` | ≥1 crown jewel with `exposed_directly` | critical | "N crown jewel(s) directly exposed" | "Fixing hosts on the way in does not protect it. Remove its exposure first." Fix set and "ways in" are not shown |
+| `reachable` | ≥1 jewel reachable, none exposed | high | "X of Y crown jewels reachable" | meter, "N separate ways in", fix sentence, coverage chips |
+| `unreachable` | jewels marked, none reachable | medium | "No modelled route reaches a crown jewel" | first recorded reason, "not evidence the network is safe" |
+| `no_targets` | computed, no crown jewel in the model | medium | "No crown jewels marked" | "Mark the assets that matter so routes to them can be modelled" |
+| `unrecorded` | computed, per-jewel data missing | neutral | "Computed; per-jewel detail not recorded" | "Open it to refresh"; counts are `null`, not 0 |
+| `not_computed` | no stored analysis | faint | "Not computed yet" | "Open it to compute the routes" |
+
+Order: `exposed`, `reachable` (more reachable jewels first, then higher modelled top risk), `unreachable`,
+`unrecorded`, `no_targets`, `not_computed`; ties by name.
+
+### 5.4 Elements, data and rules
 
 | Element | Data | Rule |
 | --- | --- | --- |
-| Tile 1 "Crown jewels reachable: X of Y" | sum over **computed** engagements of reachable and total targets | caption states how many engagements are included ("from 3 engagements that have been computed"); `0 of 5` carries the "not evidence of safety" caveat |
-| Tile 2 "Hosts to fix" | sum of `min_fix_set.size` over computed engagements | caption "smallest set per engagement, added together" (effort adds across separate networks; risk would not) |
-| Tile 3 "Not computed yet" | count of engagements with no stored analysis | always shown (reads 0 when everything is computed); a gap in trust is surfaced, never folded into the other tiles |
-| Jewel meter | one diamond per crown jewel (max 8, then "+N"): filled = reachable, hollow outline = not reachable, dashed = not computed or no target | the words "2 of 3 crown jewels reachable" sit beside it; the meter is `aria-hidden` |
-| "N separate ways in" | max of `independent_routes` over reachable jewels | phrase is "separate ways in", never "routes" |
-| Fix sentence | `min_fix_set` | unchanged from today; when `ranked` is empty and size > 1: "No single host fixes this" |
-| Coverage / stale chips | `coverage.confidence`, `freshness.stale_assets` | unchanged: "partial", "observed", "not recorded", never "complete" |
-| Route chain | top route by `risk_score`, hops with `basis` | roles by shape **and** word (entry, fix here, crown jewel); an assumed hop shows its caveat in words; rendered as an ordered list |
-| Risk-removed bars | `choke.ranked[:3]` | one bar per host, **never stacked or summed** (each is an independent "if only this host were fixed"); caption "modelled 0–100 ordering weight, not a probability" |
+| Tiles | `summary` from the server, over **all** engagements | counts of engagements only; when nothing is assessed tile 1 shows "—" and "Nothing computed yet", never "0 of 0" |
+| Jewel meter | `jewels_total`, `jewels_reachable` | one diamond per crown jewel (max 8, then "+N"): filled = reachable, hollow = not, dashed = no target / not computed; `aria-hidden`, the words beside it carry the meaning |
+| "N separate ways in" | max of `independent_routes` over reachable jewels | wording is "separate ways in", never "routes"; not shown for `exposed` |
+| Fix sentence | `min_fix_set` | one host: "Fixing X alone cuts every route."; several: "No single host fixes this: cutting every route takes K hosts: a, b, +N more."; none found: "The analysis found no host whose fix cuts these routes." |
+| Chips | coverage, stale hosts, computed time | unchanged; coverage is "partial" or "observed", never "complete" |
+| Route chain | `focus.route` | roles by shape and word; `ON THE FIX LIST` only for hosts in `fixPointIds`; basis of each hop in words; ordered list; ≤5 nodes shown |
+| Bars | `focus.ranked[].share` | bounded share of modelled risk; one bar per host; never stacked or summed |
 
-Order of the ladder: engagements with reachable jewels first (most reachable, then highest modelled
-risk, then name), then computed with none, then not computed. The modelled risk is an ordering weight
-on one scale, so the ordering is stable; it is not a claim about likelihood.
+### 5.5 Where it sits, states, responsive, accessibility
 
-### 4.3 Where it sits on the dashboard
+- Own band under posture and SLA (unchanged); an item in "Needs attention now" is decision D3.
+- Loading shows the final shape; a failed load shows an error with Retry; "No engagements yet" is its own state.
+  A failed **focus** request degrades to the row text only, never blanks the ladder.
+- Layout: the panel is a size container; two columns at 760 px of panel width, one below. Rows collapse to name
+  above facts under ~560 px (the v1 mock-up showed the fixed name column crushed the facts at 420 px).
+- Colour is never the only channel; connectors and outlines use `--text-muted` or stronger (3:1), never border
+  tokens (section 2.5); text sizes come from the type scale tokens.
+- Rows are links; the chain is an `<ol>`; the bars are a list with text values; the meter is decorative.
 
-Keep it in its own band under posture and SLA (as today). The ledger and posture are measured facts; this
-section is a Beta model, so it should not outrank them. Optional pointer from the "Needs attention now"
-strip is decision D3.
+---
 
-### 4.4 States (each is a different claim, so each looks different)
-
-| State | Shows |
-| --- | --- |
-| Loading | skeleton with the final shape (tiles, rows, card) to avoid layout shift |
-| Load failed | error with Retry; never an empty list |
-| No engagements | "No engagements yet" with a hint |
-| Engagements, none computed | tiles show dashes, tile 3 shows the count, rows say "Not computed yet", no fix card |
-| Computed, zero reachable | tile 1 "0 of Y" with the not-safe caveat; rows keep their `why_empty` reason |
-| Computed, no crown jewels marked | row says so ("No crown jewels marked") and the meter is dashed |
-| Refetching | keep the previous render, reduced opacity, no skeleton flash |
-
-### 4.5 Responsive, theme, motion, keyboard
-
-- Two columns from 900 px, one column below. **The mock-up shows the row grid must also collapse below
-  ~640 px** (name above facts); at 420 px the fixed name column squeezed the facts into a narrow strip.
-- Dark theme works with the same tokens (checked in the mock-up and by the contrast table).
-- No animation beyond the existing panel transitions; `prefers-reduced-motion` already handled globally.
-- Rows are links (keyboard and screen reader reachable), the chain is an `<ol>`, the bars are a list
-  with text values. v1 shows the top-ranked engagement in the card; picking another one is a later
-  refinement.
-
-## 5. Data and API changes
+## 6. Data and API changes
 
 | Change | Where | Notes |
 | --- | --- | --- |
-| Overview row v2 | `app/graph/overview.py`, `routers/attack_paths.py` | add `jewels_total`, `jewels_reachable`, `ways_in` (max independent routes over reachable jewels), `fix_has_single` (whether any single host cuts all); keep `path_count` but mark it a capped list; all derived from the stored analysis, no new query |
-| Focus card data | frontend only | reuses existing BFF routes: top path (`page_size=1`), its detail (hops and `basis`), and `analysis` (`choke.ranked`). Three cached requests, only for the top engagement. Trade-off: a new `/attack-paths/overview/focus` endpoint would be one request but one more surface; revisit if slow |
-| View-model | `lib/attack-paths.ts` | `overviewLine` gains reachable/ways-in wording; new `overviewTiles(o)`, `focusChain(...)`, `riskBars(...)`; every sentence stays in one tested place |
-| History | migration `0061`, `attack_path_snapshots` | Phase 3 only (below) |
+| `exposed_directly` per crown jewel | `analyzer.choke_analysis` | `true` when the jewel is itself an exploitable internet-exposed host. Older stored analyses lack it: the reader falls back to `best_likelihood ≥ 0.9999`, which is exact because any route multiplies at least one step probability below 1 (the highest step value is 0.95) |
+| Overview v2 | `app/graph/overview.py`, `routers/attack_paths.py` | additive fields `state`, `jewels_total`, `jewels_reachable`, `jewels_exposed`, `ways_in`, `top_risk`; the old fields stay. New top-level `summary`. Light query (sub-keys only), all tenant engagements (cap 1000), rank, then slice |
+| Focus endpoint | `GET /attack-paths/focus/{engagement_id}` | read-only (never reaches `_recompute_and_store`), operators only, tenant-scoped. Returns `state`, `exposed` jewels, the highest-risk stored route (nodes with role and `on_fix_list`, hops with basis), the fix set and the top 3 hosts with `share` and jewels cut off |
+| BFF | `app/api/attack-paths/focus/[id]/route.ts` | UUID-validated like the others |
+| View-model | `lib/attack-paths.ts` | `overviewState`, `overviewLine`, `overviewTiles`, `meterCells`, `routeChainView`, `focusBars`; `fixFirstSummary` handles the exposed case on the engagement page too |
+| Contrast | route-map CSS | edge token `--border-strong` → `--text-muted`; a test parses the real tokens and asserts 3:1 in both themes |
+| History | migration `0061` | Phase 3 only |
 
-## 6. Phases
+---
 
-Each phase ships with tests and keeps `tsc`, `eslint`, backend and frontend suites green. None adds a
-dependency.
+## 7. Phases (v2)
 
-### Phase 0 — correct the numbers and fix the contrast (S)
+Each phase ships with tests and keeps `tsc`, `eslint`, backend, detection-engine and frontend suites green.
+None adds a dependency.
 
-- Backend: overview row v2 (above). Test from the real fixtures: `09` must produce "1 host to fix", never
-  "8" as a headline; `08` must produce "2 separate ways in" and "no single host fixes this".
-- Frontend: `overviewLine` leads with reachable jewels; route count moves to a capped-list note.
-- Route map edge colour `--border-strong` → `--text-muted`; a unit test asserts every token used for an
-  edge or connector reaches 3:1 in both themes (script computes it).
-- Type-scale cleanup: the panel uses 10.5 px and 11.5 px where the tokens say 11 and 12.
-- **Done when:** the dashboard and `/attack-paths` page show the new wording; tests above pass.
+### Phase 0 — make the numbers true (M)
+1. Analyzer: `exposed_directly` per target; tests from fixture `09` variants (jewel exposed together with
+   entries; jewel the only exposed host).
+2. `overview.py`: `build_row` v2 (six states, per-jewel counts, `ways_in`, `top_risk`, unknown = `None`),
+   `build_summary`, new ordering. `routers/attack_paths.py`: light projected query for all tenant engagements,
+   rank, slice, `summary`.
+3. Frontend view-model: new states and wording; `fixFirstSummary` exposed case; `riskShare` comment fixed.
+4. Route-map edge colour and the token-contrast test; type-scale tokens in the overview styles.
+5. Existing tests updated to the new wording.
+**Done when:** fixtures `09`/`08`/exposed-jewel produce "1 host", "no single host … 2 separate ways in" and
+"directly exposed"; an exposed-only engagement is never "No routes modelled"; a tenant with more engagements
+than the limit still ranks and totals correctly.
 
-### Phase 1 — tiles and the ladder (M)
-
-- `AttackPathsTiles`, `JewelMeter`, rebuilt `OverviewList` rows (shared by the dashboard and the
-  `/attack-paths` page); responsive collapse below 640 px; skeleton parity.
-- **Done when:** screenshots (light, dark, 420 px, 1240 px) match the mock-up within layout tolerance,
-  the table-equivalent text is present for every glyph, and the honesty tests (never "0 routes" for
-  not-computed; "not evidence of safe" on zero) pass.
+### Phase 1 — tiles and ladder (M)
+`AttackPathsTiles`, `JewelMeter`, rebuilt `OverviewList` rows, container-query layout, skeleton parity, the
+`/attack-paths` page reuses them. **Done when:** every state in 5.3 renders in light, dark, narrow; no
+horizontal scroll; keyboard focus visible; honesty tests pass.
 
 ### Phase 2 — "Fix first" card (M)
+`GET /attack-paths/focus/{id}` + BFF + `FixFirstCard` (`RouteChain`, `RiskBars`). **Done when:** a test proves
+the endpoint never recomputes or writes; exposed and no-route cases render without a chain; long routes
+collapse but keep fix-list hosts; a failed focus request leaves the ladder intact.
 
-- `FixFirstCard` with `RouteChain` and `RiskBars`; three queries enabled only for the top engagement.
-- Edge cases to test: no `ranked` (redundant routes), a path with an assumed hop, a stale hop, a
-  label-less host (falls back to its address), a long name (truncates, full name in the title attribute),
-  top engagement changes between refetches.
-- **Done when:** the card never shows a bar sum, never shows a route without its caveats, and degrades to
-  the fix sentence if the detail request fails.
-
-### Phase 3 — history and trend (M) — needs decision D4
-
-- Migration `0061_attack_path_snapshots`: `(engagement_id, computed_at, jewels_total, jewels_reachable,
-  fix_set_size, entry_points, coverage, trigger)`; written by `_store_analysis`; retention: keep
-  everything for 7 days, then one per day, cap 90 rows per engagement.
-- Overview returns the last 12 `jewels_reachable` values per engagement; tile 1 gets a "since last scan"
-  line and rows get a sparkline (one `<polyline>`, 2 px, current point ringed).
-- **Caveat to build in:** a rise can mean better scanning rather than a worse network (more hosts seen).
-  The wording is "changed", never "worse/better", and a snapshot notes when coverage changed.
-- **Done when:** migration up/down verified on PostgreSQL, retention test, and the sparkline has a text
-  twin ("reachable crown jewels: 3, 3, 4, 4").
+### Phase 3 — history and trend (M, decision D4)
+Unchanged from v1: migration `0061_attack_path_snapshots`, retention (7 days full, then daily, cap 90), a
+sparkline per row, "changed since last scan" wording (never better/worse: more scanning can raise the count).
 
 ### Phase 4 — surfacing (S, decisions D3 and D5)
-
-- Optional "Needs attention now" item (neutral tone, "Beta" label, only when a jewel is reachable).
-- Optional "Compute" button on not-computed rows (a write; confirm first; operators only).
+Optional "Needs attention now" item; optional "Compute" for not-computed rows.
 
 ### Phase 5 — zone view on the engagement page (L, optional)
+Aggregate hosts into subnets and show the route as zones (the aggregation the literature recommends).
 
-- Aggregate hosts into their subnets (protection domains) and show the route as a strip of zones
-  (internet → DMZ → servers → jewel's zone), the aggregation the literature recommends. Needs the
-  path-to-segment mapping that the d3 output already carries as `groups`.
+---
 
-## 7. Verification plan
+## 8. Verification plan
 
-- **Unit:** view-model sentences, tile aggregation (computed engagements only), ladder ordering, every
-  state in 4.4, token contrast, escaping of engagement and host names (they are untrusted text).
-- **Backend:** fixture-driven overview tests, tenant scoping, read-only SQL, role gating (unchanged).
-- **Browser (Playwright, as before):** dashboard, `/attack-paths`, customer portal does not show it,
-  error and empty states, dark theme, 420 px, keyboard path through rows and card, no horizontal scroll.
-- **Visual baselines:** the repo already has `npm run test:visual`; add the dashboard section to it.
-- **Performance budget:** 0 KB added; overview stays 2 to 3 queries; card requests only for one
-  engagement; refetch every 120 s as now.
-- **What I will still not be able to claim:** that it reads right on real engagement data. That needs you
-  to open it on a real engagement with crown jewels marked.
+- **Unit:** every row state; ordering; summary arithmetic; tile wording incl. "—"; fix-sentence cases (one host,
+  several, none found, exposed); chain collapse; share bars bounded; escaping of names; token contrast.
+- **Backend:** real-fixture tests (09, 08, exposed variants); scripted-DB handler tests; read-only SQL assertion
+  for both endpoints; role gating; tenant scoping; over-limit ranking test.
+- **Live stack:** Postgres 16 with seeded engagements in each state, API and `next dev`; browser checks
+  (dashboard, `/attack-paths`, portal does not show it, error and empty states, dark, narrow, with the real
+  sidebar at 1280 and 1024 px, keyboard path, no horizontal scroll); the JSON-path query is exercised on real
+  Postgres, not only on a fake.
+- **Budget:** 0 KB added; the overview issues a bounded number of queries; the focus request runs for one
+  engagement only and only when its state is `exposed` or `reachable`.
+- **Not claimed:** that it reads right on real engagement data. That needs you to open it on a real engagement.
 
-## 8. Decisions for you
+## 9. Decisions for you
 
-| # | Decision | My recommendation |
+| # | Decision | Recommendation |
 | --- | --- | --- |
-| D1 | Headline metric: "crown jewels reachable" or keep "N routes"? | reachable jewels; keep routes only as a capped-list note |
-| D2 | Should customers see this on the portal dashboard? | no for now (operator-only); revisit after real-data review |
-| D3 | Add a neutral item to "Needs attention now"? | yes, with the Beta label, only when a jewel is reachable |
-| D4 | Add history (migration `0061`) for the trend? | yes, after Phase 2 |
-| D5 | Allow "Compute" from the dashboard (a write)? | not in v1; keep the dashboard read-only |
-| D6 | Keep the Beta label until reviewed on real data and P2/P3/P4b are decided? | yes |
+| D1 | Headline: reachability (v2) instead of "N routes" | yes (built in Phase 0) |
+| D2 | Customers see this on the portal dashboard? | no for now (operator-only) |
+| D3 | Neutral "Needs attention now" item when a jewel is reachable or exposed | yes, with the Beta label |
+| D4 | History (migration `0061`) for the trend | yes, after Phase 2 |
+| D5 | "Compute" from the dashboard (a write) | not in v1 |
+| D6 | Keep Beta until reviewed on real data and P2/P3/P4b are decided | yes |
+| D7 | Hide or demote `completed` / `paused` engagements on the dashboard | demote, do not hide |
+| D8 | Fix the analyzer so `min_fix_set` also reports exposed jewels (v2 only flags them) | later, with P2 |
 
-## 9. Appendix: mock-up views
+## 10. Appendix: mock-up views (v1) and the real build
 
-Dark theme:
+Dark theme (v1 mock-up):
 
 ![Dark theme](assets/2026-10-09-attack-paths-dashboard/options-dark-wide.png)
 
-420 px screen (shows the row grid must collapse below ~640 px):
+420 px screen (v1 mock-up; shows the row grid must collapse):
 
 ![Narrow screen](assets/2026-10-09-attack-paths-dashboard/options-light-narrow.png)
 
-## 10. Sources
+
+## 11. Sources
 
 Read as search-result summaries only (pages could not be opened from this environment):
 [Microsoft](https://learn.microsoft.com/en-us/security-exposure-management/review-attack-paths) ·
@@ -383,3 +424,4 @@ Read as search-result summaries only (pages could not be opened from this enviro
 
 Measured here: bundle sizes (esbuild + gzip), token contrast, analyzer output on the nine validation
 fixtures (`manager/backend/tests/fixtures/attack_paths`).
+
