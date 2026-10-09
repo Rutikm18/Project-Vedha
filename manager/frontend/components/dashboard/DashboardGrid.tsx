@@ -8,6 +8,9 @@
  *   1. Ledger      — full bleed. What is open, right now.
  *   2. Posture     — posture and scan change left, clock right. Are we winning,
  *                    what changed, and what is late.
+ *   2b. Attack paths (Beta, operator console only) — how an attacker could reach the
+ *                    crown jewels and what to fix first, per engagement. Absent on the
+ *                    customer console.
  *   3. Exposure    — two equal panels. Where the risk sits.
  *   4. Fleet       — live probe/agent state (kept from the previous dashboard;
  *                    it's real-time operational data the ledger doesn't cover).
@@ -28,6 +31,7 @@ import {
   Cpu,
   Gauge,
   GitCompareArrows,
+  Route,
   Shield,
   Timer,
   WifiOff,
@@ -35,12 +39,13 @@ import {
 import { Panel } from "../console/Primitives";
 import { Freshness } from "../console/Freshness";
 import { DataState, SkeletonRows, EmptyState } from "../states/DataState";
-import { useConsolePath, useConsoleQuery, useConsoleQueryKey, type ConsoleKey } from "../../lib/console-source";
+import { useConsoleCapability, useConsolePath, useConsoleQuery, useConsoleQueryKey, type ConsoleKey } from "../../lib/console-source";
 import { LiveOverview } from "./LiveOverview";
 import { PostureScorecard, usePostureScope } from "./PostureScorecard";
 import { SlaStatus } from "./SlaStatus";
 import { PatchComparisonMatrix } from "./PatchComparisonMatrix";
 import { ProtocolRiskCard, ZoneHealthCard } from "./ExposureCards";
+import { AttackPathsPanel } from "./AttackPathsPanel";
 
 /* ------------------------------------------------------------ Agent monitor
    Ported from the previous dashboard so live probe/agent state is preserved.
@@ -238,6 +243,8 @@ function FreshNote({ dataset, staleAfterMs }: { dataset: ConsoleKey; staleAfterM
 export function DashboardGrid() {
   const router = useRouter();
   const findingsPath = useConsolePath("findings");
+  // Operator-only (Beta): the customer console has no attack-path view, so it gets no panel at all.
+  const showAttackPaths = useConsoleCapability("viewAttackPaths");
   // Posture + patch comparison are the only per-engagement panels here; on a
   // multi-engagement console they must say which engagement, or an unlabelled
   // grade reads as the tenant's. Null on the customer console (one engagement,
@@ -304,6 +311,20 @@ export function DashboardGrid() {
           </React.Suspense>
         </Panel>
       </div>
+
+      {showAttackPaths && (
+        <div className="console-band band-4">
+          <Panel
+            title="Attack paths"
+            eyebrow="How an attacker could reach your crown jewels"
+            icon={<Route size={13} />}
+            headingLevel={3}
+            note={<><span className="badge badge-info" title="Attack paths is in beta">Beta</span> <FreshNote dataset="attackPaths" staleAfterMs={300_000} /></>}
+          >
+            <AttackPathsPanel />
+          </Panel>
+        </div>
+      )}
 
       <div className="console-band band-3">
         <Panel title="Protocol risk" eyebrow="Worst finding on each exposed service" icon={<Activity size={13} />} headingLevel={3} note={<FreshNote dataset="exposure" />}>

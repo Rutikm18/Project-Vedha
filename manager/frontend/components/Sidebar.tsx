@@ -6,7 +6,7 @@ import { useModalFocus } from "../hooks/useModalFocus";
 import { usePathname } from "next/navigation";
 import {
   Shield, Brain, AlertTriangle, FileText,
-  Terminal, Briefcase, Settings, RadioTower, Users, X, Radar, Wrench,
+  Terminal, Briefcase, Settings, RadioTower, Users, X, Radar, Wrench, Route,
 } from "lucide-react";
 import { VedhaMark } from "./brand/VedhaMark";
 
@@ -37,6 +37,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
       { icon: Brain,         label: "AI Brain",   href: "/aibrain"  },
       { icon: AlertTriangle, label: "Findings",   href: "/findings" },
       { icon: Wrench,        label: "Remediation", href: "/remediation" },
+      { icon: Route,         label: "Attack paths", href: "/attack-paths", badge: "BETA" },
     ],
   },
   {

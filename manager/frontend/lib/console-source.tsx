@@ -44,7 +44,9 @@ export type ConsoleKey =
   | "exposure"
   | "activity"
   | "topFindings"
-  | "engagements";
+  | "engagements"
+  /** Attack paths (beta): stored results per engagement. Operator-only. */
+  | "attackPaths";
 
 export type ConsoleCapability =
   /** Clicking through to an operator-only screen (engagement, campaign). */
@@ -52,7 +54,9 @@ export type ConsoleCapability =
   /** Choosing which engagement the console shows. A customer has exactly one. */
   | "switchEngagement"
   /** Acting on a finding (status changes, assignment). */
-  | "mutateFindings";
+  | "mutateFindings"
+  /** The Attack paths (beta) section. Operator-only: the customer portal has no attack-path view. */
+  | "viewAttackPaths";
 
 export type ConsoleRoute = "findings" | "finding" | "activity" | "scans" | "fleet" | "reports";
 
@@ -83,9 +87,10 @@ const OPERATOR_SOURCE: ConsoleSource = {
       // applies no status filter at all.
       "/api/findings?paginated=true&page=1&page_size=5&sort=risk&active_only=true",
     engagements: "/api/engagements",
+    attackPaths: "/api/attack-paths/overview?limit=50",
   },
   capabilities: new Set<ConsoleCapability>([
-    "navigateToEngagement", "switchEngagement", "mutateFindings",
+    "navigateToEngagement", "switchEngagement", "mutateFindings", "viewAttackPaths",
   ]),
   routes: {
     findings: "/findings",
@@ -111,6 +116,7 @@ const PORTAL_SOURCE: ConsoleSource = {
     activity: "/activity?limit=20",
     topFindings: "/workspace/findings?paginated=true&page=1&page_size=5&sort=risk&active_only=true",
     engagements: "/workspace/engagement",
+    attackPaths: null,           // operator-only: a customer never sees attack paths
   },
   capabilities: new Set<ConsoleCapability>(["mutateFindings"]),
   routes: {

@@ -552,3 +552,93 @@ export function truncateLabel(label: string, max = 22): string {
   const s = label ?? "";
   return s.length <= max ? s : `${s.slice(0, Math.max(1, max - 1))}…`;
 }
+
+// ── Overview: one line per engagement (dashboard and /attack-paths) ──────────
+
+/** One engagement's line from GET /attack-paths/overview (stored results only). */
+export interface OverviewRow {
+  engagement_id: string;
+  name: string;
+  status: string;
+  /** false = nobody has computed paths for it, which is NOT the same as zero routes. */
+  computed: boolean;
+  computed_at: string | null;
+  path_count: number | null;
+  entry_points: number | null;
+  crown_jewels: number | null;
+  fix_set_size: number | null;
+  fix_assets: string[];
+  fix_assets_more: number;
+  coverage: "observed" | "partial" | null;
+  stale_assets: number | null;
+  why_empty: Reason[];
+}
+
+export interface Overview {
+  total: number;
+  shown: number;
+  engagements: OverviewRow[];
+}
+
+export type OverviewState = "routes" | "empty" | "not_computed";
+
+export function overviewState(row: OverviewRow): OverviewState {
+  if (!row.computed) return "not_computed";
+  return (row.path_count ?? 0) > 0 ? "routes" : "empty";
+}
+
+export interface OverviewLine {
+  state: OverviewState;
+  headline: string;
+  /** The decision, or why there is nothing to decide. Null when there is nothing honest to add. */
+  detail: string | null;
+  coverage: { label: string; tone: Tone } | null;
+  stale: string | null;
+}
+
+/** What one overview row says. The wording rules are the page's: not computed is not
+ *  "0 routes", zero routes is never "safe", coverage is "observed" or "partial", and
+ *  a report the analysis did not record is said to be missing. */
+export function overviewLine(row: OverviewRow): OverviewLine {
+  const state = overviewState(row);
+  if (state === "not_computed") {
+    return { state, headline: "Not computed yet", detail: "Open it to compute the routes.", coverage: null, stale: null };
+  }
+  const coverage = row.coverage === "partial"
+    ? { label: "Coverage partial", tone: "weak" as Tone }
+    : row.coverage === "observed"
+      ? { label: "Coverage observed", tone: "firm" as Tone }
+      : { label: "Coverage not recorded", tone: "neutral" as Tone };
+  const stale = (row.stale_assets ?? 0) > 0
+    ? `${plural(row.stale_assets as number, "host")} not seen recently`
+    : null;
+
+  if (state === "empty") {
+    const first = emptyReasons({ reasons: row.why_empty } as Diagnostics)[0];
+    const why = first ? `${first.title}.` : "The analysis recorded no reason.";
+    return {
+      state, headline: "No routes modelled",
+      detail: `${why} This is not evidence the network is safe.`, coverage, stale,
+    };
+  }
+
+  const n = row.path_count as number;
+  const names = row.fix_assets;
+  let detail: string | null = null;
+  if ((row.fix_set_size ?? 0) === 1 && names.length === 1) {
+    detail = `Fixing ${names[0]} alone cuts every route.`;
+  } else if ((row.fix_set_size ?? 0) > 1 && names.length > 0) {
+    detail = `Cutting every route takes ${row.fix_set_size} hosts: ${names.join(", ")}${row.fix_assets_more > 0 ? `, +${row.fix_assets_more} more` : ""}.`;
+  }
+  return { state, headline: `${n} ${n === 1 ? "route" : "routes"}`, detail, coverage, stale };
+}
+
+/** "3 of 5 engagements have routes · 1 not computed yet" — counts only what is true. */
+export function overviewSummary(o: Overview | null | undefined): string {
+  const rows = o?.engagements ?? [];
+  if (!rows.length) return "No engagements";
+  const withRoutes = rows.filter((r) => overviewState(r) === "routes").length;
+  const notComputed = rows.filter((r) => overviewState(r) === "not_computed").length;
+  const base = `${withRoutes} of ${plural(rows.length, "engagement")} ha${withRoutes === 1 ? "s" : "ve"} routes`;
+  return notComputed > 0 ? `${base} · ${notComputed} not computed yet` : base;
+}

@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   basisInfo, caveatSummary, emptyReasons, fixFirstSummary, fixPointIds, freshnessInfo, layoutPathMap, MAP,
+  overviewLine, overviewState, overviewSummary,
   percent, riskLabel, riskShare, techniqueLabel, truncateLabel,
-  type ChokeAnalysis, type Coverage, type Diagnostics, type FreshnessReport, type PathSummary,
+  type ChokeAnalysis, type Coverage, type Diagnostics, type FreshnessReport, type Overview, type OverviewRow,
+  type PathSummary,
 } from "../lib/attack-paths";
 
 function route(id: string, ...hosts: string[]): PathSummary {
@@ -273,4 +275,68 @@ test("fix points are the cutting set plus the few biggest single wins, not every
   assert.deepEqual([...fixPointIds(c)].sort(), ["a", "b", "c", "gw"]);
   assert.deepEqual([...fixPointIds(c, 5)].sort(), ["a", "b", "c", "d", "gw"], "a host that removes no risk is never a fix point");
   assert.equal(fixPointIds(null).size, 0);
+});
+
+
+// ── overview rows (dashboard) ────────────────────────────────────────────────
+
+const orow = (over: Partial<OverviewRow> = {}): OverviewRow => ({
+  engagement_id: "e1", name: "Acme", status: "active", computed: true, computed_at: "2026-10-09T09:00:00Z",
+  path_count: 6, entry_points: 2, crown_jewels: 2, fix_set_size: 2, fix_assets: ["vpn-gw", "web-1"], fix_assets_more: 0,
+  coverage: "partial", stale_assets: 1, why_empty: [], ...over,
+});
+
+test("an engagement nobody computed is 'not computed yet', never '0 routes'", () => {
+  const line = overviewLine(orow({ computed: false, path_count: null, fix_set_size: null, fix_assets: [], coverage: null, stale_assets: null }));
+  assert.equal(line.state, "not_computed");
+  assert.equal(line.headline, "Not computed yet");
+  assert.doesNotMatch(`${line.headline} ${line.detail}`, /\b0 routes\b|no routes/i);
+  assert.equal(line.coverage, null);
+});
+
+test("routes: the count and the decision, with coverage and stale hosts alongside", () => {
+  const line = overviewLine(orow());
+  assert.equal(line.headline, "6 routes");
+  assert.equal(line.detail, "Cutting every route takes 2 hosts: vpn-gw, web-1.");
+  assert.deepEqual(line.coverage, { label: "Coverage partial", tone: "weak" });
+  assert.equal(line.stale, "1 host not seen recently");
+});
+
+test("one shared host reads as one decision; a long fix set counts the rest", () => {
+  assert.equal(overviewLine(orow({ path_count: 1, fix_set_size: 1, fix_assets: ["gw"] })).headline, "1 route");
+  assert.equal(overviewLine(orow({ fix_set_size: 1, fix_assets: ["gw"] })).detail, "Fixing gw alone cuts every route.");
+  assert.equal(
+    overviewLine(orow({ fix_set_size: 6, fix_assets: ["a", "b", "c"], fix_assets_more: 3 })).detail,
+    "Cutting every route takes 6 hosts: a, b, c, +3 more.",
+  );
+});
+
+test("zero routes keeps its reason and is never called safe", () => {
+  const line = overviewLine(orow({ path_count: 0, fix_set_size: 0, fix_assets: [], coverage: "observed", stale_assets: 0,
+    why_empty: [{ code: "no_targets", detail: "x" }] }));
+  assert.equal(line.state, "empty");
+  assert.equal(line.headline, "No routes modelled");
+  assert.match(line.detail ?? "", /^No crown jewels marked\. This is not evidence the network is safe\.$/);
+  assert.deepEqual(line.coverage, { label: "Coverage observed", tone: "firm" });
+  assert.equal(line.stale, null);
+  assert.doesNotMatch(`${line.headline} ${line.detail}`, /\b(safe and|all clear|no risk|secure)\b/i);
+});
+
+test("zero routes with no recorded reason still says so, and still does not claim safety", () => {
+  const line = overviewLine(orow({ path_count: 0, why_empty: [] }));
+  assert.match(line.detail ?? "", /The analysis recorded no reason\. This is not evidence the network is safe\./);
+});
+
+test("a coverage report the analysis never recorded is said to be missing, not 'observed'", () => {
+  assert.deepEqual(overviewLine(orow({ coverage: null })).coverage, { label: "Coverage not recorded", tone: "neutral" });
+});
+
+test("state and summary count only what is true", () => {
+  assert.equal(overviewState(orow({ computed: false })), "not_computed");
+  assert.equal(overviewState(orow({ path_count: 0 })), "empty");
+  const o: Overview = { total: 9, shown: 3, engagements: [orow(), orow({ path_count: 0 }), orow({ computed: false })] };
+  assert.equal(overviewSummary(o), "1 of 3 engagements has routes · 1 not computed yet");
+  assert.equal(overviewSummary({ total: 2, shown: 2, engagements: [orow(), orow()] }), "2 of 2 engagements have routes");
+  assert.equal(overviewSummary({ total: 0, shown: 0, engagements: [] }), "No engagements");
+  assert.equal(overviewSummary(null), "No engagements");
 });

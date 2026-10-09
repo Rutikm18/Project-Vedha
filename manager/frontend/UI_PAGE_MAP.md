@@ -45,6 +45,18 @@ Two apps share this frontend:
 - API: `app/api/activity/route.ts`, `app/api/analytics/exposure/route.ts`,
   `app/api/findings/summary/route.ts`, `app/api/findings/sla-summary/route.ts`
 
+### 1a. Dashboard → Attack paths (Beta) section, sidebar entry and `/attack-paths`
+- Dashboard section: `components/dashboard/AttackPathsPanel.tsx`, placed in `DashboardGrid.tsx` under the posture/SLA band
+  (shown only when the console source has the `viewAttackPaths` capability: operators yes, customer portal no)
+- Row list shared by the panel and the page: `components/attack-paths/OverviewList.tsx`
+- Sidebar: `components/Sidebar.tsx` (Analysis → "Attack paths", BETA badge, operator menu only)
+- Page: `app/attack-paths/page.tsx` (all engagements, Beta badge and notice)
+- Data: `lib/console-source.tsx` dataset `attackPaths` (operator endpoint `/api/attack-paths/overview?limit=50`, portal `null`)
+  → BFF `app/api/attack-paths/overview/route.ts` → backend `GET /attack-paths/overview`
+  (`routers/attack_paths.py`, rows built by `app/graph/overview.py`; read-only, tenant-scoped, operators only)
+- View-model and wording: `lib/attack-paths.ts` (`overviewLine`, `overviewSummary`; "not computed yet" is never "0 routes")
+- Each row links to `/engagements/{id}/attack-paths` (§4a)
+
 ### 2. Login
 - Page: `app/login/page.tsx`
 - API: `app/api/auth/login/route.ts`, `auth/me/route.ts`, `auth/logout/route.ts`,
