@@ -5,6 +5,7 @@ response shapes may still change.
 GET /engagements/{id}/attack-paths            — paginated paths sorted by risk
 GET /engagements/{id}/attack-paths/{path_id}  — full path detail, hop-by-hop
 GET /engagements/{id}/chokepoints             — chokepoint assets + remediation priority
+GET /engagements/{id}/attack-path-zones       — the stored routes aggregated into the subnets they cross
 GET /engagements/{id}/blast-radius/{asset_id} — assets reachable if asset is owned
 GET /engagements/{id}/attack-graph            — D3-compatible graph JSON
 GET /attack-paths/overview                    — stored results for every engagement (dashboard)
@@ -38,6 +39,7 @@ from app.graph.overview import (
     snapshots_to_prune,
 )
 from app.graph.visualizer import GraphVisualizer
+from app.graph.zones import build_zones
 from app.models.asset import Asset
 from app.models.attack_path import AttackPath
 from app.models.attack_path_analysis import AttackPathAnalysis
@@ -357,6 +359,45 @@ async def attack_path_analysis(
         "freshness": analysis.get("freshness"),
         "diagnostics": analysis.get("diagnostics"),
     }
+
+
+# ── GET /attack-path-zones ────────────────────────────────────────────────────
+
+# The most stored routes aggregated into one zone view (an engagement stores at most 5 per entry
+# point per crown jewel, so this is rarely reached; `routes_truncated` says when it was).
+MAX_ZONE_ROUTES = 500
+
+
+@router.get("/attack-path-zones",
+            summary="The stored routes aggregated into the subnets they cross (beta, read-only)")
+async def attack_path_zones(
+    engagement_id: uuid.UUID,
+    db: DB,
+    current_user: AuthUser,
+):
+    """Which subnets the stored routes start in, end in, cross and need fixing in, and on what
+    basis each crossing rests. Read-only: it aggregates what is stored and never computes, so an
+    engagement nobody computed answers `computed: false`."""
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    stored = await db.get(AttackPathAnalysis, engagement_id)
+    if stored is None:
+        return {**build_zones(analysis=None, routes=[], engagement_id=engagement_id), "routes_truncated": False}
+    rows = (await db.execute(
+        select(AttackPath.path_nodes, AttackPath.path_edges)
+        .where(AttackPath.engagement_id == engagement_id).limit(MAX_ZONE_ROUTES)
+    )).all()
+    routes = [{"nodes": list(nodes or []), "edges": list(edges or [])} for nodes, edges in rows]
+    analysis = stored.analysis or {}
+    site_ids = {uuid.UUID(s["site"]) for s in (analysis.get("coverage") or {}).get("segments") or []
+                if isinstance(s, dict) and s.get("site") and _is_uuid(s["site"])}
+    site_names: dict[str, str] = {}
+    if site_ids:
+        site_names = {str(s.id): s.name for s in (await db.execute(
+            select(ProbeSite).where(ProbeSite.id.in_(site_ids))
+        )).scalars().all()}
+    return {**build_zones(analysis=analysis, routes=routes, site_names=site_names,
+                          computed_at=stored.computed_at, engagement_id=engagement_id),
+            "routes_truncated": len(rows) >= MAX_ZONE_ROUTES}
 
 
 # ── GET /blast-radius/{asset_id} ──────────────────────────────────────────────
