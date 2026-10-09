@@ -86,3 +86,28 @@ class TestWiring:
                  {"targets": targets, "max_runtime_seconds": 3600})
         msgs = [r.getMessage() for r in caplog.records]
         assert any("not every port can be swept" in m and "pps would" in m for m in msgs)
+
+
+class TestTheDeepModePath:
+    """The UI's "Deep" mode is uc_deep_port_sweep: every port plus the full
+    assessment. Its 64,390-port tail is what used to stop at the fixed ceiling."""
+
+    def test_deep_port_sweep_is_sized_by_its_full_range(self, monkeypatch):
+        targets = [f"10.0.0.{i}" for i in range(1, 21)]
+        result, seen = _run(monkeypatch, "deep_port_sweep",
+                            {"targets": targets, "allow_infeasible": True})
+        ceiling = result["run_stats"]["applied_tuning"]["max_runtime_seconds"]
+        assert ceiling == pytest.approx(engine._full_coverage_ceiling(
+            hosts=20, ports=65535, rate=150, base=engine.MAX_JOB_SECONDS))
+        assert ceiling > engine.MAX_JOB_SECONDS
+
+    def test_it_still_phases_and_the_tail_ends_inside_the_ceiling(self, monkeypatch):
+        import time
+        targets = [f"10.0.0.{i}" for i in range(1, 21)]
+        before = time.monotonic()
+        result, seen = _run(monkeypatch, "deep_port_sweep",
+                            {"targets": targets, "allow_infeasible": True})
+        ceiling = result["run_stats"]["applied_tuning"]["max_runtime_seconds"]
+        assert seen["first_pass_ports"] and len(seen["first_pass_ports"]) < 2000
+        assert len(seen["port_override"]) == 65535
+        assert before < seen["tail_deadline"] < time.monotonic() + ceiling

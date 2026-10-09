@@ -1,6 +1,6 @@
 # Deep scan: every one of the 65,535 TCP ports, with no cap
 
-Date: 2026-10-09 · Status: **design for review — nothing implemented** · Trigger: a deep port
+Date: 2026-10-09 · Status: **reviewed; being implemented task by task (§5)** · Trigger: a deep port
 sweep of one host (`192.168.1.70`) from the Windows agent took 6.5 minutes for its first 1,145
 ports, and its 64,390-port tail could not finish inside the job's budget.
 
@@ -116,7 +116,39 @@ fence and result paths are unchanged: a shard is a job.
 - Log the banner-grab `WinError 10054` resets at debug level; they are the target closing a
   connection, not an agent error.
 
-## 4. Phases
+## 4. Review of this design: failure points found, and what changed
+
+Reviewed against the code before building. Each finding changed the plan.
+
+| # | Finding | Risk | Change to the plan |
+|---|---|---|---|
+| R1 | Python's `socket.ioctl` on Windows supports only three control codes, not `SIO_TCP_INITIAL_RTO` | The fix cannot be one line | Call `WSAIoctl` through `ctypes` on the socket handle; stdlib only, so the sealed build and the agent closure are unaffected |
+| R2 | On Windows 10 before RS3 (build 16299) the "no retransmissions" value is misread as 255 retries | Scans far slower than today | Version gate: `NO_SYN_RETRANSMISSIONS` on build ≥ 16299, `1` below it, untouched before Windows 8 |
+| R3 | If the ioctl silently has no effect, nothing tells us | A fix that "ships" but does nothing | The agent measures a closed-port connect on loopback at startup and in `doctor`, and logs both timings |
+| R4 | Without OS SYN retransmission, one lost SYN reads as silence | Slightly lower recall on lossy links | Our own retries (deep: 2) and the gentle cleanup pass already re-probe silence; scan sockets only, never the manager connection |
+| R5 | Port-range sharding (§3.2) needs a migration, a parent/child job model, a splitter and a new UI, and auto-resolution must never treat a shard's unscanned ports as "fixed" | Large and risky for the gain | **Dropped for now.** After the Windows fix one host's 65,535 ports take minutes, and per-host resume already exists (`task_runner.py:537`). A ceiling sized from the estimate gives full coverage without sharding. Sharding stays the option for multi-agent parallelism |
+| R6 | **Corrected while building:** the UI's *Deep* mode is already `uc_deep_port_sweep`, all 65,535 ports; the probe intensity named `deep` is the UI's *Aggressive* (~2,500 ports, `_INTENSITY_ALIASES`). What capped Deep was the tail's 2 h budget, the 3-host limit and the Windows slowness, not port breadth | Changing the `deep` preset would have altered Aggressive, which nobody asked for | Aggressive is left untouched. T8 proves the Deep Port Sweep path takes the full-coverage ceiling (T7); T9 removes its 3-host cap |
+| R7 | A wide scope at 150 pps cannot cover 65,535 ports in any sane time (a /24 is ~31 h) | "No cap" becomes "never finishes" | The ceiling is sized from the full-sweep estimate up to `PROBE_MAX_FULL_SCAN_SECONDS` (default 24 h). Beyond that the scan still runs; unreached ports are `not_scanned` with the exact rate that would cover them. **The rate is never raised automatically** on a customer network; job params already allow up to 2,000 pps |
+| R8 | A long job holds the agent `busy`; queued jobs wait (the confusion seen on 9 Oct) | Looks like a dead agent | ETA and "tail N% done" progress lines in the agent log; Fleet badge is follow-up work |
+| R9 | The 2,048-port cleanup cap leaves ports mis-reported `filtered` | False firewall claims in the report | Ports the cleanup pass could not re-check are marked unverified and counted separately, never as firewall evidence |
+| R10 | The Windows path cannot be tested here (no Windows; Windows CI blocked by billing) | Untested code on customer machines | Mocked unit tests for the ctypes path; fail-safe (any error keeps today's behaviour); proof is the owner's before/after measurement |
+
+## 5. Plan (after review): small tasks, in order
+
+| Task | What | Proof |
+|---|---|---|
+| T1 | `scanner/win_fast_connect.py`: version-aware `SIO_TCP_INITIAL_RTO` via `ctypes.WSAIoctl`; fail-safe | Unit tests with a fake `WSAIoctl` (struct bytes, control code, version gate, failure → no-op) |
+| T2 | `PortScanner._attempt` uses it on Windows for IP-literal targets (source-port bind, IPv6); everything else unchanged | Tests that Linux takes the old path; Windows path with a fake loop |
+| T3 | Self-check: closed-port connect latency on loopback with and without the option, logged at startup and in `doctor` | Tests with fake timings; owner runs it on Windows |
+| T4 | Cleanup honesty: ports over the cleanup budget marked `unverified`, counted in the scan summary | Tests on a host with > 2,048 silent ports |
+| T5 | Platform-correct raw-socket preflight advice | Tests per platform |
+| T6 | `WinError 10054` banner resets logged at debug, not as ERROR tracebacks | Logging-filter test |
+| T7 | Ceiling sized from the full-sweep estimate (≤ `PROBE_MAX_FULL_SCAN_SECONDS`, default 24 h); when it cannot fit, say the rate that would | Tests on the ceiling and the guidance |
+| T8 | Deep mode (Deep Port Sweep) gets the full-coverage ceiling end to end; Aggressive unchanged | Wiring tests through `run_scan` |
+| T9 | Deep Port Sweep's fixed 3-host cap removed (operators can still set one); UI hint updated | Tests on the cap and the refusal |
+| T10 | Full suites (agent CI list on 2 simulated cores, accuracy gate, backend, frontend), docs, `STATUS.md` | Results recorded in the change log |
+
+## 6. Phases (original proposal, kept for reference)
 
 | Phase | Contents | Removes | Size |
 |---|---|---|---|
@@ -127,7 +159,7 @@ fence and result paths are unchanged: a shard is a job.
 Phase 1 alone makes a few-host 65,535-port sweep from the Windows agent fit comfortably inside
 today's 2 h budget. Phase 2 is what makes "no cap" true for any scope.
 
-## 5. How we know it works
+## 7. How we know it works
 
 - Phase 1, on the customer's Windows agent against `192.168.1.70`: the cleanup line goes from
   `1110/1110` to near zero, the 1,145-port pass takes seconds, and a full 65,535-port sweep
@@ -140,7 +172,7 @@ today's 2 h budget. Phase 2 is what makes "no cap" true for any scope.
   derivation and the `not_scanned` accounting; the Windows path is proven by the measurement
   above (the Windows CI runner is blocked by Actions billing).
 
-## 6. Decisions for you
+## 8. Decisions for you
 
 - **D1 — deep scan rate.** 150 pps today. Proposal: 1,000 pps default for deep, operator-editable
   per engagement, AIMD still backing off. Banks may want a lower default.
@@ -150,7 +182,7 @@ today's 2 h budget. Phase 2 is what makes "no cap" true for any scope.
 - **D3 — longest scan an operator may start.** With shards there is no technical limit. Proposal:
   show the ETA and require confirmation above 8 h, rather than a hard stop.
 
-## 7. Not chosen, and why
+## 9. Not chosen, and why
 
 - **Npcap or WinDivert SYN on Windows.** Near-Linux speed, but a kernel driver on customer
   endpoints (security review and EDR friction at banks) and, for Npcap, a paid OEM
