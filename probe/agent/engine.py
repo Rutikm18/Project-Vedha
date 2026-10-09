@@ -158,12 +158,11 @@ _SCAN_MAP = {
     "device_inventory":     ("it",  service_fingerprint_mode,  None),
     "full_port_audit":      ("it",  port_scan_mode,            None),
     "exposure_matrix":      ("it",  port_scan_mode,            None),
-    # Deep full-port sweep of a FEW critical hosts: the entire 65,535-port space
+    # Deep full-port sweep (the UI's Deep mode): the entire 65,535-port space
     # AND the full assessment funnel (banner/OS/deep branches) — the thorough
-    # "tell me everything about these boxes" scan. Host count is capped (see
-    # _MAX_HOSTS_BY_SCAN_TYPE) so full-port coverage never fans out across a
-    # subnet; that is what `network_va` aggressive (bounded enterprise breadth)
-    # is for.
+    # "tell me everything about these boxes" scan. Any number of hosts: the
+    # ceiling grows with the sweep (_full_coverage_ceiling); `network_va`
+    # aggressive is the bounded ~2,500-port sweep when time matters more.
     "deep_port_sweep":      ("it",  assessment,                None),
 }
 
@@ -182,15 +181,17 @@ _FORCE_PORT_PROFILE = {"full_port_audit": "full", "deep_port_sweep": "full"}
 
 # scan_types that PHASE a forced full sweep: assess the high-signal first pass,
 # then take the rest of the 65,535 space as a budgeted tail. Reserved for the
-# host-capped deep_port_sweep, so the phased machinery never re-admits a
-# full-port sweep across a whole subnet.
+# deep_port_sweep (the UI's Deep mode).
 _PHASED_FULL_SCAN_TYPES = {"deep_port_sweep"}
 
-# scan_type → the most hosts one job may target. Full-port coverage is only safe
-# on a handful of hosts inside the time ceiling, so deep_port_sweep is capped;
-# a wider scope is refused with guidance (with the allow_infeasible escape hatch).
-DEEP_PORT_SWEEP_MAX_HOSTS = int(_env_number("PROBE_DEEP_PORT_SWEEP_MAX_HOSTS", 3, 1, 4096))
-_MAX_HOSTS_BY_SCAN_TYPE = {"deep_port_sweep": DEEP_PORT_SWEEP_MAX_HOSTS}
+# scan_type → an optional cap on how many hosts one job may target. Deep Port
+# Sweep had a fixed cap of 3 because its 65,535-port tail had to fit a fixed 2 h
+# ceiling. The ceiling is now sized by the sweep (_full_coverage_ceiling), so a
+# wider scope takes longer instead of being refused: no cap by default (0).
+# PROBE_DEEP_PORT_SWEEP_MAX_HOSTS still lets an operator set one.
+DEEP_PORT_SWEEP_MAX_HOSTS = int(_env_number("PROBE_DEEP_PORT_SWEEP_MAX_HOSTS", 0, 0, 4096))
+_MAX_HOSTS_BY_SCAN_TYPE = (
+    {"deep_port_sweep": DEEP_PORT_SWEEP_MAX_HOSTS} if DEEP_PORT_SWEEP_MAX_HOSTS else {})
 
 # Broad assessments run a wider baseline at STANDARD intensity so a manager
 # "Full Assessment" matches the CLI's `run_all` default (top1000 ≈ 1121 ports)
@@ -386,12 +387,11 @@ def _refuse_if_infeasible(estimate, params: dict) -> dict | None:
 
 def _refuse_if_host_cap_exceeded(scan_type: str, host_count: int,
                                  params: dict) -> dict | None:
-    """Reason to refuse a use-case that caps its host count, or None.
+    """Reason to refuse a use-case whose operator set a host cap, or None.
 
-    A full-port sweep (all 65,535 ports) is only feasible inside the time
-    ceiling on a handful of hosts, so deep_port_sweep caps the count and refuses
-    a wider scope rather than silently truncating it. Same escape hatch as the
-    feasibility gate: `allow_infeasible=true` runs it anyway.
+    No use-case is capped by default (see _MAX_HOSTS_BY_SCAN_TYPE). When an
+    operator sets one, a wider scope is refused rather than silently truncated.
+    Same escape hatch as the feasibility gate: `allow_infeasible=true` runs it.
     """
     cap = _MAX_HOSTS_BY_SCAN_TYPE.get(scan_type)
     if cap is None or host_count <= cap:
