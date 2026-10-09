@@ -372,10 +372,13 @@ class TestNewCustomerDefaults:
     def _apply(self, plan_type, defaults, **body):
         from app.services.org_settings import CustomerDefaults
         row = self._row()
+        # One clock for both: a fixed expiry date stops being in the future
+        # (2027-01-01 would have failed this from New Year's Day 2027).
+        now = datetime.now(timezone.utc)
         cfg = ca.EntitlementConfig(plan_type=plan_type, duration_days=14 if plan_type == "poc" else None,
-                                   expires_at=None if plan_type == "poc" else datetime(2027, 1, 1, tzinfo=timezone.utc),
+                                   expires_at=None if plan_type == "poc" else now + timedelta(days=365),
                                    **body)
-        ca.apply_entitlement_config(row, cfg, now=datetime.now(timezone.utc),
+        ca.apply_entitlement_config(row, cfg, now=now,
                                     defaults=CustomerDefaults(**defaults) if defaults is not None else None)
         return row
 
