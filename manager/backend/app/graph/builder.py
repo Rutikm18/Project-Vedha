@@ -434,6 +434,57 @@ class GraphBuilder:
                     added += 2
         return added
 
+    def add_relay_links(
+        self,
+        relay_links: list[Any],
+        cred_links: list[Any],
+    ) -> tuple[int, int]:
+        """P3: add NTLM relay CONNECTS_TO edges and shared-admin CREDENTIAL_REUSE edges.
+
+        relay_links — list of relay.RelayLink (coercion_source → relay_target).
+        cred_links  — list of relay.CredentialLink (bidirectional shared admin).
+
+        Returns (relay_edges_added, credential_edges_added).
+        """
+        g = self.graph
+        relay_added = 0
+        cred_added = 0
+
+        for link in relay_links:
+            src = asset_node_id(link.source_asset_id)
+            dst = asset_node_id(link.target_asset_id)
+            if not g.has_node(src) or not g.has_node(dst) or src == dst:
+                continue
+            g.add_edge(
+                src, dst,
+                type="CONNECTS_TO",
+                basis=link.basis,
+                technique=link.technique,
+                weight=link.confidence,
+                label=link.label,
+                is_dc_target=link.is_dc_target,
+            )
+            relay_added += 1
+
+        for link in cred_links:
+            a = asset_node_id(link.asset_id_a)
+            b = asset_node_id(link.asset_id_b)
+            if not g.has_node(a) or not g.has_node(b) or a == b:
+                continue
+            attrs = {
+                "type": "CREDENTIAL_REUSE",
+                "basis": link.basis,
+                "technique": link.technique,
+                "weight": link.confidence,
+                "label": link.label,
+                "laps_confirmed_absent": link.laps_confirmed_absent,
+            }
+            g.add_edge(a, b, **attrs)
+            g.add_edge(b, a, **attrs)
+            cred_added += 2
+
+        return relay_added, cred_added
+
     # ── assembly: the engagement graph from plain objects (no DB) ───────────────
 
     def assemble(
@@ -492,6 +543,19 @@ class GraphBuilder:
             assets, scope, posture_from_roe(rules_of_engagement), identity_mode=identity_mode))
         # P1b-4: one machine seen at several addresses (the dual-homed pivot).
         self.add_machine_links(link_machines(assets, identity_mode, now=now, freshness_days=freshness_days))
+
+        # P3: cross-asset NTLM relay edges (FM-09) and LAPS-aware shared-admin
+        # CREDENTIAL_REUSE edges (FM-08). Pure + isolated; failures never sink the build.
+        try:
+            from app.detection.relay import derive_credential_links, derive_relay_links
+            relay_links = derive_relay_links(all_findings, assets)
+            cred_links = derive_credential_links(all_findings, assets)
+            if relay_links or cred_links:
+                r_added, c_added = self.add_relay_links(relay_links, cred_links)
+                logger.info("graph.relay.applied", relay=r_added, credential=c_added)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("graph.relay.failed", error=str(exc))
+
         return graph
 
     # ── PostgreSQL loader ───────────────────────────────────────────────────────
