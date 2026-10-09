@@ -81,6 +81,7 @@ USER 10001:10001
 EXPOSE 8000
 
 # Container health is checked by compose with Python (no curl in the image).
-# Default command serves the API. The compose `migrate` service overrides this
+# Default command serves the API (2 workers, like compose's API_WORKERS default; each
+# worker holds its own copy of the vulnerability snapshots, about 40 MB). The compose `migrate` service overrides this
 # to run `alembic upgrade head` + seed before the API starts.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

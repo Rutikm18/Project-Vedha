@@ -3,21 +3,39 @@
 #
 # Needs from the caller: log, warn, COMPOSE_CMD (array), VEDHA_BACKEND_IMAGE,
 # VEDHA_FRONTEND_IMAGE; optional PREVIOUS_BACKEND_IMAGE / PREVIOUS_FRONTEND_IMAGE,
-# SERIAL_BUILD=1, FORCE_REBUILD=1, BUILD_CACHE_KEEP (default 3GB).
+# SERIAL_BUILD=1, FORCE_REBUILD=1, BUILD_CACHE_KEEP (default 3GB), and
+# VEDHA_IMAGE_REGISTRY (e.g. ghcr.io/<owner>: pull CI-built images instead of building).
 #
 # Why a helper: the deploy used to build the backend, then the frontend, every time
 # (even for a release whose images already existed), and never removed an old
 # release's images (about half a GB each), so a small disk filled up over a few deploys.
 
-# Build one service unless this release's image is already on the host. The image
-# tag is the commit, so an existing one is by definition identical.
+# Get one service's release image onto the host, cheapest way first. The image tag
+# is the commit, so an image that already exists, or one CI pushed under that tag,
+# is by definition identical to what a build here would produce.
+#   1. already on this host            → reuse
+#   2. VEDHA_IMAGE_REGISTRY is set and CI pushed it → pull (seconds, no CPU)
+#   3. otherwise                       → build here
+# FORCE_REBUILD=1 skips 1 and 2.
 _build_service() {
-  local svc="$1" image="$2" logfile="$3"
-  if [ "${FORCE_REBUILD:-0}" != "1" ] && docker image inspect "$image" >/dev/null 2>&1; then
-    echo "reusing $image (already built for this release)" > "$logfile"
-    return 0
+  local svc="$1" image="$2" logfile="$3" remote
+  : > "$logfile"
+  if [ "${FORCE_REBUILD:-0}" != "1" ]; then
+    if docker image inspect "$image" >/dev/null 2>&1; then
+      echo "reusing $image (already built for this release)" >> "$logfile"
+      return 0
+    fi
+    if [ -n "${VEDHA_IMAGE_REGISTRY:-}" ]; then
+      remote="${VEDHA_IMAGE_REGISTRY%/}/$image"
+      if docker pull -q "$remote" >> "$logfile" 2>&1 && docker tag "$remote" "$image" >> "$logfile" 2>&1; then
+        docker image rm "$remote" >/dev/null 2>&1 || true   # keep only the local tag
+        echo "pulled $remote (built by CI, nothing to compile here)" >> "$logfile"
+        return 0
+      fi
+      echo "$remote is not available (not pushed yet, or not logged in); building here instead" >> "$logfile"
+    fi
   fi
-  "${COMPOSE_CMD[@]}" build "$svc" > "$logfile" 2>&1
+  "${COMPOSE_CMD[@]}" build "$svc" >> "$logfile" 2>&1
 }
 
 # Build the API and dashboard images, concurrently. They are different tags, so the
@@ -27,6 +45,12 @@ _build_service() {
 # SERIAL_BUILD=1 builds one after the other (very small hosts).
 build_images() {
   local dir backend_rc=0 frontend_rc=0 pid_b pid_f
+  # The registry may come from the installer's environment or from .env (the
+  # installer keeps hand-added lines outside its managed block).
+  if [ -z "${VEDHA_IMAGE_REGISTRY:-}" ] && [ -f "${APP_DIR:-.}/.env" ]; then
+    VEDHA_IMAGE_REGISTRY="$(grep '^VEDHA_IMAGE_REGISTRY=' "${APP_DIR:-.}/.env" | tail -n1 | cut -d= -f2- || true)"
+  fi
+  export VEDHA_IMAGE_REGISTRY
   dir="$(mktemp -d)"
   if [ "${SERIAL_BUILD:-0}" = "1" ]; then
     _build_service api "$VEDHA_BACKEND_IMAGE" "$dir/backend.log" || backend_rc=$?

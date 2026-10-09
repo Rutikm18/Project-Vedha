@@ -26,6 +26,7 @@ FAKE_DOCKER = textwrap.dedent("""\
       [ "${FAIL_SERVICE:-}" = "$last" ] && { echo "boom building $last"; exit 1; }
       echo "built $last"; exit 0
     fi
+    if [ "$1" = "pull" ]; then grep -qxF "${@: -1}" "$PULLABLE"; exit $?; fi
     case "$1 $2" in
       "image inspect") grep -qxF "$3" "$EXISTING" ;;
       "images --format") grep "^$4:" "$EXISTING" | grep -v ":$" || true ;;
@@ -45,6 +46,7 @@ def sandbox(tmp_path):
     (tmp_path / "existing").write_text("")
     (tmp_path / "unremovable").write_text("")
     (tmp_path / "calls").write_text("")
+    (tmp_path / "pullable").write_text("")
     return tmp_path
 
 
@@ -61,7 +63,7 @@ def _run(sandbox, body, **env):
         echo DONE
     """)
     full = {**os.environ, "PATH": f"{sandbox / 'bin'}:{os.environ['PATH']}", "CALLS": str(sandbox / "calls"),
-            "EXISTING": str(sandbox / "existing"), "UNREMOVABLE": str(sandbox / "unremovable"),
+            "EXISTING": str(sandbox / "existing"), "UNREMOVABLE": str(sandbox / "unremovable"), "PULLABLE": str(sandbox / "pullable"),
             "DEPLOY_LOG": str(sandbox / "deploy.log"), **env}
     return subprocess.run(["bash", "-c", script], capture_output=True, text=True, env=full)
 
@@ -107,6 +109,46 @@ def test_a_failed_build_fails_the_step_and_shows_why_but_the_other_still_finishe
     assert any(c.endswith("api") for c in _calls(sandbox))        # the backend build ran to completion
     log = (sandbox / "deploy.log").read_text()
     assert "built api" in log and "boom building frontend" in log
+
+
+def test_a_registry_image_is_pulled_instead_of_built(sandbox):
+    (sandbox / "pullable").write_text("ghcr.io/acme/vedha-backend:aaaaaaaaaaaa\nghcr.io/acme/vedha-frontend:aaaaaaaaaaaa\n")
+    result = _run(sandbox, "build_images", VEDHA_IMAGE_REGISTRY="ghcr.io/acme/")
+    assert result.returncode == 0, result.stderr
+    calls = _calls(sandbox)
+    assert not any("compose" in c for c in calls)                                  # nothing compiled here
+    assert "docker tag ghcr.io/acme/vedha-backend:aaaaaaaaaaaa vedha-backend:aaaaaaaaaaaa" in calls
+    assert "docker image rm ghcr.io/acme/vedha-frontend:aaaaaaaaaaaa" in calls     # only the extra tag goes
+    assert "pulled ghcr.io/acme/vedha-backend" in (sandbox / "deploy.log").read_text()
+
+
+def test_a_missing_registry_image_falls_back_to_building(sandbox):
+    (sandbox / "pullable").write_text("ghcr.io/acme/vedha-backend:aaaaaaaaaaaa\n")   # the dashboard was not pushed
+    result = _run(sandbox, "build_images", VEDHA_IMAGE_REGISTRY="ghcr.io/acme")
+    assert result.returncode == 0, result.stderr
+    built = [c.split()[-1] for c in _calls(sandbox) if "compose" in c]
+    assert built == ["frontend"]
+    assert "building here instead" in (sandbox / "deploy.log").read_text()
+
+
+def test_the_registry_can_come_from_dot_env(sandbox):
+    (sandbox / "app").mkdir()
+    (sandbox / "app" / ".env").write_text("A=1\nVEDHA_IMAGE_REGISTRY=ghcr.io/old\nVEDHA_IMAGE_REGISTRY=ghcr.io/acme\n")
+    (sandbox / "pullable").write_text("ghcr.io/acme/vedha-backend:aaaaaaaaaaaa\nghcr.io/acme/vedha-frontend:aaaaaaaaaaaa\n")
+    result = _run(sandbox, "build_images", APP_DIR=str(sandbox / "app"))
+    assert result.returncode == 0, result.stderr
+    assert not any("compose" in c for c in _calls(sandbox))        # the last line in .env won
+
+
+def test_no_registry_means_no_pull_attempt(sandbox):
+    _run(sandbox, "build_images")
+    assert not any(c.startswith("docker pull") for c in _calls(sandbox))
+
+
+def test_force_rebuild_skips_the_registry(sandbox):
+    (sandbox / "pullable").write_text("ghcr.io/acme/vedha-backend:aaaaaaaaaaaa\nghcr.io/acme/vedha-frontend:aaaaaaaaaaaa\n")
+    _run(sandbox, "build_images", VEDHA_IMAGE_REGISTRY="ghcr.io/acme", FORCE_REBUILD="1")
+    assert not any(c.startswith("docker pull") for c in _calls(sandbox))
 
 
 def test_old_release_images_are_removed_but_current_and_previous_are_kept(sandbox):
