@@ -1,6 +1,6 @@
 # Attack paths on the dashboard: how to represent them (research, review and plan v2, 2026-10-09)
 
-**Status:** v2. **Phases 0 to 2 are built and checked** (section 11); Phases 3 to 5 are not started. Version 1 of this plan was reviewed
+**Status:** v2. **All of Phases 0 to 5 are built and checked** (section 11). Version 1 of this plan was reviewed
 against the code the same day; section 4 lists what was wrong with it and what changed. The first dashboard
 section it follows shipped on `claude/elegant-noether-ggdafj` (commits `27b80255`, `3a921fce`, `7df368c6`).
 
@@ -25,7 +25,7 @@ section it follows shipped on `claude/elegant-noether-ggdafj` (commits `27b80255
    a GET* for any engagement with no stored routes.
 8. **Bars show the share of modelled risk removed** (bounded, already used on the engagement page), not a
    "0 to 100" number that can exceed 100.
-9. **Zero new libraries**; history and trend stay in Phase 3, behind your decision.
+9. **Zero new libraries**; history, the strip item, Compute and the subnet map were built after (Phases 3 to 5).
 10. **Eight decisions are yours** (section 9). Phases 0 to 2 need none of them.
 
 ![v1 mock-up: Option C beside the baseline and the rejected forms, light theme](assets/2026-10-09-attack-paths-dashboard/options-light-wide.png)
@@ -326,7 +326,7 @@ Order: `exposed`, `reachable` (more reachable jewels first, then higher modelled
 Each phase ships with tests and keeps `tsc`, `eslint`, backend, detection-engine and frontend suites green.
 None adds a dependency.
 
-### Phase 0 — make the numbers true (M)
+### Phase 0 — make the numbers true (M) — built
 1. Analyzer: `exposed_directly` per target; tests from fixture `09` variants (jewel exposed together with
    entries; jewel the only exposed host).
 2. `overview.py`: `build_row` v2 (six states, per-jewel counts, `ways_in`, `top_risk`, unknown = `None`),
@@ -339,24 +339,24 @@ None adds a dependency.
 "directly exposed"; an exposed-only engagement is never "No routes modelled"; a tenant with more engagements
 than the limit still ranks and totals correctly.
 
-### Phase 1 — tiles and ladder (M)
+### Phase 1 — tiles and ladder (M) — built
 `AttackPathsTiles`, `JewelMeter`, rebuilt `OverviewList` rows, container-query layout, skeleton parity, the
 `/attack-paths` page reuses them. **Done when:** every state in 5.3 renders in light, dark, narrow; no
 horizontal scroll; keyboard focus visible; honesty tests pass.
 
-### Phase 2 — "Fix first" card (M)
+### Phase 2 — "Fix first" card (M) — built
 `GET /attack-paths/focus/{id}` + BFF + `FixFirstCard` (`RouteChain`, `RiskBars`). **Done when:** a test proves
 the endpoint never recomputes or writes; exposed and no-route cases render without a chain; long routes
 collapse but keep fix-list hosts; a failed focus request leaves the ladder intact.
 
-### Phase 3 — history and trend (M, decision D4)
+### Phase 3 — history and trend (M, decision D4) — built
 Unchanged from v1: migration `0061_attack_path_snapshots`, retention (7 days full, then daily, cap 90), a
 sparkline per row, "changed since last scan" wording (never better/worse: more scanning can raise the count).
 
-### Phase 4 — surfacing (S, decisions D3 and D5)
+### Phase 4 — surfacing (S, decisions D3 and D5) — built
 Optional "Needs attention now" item; optional "Compute" for not-computed rows.
 
-### Phase 5 — zone view on the engagement page (L, optional)
+### Phase 5 — zone view on the engagement page (L, optional) — built
 Aggregate hosts into subnets and show the route as zones (the aggregation the literature recommends).
 
 ---
@@ -381,9 +381,9 @@ Aggregate hosts into subnets and show the route as zones (the aggregation the li
 | --- | --- | --- |
 | D1 | Headline: reachability (v2) instead of "N routes" | yes (built in Phase 0) |
 | D2 | Customers see this on the portal dashboard? | no for now (operator-only) |
-| D3 | Neutral "Needs attention now" item when a jewel is reachable or exposed | yes, with the Beta label |
-| D4 | History (migration `0061`) for the trend | yes, after Phase 2 |
-| D5 | "Compute" from the dashboard (a write) | not in v1 |
+| D3 | Neutral "Needs attention now" item when a jewel is reachable or exposed | yes, with the Beta label (**built**) |
+| D4 | History (migration `0061`) for the trend | yes, after Phase 2 (**built**) |
+| D5 | "Compute" from the dashboard (a write) | not in v1; **built later on your instruction to complete every phase, as one explicit button per row, never automatic** |
 | D6 | Keep Beta until reviewed on real data and P2/P3/P4b are decided | yes |
 | D7 | Hide or demote `completed` / `paused` engagements on the dashboard | demote, do not hide |
 | D8 | Fix the analyzer so `min_fix_set` also reports exposed jewels (v2 only flags them) | later, with P2 |
@@ -450,8 +450,55 @@ dark theme, overview failure (error with Retry, no zeros), focus failure (card s
 ![420 px](assets/2026-10-09-attack-paths-dashboard/built-narrow.png)
 ![Engagement page for an exposed-only engagement](assets/2026-10-09-attack-paths-dashboard/built-engagement-exposed.png)
 
+### Phases 3 to 5 (built after the first push)
+
+**Phase 3, history and trend.** Migration `0061` adds `attack_path_snapshots`: the headline numbers of every computation
+(state, jewels total / reachable / exposed, fix set size, entry points, route count, hosts seen, coverage, and whether a
+person or a detection run triggered it). Counts are `NULL` when an analysis recorded no per-jewel data. Written beside the
+analysis; retention keeps every computation for 7 days, then the latest of each UTC day, at most 90 per engagement.
+The overview carries each row's last 12 points and a neutral `change` between the last two (flagged `inputs_changed` when the
+hosts seen or the coverage differed), and the summary counts engagements `compared` and `changed`. On screen: a 2 px sparkline
+from zero with a ringed end dot whose accessible name is the same numbers, "Changed since Oct 9: 3 → 2 reachable", an "Inputs
+changed too" note, and a count in tile 1. One computation is no trend (not "unchanged"); never "better" or "worse".
+
+**Phase 4, surfacing.** One item on the "Needs attention now" strip, last, marked Beta, never "critical" ("Crown jewel
+exposed" or "Crown jewel reachable", the engagement count in the detail so the label is not truncated); it reads the cached
+overview, only where the console has the capability, and an outage of it is not counted as an unavailable urgent signal. A
+**Compute** button beside (never inside) the link of a row nobody has computed or whose analysis recorded no per-jewel
+data: the same explicit recompute the engagement page has, run on one click for one engagement, disabled while it runs,
+refreshing every view of it. Nothing computes on load or on a timer. An engagement with no hosts says "No hosts yet" first.
+
+**Phase 5, subnet map.** `GET /engagements/{id}/attack-path-zones` (read-only) groups the stored routes into the subnets they
+cross, using each hop's `via` list for where the model placed each host (no second copy of the builder's rule). The engagement
+page shows boxes (range, hosts seen, roles in words), arrows (dashed = assumed link, thicker = more listed routes), a
+sentence counting the steps and how many rest on an assumed link, two tables with the same content, and what it leaves out
+in separate sentences. A machine with a second address is **not** assumed to share the first one's subnet.
+
+### Checked, Phases 3 to 5
+| Check | Result |
+| --- | --- |
+| Backend suite | 3,011 passed, 8 skipped (was 2,977 after Phase 2) |
+| Detection engine / validation harness | 518 passed / 9 of 9 fixtures |
+| Frontend suite | 652 passed (was 612); `tsc` clean; `eslint` 0 errors; `next build` lists `/api/engagements/[id]/attack-path-zones` |
+| Migration `0061` | up from empty, down to `0060` (table gone), up again, on PostgreSQL 16; the scratch database that already held data upgraded in place |
+| History, live | two real computations, then a real change (a finding added, then removed): history `2, 3, 3, 2`, `changed: true`, tile counts it; 6 synthetic old rows and 10 recent ones pruned from 19 to 14 by the retention rule; reads of the overview and the card wrote no snapshot |
+| Surfacing, live | 13 browser checks: the strip item opens `/attack-paths`; Compute appears on exactly the two rows that cannot be assessed; one click made exactly one request; every Compute button disabled while it runs; the row then shows what was found; a failed compute leaves the row unchanged; the customer portal strip has no item and requests nothing |
+| Subnet map, live | 13 browser checks on a five-subnet engagement computed by the real pipeline: 4 boxes and 4 dashed arrows, roles in words, the untouched subnet counted not drawn, two tables, no box overlap, GET only, an exposed-only engagement shows no map, a failed request leaves the routes alone |
+| Clipped content | a new check inside the sections, because the page hides horizontal overflow: nothing is clipped at 420, 768, 1024 or 1360 px on the dashboard section, `/attack-paths` or the engagement page |
+
+### Found while building Phases 3 to 5
+- **A real clipping bug, hidden by the page.** At 420 px the new card's text overflowed (a grid track had grown to its table's
+  width), and `document.scrollWidth` still equalled the viewport because the body hides horizontal overflow, so the usual
+  "no horizontal scroll" check passed. Fixed for every card on the page (`.ap-card-body > * { min-width: 0 }`) and the check
+  now looks inside the boxes. The earlier phases were re-checked with it and are clean.
+- **Arrow labels collided.** Crossing steps share a midpoint, so labels sat on top of each other. Removed; the dash is
+  explained in a legend and the table.
+- **A wrong assumption in my own first draft.** I had the same machine on two addresses carry its subnet over; the dual-homed
+  fixture showed that puts the entry in the wrong subnet. It stays unplaced and is counted.
+- **The strip label was truncated** at about 30 characters; the count moved to the detail line and the full text is a tooltip.
+
 ### Still open
-- Phases 3 to 5 (history, surfacing, zone view) and decisions D2 to D8.
+- Decisions D2, D6, D7 and D8.
 - Nobody has looked at this on real engagement data, and CI has not run on any of it.
 - `min_fix_set` in the analyzer still excludes an exposed jewel (the views handle it; fixing the analyzer is D8).
 - At tile level "reachable" can rest on assumed links between subnets; only the card's route shows each step's basis.
