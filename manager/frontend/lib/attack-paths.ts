@@ -620,6 +620,32 @@ export interface OverviewRow {
   coverage: "observed" | "partial" | null;
   stale_assets: number | null;
   why_empty: Reason[];
+  /** The headline numbers of this engagement's last computations, oldest first (at most 12). Starts
+   *  when history was first recorded, so a short or empty list is "not enough to compare", not "flat". */
+  history?: HistoryPoint[];
+  /** The last two computations compared. null = nothing to compare, which is not "no change". */
+  change?: RowChange | null;
+}
+
+export interface HistoryPoint {
+  at: string;
+  state: OverviewState;
+  /** null = that computation recorded no per-jewel data: a gap, never a zero. */
+  reachable: number | null;
+  exposed: number | null;
+  assets_seen: number | null;
+  coverage: "observed" | "partial" | null;
+}
+
+export interface RowChange {
+  since: string;
+  reachable_from: number;
+  reachable_to: number;
+  exposed_from: number;
+  exposed_to: number;
+  changed: boolean;
+  /** More or fewer hosts were seen, or the coverage differed: the count can move for that reason alone. */
+  inputs_changed: boolean;
 }
 
 /** Counts over ALL of the tenant's engagements, not just the rows returned. Engagements only:
@@ -636,6 +662,9 @@ export interface OverviewSummary {
   unrecorded: number;
   jewels_total: number;
   jewels_reachable: number;
+  /** Engagements with two computations to compare, and how many of those differ. */
+  compared?: number;
+  changed?: number;
   truncated?: boolean;
 }
 
@@ -789,6 +818,10 @@ export function overviewTiles(summary: OverviewSummary | null | undefined): Over
             : "None reachable in the model. This is not evidence the network is safe.",
         tone: s.exposed > 0 ? "critical" : s.with_reachable > 0 ? "high" : "neutral",
       };
+  if ((s.compared ?? 0) > 0) {
+    // A plain count of differences: whether a difference is good or bad is not something two numbers say.
+    t1.sub += ` ${s.changed ?? 0} of ${s.compared} changed since their previous computation.`;
+  }
 
   const t2: OverviewTile = fixable <= 0
     ? {
@@ -952,4 +985,70 @@ export function focusBars(f: Focus): BarView[] {
       ? `Cuts off ${b.cuts_off} of ${plural(b.jewels_reachable, "reachable crown jewel")} on its own.`
       : `Cuts off ${b.cuts_off} crown jewel${b.cuts_off === 1 ? "" : "s"} on its own.`,
   }));
+}
+
+// ── History: a trend that says only what two numbers say ─────────────────────
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "Oct 9" from an ISO timestamp, in UTC so it reads the same wherever it is rendered. */
+export function shortDate(iso: string | null | undefined): string {
+  const d = iso ? new Date(iso) : null;
+  return d && !Number.isNaN(d.getTime()) ? `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}` : "an earlier computation";
+}
+
+export interface TrendView {
+  /** reachable crown jewels at each recorded computation, oldest first; null = a gap */
+  values: (number | null)[];
+  /** What the sparkline shows, as text: the same numbers, for anyone who cannot see a line. */
+  twin: string;
+  /** Null when only one comparable computation exists: no change is said, not even "unchanged". */
+  change: string | null;
+  changed: boolean;
+  /** Said beside a change whose inputs differed. */
+  note: string | null;
+}
+
+/** The trend of one row, or null when there are fewer than two recorded computations. Never says
+ *  "better" or "worse": a rise can be the network or can be more of the network being seen. */
+export function trendView(row: OverviewRow): TrendView | null {
+  const h = row.history ?? [];
+  if (h.length < 2) return null;
+  const values = h.map((p) => p.reachable);
+  const twin = `Crown jewels reachable at the last ${h.length} computations, oldest first: ${values.map((v) => (v == null ? "not recorded" : String(v))).join(", ")}.`;
+  const c = row.change;
+  if (!c) return { values, twin, change: null, changed: false, note: null };
+  const exposed = c.exposed_from !== c.exposed_to ? `; directly exposed ${c.exposed_from} → ${c.exposed_to}` : "";
+  const change = c.changed
+    ? `Changed since ${shortDate(c.since)}: ${c.reachable_from} → ${c.reachable_to} reachable${exposed}`
+    : `Unchanged since ${shortDate(c.since)}: ${c.reachable_to} reachable`;
+  return {
+    values, twin, change, changed: c.changed,
+    note: c.changed && c.inputs_changed ? "More or fewer hosts were seen, or the coverage differed, so part of this may be what was looked at, not the network." : null,
+  };
+}
+
+export interface Spark {
+  /** One polyline per run of recorded values (a gap breaks the line). */
+  segments: string[];
+  /** Where the latest value sits, or null when it is a gap. */
+  last: { x: number; y: number } | null;
+}
+
+/** Points for a sparkline `w` x `h`, `pad` in from the edge so the end dot is not clipped. The scale
+ *  starts at zero, so a small wobble stays small. */
+export function sparkline(values: (number | null)[], w = 64, h = 20, pad = 5): Spark {
+  const known = values.filter((v): v is number => v != null);
+  const top = Math.max(1, ...known);
+  const x = (i: number) => (values.length === 1 ? w / 2 : pad + (i * (w - 2 * pad)) / (values.length - 1));
+  const y = (v: number) => h - pad - (v / top) * (h - 2 * pad);
+  const segments: string[] = [];
+  let run: string[] = [];
+  values.forEach((v, i) => {
+    if (v == null) { if (run.length > 1) segments.push(run.join(" ")); run = []; return; }
+    run.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+  });
+  if (run.length > 1) segments.push(run.join(" "));
+  const lastV = values[values.length - 1];
+  return { segments, last: lastV == null ? null : { x: x(values.length - 1), y: y(lastV) } };
 }

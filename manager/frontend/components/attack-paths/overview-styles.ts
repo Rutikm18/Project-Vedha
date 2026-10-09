@@ -51,6 +51,8 @@ export const OVERVIEW_STYLES = `
 .apo-ways::before { content: "·"; margin-right: 10px; color: var(--text-muted); }
 .apo-detail { font-size: var(--fs-body-s); color: var(--text-secondary); line-height: 1.45; }
 .apo-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--fs-label); color: var(--text-muted); }
+.apo-trend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--fs-body-s); color: var(--text-secondary); }
+.apx-spark { display: block; flex-shrink: 0; }
 .apo-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px; border: var(--hairline) solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); white-space: nowrap; }
 .apo-chip[data-tone="weak"] { color: var(--sev-medium-color); border-color: var(--sev-medium-color); }
 .apo-chip[data-tone="firm"] { color: var(--nominal-color); border-color: var(--nominal-color); }

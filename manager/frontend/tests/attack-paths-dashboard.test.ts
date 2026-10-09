@@ -84,11 +84,34 @@ describe("overview rows", () => {
     assert.doesNotMatch(none + unmarked, /all clear|you are safe|no risk/i);
   });
 
+  test("a row with history draws a sparkline whose name is the numbers, and states the change", () => {
+    const pt = (day: number, reachable: number) => ({ at: `2026-10-0${day}T09:00:00+00:00`, state: "reachable" as const, reachable,
+      exposed: 0, assets_seen: 10, coverage: "observed" as const });
+    const out = html(createElement(OverviewList, { rows: [row({
+      history: [pt(7, 2), pt(8, 2), pt(9, 3)],
+      change: { since: "2026-10-08T09:00:00+00:00", reachable_from: 2, reachable_to: 3, exposed_from: 0, exposed_to: 0, changed: true, inputs_changed: true },
+    })] }));
+    assert.match(out, /<svg class="apx-spark"[^>]*role="img" aria-label="Crown jewels reachable at the last 3 computations, oldest first: 2, 2, 3\."/);
+    assert.match(out, /Changed since Oct 8: 2 → 3 reachable/);
+    assert.match(out, /Inputs changed too/);
+    assert.doesNotMatch(out, /better|worse|improved|deteriorated/i);
+  });
+
+  test("a row with one computation (or none) has no sparkline and does not claim 'no change'", () => {
+    const one = html(createElement(OverviewList, { rows: [row({ history: [{ at: "2026-10-09T09:00:00+00:00", state: "reachable", reachable: 2,
+      exposed: 0, assets_seen: 10, coverage: "observed" }], change: null })] }));
+    const none = html(createElement(OverviewList, { rows: [row()] }));
+    for (const out of [one, none]) {
+      assert.doesNotMatch(out, /apx-spark|Unchanged|Changed since|no change/i);
+    }
+  });
+
   test("the footnote says what each kind of 'nothing' means", () => {
     const out = html(createElement(OverviewFootnote));
     assert.match(out, /is not evidence the network is safe/);
     assert.match(out, /can&#x27;t be assessed|can&apos;t be assessed/);
     assert.match(out, /no asset is marked critical/);
+    assert.match(out, /A change between two computations is a difference, not a\s+verdict/);
   });
 
   test("special characters in an engagement name are escaped, not rendered as markup", () => {

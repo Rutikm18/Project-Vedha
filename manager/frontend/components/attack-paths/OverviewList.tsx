@@ -4,8 +4,9 @@ import React from "react";
 import Link from "next/link";
 import { AlertTriangle, ChevronRight, Info } from "lucide-react";
 import { formatCompact } from "../portal/Timestamp";
-import { overviewLine, type OverviewRow, type OverviewState } from "../../lib/attack-paths";
+import { overviewLine, trendView, type OverviewRow, type OverviewState } from "../../lib/attack-paths";
 import { JewelMeter } from "./JewelMeter";
+import { Sparkline } from "./Sparkline";
 
 // The rail colour carries state; the words carry the meaning (never colour alone).
 const RAIL: Record<OverviewState, string> = {
@@ -25,6 +26,7 @@ export function OverviewList({ rows }: { rows: OverviewRow[] }) {
       <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {rows.map((row) => {
           const line = overviewLine(row);
+          const trend = trendView(row);
           return (
             <li key={row.engagement_id}>
               <Link
@@ -44,6 +46,13 @@ export function OverviewList({ rows }: { rows: OverviewRow[] }) {
                     {line.ways && <span className="apo-ways">{line.ways}</span>}
                   </div>
                   {line.detail && <div className="apo-detail">{line.detail}</div>}
+                  {trend && (
+                    <div className="apo-trend">
+                      <Sparkline trend={trend} />
+                      {trend.change && <span>{trend.change}</span>}
+                      {trend.note && <span className="apo-chip" data-tone="weak" title={trend.note}>Inputs changed too</span>}
+                    </div>
+                  )}
                   {(line.coverage || line.stale || row.computed_at) && (
                     <div className="apo-meta">
                       {line.coverage && (
@@ -74,7 +83,8 @@ export function OverviewFootnote() {
       “Reachable” means the model found a route using only findings already marked exploitable and network
       reachability inferred from addressing. “No modelled route” is not evidence the network is safe, and
       “can&apos;t be assessed” means there was nothing to model yet: nobody has opened that engagement&apos;s
-      Attack paths, or no asset is marked critical.
+      Attack paths, or no asset is marked critical. A change between two computations is a difference, not a
+      verdict: seeing more of the network raises a count too.
     </p>
   );
 }

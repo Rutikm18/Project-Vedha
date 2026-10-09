@@ -3,9 +3,9 @@ import test from "node:test";
 import {
   basisInfo, caveatSummary, emptyReasons, fixFirstSummary, fixPointIds, fixSentence, focusBars, focusLead,
   freshnessInfo, layoutPathMap, MAP, meterCells, overviewLine, overviewState, overviewSummary, overviewTiles,
-  percent, riskLabel, riskShare, routeChainView, targetExposed, techniqueLabel, truncateLabel,
+  percent, riskLabel, riskShare, routeChainView, shortDate, sparkline, targetExposed, techniqueLabel, trendView, truncateLabel,
   type ChokeAnalysis, type Coverage, type Diagnostics, type Focus, type FocusNode, type FocusRoute,
-  type FreshnessReport, type Overview, type OverviewRow, type OverviewSummary, type PathSummary,
+  type FreshnessReport, type HistoryPoint, type Overview, type OverviewRow, type OverviewSummary, type PathSummary,
 } from "../lib/attack-paths";
 
 function route(id: string, ...hosts: string[]): PathSummary {
@@ -510,4 +510,88 @@ test("bars show a bounded share, one per host, and say what each cuts off on its
   assert.equal(bars[1].sub, "Cuts off 0 of 2 reachable crown jewels on its own.");
   assert.equal(bars[2].sub, "Cuts off 1 crown jewel on its own.");
   assert.ok(bars.every((b) => b.width >= 0 && b.width <= 100));
+});
+
+// ── history and trend ────────────────────────────────────────────────────────
+
+const pt = (day: number, reachable: number | null, over: Partial<HistoryPoint> = {}): HistoryPoint => ({
+  at: `2026-10-${String(day).padStart(2, "0")}T09:00:00+00:00`, state: "reachable", reachable, exposed: 0,
+  assets_seen: 10, coverage: "observed", ...over,
+});
+const withHistory = (history: HistoryPoint[], change: OverviewRow["change"]) => orow({ history, change });
+const chg = (over: Partial<NonNullable<OverviewRow["change"]>> = {}): NonNullable<OverviewRow["change"]> => ({
+  since: "2026-10-08T09:00:00+00:00", reachable_from: 2, reachable_to: 3, exposed_from: 0, exposed_to: 0,
+  changed: true, inputs_changed: false, ...over,
+});
+
+test("dates are short, in UTC, and an unreadable one is said not to be known", () => {
+  assert.equal(shortDate("2026-10-09T23:59:00+00:00"), "Oct 9");
+  assert.equal(shortDate("2026-01-01T00:00:00Z"), "Jan 1");
+  assert.equal(shortDate("nonsense"), "an earlier computation");
+  assert.equal(shortDate(null), "an earlier computation");
+});
+
+test("fewer than two computations is no trend at all, not 'unchanged'", () => {
+  assert.equal(trendView(orow()), null);
+  assert.equal(trendView(withHistory([pt(1, 2)], null)), null);
+});
+
+test("a change is a difference, with its date and without a verdict", () => {
+  const v = trendView(withHistory([pt(7, 2), pt(8, 2), pt(9, 3)], chg()))!;
+  assert.deepEqual(v.values, [2, 2, 3]);
+  assert.equal(v.change, "Changed since Oct 8: 2 → 3 reachable");
+  assert.equal(v.changed, true);
+  assert.equal(v.note, null);
+  assert.equal(v.twin, "Crown jewels reachable at the last 3 computations, oldest first: 2, 2, 3.");
+  assert.doesNotMatch(JSON.stringify(v), /better|worse|improv|deteriorat|risk (up|down)/i);
+});
+
+test("unchanged is said only when two computations really agree", () => {
+  const v = trendView(withHistory([pt(8, 3), pt(9, 3)], chg({ reachable_from: 3, reachable_to: 3, changed: false })))!;
+  assert.equal(v.change, "Unchanged since Oct 8: 3 reachable");
+  assert.equal(v.changed, false);
+});
+
+test("a newly exposed jewel is part of the sentence", () => {
+  const v = trendView(withHistory([pt(8, 2), pt(9, 2, { exposed: 1 })], chg({ reachable_from: 2, reachable_to: 2, exposed_from: 0, exposed_to: 1 })))!;
+  assert.equal(v.change, "Changed since Oct 8: 2 → 2 reachable; directly exposed 0 → 1");
+});
+
+test("a change that came with different inputs carries that, in words", () => {
+  const v = trendView(withHistory([pt(8, 2, { assets_seen: 10 }), pt(9, 3, { assets_seen: 14 })], chg({ inputs_changed: true })))!;
+  assert.match(v.note ?? "", /More or fewer hosts were seen, or the coverage differed, so part of this may be what was looked at, not the network\./);
+  assert.equal(trendView(withHistory([pt(8, 2), pt(9, 2)], chg({ changed: false, inputs_changed: true, reachable_from: 2 })))!.note, null,
+    "no change, nothing to qualify");
+});
+
+test("a computation that recorded no per-jewel data is a gap in the twin, never a zero", () => {
+  const v = trendView(withHistory([pt(7, 2), pt(8, null, { state: "unrecorded" }), pt(9, 3)], chg()))!;
+  assert.deepEqual(v.values, [2, null, 3]);
+  assert.match(v.twin, /2, not recorded, 3\./);
+  const noCompare = trendView(withHistory([pt(8, null), pt(9, 3)], null))!;
+  assert.equal(noCompare.change, null, "when the last two cannot be compared no change is claimed");
+});
+
+test("the sparkline starts at zero, draws the latest value as a dot and breaks at a gap", () => {
+  const s = sparkline([0, 2, 4], 64, 20, 5);
+  assert.equal(s.segments.length, 1);
+  const ys = s.segments[0].split(" ").map((p) => Number(p.split(",")[1]));
+  assert.ok(ys[0] > ys[1] && ys[1] > ys[2], "higher values are higher up");
+  assert.equal(ys[0], 15, "zero sits on the baseline (height - pad)");
+  assert.deepEqual(s.last, { x: 59, y: 5 });
+  const gap = sparkline([1, 2, null, 3, 4], 64, 20, 5);
+  assert.equal(gap.segments.length, 2, "a gap is not bridged by a line");
+  assert.deepEqual(sparkline([3, null]).last, null);
+  const flat = sparkline([3, 3, 3]);
+  assert.equal(new Set(flat.segments[0].split(" ").map((p) => p.split(",")[1])).size, 1);
+  assert.equal(sparkline([]).segments.length, 0);
+});
+
+test("the first tile counts how many engagements changed, as a count and nothing more", () => {
+  const [a] = overviewTiles(summary({ compared: 3, changed: 2 }))!;
+  assert.match(a.sub, /4 of 5 crown jewels reachable across them\. 2 of 3 changed since their previous computation\.$/);
+  const [none] = overviewTiles(summary())!;
+  assert.doesNotMatch(none.sub, /changed/, "no history yet: nothing is said about change");
+  const [zero] = overviewTiles(summary({ compared: 2, changed: 0 }))!;
+  assert.match(zero.sub, /0 of 2 changed since their previous computation\./);
 });
