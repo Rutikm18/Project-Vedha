@@ -1,6 +1,6 @@
 # Deep scan: every one of the 65,535 TCP ports, with no cap
 
-Date: 2026-10-09 · Status: **reviewed; being implemented task by task (§5)** · Trigger: a deep port
+Date: 2026-10-09 · Status: **reviewed and built (§5); Windows effect awaiting the owner's measurement** · Trigger: a deep port
 sweep of one host (`192.168.1.70`) from the Windows agent took 6.5 minutes for its first 1,145
 ports, and its 64,390-port tail could not finish inside the job's budget.
 
@@ -147,6 +147,24 @@ Reviewed against the code before building. Each finding changed the plan.
 | T8 | Deep mode (Deep Port Sweep) gets the full-coverage ceiling end to end; Aggressive unchanged | Wiring tests through `run_scan` |
 | T9 | Deep Port Sweep's fixed 3-host cap removed (operators can still set one); UI hint updated | Tests on the cap and the refusal |
 | T10 | Full suites (agent CI list on 2 simulated cores, accuracy gate, backend, frontend), docs, `STATUS.md` | Results recorded in the change log |
+
+### Status of the tasks (2026-10-09)
+
+All ten are built on branch `claude/serene-bardeen-1uqxzq`, one commit per task. Verified on
+the full tree, locally: agent CI list (48 files) 724 passed on a simulated 2-core runner and
+natively; scanner-accuracy suite 377 passed and the accuracy gate within thresholds; backend
+3,027 passed; detection engine 518 passed; frontend 652/652 and `tsc` clean. Two consistency
+checks caught real omissions while building and were fixed: the agent's compiled-module list
+(`agent/_closure.py`, regenerated with the repo tool) and the scanner/`main_scripts` byte-parity.
+
+**Not yet proven:** the Windows effect itself. This sandbox has no Windows and the Windows CI
+runner is blocked by Actions billing. Proof is the owner re-running the 192.168.1.70 deep sweep:
+`doctor` must show `connect_fast_fail: pass`, and the cleanup line must drop from `1110/1110`
+to near zero.
+
+**Still open:** Linux-preferred dispatch for Deep scans and the Fleet "busy since" badge
+(follow-up work), decisions D1 and D3 below, and the customer portal's one-asset Deep scan
+(a product policy, deliberately unchanged).
 
 ## 6. Phases (original proposal, kept for reference)
 
