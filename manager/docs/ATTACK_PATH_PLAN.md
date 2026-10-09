@@ -273,6 +273,12 @@ assets. Migration `0059`.
   do not cover, fix first, a map of how the highest-risk routes converge, the route table and a step-by-step
   view. An empty list is explained with the backend's reasons and never reads as safe; a failed load is an
   error, never an empty list. Operators only: the customer portal has no attack-path page.
+- *Tenant-wide overview* (dashboard section, sidebar entry, `/attack-paths`): `GET /attack-paths/overview`
+  returns one row per engagement built only from what is already stored (`app/graph/overview.py`): route count,
+  entry points, crown jewels, the minimum fix set (first three hosts named, the rest counted), coverage and stale
+  hosts. It never computes and never writes. An engagement with no stored analysis is `computed: false` and is
+  shown as "Not computed yet", not as zero routes; zero routes carries the analysis's own reasons. Operators
+  only; the customer portal's dashboard has no such dataset.
 - *Neo4j mirror hygiene* (FM-28/29): `:GraphNode(engagement_id, type)` and `(engagement_id, key)` indexes,
   per-engagement atomic replace, node identity `(engagement_id, key)`, parallel edges kept distinct.
 
