@@ -1058,6 +1058,26 @@ class PortScanner(BaseScanner):
                 LOG.info("[port_scan] host budget spent on %s — %d ambiguous "
                          "port(s) keep their 'filtered' verdict without a "
                          "second look", target, reprobe_stats["skipped"])
+            if reprobe_stats["capped"]:
+                LOG.info("[port_scan] cleanup pass capped at %d port(s) on %s — %d "
+                         "ambiguous port(s) keep their 'filtered' verdict without "
+                         "a second look", self.reprobe_max_candidates, target,
+                         reprobe_stats["capped"])
+            # A `filtered` nobody re-checked is only as good as this host's own
+            # evidence. When most re-checked ports turned out CLOSED, the rest
+            # are probably closed too (on Windows before the SYN-retry fix this
+            # was ~97% of a sweep): count them apart and say so, so a report
+            # never presents them as a firewall.
+            unverified = reprobe_stats["capped"] + reprobe_stats["skipped"]
+            retested = reprobe_stats["resolved"] + reprobe_stats["remaining"]
+            reprobe_stats["unverified"] = unverified
+            if unverified and retested and reprobe_stats["resolved"] / retested >= 0.5:
+                LOG.warning(
+                    "[port_scan] %d port(s) on %s are reported filtered without a "
+                    "second look, but the cleanup pass found %d of %d re-checked "
+                    "silent ports were really closed — treat them as unverified, "
+                    "not as a firewall", unverified, target,
+                    reprobe_stats["resolved"], retested)
 
         # Record FINAL states, then apply output filtering.
         for port in sorted(collected):
@@ -1083,6 +1103,9 @@ class PortScanner(BaseScanner):
             summ = metrics.summary()
             # Always present so consumers can branch without a key check.
             summ["budget_exhausted"] = budget_exhausted
+            # Part of `filtered` that no second look confirmed (cleanup cap or
+            # host clock). Not firewall evidence on its own.
+            summ["filtered_unverified"] = (reprobe_stats or {}).get("unverified", 0)
             if self.scan_meta:
                 summ["audit"] = self.scan_meta        # profile + ulimit + concurrency
             if reprobe_stats is not None:
