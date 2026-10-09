@@ -69,6 +69,7 @@ MODULES = (
     'scanner.vantage_matrix',
     'scanner.vnc_scanner',
     'scanner.web_scanner',
+    'scanner.win_fast_connect',
     'scanner.windows_collector',
     'workflow',
     'workflow.asset',
