@@ -202,11 +202,21 @@ def build_scan_job(scan_request: ScanRequest, engagement: Engagement) -> ScanJob
     """
     if engagement.assigned_agent_id is None:
         raise ValueError("engagement has no assigned agent")
-    # RC-FIX-1: use-case scan types are not ScanJobType enum values.
-    # Fall back to discovery (agent-executable) not vuln_scan (server-side only).
+    # RC-FIX-1 + RC-FIX-4 (manager-level stuck): resolve job_type conservatively.
+    # Two cases where the resolved type must fall back to discovery:
+    #   (a) use-case scan types ("deep_port_sweep", etc.) are NOT ScanJobType enum
+    #       values → ValueError → fallback (RC-FIX-1).
+    #   (b) scan_type IS a valid ScanJobType but is server-side only ("vuln_scan",
+    #       "detection", "ai_report" …) → not in AGENT_EXECUTABLE_TYPES → the
+    #       probe's HTTP poll never sees it and the job is stuck forever (RC-FIX-4).
+    # The hard guard below covers both: any type that is not probe-executable is
+    # remapped to discovery so the job is always claimable.
+    from app.routers.agents import AGENT_EXECUTABLE_TYPES
     try:
         job_type = ScanJobType(scan_request.scan_type)
     except ValueError:
+        job_type = ScanJobType.discovery
+    if job_type not in AGENT_EXECUTABLE_TYPES:
         job_type = ScanJobType.discovery
     result: dict = {
         "mode": "scan",

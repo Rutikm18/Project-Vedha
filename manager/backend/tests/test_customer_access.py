@@ -61,11 +61,11 @@ class TestBuildScanJob:
         # the HTTP poll query (agent_id IS NULL filter). Instead it lives in params.
         agent = uuid.uuid4()
         eng = SimpleNamespace(id=uuid.uuid4(), assigned_agent_id=agent, scope_cidrs=["10.0.0.0/24"])
-        sr = SimpleNamespace(id=uuid.uuid4(), scan_type="vuln_scan", requested_by=uuid.uuid4())
+        sr = SimpleNamespace(id=uuid.uuid4(), scan_type="discovery", requested_by=uuid.uuid4())
         job = ca.build_scan_job(sr, eng)
         assert job.agent_id is None, "agent_id on the ScanJob row must stay NULL for HTTP poll"
         assert job.result["preferred_agent_id"] == str(agent)
-        assert job.job_type == ScanJobType.vuln_scan
+        assert job.job_type == ScanJobType.discovery
         assert job.engagement_id == eng.id
         assert job.result["scan_request_id"] == str(sr.id)
         assert job.result["scope_cidrs"] == ["10.0.0.0/24"]
@@ -81,6 +81,23 @@ class TestBuildScanJob:
             assert job.job_type == ScanJobType.discovery, (
                 f"scan_type='{scan_type}' fell back to {job.job_type.value!r}, "
                 f"expected 'discovery' (vuln_scan is not agent-executable)"
+            )
+
+    def test_server_side_scan_type_remapped_to_discovery(self):
+        # RC-FIX-4 (manager-level stuck): scan types that ARE valid ScanJobType enum
+        # values but are server-side only (vuln_scan, detection, ai_report …) are
+        # excluded from AGENT_EXECUTABLE_TYPES. A probe's HTTP poll query requires
+        # job_type IN AGENT_EXECUTABLE_TYPES — so a job built with job_type=vuln_scan
+        # is permanently invisible to every probe. The hard guard remaps them to
+        # discovery so the job is always claimable. This was the primary reason jobs
+        # got stuck "at manager level" — the ScanJob was created but never dispatched.
+        eng = SimpleNamespace(id=uuid.uuid4(), assigned_agent_id=uuid.uuid4(), scope_cidrs=[])
+        for server_side_type in ("vuln_scan", "detection", "ai_report", "exploit", "ad_enum"):
+            sr = SimpleNamespace(id=uuid.uuid4(), scan_type=server_side_type, requested_by=None)
+            job = ca.build_scan_job(sr, eng)
+            assert job.job_type == ScanJobType.discovery, (
+                f"scan_type='{server_side_type}' produced job_type={job.job_type.value!r}; "
+                f"server-side types must be remapped to discovery so the probe can claim the job"
             )
 
     def test_quota_spend_moves_from_request_to_job(self):
