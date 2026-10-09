@@ -27,7 +27,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.auth.password import hash_password
 from app.auth.rbac import require_role
-from app.dependencies import DB, AuthUser
+from app.dependencies import DB, AuthUser, RedisConn
 from app.models.agent import Agent
 from app.models.customer_entitlement import (
     DEFAULT_POC_LOCKED_SEVERITIES, LOCKABLE_FEATURES, LOCKABLE_SEVERITIES, PLAN_LICENSED,
@@ -184,19 +184,40 @@ def build_scan_job(scan_request: ScanRequest, engagement: Engagement) -> ScanJob
 
     The customer's chosen targets + intensity ride into ``result`` so the existing
     dispatch-time scope gate (agents.py) and the probe consume them. Targets were
-    already validated ⊆ scope at request time; the dispatch gate re-validates."""
+    already validated ⊆ scope at request time; the dispatch gate re-validates.
+
+    RC-FIX-1 (job_type): Use-case scan types (deep_port_sweep, full_port_audit, …)
+    are NOT ScanJobType enum values — they live in params["scan_type"]. Falling back
+    to ScanJobType.vuln_scan was wrong: vuln_scan is excluded from
+    AGENT_EXECUTABLE_TYPES, so the job was invisible to every probe's HTTP poll.
+    The correct fallback is ScanJobType.discovery — the generic probe-executable type
+    for all network/port scans. The probe reads params["use_case_id"] / params["scan_type"]
+    to determine exactly what workflow to run.
+
+    RC-FIX-2 (agent_id): Pre-assigning agent_id to the DB column at creation time
+    blocked HTTP polling because the poll query requires agent_id IS NULL.
+    Instead, the preferred probe is stored in params["preferred_agent_id"] where the
+    poll's existing pin logic (agents.py:1135–1141) picks it up — respecting the pin
+    when the agent is live and falling back to any compatible probe when it is stale.
+    """
     if engagement.assigned_agent_id is None:
         raise ValueError("engagement has no assigned agent")
+    # RC-FIX-1: use-case scan types are not ScanJobType enum values.
+    # Fall back to discovery (agent-executable) not vuln_scan (server-side only).
     try:
         job_type = ScanJobType(scan_request.scan_type)
     except ValueError:
-        job_type = ScanJobType.vuln_scan
+        job_type = ScanJobType.discovery
     result: dict = {
         "mode": "scan",
         "scan_request_id": str(scan_request.id),
         "requested_by": (str(scan_request.requested_by)
                          if scan_request.requested_by else None),
         "scope_cidrs": list(engagement.scope_cidrs or []),
+        # RC-FIX-2: preferred probe is in params, not hard-coded on the DB column.
+        # The HTTP poll's pin logic respects this when the agent is live and ignores
+        # it when stale — giving any compatible probe a chance to claim it.
+        "preferred_agent_id": str(engagement.assigned_agent_id),
     }
     if getattr(scan_request, "targets", None):
         result["targets"] = list(scan_request.targets)
@@ -219,7 +240,8 @@ def build_scan_job(scan_request: ScanRequest, engagement: Engagement) -> ScanJob
         engagement_id=engagement.id,
         job_type=job_type,
         status=ScanJobStatus.pending,
-        agent_id=str(engagement.assigned_agent_id),
+        # RC-FIX-2: agent_id NOT pre-assigned. The DB column stays NULL so the
+        # HTTP poll can find this job. Preferred probe is in params above.
         result=result,
     )
 
@@ -599,6 +621,7 @@ async def approve_scan_request(
     engagement_id: uuid.UUID,
     request_id: uuid.UUID,
     db: DB,
+    redis: RedisConn,
     current_user: Annotated[AuthUser, _OPERATOR],
 ):
     eng = await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
@@ -629,6 +652,51 @@ async def approve_scan_request(
     await db.flush()
     logger.info("scan_request.approved", request_id=str(request_id),
                 job_id=str(job.id), by=str(current_user.user_id))
+
+    # RC-FIX-3: push job to connected probes via WebSocket immediately after commit.
+    # Without this, probes only discover the job on the next HTTP poll cycle (≤2s).
+    # Mirrors what the operator enqueue_agent_job path does (agents.py:1709-1777).
+    # Best-effort: WS push failure must never fail the approval.
+    try:
+        from app.routers.agents import _agent_can_execute_job, _encrypt_scope_for_agent
+        from app.websocket.manager import agent_ws_manager
+        job_params = job.result or {}
+        online_agents = (await db.execute(
+            select(Agent).where(
+                Agent.tenant_id == current_user.tenant_id,
+                Agent.status == "online",
+            )
+        )).scalars().all()
+        eligible = [a for a in online_agents
+                    if _agent_can_execute_job(a, job.job_type, job_params,
+                                              eng.scope_cidrs or [])]
+        if eligible:
+            payload = {
+                "job_id": str(job.id),
+                "engagement_id": str(job.engagement_id),
+                "job_type": job.job_type.value,
+                "params": job_params,
+            }
+            for candidate in eligible:
+                try:
+                    encrypted = await _encrypt_scope_for_agent(db, str(candidate.id), job_params)
+                    per_agent = {**payload}
+                    if encrypted:
+                        per_agent["encrypted_scope"] = encrypted
+                    delivered = await agent_ws_manager.deliver_job(
+                        redis, str(candidate.id), per_agent,
+                        required_feature="atomic_job_claim_v1")
+                    logger.info("scan_request.job_pushed", job_id=str(job.id),
+                                agent_id=str(candidate.id), delivered=delivered)
+                    break  # one push is enough; HTTP poll covers any miss
+                except Exception:
+                    pass
+        elif online_agents:
+            logger.warning("scan_request.no_eligible_probe",
+                           job_id=str(job.id), online=len(online_agents))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("scan_request.ws_push_failed", job_id=str(job.id), error=str(exc))
+
     return {"approved": True, "request_id": str(request_id), "job_id": str(job.id)}
 
 

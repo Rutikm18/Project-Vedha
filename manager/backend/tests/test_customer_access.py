@@ -56,21 +56,32 @@ def _added(db, cls):
 # ── build_scan_job (pure) ─────────────────────────────────────────────────────
 
 class TestBuildScanJob:
-    def test_dispatches_on_the_assigned_agent(self):
+    def test_preferred_agent_in_params_not_db_column(self):
+        # RC-FIX-2: agent_id must NOT be pre-assigned on the DB column — that blocks
+        # the HTTP poll query (agent_id IS NULL filter). Instead it lives in params.
         agent = uuid.uuid4()
         eng = SimpleNamespace(id=uuid.uuid4(), assigned_agent_id=agent, scope_cidrs=["10.0.0.0/24"])
         sr = SimpleNamespace(id=uuid.uuid4(), scan_type="vuln_scan", requested_by=uuid.uuid4())
         job = ca.build_scan_job(sr, eng)
-        assert job.agent_id == str(agent)
+        assert job.agent_id is None, "agent_id on the ScanJob row must stay NULL for HTTP poll"
+        assert job.result["preferred_agent_id"] == str(agent)
         assert job.job_type == ScanJobType.vuln_scan
         assert job.engagement_id == eng.id
         assert job.result["scan_request_id"] == str(sr.id)
         assert job.result["scope_cidrs"] == ["10.0.0.0/24"]
 
-    def test_unknown_scan_type_falls_back_to_vuln_scan(self):
+    def test_use_case_scan_type_falls_back_to_discovery_not_vuln_scan(self):
+        # RC-FIX-1: use-case scan types (deep_port_sweep, full_port_audit, …) are NOT
+        # ScanJobType enum values. The old fallback to vuln_scan excluded the job from
+        # AGENT_EXECUTABLE_TYPES so no probe could ever claim it. discovery is correct.
         eng = SimpleNamespace(id=uuid.uuid4(), assigned_agent_id=uuid.uuid4(), scope_cidrs=[])
-        sr = SimpleNamespace(id=uuid.uuid4(), scan_type="bogus", requested_by=None)
-        assert ca.build_scan_job(sr, eng).job_type == ScanJobType.vuln_scan
+        for scan_type in ("deep_port_sweep", "full_port_audit", "bogus_use_case"):
+            sr = SimpleNamespace(id=uuid.uuid4(), scan_type=scan_type, requested_by=None)
+            job = ca.build_scan_job(sr, eng)
+            assert job.job_type == ScanJobType.discovery, (
+                f"scan_type='{scan_type}' fell back to {job.job_type.value!r}, "
+                f"expected 'discovery' (vuln_scan is not agent-executable)"
+            )
 
     def test_quota_spend_moves_from_request_to_job(self):
         eng = SimpleNamespace(id=uuid.uuid4(), assigned_agent_id=uuid.uuid4(), scope_cidrs=[])
@@ -155,6 +166,11 @@ def _pending_request(eng_id, tenant_id):
     )
 
 
+def _mock_redis():
+    """Minimal redis mock for routes that inject RedisConn."""
+    return AsyncMock()
+
+
 class TestApproveScanRequest:
     def test_approve_dispatches_job_and_links_it(self):
         op = _operator()
@@ -163,12 +179,35 @@ class TestApproveScanRequest:
         eng = SimpleNamespace(id=eng_id, tenant_id=op.tenant_id,
                               assigned_agent_id=agent, scope_cidrs=["10.0.0.0/24"])
         sr = _pending_request(eng_id, op.tenant_id)
-        db = _mock_db([eng, sr, None, None])   # 3rd: fragile-asset lookup (no tagged assets); 4th: tenant scan policy (defaults)
+        # scalars: eng, sr, fragile-asset lookup (None), org scan policy (None),
+        # WS push: online agents query (empty → scalars().all() = [])
+        db = _mock_db([eng, sr, None, None])
+        scalars_mock = MagicMock()
+        scalars_mock.all = MagicMock(return_value=[])
+        last_result = MagicMock()
+        last_result.scalars = MagicMock(return_value=scalars_mock)
+        db.execute = AsyncMock(side_effect=[
+            # get_or_404 engagement
+            MagicMock(scalar_one_or_none=MagicMock(return_value=eng)),
+            # _get_scan_request
+            MagicMock(scalar_one_or_none=MagicMock(return_value=sr),
+                      first=MagicMock(return_value=sr)),
+            # fragile guard: no fragile assets
+            MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))),
+            # org scan policy
+            MagicMock(scalar_one_or_none=MagicMock(return_value=None)),
+            # WS push: online agents query
+            last_result,
+        ])
+        redis = _mock_redis()
 
-        out = asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, op))
+        out = asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, redis, op))
 
         job = _added(db, ScanJob)
-        assert job is not None and job.agent_id == str(agent)
+        assert job is not None
+        # RC-FIX-2: agent_id must be NULL on the DB row so HTTP poll can find it
+        assert job.agent_id is None, "agent_id must not be pre-assigned — breaks HTTP poll"
+        assert job.result["preferred_agent_id"] == str(agent)
         assert sr.status == "approved"
         assert sr.scan_job_id == job.id
         assert sr.reviewed_by == op.user_id
@@ -181,8 +220,9 @@ class TestApproveScanRequest:
                               assigned_agent_id=None, scope_cidrs=[])
         sr = _pending_request(eng_id, op.tenant_id)
         db = _mock_db([eng, sr])
+        redis = _mock_redis()
         with pytest.raises(HTTPException) as e:
-            asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, op))
+            asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, redis, op))
         assert e.value.status_code == 409
 
     def test_approve_non_pending_is_conflict(self):
@@ -193,8 +233,9 @@ class TestApproveScanRequest:
         sr = _pending_request(eng_id, op.tenant_id)
         sr.status = "approved"
         db = _mock_db([eng, sr])
+        redis = _mock_redis()
         with pytest.raises(HTTPException) as e:
-            asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, op))
+            asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, redis, op))
         assert e.value.status_code == 409
 
 
@@ -256,7 +297,8 @@ class TestApproveScanRequestFragileGuard:
                               scope_cidrs=["10.0.0.0/24"], excluded_cidrs=["10.0.0.99/32"])
         sr = _pending_request(eng_id, op.tenant_id)
         db = _mock_db([eng, sr, None])     # 3rd: the tenant's scan policy (defaults)
-        asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, op))
+        redis = _mock_redis()
+        asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, redis, op))
         job = _added(db, ScanJob)
         assert job.result["_excluded_cidrs"] == ["10.0.0.99/32", "10.0.0.20/32"]
         assert job.result["_fragile_excluded"] == [{"ip": "10.0.0.20", "reasons": ["sector_fn:swift"]}]
