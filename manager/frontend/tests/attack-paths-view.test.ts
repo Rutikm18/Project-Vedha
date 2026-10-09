@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  basisInfo, caveatSummary, emptyReasons, fixFirstSummary, fixPointIds, freshnessInfo, layoutPathMap, MAP,
-  overviewLine, overviewState, overviewSummary,
-  percent, riskLabel, riskShare, techniqueLabel, truncateLabel,
-  type ChokeAnalysis, type Coverage, type Diagnostics, type FreshnessReport, type Overview, type OverviewRow,
-  type PathSummary,
+  basisInfo, caveatSummary, emptyReasons, fixFirstSummary, fixPointIds, fixSentence, focusBars, focusLead,
+  freshnessInfo, layoutPathMap, MAP, meterCells, overviewLine, overviewState, overviewSummary, overviewTiles,
+  percent, riskLabel, riskShare, routeChainView, targetExposed, techniqueLabel, truncateLabel,
+  type ChokeAnalysis, type Coverage, type Diagnostics, type Focus, type FocusNode, type FocusRoute,
+  type FreshnessReport, type Overview, type OverviewRow, type OverviewSummary, type PathSummary,
 } from "../lib/attack-paths";
 
 function route(id: string, ...hosts: string[]): PathSummary {
@@ -278,65 +278,236 @@ test("fix points are the cutting set plus the few biggest single wins, not every
 });
 
 
+// ── an exposed crown jewel on the engagement page ───────────────────────────
+
+test("a crown jewel that is itself exposed is never told 'fix the gateway'", () => {
+  const exposed = choke({ targets: [{ asset_id: "d", label: "db-1", best_likelihood: 1, risk: 100, exposed_directly: true }] });
+  const s = fixFirstSummary(exposed);
+  assert.match(s?.headline ?? "", /db-1 is exposed to the internet and can be exploited directly/);
+  assert.match(s?.headline ?? "", /Fixing other hosts does not protect it; remove that exposure first\./);
+  assert.doesNotMatch(s?.headline ?? "", /alone cuts every/);
+  assert.deepEqual(s?.routes, []);
+});
+
+test("analyses stored before the flag existed are read by their likelihood of exactly 1", () => {
+  assert.equal(targetExposed({ best_likelihood: 1 }), true);
+  assert.equal(targetExposed({ best_likelihood: 0.95 }), false);
+  assert.equal(targetExposed({ best_likelihood: 1, exposed_directly: false }), false, "an explicit flag wins");
+  assert.equal(targetExposed({ best_likelihood: 0.2, exposed_directly: true }), true);
+});
+
 // ── overview rows (dashboard) ────────────────────────────────────────────────
 
 const orow = (over: Partial<OverviewRow> = {}): OverviewRow => ({
-  engagement_id: "e1", name: "Acme", status: "active", computed: true, computed_at: "2026-10-09T09:00:00Z",
-  path_count: 6, entry_points: 2, crown_jewels: 2, fix_set_size: 2, fix_assets: ["vpn-gw", "web-1"], fix_assets_more: 0,
-  coverage: "partial", stale_assets: 1, why_empty: [], ...over,
+  engagement_id: "e1", name: "Acme", status: "active", state: "reachable", computed: true,
+  computed_at: "2026-10-09T09:00:00Z", path_count: 8, entry_points: 8, crown_jewels: 3,
+  jewels_total: 3, jewels_reachable: 2, jewels_exposed: 0, ways_in: 1, top_risk: 40,
+  fix_set_size: 1, fix_assets: ["edge-gw-01"], fix_assets_more: 0, coverage: "partial", stale_assets: 1, why_empty: [], ...over,
+});
+const never = (): OverviewRow => orow({
+  state: "not_computed", computed: false, computed_at: null, path_count: null, entry_points: null, crown_jewels: null,
+  jewels_total: null, jewels_reachable: null, jewels_exposed: null, ways_in: null, top_risk: null,
+  fix_set_size: null, fix_assets: [], coverage: null, stale_assets: null,
 });
 
-test("an engagement nobody computed is 'not computed yet', never '0 routes'", () => {
-  const line = overviewLine(orow({ computed: false, path_count: null, fix_set_size: null, fix_assets: [], coverage: null, stale_assets: null }));
-  assert.equal(line.state, "not_computed");
-  assert.equal(line.headline, "Not computed yet");
-  assert.doesNotMatch(`${line.headline} ${line.detail}`, /\b0 routes\b|no routes/i);
-  assert.equal(line.coverage, null);
-});
-
-test("routes: the count and the decision, with coverage and stale hosts alongside", () => {
+test("reachable: the headline counts crown jewels, never routes; the fix and the ways in follow", () => {
   const line = overviewLine(orow());
-  assert.equal(line.headline, "6 routes");
-  assert.equal(line.detail, "Cutting every route takes 2 hosts: vpn-gw, web-1.");
+  assert.equal(line.headline, "2 of 3 crown jewels reachable");
+  assert.equal(line.ways, "1 separate way in");
+  assert.equal(line.detail, "Fixing edge-gw-01 alone cuts every route.");
   assert.deepEqual(line.coverage, { label: "Coverage partial", tone: "weak" });
   assert.equal(line.stale, "1 host not seen recently");
+  assert.doesNotMatch(JSON.stringify(line), /\b8 routes|\broutes\b.*8/, "the capped route count is not shown");
+  assert.equal(overviewLine(orow({ jewels_total: 1, jewels_reachable: 1 })).headline, "1 of 1 crown jewel reachable");
 });
 
-test("one shared host reads as one decision; a long fix set counts the rest", () => {
-  assert.equal(overviewLine(orow({ path_count: 1, fix_set_size: 1, fix_assets: ["gw"] })).headline, "1 route");
-  assert.equal(overviewLine(orow({ fix_set_size: 1, fix_assets: ["gw"] })).detail, "Fixing gw alone cuts every route.");
-  assert.equal(
-    overviewLine(orow({ fix_set_size: 6, fix_assets: ["a", "b", "c"], fix_assets_more: 3 })).detail,
-    "Cutting every route takes 6 hosts: a, b, c, +3 more.",
-  );
+test("several fixes say 'no single host', a long list counts the rest, none found says so", () => {
+  const two = overviewLine(orow({ fix_set_size: 2, fix_assets: ["gw1", "gw2"], ways_in: 2 }));
+  assert.equal(two.ways, "2 separate ways in");
+  assert.equal(two.detail, "No single host fixes this: cutting every route takes 2 hosts: gw1, gw2.");
+  assert.equal(fixSentence({ fix_set_size: 6, fix_assets: ["a", "b", "c"], fix_assets_more: 3 }),
+    "No single host fixes this: cutting every route takes 6 hosts: a, b, c, +3 more.");
+  assert.equal(fixSentence({ fix_set_size: 0, fix_assets: [], fix_assets_more: 0 }), "The analysis found no host whose fix cuts these routes.");
+  assert.equal(fixSentence({ fix_set_size: null, fix_assets: [], fix_assets_more: 0 }), null);
 });
 
-test("zero routes keeps its reason and is never called safe", () => {
-  const line = overviewLine(orow({ path_count: 0, fix_set_size: 0, fix_assets: [], coverage: "observed", stale_assets: 0,
-    why_empty: [{ code: "no_targets", detail: "x" }] }));
-  assert.equal(line.state, "empty");
-  assert.equal(line.headline, "No routes modelled");
-  assert.match(line.detail ?? "", /^No crown jewels marked\. This is not evidence the network is safe\.$/);
-  assert.deepEqual(line.coverage, { label: "Coverage observed", tone: "firm" });
-  assert.equal(line.stale, null);
-  assert.doesNotMatch(`${line.headline} ${line.detail}`, /\b(safe and|all clear|no risk|secure)\b/i);
+test("exposed: the worst case is said outright, with no fix-the-gateway and no 'ways in'", () => {
+  const line = overviewLine(orow({ state: "exposed", jewels_exposed: 1, jewels_reachable: 1, jewels_total: 1, ways_in: null }));
+  assert.equal(line.headline, "1 crown jewel directly exposed to the internet");
+  assert.equal(line.detail, "Fixing hosts on the way in does not protect it. Remove the exposure first.");
+  assert.equal(line.ways, null);
+  assert.doesNotMatch(JSON.stringify(line), /alone cuts every route/);
+  const mixed = overviewLine(orow({ state: "exposed", jewels_exposed: 1, jewels_reachable: 3, jewels_total: 3, ways_in: null }));
+  assert.match(mixed.detail ?? "", /2 more crown jewels can be reached by a route\./);
 });
 
-test("zero routes with no recorded reason still says so, and still does not claim safety", () => {
-  const line = overviewLine(orow({ path_count: 0, why_empty: [] }));
-  assert.match(line.detail ?? "", /The analysis recorded no reason\. This is not evidence the network is safe\./);
+test("unreachable keeps its reason and never claims safety", () => {
+  const line = overviewLine(orow({ state: "unreachable", jewels_reachable: 0, ways_in: null, fix_set_size: 0, fix_assets: [],
+    why_empty: [{ code: "no_entry_points", detail: "no asset is internet-exposed" }] }));
+  assert.equal(line.headline, "No modelled route reaches a crown jewel");
+  assert.match(line.detail ?? "", /This is not evidence the network is safe\.$/);
+  assert.doesNotMatch(JSON.stringify(line), /all clear|you are safe|no risk/i);
+  const bare = overviewLine(orow({ state: "unreachable", jewels_reachable: 0, why_empty: [] }));
+  assert.match(bare.detail ?? "", /The analysis recorded no reason\. This is not evidence the network is safe\./);
 });
 
-test("a coverage report the analysis never recorded is said to be missing, not 'observed'", () => {
+test("no crown jewel marked, not recorded and not computed are 'cannot assess', never '0 reachable'", () => {
+  const noTargets = overviewLine(orow({ state: "no_targets", jewels_total: 0, jewels_reachable: 0 }));
+  assert.equal(noTargets.headline, "No crown jewels marked");
+  assert.match(noTargets.detail ?? "", /not evidence the network is safe/);
+  const unknown = overviewLine(orow({ state: "unrecorded", jewels_total: null, jewels_reachable: null }));
+  assert.equal(unknown.headline, "Computed; per-jewel detail not recorded");
+  assert.doesNotMatch(JSON.stringify(unknown), /\b0 of\b/);
+  const nc = overviewLine(never());
+  assert.equal(nc.headline, "Not computed yet");
+  assert.equal(nc.coverage, null);
+  assert.doesNotMatch(JSON.stringify(nc), /0 routes|0 of|Coverage/);
+});
+
+test("coverage the analysis did not record is said to be missing, not 'observed'", () => {
   assert.deepEqual(overviewLine(orow({ coverage: null })).coverage, { label: "Coverage not recorded", tone: "neutral" });
+  assert.deepEqual(overviewLine(orow({ coverage: "observed" })).coverage, { label: "Coverage observed", tone: "firm" });
 });
 
-test("state and summary count only what is true", () => {
-  assert.equal(overviewState(orow({ computed: false })), "not_computed");
-  assert.equal(overviewState(orow({ path_count: 0 })), "empty");
-  const o: Overview = { total: 9, shown: 3, engagements: [orow(), orow({ path_count: 0 }), orow({ computed: false })] };
-  assert.equal(overviewSummary(o), "1 of 3 engagements has routes · 1 not computed yet");
-  assert.equal(overviewSummary({ total: 2, shown: 2, engagements: [orow(), orow()] }), "2 of 2 engagements have routes");
-  assert.equal(overviewSummary({ total: 0, shown: 0, engagements: [] }), "No engagements");
-  assert.equal(overviewSummary(null), "No engagements");
+test("a server that predates `state` is classified only from what the fields prove", () => {
+  const old = (over: Partial<OverviewRow>) => ({ ...orow(over), state: undefined });
+  assert.equal(overviewState(old({ computed: false })), "not_computed");
+  assert.equal(overviewState(old({ jewels_total: null })), "unrecorded");
+  assert.equal(overviewState(old({ jewels_total: 0 })), "no_targets");
+  assert.equal(overviewState(old({ jewels_exposed: 1 })), "exposed");
+  assert.equal(overviewState(old({})), "reachable");
+  assert.equal(overviewState(old({ jewels_reachable: 0 })), "unreachable");
+});
+
+test("the meter is one diamond per crown jewel, capped at 8, with the rest counted", () => {
+  assert.deepEqual(meterCells(orow()), { cells: ["reachable", "reachable", "unreachable"], more: 0 });
+  const wide = meterCells(orow({ jewels_total: 12, jewels_reachable: 2 }));
+  assert.equal(wide.cells.length, 8);
+  assert.equal(wide.more, 4);
+  assert.equal(wide.cells.filter((c) => c === "reachable").length, 2);
+  assert.deepEqual(meterCells(orow({ jewels_total: 12, jewels_reachable: 11 })).cells.filter((c) => c === "reachable").length, 8);
+  for (const r of [never(), orow({ state: "no_targets", jewels_total: 0 }), orow({ state: "unrecorded", jewels_total: null })]) {
+    assert.deepEqual(meterCells(r), { cells: ["unknown"], more: 0 });
+  }
+});
+
+// ── tiles and the footer line ────────────────────────────────────────────────
+
+const summary = (over: Partial<OverviewSummary> = {}): OverviewSummary => ({
+  engagements: 5, computed: 4, assessed: 3, with_reachable: 2, exposed: 0, single_fix: 1,
+  not_computed: 1, no_targets: 1, unrecorded: 0, jewels_total: 5, jewels_reachable: 4, ...over,
+});
+
+test("the tiles count engagements, and say what they are counted out of", () => {
+  const [a, b, c] = overviewTiles(summary())!;
+  assert.deepEqual([a.value, a.unit, a.tone], ["2", "of 3 assessed", "high"]);
+  assert.equal(a.sub, "4 of 5 crown jewels reachable across them.");
+  assert.deepEqual([b.value, b.unit], ["1", "of 2"]);
+  assert.equal(b.sub, "1 need several fixes.");
+  assert.deepEqual([c.value, c.unit], ["2", "engagements"]);
+  assert.equal(c.sub, "1 not computed · 1 with no crown jewel marked.");
+});
+
+test("an exposed jewel makes tile 1 critical and keeps it out of the one-fix count", () => {
+  const [a, b] = overviewTiles(summary({ exposed: 1, with_reachable: 2, single_fix: 1 }))!;
+  assert.equal(a.tone, "critical");
+  assert.equal(a.sub, "1 with a crown jewel directly exposed to the internet.");
+  assert.deepEqual([b.value, b.unit], ["1", "of 1"], "2 reachable minus 1 exposed leaves 1 that a fix on the way in can help");
+  assert.equal(b.sub, "One host each cuts every route.");
+});
+
+test("nothing assessed shows a dash, never '0 of 0'", () => {
+  const none = overviewTiles(summary({ assessed: 0, with_reachable: 0, computed: 0, not_computed: 5, no_targets: 0 }))!;
+  assert.deepEqual([none[0].value, none[0].unit, none[0].sub], ["—", "", "Nothing computed yet."]);
+  assert.equal(none[1].value, "—");
+  const marked = overviewTiles(summary({ assessed: 0, with_reachable: 0, computed: 2, not_computed: 0, no_targets: 2 }))!;
+  assert.equal(marked[0].sub, "No computed engagement has a crown jewel marked.");
+});
+
+test("zero reachable among the assessed says so without claiming safety; all assessed says that", () => {
+  const [a, , c] = overviewTiles(summary({ with_reachable: 0, single_fix: 0, not_computed: 0, no_targets: 0 }))!;
+  assert.equal(a.value, "0");
+  assert.match(a.sub, /not evidence the network is safe/);
+  assert.equal(c.sub, "Every engagement has been assessed.");
+  assert.equal(overviewTiles(null), null);
+  assert.equal(overviewTiles(undefined), null);
+});
+
+test("the footer line counts only what is true", () => {
+  const o = (s: OverviewSummary | null): Overview => ({ total: 5, shown: 3, summary: s, engagements: [orow()] });
+  assert.equal(overviewSummary(o(summary())), "2 of 3 assessed engagements have a reachable crown jewel · 2 can't be assessed yet");
+  assert.equal(overviewSummary(o(summary({ with_reachable: 1, assessed: 1, not_computed: 0, no_targets: 0 }))),
+    "1 of 1 assessed engagement has a reachable crown jewel");
+  assert.equal(overviewSummary(o(summary({ assessed: 0, with_reachable: 0 }))), "No engagement assessed yet · 2 can't be assessed yet");
+  assert.equal(overviewSummary({ total: 0, shown: 0, summary: summary({ engagements: 0 }), engagements: [] }), "No engagements");
+  assert.equal(overviewSummary(null), "");
+});
+
+// ── the "fix first" card ─────────────────────────────────────────────────────
+
+const node = (label: string, role: FocusNode["role"], on = false): FocusNode => ({ asset_id: label, label, role, on_fix_list: on });
+const routeOf = (nodes: FocusNode[], bases: (string | null)[] = []): FocusRoute => ({
+  path_id: "p", risk_score: 12, freshness: "fresh", nodes,
+  hops: nodes.slice(0, -1).map((_, i) => ({ basis: bases[i] ?? "observed", technique: null, stale: false, exploited: true })),
+});
+const focusOf = (over: Partial<Focus> = {}): Focus => ({
+  engagement_id: "e1", name: "Acme", state: "reachable", computed: true, computed_at: "2026-10-09T09:00:00Z", path_count: 8,
+  exposed: [], route: null, ranked: [],
+  fix: { size: 1, assets: [{ asset_id: "gw", label: "edge-gw-01" }], independent_routes: {} }, ...over,
+});
+
+test("the lead sentence follows the fix set, and an exposed jewel is told to remove its exposure", () => {
+  assert.equal(focusLead(focusOf()), "Fixing edge-gw-01 alone cuts every modelled route to a crown jewel.");
+  assert.equal(focusLead(focusOf({ fix: { size: 2, assets: [{ asset_id: "a", label: "gw1" }, { asset_id: "b", label: "gw2" }], independent_routes: {} } })),
+    "No single host fixes this: cutting every modelled route takes 2 hosts: gw1, gw2.");
+  assert.equal(focusLead(focusOf({ fix: { size: 0, assets: [], independent_routes: {} } })), "The analysis found no host whose fix cuts these routes.");
+  const exposed = focusLead(focusOf({ state: "exposed", exposed: [{ asset_id: "j", label: "fin-db-01" }] }));
+  assert.match(exposed ?? "", /fin-db-01 is exposed to the internet and can be exploited directly\./);
+  assert.doesNotMatch(exposed ?? "", /alone cuts/);
+  assert.equal(focusLead(focusOf({ state: "unreachable" })), null);
+});
+
+test("a short route is drawn whole, with each step described between its two hosts", () => {
+  const chain = routeChainView(routeOf([node("web-1", "entry"), node("gw", "via", true), node("db", "jewel")], ["observed", "assumed"]));
+  assert.deepEqual(chain.map((c) => (c.kind === "node" ? c.node.label : "gap")), ["web-1", "gw", "db"]);
+  const first = chain[0] as Extract<(typeof chain)[number], { kind: "node" }>;
+  const second = chain[1] as Extract<(typeof chain)[number], { kind: "node" }>;
+  assert.equal(first.hop?.label, "Observed");
+  assert.equal(second.hop?.weak, true);
+  assert.match(second.hop?.caveat ?? "", /assumed, not observed/i);
+  assert.equal((chain[2] as { hop: unknown }).hop, null, "the last host has no step after it");
+  assert.deepEqual(routeChainView(null), []);
+});
+
+test("a long route keeps its entry, its jewel and every fix-list host, and counts the rest", () => {
+  const nodes = [node("e", "entry"), ...["a", "b", "c", "d", "e2", "f"].map((l) => node(l, "via", l === "d")), node("j", "jewel")];
+  const chain = routeChainView(routeOf(nodes));
+  const labels = chain.map((c) => (c.kind === "node" ? c.node.label : `+${c.hidden}`));
+  assert.ok(chain.filter((c) => c.kind === "node").length <= 5);
+  assert.ok(labels.includes("e") && labels.includes("j") && labels.includes("d"), "entry, jewel and the fix host stay visible");
+  const hidden = chain.filter((c) => c.kind === "gap").reduce((n, c) => n + (c.kind === "gap" ? c.hidden : 0), 0);
+  assert.equal(hidden, nodes.length - chain.filter((c) => c.kind === "node").length);
+  const before = chain[chain.findIndex((c) => c.kind === "gap") - 1] as { hop: unknown };
+  assert.equal(before.hop, null, "a step next to hidden hosts is not described by borrowing a neighbour's wording");
+});
+
+test("an assumed link inside the hidden hosts is still said", () => {
+  const nodes = [node("e", "entry"), node("a", "via"), node("b", "via"), node("c", "via"), node("d", "via"), node("f", "via"), node("j", "jewel")];
+  const bases = ["observed", "observed", "observed", "observed", "assumed", "observed"];   // d -> f: both hidden
+  const chain = routeChainView(routeOf(nodes, bases));
+  const gap = chain.find((c) => c.kind === "gap");
+  assert.ok(gap && gap.kind === "gap" && gap.weakHidden === true);
+});
+
+test("bars show a bounded share, one per host, and say what each cuts off on its own", () => {
+  const bars = focusBars(focusOf({ ranked: [
+    { asset_id: "gw", label: "edge-gw-01", share: 0.824, cuts_off: 2, jewels_reachable: 2 },
+    { asset_id: "w", label: "web-1", share: 0.12, cuts_off: 0, jewels_reachable: 2 },
+    { asset_id: "x", label: "x", share: null, cuts_off: 1, jewels_reachable: null },
+  ] }));
+  assert.deepEqual(bars.map((b) => [b.value, b.width]), [["82%", 82], ["12%", 12], ["—", 0]]);
+  assert.equal(bars[0].sub, "Cuts off 2 of 2 reachable crown jewels on its own.");
+  assert.equal(bars[1].sub, "Cuts off 0 of 2 reachable crown jewels on its own.");
+  assert.equal(bars[2].sub, "Cuts off 1 crown jewel on its own.");
+  assert.ok(bars.every((b) => b.width >= 0 && b.width <= 100));
 });

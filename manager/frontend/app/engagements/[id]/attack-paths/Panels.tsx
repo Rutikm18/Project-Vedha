@@ -5,7 +5,7 @@ import { SkeletonRows } from "../../../../components/states/DataState";
 import {
   basisInfo, caveatSummary, emptyReasons, fixFirstSummary, freshnessInfo, percent, riskLabel, riskShare,
   techniqueLabel,
-  type Analysis, type ChokeAnalysis, type Diagnostics, type PathDetail, type PathSummary,
+  type Analysis, type ChokeAnalysis, type ChokeTarget, type Diagnostics, type PathDetail, type PathSummary,
 } from "../../../../lib/attack-paths";
 
 // ── Beta ─────────────────────────────────────────────────────────────────────
@@ -61,6 +61,25 @@ export function CoveragePanel({ analysis }: { analysis: Analysis | undefined }) 
 }
 
 // ── An empty list, explained ─────────────────────────────────────────────────
+
+/** A crown jewel that is itself exposed has no route to list, so an empty list is the WORST case here,
+ *  not "the model had nothing to go on". Said first, before any coverage or fix advice. */
+export function ExposedCallout({ targets }: { targets: Pick<ChokeTarget, "asset_id" | "label">[] }) {
+  const one = targets.length === 1;
+  const who = one ? targets[0].label : `${targets.length} crown jewels`;
+  return (
+    <div className="ap-callout" data-tone="critical" role="status">
+      <h3>{who} {one ? "is" : "are"} exposed to the internet</h3>
+      <p className="ap-fine" style={{ color: "var(--text-secondary)" }}>
+        No route is needed: {one ? "it is" : "they are"} reachable from outside and can be exploited directly.
+        Fixing other hosts does not protect {one ? "it" : "them"}; remove that exposure first.
+      </p>
+      <p className="ap-fine">
+        That is why there are no routes to list. It is not evidence that the network is safe.
+      </p>
+    </div>
+  );
+}
 
 export function EmptyExplainer({ diagnostics }: { diagnostics: Diagnostics | null | undefined }) {
   const reasons = emptyReasons(diagnostics);

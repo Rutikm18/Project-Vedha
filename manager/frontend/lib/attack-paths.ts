@@ -88,7 +88,8 @@ export interface PathDetail {
 export interface ChokeEntry {
   asset_id: string;
   label: string;
-  /** 0-100: modelled risk removed if this one host were fixed. */
+  /** Modelled risk removed if this one host were fixed: a sum over crown jewels, so NOT
+   *  bounded by 100. Use `riskShare` for anything drawn as a bar. */
   risk_removed: number;
   targets_cut_off: string[];
   targets_cut_off_labels: string[];
@@ -102,10 +103,29 @@ export interface FixSet {
   independent_routes: Record<string, number>;
 }
 
+export interface ChokeTarget {
+  asset_id: string;
+  label: string;
+  /** 0 = no modelled route reaches it. */
+  best_likelihood: number;
+  risk: number;
+  /** The crown jewel is itself an exploitable internet-exposed host: it has no route to cut.
+   *  Absent in analyses stored before the flag existed; see `targetExposed`. */
+  exposed_directly?: boolean;
+}
+
+/** A likelihood this high can only be a jewel that is its own entry point (every route
+ *  multiplies at least one step probability, and the highest step value is 0.95). */
+export const EXPOSED_LIKELIHOOD = 0.9999;
+
+export function targetExposed(t: Pick<ChokeTarget, "best_likelihood" | "exposed_directly">): boolean {
+  return typeof t.exposed_directly === "boolean" ? t.exposed_directly : t.best_likelihood >= EXPOSED_LIKELIHOOD;
+}
+
 export interface ChokeAnalysis {
   ranked: ChokeEntry[];
   min_fix_set: FixSet;
-  targets: { asset_id: string; label: string; best_likelihood: number; risk: number }[];
+  targets: ChokeTarget[];
   entry_points?: number;
   method?: string;
 }
@@ -312,6 +332,17 @@ export function fixFirstSummary(choke: ChokeAnalysis | null | undefined): FixFir
   if (!choke || !choke.targets?.length) return null;
   const fix = choke.min_fix_set;
   const names = (fix?.assets ?? []).map((a) => a.label);
+  // A crown jewel that is itself exposed has no route to cut. Saying "fix the gateway" for it
+  // would be false, and an empty fix set would read as "nothing reaches it".
+  const exposed = choke.targets.filter(targetExposed);
+  if (exposed.length > 0) {
+    const who = exposed.length === 1 ? exposed[0].label : `${exposed.length} crown jewels`;
+    return {
+      headline: `${who} ${exposed.length === 1 ? "is" : "are"} exposed to the internet and can be exploited directly. `
+        + `Fixing other hosts does not protect ${exposed.length === 1 ? "it" : "them"}; remove that exposure first.`,
+      routes: [],
+    };
+  }
   let headline: string;
   if (!fix || fix.size === 0) {
     headline = "No modelled route reaches a crown jewel.";
@@ -555,17 +586,34 @@ export function truncateLabel(label: string, max = 22): string {
 
 // ── Overview: one line per engagement (dashboard and /attack-paths) ──────────
 
+/** Each state is a different claim. Exposed is the worst case, never an empty one; not computed
+ *  and no crown jewel marked are "cannot assess", never "0 reachable". */
+export type OverviewState = "exposed" | "reachable" | "unreachable" | "no_targets" | "unrecorded" | "not_computed";
+
 /** One engagement's line from GET /attack-paths/overview (stored results only). */
 export interface OverviewRow {
   engagement_id: string;
   name: string;
   status: string;
+  /** Sent by the server. Rows from a server that predates it are classified by `overviewState`. */
+  state?: OverviewState;
   /** false = nobody has computed paths for it, which is NOT the same as zero routes. */
   computed: boolean;
   computed_at: string | null;
+  /** Length of a CAPPED list (at most 5 routes per entry point per crown jewel): it tracks entry
+   *  points, not exposure. Never a headline. */
   path_count: number | null;
   entry_points: number | null;
+  /** Alias of `jewels_total` kept for older clients. */
   crown_jewels: number | null;
+  /** null = the analysis did not record it. Unknown is not zero. */
+  jewels_total?: number | null;
+  jewels_reachable?: number | null;
+  jewels_exposed?: number | null;
+  /** The most independent routes into any reachable, non-exposed crown jewel. */
+  ways_in?: number | null;
+  /** Highest modelled risk (an ordering weight, not a probability). */
+  top_risk?: number | null;
   fix_set_size: number | null;
   fix_assets: string[];
   fix_assets_more: number;
@@ -574,17 +622,71 @@ export interface OverviewRow {
   why_empty: Reason[];
 }
 
+/** Counts over ALL of the tenant's engagements, not just the rows returned. Engagements only:
+ *  crown jewels and hosts of different networks are never added together except as "across". */
+export interface OverviewSummary {
+  engagements: number;
+  computed: number;
+  assessed: number;
+  with_reachable: number;
+  exposed: number;
+  single_fix: number;
+  not_computed: number;
+  no_targets: number;
+  unrecorded: number;
+  jewels_total: number;
+  jewels_reachable: number;
+  truncated?: boolean;
+}
+
 export interface Overview {
   total: number;
   shown: number;
+  summary?: OverviewSummary | null;
   engagements: OverviewRow[];
 }
 
-export type OverviewState = "routes" | "empty" | "not_computed";
-
 export function overviewState(row: OverviewRow): OverviewState {
+  if (row.state) return row.state;
+  // A server that predates `state`: say only what the fields prove.
   if (!row.computed) return "not_computed";
-  return (row.path_count ?? 0) > 0 ? "routes" : "empty";
+  if (row.jewels_total == null) return "unrecorded";
+  if (row.jewels_total === 0) return "no_targets";
+  if ((row.jewels_exposed ?? 0) > 0) return "exposed";
+  return (row.jewels_reachable ?? 0) > 0 ? "reachable" : "unreachable";
+}
+
+export type MeterCell = "reachable" | "unreachable" | "unknown";
+
+const METER_MAX = 8;
+
+/** One diamond per crown jewel (at most 8, the rest counted): filled = reachable, hollow = not,
+ *  dashed = nothing to count (not computed, no crown jewel marked, not recorded). The words
+ *  beside the meter carry the meaning; the meter is only a quick read of the same numbers. */
+export function meterCells(row: OverviewRow): { cells: MeterCell[]; more: number } {
+  const state = overviewState(row);
+  const total = row.jewels_total;
+  if (state === "not_computed" || state === "no_targets" || state === "unrecorded" || !total || total < 1) {
+    return { cells: ["unknown"], more: 0 };
+  }
+  const shown = Math.min(total, METER_MAX);
+  const filled = Math.min(row.jewels_reachable ?? 0, shown);
+  return {
+    cells: Array.from({ length: shown }, (_, i): MeterCell => (i < filled ? "reachable" : "unreachable")),
+    more: total - shown,
+  };
+}
+
+/** The decision for one row, in one sentence. Never "fix the gateway" for a jewel that is exposed
+ *  outright (the caller does not ask in that state). */
+export function fixSentence(row: Pick<OverviewRow, "fix_set_size" | "fix_assets" | "fix_assets_more">): string | null {
+  const size = row.fix_set_size;
+  if (size == null) return null;
+  const names = row.fix_assets;
+  if (size === 0) return "The analysis found no host whose fix cuts these routes.";
+  if (size === 1) return names.length === 1 ? `Fixing ${names[0]} alone cuts every route.` : "Fixing one host cuts every route.";
+  const list = names.length > 0 ? `: ${names.join(", ")}${row.fix_assets_more > 0 ? `, +${row.fix_assets_more} more` : ""}` : "";
+  return `No single host fixes this: cutting every route takes ${size} hosts${list}.`;
 }
 
 export interface OverviewLine {
@@ -592,53 +694,262 @@ export interface OverviewLine {
   headline: string;
   /** The decision, or why there is nothing to decide. Null when there is nothing honest to add. */
   detail: string | null;
+  /** "2 separate ways in", only where it is true. */
+  ways: string | null;
   coverage: { label: string; tone: Tone } | null;
   stale: string | null;
 }
 
 /** What one overview row says. The wording rules are the page's: not computed is not
- *  "0 routes", zero routes is never "safe", coverage is "observed" or "partial", and
- *  a report the analysis did not record is said to be missing. */
+ *  "0 routes", an exposed jewel is not an empty result, zero reachable is never "safe",
+ *  coverage is "observed" or "partial", and a report the analysis did not record is said
+ *  to be missing. */
 export function overviewLine(row: OverviewRow): OverviewLine {
   const state = overviewState(row);
+  const none = { ways: null, coverage: null, stale: null };
   if (state === "not_computed") {
-    return { state, headline: "Not computed yet", detail: "Open it to compute the routes.", coverage: null, stale: null };
+    return { state, headline: "Not computed yet", detail: "Open it to compute the routes.", ...none };
+  }
+  if (state === "unrecorded") {
+    return { state, headline: "Computed; per-jewel detail not recorded", detail: "Open it to refresh the analysis.", ...none };
   }
   const coverage = row.coverage === "partial"
     ? { label: "Coverage partial", tone: "weak" as Tone }
     : row.coverage === "observed"
       ? { label: "Coverage observed", tone: "firm" as Tone }
       : { label: "Coverage not recorded", tone: "neutral" as Tone };
-  const stale = (row.stale_assets ?? 0) > 0
-    ? `${plural(row.stale_assets as number, "host")} not seen recently`
-    : null;
+  const stale = (row.stale_assets ?? 0) > 0 ? `${plural(row.stale_assets as number, "host")} not seen recently` : null;
+  const total = row.jewels_total ?? 0;
+  const reachable = row.jewels_reachable ?? 0;
 
-  if (state === "empty") {
-    const first = emptyReasons({ reasons: row.why_empty } as Diagnostics)[0];
-    const why = first ? `${first.title}.` : "The analysis recorded no reason.";
+  if (state === "exposed") {
+    const n = row.jewels_exposed ?? 1;
+    const also = reachable > n ? ` ${plural(reachable - n, "more crown jewel")} can be reached by a route.` : "";
     return {
-      state, headline: "No routes modelled",
-      detail: `${why} This is not evidence the network is safe.`, coverage, stale,
+      state,
+      headline: `${plural(n, "crown jewel")} directly exposed to the internet`,
+      detail: `Fixing hosts on the way in does not protect ${n === 1 ? "it" : "them"}. Remove the exposure first.${also}`,
+      ways: null, coverage, stale,
     };
   }
-
-  const n = row.path_count as number;
-  const names = row.fix_assets;
-  let detail: string | null = null;
-  if ((row.fix_set_size ?? 0) === 1 && names.length === 1) {
-    detail = `Fixing ${names[0]} alone cuts every route.`;
-  } else if ((row.fix_set_size ?? 0) > 1 && names.length > 0) {
-    detail = `Cutting every route takes ${row.fix_set_size} hosts: ${names.join(", ")}${row.fix_assets_more > 0 ? `, +${row.fix_assets_more} more` : ""}.`;
+  if (state === "reachable") {
+    const ways = row.ways_in && row.ways_in > 0 ? `${plural(row.ways_in, "separate way")} in` : null;
+    return {
+      state,
+      headline: `${reachable} of ${plural(total, "crown jewel")} reachable`,
+      detail: fixSentence(row), ways, coverage, stale,
+    };
   }
-  return { state, headline: `${n} ${n === 1 ? "route" : "routes"}`, detail, coverage, stale };
+  if (state === "no_targets") {
+    return {
+      state, headline: "No crown jewels marked",
+      detail: "No asset is marked critical, so the model has nothing to protect. Mark the assets that matter to model routes to them. This is not evidence the network is safe.",
+      ways: null, coverage, stale,
+    };
+  }
+  const first = emptyReasons({ reasons: row.why_empty } as Diagnostics)[0];
+  const why = first ? `${first.title}.` : "The analysis recorded no reason.";
+  return {
+    state, headline: "No modelled route reaches a crown jewel",
+    detail: `${why} This is not evidence the network is safe.`, ways: null, coverage, stale,
+  };
 }
 
-/** "3 of 5 engagements have routes · 1 not computed yet" — counts only what is true. */
+export type TileTone = "critical" | "high" | "neutral";
+
+export interface OverviewTile {
+  key: "reachable" | "one_fix" | "unassessed";
+  label: string;
+  /** A number, or "—" when there is nothing to count (never "0 of 0"). */
+  value: string;
+  unit: string;
+  sub: string;
+  tone: TileTone;
+}
+
+/** The three triage tiles. Counts of ENGAGEMENTS only, so networks that are not alike are never
+ *  added together; per-network numbers stay on each row. Null when the server sent no summary. */
+export function overviewTiles(summary: OverviewSummary | null | undefined): OverviewTile[] | null {
+  if (!summary) return null;
+  const s = summary;
+  const fixable = s.with_reachable - s.exposed;          // reachable by a route only: a fix set means something
+
+  const t1: OverviewTile = s.assessed === 0
+    ? {
+        key: "reachable", label: "Engagements with a reachable crown jewel", value: "—", unit: "", tone: "neutral",
+        sub: s.computed === 0 ? "Nothing computed yet." : "No computed engagement has a crown jewel marked.",
+      }
+    : {
+        key: "reachable", label: "Engagements with a reachable crown jewel", value: String(s.with_reachable),
+        unit: `of ${s.assessed} assessed`,
+        sub: s.exposed > 0
+          ? `${s.exposed} with a crown jewel directly exposed to the internet.`
+          : s.with_reachable > 0
+            ? `${s.jewels_reachable} of ${plural(s.jewels_total, "crown jewel")} reachable across them.`
+            : "None reachable in the model. This is not evidence the network is safe.",
+        tone: s.exposed > 0 ? "critical" : s.with_reachable > 0 ? "high" : "neutral",
+      };
+
+  const t2: OverviewTile = fixable <= 0
+    ? {
+        key: "one_fix", label: "Cut by fixing one host", value: "—", unit: "", tone: "neutral",
+        sub: s.exposed > 0 ? "Exposed jewels need their exposure removed, not a fix on the way in." : "Nothing to fix in the model.",
+      }
+    : {
+        key: "one_fix", label: "Cut by fixing one host", value: String(s.single_fix), unit: `of ${fixable}`,
+        sub: fixable - s.single_fix > 0 ? `${fixable - s.single_fix} need several fixes.` : "One host each cuts every route.",
+        tone: "neutral",
+      };
+
+  const n = s.not_computed + s.no_targets + s.unrecorded;
+  const parts = [
+    s.not_computed > 0 ? `${s.not_computed} not computed` : null,
+    s.no_targets > 0 ? `${s.no_targets} with no crown jewel marked` : null,
+    s.unrecorded > 0 ? `${s.unrecorded} not recorded` : null,
+  ].filter(Boolean) as string[];
+  const t3: OverviewTile = {
+    key: "unassessed", label: "Can't be assessed yet", value: String(n), unit: n === 1 ? "engagement" : "engagements",
+    sub: parts.length > 0 ? `${parts.join(" · ")}.` : "Every engagement has been assessed.", tone: "neutral",
+  };
+  return [t1, t2, t3];
+}
+
+/** The footer line. Counts only what is true; empty when the server sent no summary. */
 export function overviewSummary(o: Overview | null | undefined): string {
-  const rows = o?.engagements ?? [];
-  if (!rows.length) return "No engagements";
-  const withRoutes = rows.filter((r) => overviewState(r) === "routes").length;
-  const notComputed = rows.filter((r) => overviewState(r) === "not_computed").length;
-  const base = `${withRoutes} of ${plural(rows.length, "engagement")} ha${withRoutes === 1 ? "s" : "ve"} routes`;
-  return notComputed > 0 ? `${base} · ${notComputed} not computed yet` : base;
+  const s = o?.summary;
+  if (!s || s.engagements === 0) return o && o.engagements.length === 0 ? "No engagements" : "";
+  const unassessed = s.not_computed + s.no_targets + s.unrecorded;
+  const base = s.assessed === 0
+    ? "No engagement assessed yet"
+    : `${s.with_reachable} of ${plural(s.assessed, "assessed engagement")} ${s.with_reachable === 1 ? "has" : "have"} a reachable crown jewel`;
+  return unassessed > 0 ? `${base} · ${unassessed} can't be assessed yet` : base;
+}
+
+// ── Fix first: the dashboard card for one engagement ─────────────────────────
+
+export interface FocusNode {
+  asset_id: string;
+  label: string;
+  role: "entry" | "via" | "jewel";
+  /** In the smallest fix set, or one of the few hosts whose fix removes the most risk. */
+  on_fix_list: boolean;
+}
+
+export interface FocusHop {
+  basis: string | null;
+  technique: string | null;
+  stale: boolean;
+  exploited: boolean | null;
+}
+
+export interface FocusRoute {
+  path_id: string;
+  risk_score: number | null;
+  freshness: Freshness | null;
+  nodes: FocusNode[];
+  /** hops[i] is the step from nodes[i] to nodes[i + 1]. */
+  hops: FocusHop[];
+}
+
+export interface FocusBar {
+  asset_id: string;
+  label: string;
+  /** Share (0-1) of the engagement's modelled risk this host removes ALONE; null = no modelled risk. */
+  share: number | null;
+  cuts_off: number;
+  jewels_reachable: number | null;
+}
+
+export interface Focus {
+  engagement_id: string;
+  name: string;
+  state: OverviewState;
+  computed: boolean;
+  computed_at: string | null;
+  /** Length of the capped stored list, not a count of routes. */
+  path_count: number | null;
+  exposed: { asset_id: string; label: string }[];
+  route: FocusRoute | null;
+  fix: { size: number; assets: { asset_id: string; label: string }[]; independent_routes: Record<string, number> } | null;
+  ranked: FocusBar[];
+}
+
+/** The card's lead sentence. For an exposed jewel it never says "fix the gateway". */
+export function focusLead(f: Focus): string | null {
+  if (f.state === "exposed" && f.exposed.length > 0) {
+    const who = f.exposed.length === 1 ? f.exposed[0].label : `${f.exposed.length} crown jewels`;
+    return `${who} ${f.exposed.length === 1 ? "is" : "are"} exposed to the internet and can be exploited directly. `
+      + `Fixing other hosts does not protect ${f.exposed.length === 1 ? "it" : "them"}; remove that exposure first.`;
+  }
+  if (f.state !== "reachable" || !f.fix) return null;
+  const names = f.fix.assets.map((a) => a.label);
+  if (f.fix.size === 0) return "The analysis found no host whose fix cuts these routes.";
+  if (f.fix.size === 1) return `Fixing ${names[0] ?? "one host"} alone cuts every modelled route to a crown jewel.`;
+  return `No single host fixes this: cutting every modelled route takes ${f.fix.size} hosts${names.length ? `: ${names.join(", ")}` : ""}.`;
+}
+
+export type ChainItem =
+  | { kind: "node"; node: FocusNode; hop: { label: string; caveat: string | null; weak: boolean; stale: boolean } | null }
+  | { kind: "gap"; hidden: number; weakHidden: boolean };
+
+const CHAIN_MAX = 5;
+
+/** The route as a short chain. A long route keeps its entry, its crown jewel and every host on the
+ *  fix list, then fills up to five nodes from the entry end; what is left out becomes "+N more
+ *  hosts" and says if an assumed link is among them. A step is described only between two nodes
+ *  that are both shown, so a hidden step never borrows a neighbour's wording. */
+export function routeChainView(route: FocusRoute | null | undefined): ChainItem[] {
+  if (!route || route.nodes.length === 0) return [];
+  const n = route.nodes.length;
+  const keep = new Set<number>([0, n - 1]);
+  route.nodes.forEach((node, i) => { if (node.on_fix_list) keep.add(i); });
+  for (let i = 1; i < n - 1 && keep.size < CHAIN_MAX; i++) keep.add(i);
+
+  const hopFor = (i: number): { label: string; caveat: string | null; weak: boolean; stale: boolean } | null => {
+    const h = route.hops[i];
+    if (!h) return null;
+    const info = basisInfo(h.basis);
+    return { label: info.label, caveat: info.caveat, weak: info.tone === "weak", stale: h.stale };
+  };
+
+  const out: ChainItem[] = [];
+  let i = 0;
+  while (i < n) {
+    if (keep.has(i)) {
+      out.push({ kind: "node", node: route.nodes[i], hop: keep.has(i + 1) ? hopFor(i) : null });
+      i += 1;
+      continue;
+    }
+    let j = i;
+    while (j < n && !keep.has(j)) j += 1;
+    // hops i-1 .. j-1 all touch hidden hosts
+    const weakHidden = Array.from({ length: j - i + 1 }, (_, k) => i - 1 + k)
+      .some((k) => k >= 0 && route.hops[k] && basisInfo(route.hops[k].basis).tone === "weak");
+    out.push({ kind: "gap", hidden: j - i, weakHidden });
+    i = j;
+  }
+  return out;
+}
+
+export interface BarView {
+  key: string;
+  name: string;
+  /** "82%", or "—" when there is no modelled risk to share. */
+  value: string;
+  /** 0-100, for the bar's width. */
+  width: number;
+  sub: string;
+}
+
+/** One bar per host: the share of modelled risk it removes ALONE. Never stacked or summed. */
+export function focusBars(f: Focus): BarView[] {
+  return f.ranked.map((b) => ({
+    key: b.asset_id,
+    name: b.label,
+    value: percent(b.share),
+    width: b.share == null ? 0 : Math.round(Math.max(0, Math.min(1, b.share)) * 100),
+    sub: b.jewels_reachable != null
+      ? `Cuts off ${b.cuts_off} of ${plural(b.jewels_reachable, "reachable crown jewel")} on its own.`
+      : `Cuts off ${b.cuts_off} crown jewel${b.cuts_off === 1 ? "" : "s"} on its own.`,
+  }));
 }

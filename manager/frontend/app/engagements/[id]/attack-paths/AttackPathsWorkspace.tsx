@@ -9,10 +9,10 @@ import { DataState, ErrorState, SkeletonRows } from "../../../../components/stat
 import { formatExact } from "../../../../components/portal/Timestamp";
 import { useToast } from "../../../../hooks/useToast";
 import { attackPathsApi } from "../../../../lib/attack-paths-api";
-import { fixPointIds, type Analysis, type Diagnostics } from "../../../../lib/attack-paths";
+import { fixPointIds, targetExposed, type Analysis, type Diagnostics } from "../../../../lib/attack-paths";
 import { errorMessage, fetchJson } from "../../../../lib/fetcher";
 import { PathMap } from "./PathMap";
-import { BetaNotice, CoveragePanel, EmptyExplainer, FixFirstPanel, PathDetailPanel, PathTable } from "./Panels";
+import { BetaNotice, CoveragePanel, EmptyExplainer, ExposedCallout, FixFirstPanel, PathDetailPanel, PathTable } from "./Panels";
 import { ATTACK_PATH_STYLES } from "./styles";
 
 const PAGE_SIZE = 50;
@@ -63,6 +63,7 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
   const computed = analysis.data?.computed ? analysis.data : null;
   const choke = computed?.choke ?? null;
   const chokeIds = useMemo(() => fixPointIds(choke), [choke]);
+  const exposed = useMemo(() => (choke?.targets ?? []).filter(targetExposed), [choke]);
   const whyEmpty: Diagnostics | null | undefined = list.data?.why_empty ?? computed?.diagnostics;
   const name = engagement.data?.name;
 
@@ -82,7 +83,9 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
                 <strong>
                   {list.isLoading ? "Loading attack paths…"
                     : list.isError ? "Attack paths unavailable"
-                    : `${list.data?.total ?? 0} modelled route${list.data?.total === 1 ? "" : "s"}`}
+                    : list.data?.total === 0 && exposed.length > 0
+                      ? `${exposed.length} crown jewel${exposed.length === 1 ? "" : "s"} directly exposed`
+                      : `${list.data?.total ?? 0} modelled route${list.data?.total === 1 ? "" : "s"}`}
                 </strong>
                 <span>
                   {computed
@@ -104,7 +107,8 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
             <p className="ap-fine">
               Routes between subnets are inferred from addressing and the engagement scope, not read from
               firewall rules. A step marked “assumed” has not been observed. Paths refresh when a detection run
-              changes the findings; Recompute forces it now.
+              changes the findings; Recompute forces it now. At most 5 routes are listed per entry point per
+              crown jewel, so the count follows the entry points, not how exposed anything is.
             </p>
           </div>
         </section>
@@ -129,7 +133,7 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
           isEmpty={list.data?.total === 0}
           onRetry={() => void list.refetch()}
           skeleton={<SkeletonRows rows={4} height={64} />}
-          empty={<EmptyExplainer diagnostics={whyEmpty} />}
+          empty={exposed.length > 0 ? <ExposedCallout targets={exposed} /> : <EmptyExplainer diagnostics={whyEmpty} />}
         >
           {/* Decision first: what to fix. */}
           <section className="ap-card" aria-label="Fix first">

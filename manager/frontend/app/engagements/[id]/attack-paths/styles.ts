@@ -34,6 +34,7 @@ export const ATTACK_PATH_STYLES = `
 .ap-confidence { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
 
 .ap-callout { display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border: 0.5px solid var(--sev-medium-color); background: var(--sev-medium-bg); }
+.ap-callout[data-tone="critical"] { border-color: var(--sev-critical-color); background: var(--sev-critical-bg); }
 .ap-callout h3 { margin: 0; font-size: 13.5px; font-weight: 650; color: var(--text-primary); }
 .ap-reasons { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
 .ap-reason { display: grid; gap: 2px; padding-left: var(--space-3); border-left: 2px solid var(--border-default); }
@@ -78,7 +79,8 @@ export const ATTACK_PATH_STYLES = `
 .ap-map .ap-node[data-target="true"] .ap-tag { fill: var(--sev-critical-color); }
 .ap-map .ap-node[data-entry="true"] .ap-tag { fill: var(--accent); }
 .ap-map .ap-node[data-dim="true"] { opacity: 0.35; }
-.ap-map .ap-edge { fill: none; stroke: var(--border-strong); stroke-width: 1.25; }
+/* Edges say which host connects to which, so they are content, not decoration: 3:1 against the panel (WCAG 1.4.11). The border tokens are 1.5 to 2.7:1. */
+.ap-map .ap-edge { fill: none; stroke: var(--text-muted); stroke-width: 1.25; }
 .ap-map .ap-edge[data-backward="true"] { stroke-dasharray: 3 3; }
 .ap-map .ap-edge[data-selected="true"] { stroke: var(--accent); stroke-width: 2.5; }
 .ap-map .ap-edge[data-dim="true"] { opacity: 0.3; }

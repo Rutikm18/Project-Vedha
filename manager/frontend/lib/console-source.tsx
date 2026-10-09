@@ -87,7 +87,7 @@ const OPERATOR_SOURCE: ConsoleSource = {
       // applies no status filter at all.
       "/api/findings?paginated=true&page=1&page_size=5&sort=risk&active_only=true",
     engagements: "/api/engagements",
-    attackPaths: "/api/attack-paths/overview?limit=50",
+    attackPaths: "/api/attack-paths/overview?limit=5",
   },
   capabilities: new Set<ConsoleCapability>([
     "navigateToEngagement", "switchEngagement", "mutateFindings", "viewAttackPaths",

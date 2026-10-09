@@ -49,7 +49,7 @@ export function PathMap({
         viewBox={`0 0 ${map.width} ${map.height}`}>
         <defs>
           <marker id="ap-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--border-strong)" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--text-muted)" />
           </marker>
           <marker id="ap-arrow-sel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)" />

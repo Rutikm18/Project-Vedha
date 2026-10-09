@@ -47,15 +47,20 @@ Two apps share this frontend:
 
 ### 1a. Dashboard → Attack paths (Beta) section, sidebar entry and `/attack-paths`
 - Dashboard section: `components/dashboard/AttackPathsPanel.tsx`, placed in `DashboardGrid.tsx` under the posture/SLA band
-  (shown only when the console source has the `viewAttackPaths` capability: operators yes, customer portal no)
-- Row list shared by the panel and the page: `components/attack-paths/OverviewList.tsx`
+  (shown only when the console source has the `viewAttackPaths` capability: operators yes, customer portal no).
+  Composition: `components/attack-paths/AttackPathsTiles.tsx` (three tiles of engagement counts), `OverviewList.tsx`
+  (ladder of up to five engagements, each row with `JewelMeter.tsx`), `FixFirstCard.tsx` (route chain and share bars
+  for the top row when it is exposed or reachable), `AttackPathStyles.tsx` + `overview-styles.ts` (container-query layout)
 - Sidebar: `components/Sidebar.tsx` (Analysis → "Attack paths", BETA badge, operator menu only)
-- Page: `app/attack-paths/page.tsx` (all engagements, Beta badge and notice)
-- Data: `lib/console-source.tsx` dataset `attackPaths` (operator endpoint `/api/attack-paths/overview?limit=50`, portal `null`)
-  → BFF `app/api/attack-paths/overview/route.ts` → backend `GET /attack-paths/overview`
-  (`routers/attack_paths.py`, rows built by `app/graph/overview.py`; read-only, tenant-scoped, operators only)
-- View-model and wording: `lib/attack-paths.ts` (`overviewLine`, `overviewSummary`; "not computed yet" is never "0 routes")
-- Each row links to `/engagements/{id}/attack-paths` (§4a)
+- Page: `app/attack-paths/page.tsx` (all engagements, the same tiles and rows, Beta badge and notice)
+- Data: `lib/console-source.tsx` dataset `attackPaths` (operator endpoint `/api/attack-paths/overview?limit=5`, portal `null`)
+  → BFF `app/api/attack-paths/overview/route.ts` → backend `GET /attack-paths/overview`; the card calls
+  `app/api/attack-paths/focus/[id]/route.ts` → `GET /attack-paths/focus/{engagement_id}`. Both read-only, tenant-scoped,
+  operators only (`routers/attack_paths.py`; rows built by `app/graph/overview.py`)
+- View-model and wording: `lib/attack-paths.ts` (`overviewState`, `overviewLine`, `overviewTiles`, `meterCells`,
+  `focusLead`, `routeChainView`, `focusBars`). Six row states; "not computed" and "no crown jewel marked" are never "0 reachable"
+- Each row links to `/engagements/{id}/attack-paths` (§4a), which also shows an exposed-only engagement as
+  "directly exposed" (`ExposedCallout` in `Panels.tsx`)
 
 ### 2. Login
 - Page: `app/login/page.tsx`

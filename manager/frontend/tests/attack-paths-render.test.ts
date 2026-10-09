@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { PathMap } from "../app/engagements/[id]/attack-paths/PathMap";
 import {
-  BetaNotice, CoveragePanel, EmptyExplainer, FixFirstPanel, PathDetailPanel, PathTable,
+  BetaNotice, CoveragePanel, EmptyExplainer, ExposedCallout, FixFirstPanel, PathDetailPanel, PathTable,
 } from "../app/engagements/[id]/attack-paths/Panels";
 import type {
   Analysis, ChokeAnalysis, Diagnostics, PathDetail, PathSummary,
@@ -244,5 +244,30 @@ describe("attack paths is labelled Beta", () => {
     assert.match(page, /<BetaNotice \/>/);
     const toolbar = read("app/engagements/[id]/workspace.tsx");
     assert.match(toolbar, /Attack paths <span className="badge badge-info">Beta<\/span>/);
+  });
+});
+
+describe("a crown jewel exposed outright is not an empty result", () => {
+  test("the callout says it is exposed, that no route is needed, and that this is not 'safe'", () => {
+    const out = html(createElement(ExposedCallout, { targets: [{ asset_id: "j", label: "fin-db-01" }] }));
+    assert.match(out, /data-tone="critical"/);
+    assert.match(out, /fin-db-01 is exposed to the internet/);
+    assert.match(out, /No route is needed/);
+    assert.match(out, /Fixing other hosts does not protect it; remove that exposure first\./);
+    assert.match(out, /That is why there are no routes to list\. It is not evidence that the network is safe\./);
+    assert.doesNotMatch(out, /did not have what it needs/);
+  });
+
+  test("several exposed jewels are counted and the sentence agrees in number", () => {
+    const out = html(createElement(ExposedCallout, { targets: [{ asset_id: "a", label: "a" }, { asset_id: "b", label: "b" }] }));
+    assert.match(out, /2 crown jewels are exposed to the internet/);
+    assert.match(out, /does not protect them/);
+  });
+
+  test("the page shows it instead of the 'nothing modelled' explainer, and does not call the count exposure", () => {
+    const src = readFileSync(join(process.cwd(), "app/engagements/[id]/attack-paths/AttackPathsWorkspace.tsx"), "utf8");
+    assert.match(src, /exposed\.length > 0 \? <ExposedCallout targets=\{exposed\} \/> : <EmptyExplainer/);
+    assert.match(src, /crown jewel\$\{exposed\.length === 1 \? "" : "s"\} directly exposed/);
+    assert.match(src, /At most 5 routes are listed per entry point per\s+crown jewel/);
   });
 });
