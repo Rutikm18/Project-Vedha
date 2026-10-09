@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   basisInfo, caveatSummary, emptyReasons, fixFirstSummary, fixPointIds, fixSentence, focusBars, focusLead,
-  freshnessInfo, layoutPathMap, MAP, meterCells, overviewLine, overviewState, overviewSummary, overviewTiles,
+  attackPathAttention, canCompute, freshnessInfo, layoutPathMap, MAP, meterCells, overviewLine, overviewState, overviewSummary, overviewTiles,
   percent, riskLabel, riskShare, routeChainView, shortDate, sparkline, targetExposed, techniqueLabel, trendView, truncateLabel,
   type ChokeAnalysis, type Coverage, type Diagnostics, type Focus, type FocusNode, type FocusRoute,
   type FreshnessReport, type HistoryPoint, type Overview, type OverviewRow, type OverviewSummary, type PathSummary,
@@ -355,6 +355,10 @@ test("no crown jewel marked, not recorded and not computed are 'cannot assess', 
   const noTargets = overviewLine(orow({ state: "no_targets", jewels_total: 0, jewels_reachable: 0 }));
   assert.equal(noTargets.headline, "No crown jewels marked");
   assert.match(noTargets.detail ?? "", /not evidence the network is safe/);
+  assert.doesNotMatch(noTargets.detail ?? "", /^No hosts yet/);
+  const empty = overviewLine(orow({ state: "no_targets", jewels_total: 0, jewels_reachable: 0,
+    why_empty: [{ code: "no_assets", detail: "the engagement has no assets yet" }, { code: "no_targets", detail: "x" }] }));
+  assert.match(empty.detail ?? "", /^No hosts yet\. No asset is marked critical/, "the engagement with no hosts says so first");
   const unknown = overviewLine(orow({ state: "unrecorded", jewels_total: null, jewels_reachable: null }));
   assert.equal(unknown.headline, "Computed; per-jewel detail not recorded");
   assert.doesNotMatch(JSON.stringify(unknown), /\b0 of\b/);
@@ -594,4 +598,39 @@ test("the first tile counts how many engagements changed, as a count and nothing
   assert.doesNotMatch(none.sub, /changed/, "no history yet: nothing is said about change");
   const [zero] = overviewTiles(summary({ compared: 2, changed: 0 }))!;
   assert.match(zero.sub, /0 of 2 changed since their previous computation\./);
+});
+
+// ── surfacing ────────────────────────────────────────────────────────────────
+
+test("the attention strip says an exposed jewel first, in engagements, marked Beta, and never 'critical'", () => {
+  const item = attackPathAttention(summary({ exposed: 2, with_reachable: 5 }))!;
+  assert.equal(item.label, "Crown jewel exposed (Beta)");
+  assert.equal(item.detail, "2 engagements · remove the exposure first");
+  assert.ok(item.label.length <= 30, "the strip truncates a label at about 30 characters");
+  assert.equal(item.tone, "high");
+  assert.equal(item.href, "/attack-paths");
+  assert.doesNotMatch(JSON.stringify(item), /critical/i);
+});
+
+test("a reachable crown jewel is a quieter line, and says it is modelled", () => {
+  const item = attackPathAttention(summary({ exposed: 0, with_reachable: 1 }))!;
+  assert.equal(item.label, "Crown jewel reachable (Beta)");
+  assert.equal(item.detail, "1 engagement · modelled, not measured");
+  assert.ok(item.label.length <= 30);
+  assert.equal(item.tone, "medium");
+});
+
+test("when the model has nothing reachable the strip says nothing about it, and nothing is invented without a summary", () => {
+  assert.equal(attackPathAttention(summary({ exposed: 0, with_reachable: 0 })), null);
+  assert.equal(attackPathAttention(null), null);
+  assert.equal(attackPathAttention(undefined), null);
+});
+
+test("only rows nobody computed, or whose analysis recorded no per-jewel data, can be computed from a list", () => {
+  assert.equal(canCompute(never()), true);
+  assert.equal(canCompute(orow({ state: "unrecorded", jewels_total: null })), true);
+  for (const state of ["exposed", "reachable", "unreachable", "no_targets"] as const) {
+    assert.equal(canCompute(orow({ state })), false, state);
+  }
+  assert.equal(canCompute({ state: undefined, computed: false, jewels_total: null }), true, "a server that predates `state`");
 });

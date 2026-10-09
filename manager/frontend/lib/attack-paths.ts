@@ -770,9 +770,11 @@ export function overviewLine(row: OverviewRow): OverviewLine {
     };
   }
   if (state === "no_targets") {
+    // An engagement with no hosts at all says that first: "no asset is marked critical" is true of it, but not the news.
+    const lead = emptyReasons({ reasons: row.why_empty } as Diagnostics).find((r) => r.code !== "no_targets");
     return {
       state, headline: "No crown jewels marked",
-      detail: "No asset is marked critical, so the model has nothing to protect. Mark the assets that matter to model routes to them. This is not evidence the network is safe.",
+      detail: `${lead ? `${lead.title}. ` : ""}No asset is marked critical, so the model has nothing to protect. Mark the assets that matter to model routes to them. This is not evidence the network is safe.`,
       ways: null, coverage, stale,
     };
   }
@@ -1051,4 +1053,43 @@ export function sparkline(values: (number | null)[], w = 64, h = 20, pad = 5): S
   if (run.length > 1) segments.push(run.join(" "));
   const lastV = values[values.length - 1];
   return { segments, last: lastV == null ? null : { x: x(values.length - 1), y: y(lastV) } };
+}
+
+// ── Surfacing: the "needs attention" item and the Compute action ─────────────
+
+export interface AttentionItem {
+  /** Short on purpose: the strip truncates a label at about 30 characters, so the count sits in `detail`. */
+  label: string;
+  detail: string;
+  /** high = a crown jewel is exposed outright; medium = reachable by a modelled route. Neither is "critical":
+   *  that word on the strip belongs to measured findings, and this is a Beta model. */
+  tone: "high" | "medium";
+  href: string;
+}
+
+/** The one line the "Needs attention now" strip may carry about attack paths, or null when the model has
+ *  nothing reachable to point at (a quiet model is not a clear bill of health, so it says nothing). */
+export function attackPathAttention(summary: OverviewSummary | null | undefined): AttentionItem | null {
+  if (!summary) return null;
+  const href = "/attack-paths";
+  if (summary.exposed > 0) {
+    return {
+      label: "Crown jewel exposed (Beta)",
+      detail: `${plural(summary.exposed, "engagement")} · remove the exposure first`, tone: "high", href,
+    };
+  }
+  if (summary.with_reachable > 0) {
+    return {
+      label: "Crown jewel reachable (Beta)",
+      detail: `${plural(summary.with_reachable, "engagement")} · modelled, not measured`, tone: "medium", href,
+    };
+  }
+  return null;
+}
+
+/** Rows a person can ask to compute: nothing is stored yet, or the stored analysis recorded no per-jewel
+ *  data. A row with no crown jewel marked is not offered: computing again cannot change that. */
+export function canCompute(row: Pick<OverviewRow, "state" | "computed" | "jewels_total">): boolean {
+  const state = overviewState(row as OverviewRow);
+  return state === "not_computed" || state === "unrecorded";
 }

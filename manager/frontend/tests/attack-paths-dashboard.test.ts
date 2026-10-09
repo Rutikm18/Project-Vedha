@@ -126,6 +126,70 @@ const summary = (over: Partial<OverviewSummary> = {}): OverviewSummary => ({
   not_computed: 1, no_targets: 1, unrecorded: 0, jewels_total: 5, jewels_reachable: 4, ...over,
 });
 
+describe("Compute from a list", () => {
+  const uncomputed = () => row({
+    engagement_id: "22222222-2222-4222-8222-222222222222", name: "Umbrella lab", state: "not_computed", computed: false,
+    computed_at: null, path_count: null, fix_set_size: null, fix_assets: [], coverage: null, stale_assets: null,
+    jewels_total: null, jewels_reachable: null, jewels_exposed: null, ways_in: null,
+  });
+  const noop = { run: () => undefined, pendingId: null };
+
+  test("an uncomputed row gets a Compute button beside its link, never inside it", () => {
+    const out = html(createElement(OverviewList, { rows: [uncomputed()], compute: noop }));
+    assert.match(out, /<\/a><button type="button" class="btn btn-secondary apo-compute focusable"/);
+    assert.match(out, /aria-label="Compute attack paths for Umbrella lab"/);
+    assert.match(out, /Compute<\/button>/);
+    const link = out.slice(out.indexOf("<a "), out.indexOf("</a>"));
+    assert.doesNotMatch(link, /<button/, "an interactive control inside a link is invalid and unreachable by keyboard");
+  });
+
+  test("rows that already have a reading, and lists with no compute handler, get no button", () => {
+    const computed = html(createElement(OverviewList, { rows: [row(), row({ state: "unreachable", jewels_reachable: 0 }), row({ state: "no_targets", jewels_total: 0 })], compute: noop }));
+    assert.doesNotMatch(computed, /apo-compute/);
+    assert.doesNotMatch(html(createElement(OverviewList, { rows: [uncomputed()] })), /apo-compute/);
+  });
+
+  test("while one engagement computes, its button says so and every button is disabled", () => {
+    const out = html(createElement(OverviewList, { rows: [uncomputed()], compute: { run: () => undefined, pendingId: "22222222-2222-4222-8222-222222222222" } }));
+    assert.match(out, /aria-label="Computing attack paths for Umbrella lab"/);
+    assert.match(out, /disabled=""/);
+    assert.match(out, /Computing…/);
+  });
+
+  test("the action is the existing explicit recompute, run on a click and nowhere else", () => {
+    const hook = read("components/attack-paths/useComputeAttackPaths.ts").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    assert.match(hook, /attackPathsApi\.list\(row\.engagement_id, \{ refresh: true, pageSize: 1 \}\)/);
+    assert.match(hook, /useMutation/);
+    assert.doesNotMatch(hook, /useQuery\(|useEffect|setInterval/, "nothing computes on load or on a timer");
+    assert.match(hook, /onError: \(e, row\) => toast\.error/);
+    for (const key of ['q.queryKey[2] === "attackPaths"', '"attack-paths-overview"', '"attack-paths-focus"']) {
+      assert.ok(hook.includes(key), `refreshes ${key}`);
+    }
+  });
+
+  test("both lists pass the handler in", () => {
+    assert.match(read("components/dashboard/AttackPathsPanel.tsx"), /<OverviewList rows=\{shown\} compute=\{compute\} \/>/);
+    assert.match(read("app/attack-paths/page.tsx"), /<OverviewList rows=\{rows\} compute=\{compute\} \/>/);
+  });
+});
+
+describe("the Needs attention strip", () => {
+  const grid = read("components/dashboard/DashboardGrid.tsx");
+
+  test("reads the attack-paths dataset only where the capability exists, and adds no request of its own", () => {
+    assert.match(grid, /const canSeeAttackPaths = useConsoleCapability\("viewAttackPaths"\)/);
+    assert.match(grid, /useConsoleQuery<Overview>\("attackPaths", \{ refetchInterval: 120_000, enabled: canSeeAttackPaths \}\)/);
+    assert.match(grid, /canSeeAttackPaths \? attackPathAttention\(attackPaths\.data\?\.summary\) : null/);
+  });
+
+  test("its item comes last, and an outage of it is not counted as an unavailable urgent signal", () => {
+    const items = grid.slice(grid.indexOf("const items = ["), grid.indexOf("if (loading && items.length === 0)"));
+    assert.ok(items.indexOf("critical > 0") < items.indexOf("breached > 0") && items.indexOf("offline > 0") < items.indexOf("attackPathItem ?"));
+    assert.match(grid, /const failed = \[findings\.error, sla\.error, agents\.error\]\.filter\(Boolean\)\.length;/);
+    assert.match(grid, /Items marked Beta are modelled, not measured\./);
+  });
+});
+
 describe("the triage tiles", () => {
   test("three tiles of engagement counts, each with what it is counted out of", () => {
     const out = html(createElement(AttackPathsTiles, { summary: summary() }));
@@ -256,7 +320,7 @@ describe("the dashboard section is operator-only", () => {
   test("the card is drawn only for an exposed or reachable top row; the ladder never waits for it", () => {
     const panel = read("components/dashboard/AttackPathsPanel.tsx");
     assert.match(panel, /\["exposed", "reachable"\]\.includes\(overviewState\(top\)\)/);
-    assert.match(panel, /<OverviewList rows=\{shown\} \/>\s*\{focusRow && <FixFirstCard row=\{focusRow\} \/>\}/);
+    assert.match(panel, /<OverviewList rows=\{shown\} compute=\{compute\} \/>\s*\{focusRow && <FixFirstCard row=\{focusRow\} \/>\}/);
   });
 });
 
@@ -264,7 +328,7 @@ describe("layout and type", () => {
   test("layout follows the panel's own width (container queries), not the viewport", () => {
     assert.match(OVERVIEW_STYLES, /@container apxp \(min-width: 760px\)/);
     assert.match(OVERVIEW_STYLES, /@container apx \(max-width: 560px\)/);
-    assert.doesNotMatch(OVERVIEW_STYLES, /@media/);
+    assert.doesNotMatch(OVERVIEW_STYLES, /@media[^{]*(min|max)-width/, "no viewport breakpoints; only the motion preference may use @media");
   });
 
   test("sizes come from the type scale and meaning-carrying marks are not drawn with border tokens", () => {

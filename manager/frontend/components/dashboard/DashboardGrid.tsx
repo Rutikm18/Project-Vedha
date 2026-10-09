@@ -46,6 +46,7 @@ import { SlaStatus } from "./SlaStatus";
 import { PatchComparisonMatrix } from "./PatchComparisonMatrix";
 import { ProtocolRiskCard, ZoneHealthCard } from "./ExposureCards";
 import { AttackPathsPanel } from "./AttackPathsPanel";
+import { attackPathAttention, type Overview } from "../../lib/attack-paths";
 
 /* ------------------------------------------------------------ Agent monitor
    Ported from the previous dashboard so live probe/agent state is preserved.
@@ -66,6 +67,12 @@ interface AttentionSlaSummary { summary?: { breached?: number; atRisk?: number }
 function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
   const findingsPath = useConsolePath("findings");
   const fleetPath = useConsolePath("fleet");
+  // Operator console only (the customer console has no such dataset). The same cached query the Attack paths
+  // section reads, so this adds no request. Its failure is NOT counted below: the section says so itself, and
+  // "urgent work cannot be assessed" is about measured signals.
+  const canSeeAttackPaths = useConsoleCapability("viewAttackPaths");
+  const attackPaths = useConsoleQuery<Overview>("attackPaths", { refetchInterval: 120_000, enabled: canSeeAttackPaths });
+  const attackPathItem = canSeeAttackPaths ? attackPathAttention(attackPaths.data?.summary) : null;
   const findings = useConsoleQuery<AttentionFindingSummary>("findingsSummary", { refetchInterval: 60_000 });
   const sla = useConsoleQuery<AttentionSlaSummary>("sla", { refetchInterval: 60_000 });
   const agents = useConsoleQuery<Array<{ status?: string }>>("agents", { refetchInterval: 15_000 });
@@ -97,6 +104,14 @@ function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
       icon: WifiOff,
       href: fleetPath,
     } : null,
+    // Last: a Beta model's reading never outranks something measured.
+    attackPathItem ? {
+      label: attackPathItem.label,
+      detail: attackPathItem.detail,
+      tone: attackPathItem.tone === "high" ? "var(--sev-high-color)" : "var(--sev-medium-color)",
+      icon: Route,
+      href: attackPathItem.href,
+    } : null,
   ].filter(Boolean) as Array<{
     label: string; detail: string; tone: string; icon: React.ElementType; href: string;
   }>;
@@ -123,7 +138,7 @@ function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
           <h2 id="attention-title">Needs attention now</h2>
           <p>
             {items.length > 0
-              ? "Evidence-backed work ordered by immediate operational impact."
+              ? `Evidence-backed work ordered by immediate operational impact.${attackPathItem ? " Items marked Beta are modelled, not measured." : ""}`
               : failed > 0 ? "Urgent work cannot be fully assessed while signals are unavailable." : "No critical findings, SLA breaches, or offline probes are recorded."}
           </p>
         </div>
@@ -132,7 +147,7 @@ function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
       {items.length > 0 && (
         <div className="attention-strip__items">
           {items.map(({ label, detail, tone, icon: Icon, href }) => (
-            <button key={href} type="button" onClick={() => onOpen(href)} style={{ "--attention-tone": tone } as React.CSSProperties}>
+            <button key={href} type="button" title={`${label}. ${detail}`} onClick={() => onOpen(href)} style={{ "--attention-tone": tone } as React.CSSProperties}>
               <Icon size={15} aria-hidden />
               <span><strong>{label}</strong><small>{detail}</small></span>
             </button>

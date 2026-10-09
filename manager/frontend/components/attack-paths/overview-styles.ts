@@ -40,6 +40,11 @@ export const OVERVIEW_STYLES = `
 
 /* ── ladder rows ──────────────────────────────────────────────── */
 .apx { container: apx / inline-size; min-width: 0; }
+.apo-li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.apo-compute { margin-right: var(--space-5); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.apx-spin { animation: apx-spin 0.9s linear infinite; }
+@keyframes apx-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .apx-spin { animation: none; } }
 .apo-row { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) 16px; gap: var(--space-1) var(--space-4); align-items: center; padding: var(--space-3) var(--space-5); text-decoration: none; color: inherit; }
 .apo-name { min-width: 0; display: grid; gap: 2px; }
 .apo-name strong { font-size: var(--fs-body); font-weight: 650; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -59,6 +64,8 @@ export const OVERVIEW_STYLES = `
 .apo-go { color: var(--text-muted); flex-shrink: 0; }
 .apo-note { margin: 0; padding: var(--space-3) var(--space-5); font-size: var(--fs-label); line-height: 1.5; color: var(--text-muted); border-top: var(--hairline) solid var(--border-subtle); }
 @container apx (max-width: 560px) {
+  .apo-li { grid-template-columns: minmax(0, 1fr); }
+  .apo-compute { margin: 0 var(--space-5) var(--space-3); justify-self: start; }
   .apo-row { grid-template-columns: minmax(0, 1fr) 16px; }
   .apo-ways::before { content: none; }
   .apo-name { grid-column: 1; }

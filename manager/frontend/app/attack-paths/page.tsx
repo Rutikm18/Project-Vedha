@@ -7,6 +7,7 @@ import { DataState, EmptyState, SkeletonRows } from "../../components/states/Dat
 import { AttackPathStyles } from "../../components/attack-paths/AttackPathStyles";
 import { AttackPathsTiles, AttackPathsTilesSkeleton } from "../../components/attack-paths/AttackPathsTiles";
 import { OverviewFootnote, OverviewList } from "../../components/attack-paths/OverviewList";
+import { useComputeAttackPaths } from "../../components/attack-paths/useComputeAttackPaths";
 import { BetaNotice } from "../engagements/[id]/attack-paths/Panels";
 import { fetchJson } from "../../lib/fetcher";
 import { overviewSummary, type Overview } from "../../lib/attack-paths";
@@ -19,6 +20,7 @@ export default function AttackPathsOverviewPage() {
     queryFn: () => fetchJson<Overview>("/api/attack-paths/overview?limit=200"),
   });
   const rows = query.data?.engagements ?? [];
+  const compute = useComputeAttackPaths();
 
   return (
     <PageShell
@@ -44,7 +46,7 @@ export default function AttackPathsOverviewPage() {
             empty={<EmptyState title="No engagements yet" hint="Create an engagement and run a scan; attack paths are computed per engagement." />}
           >
             <AttackPathsTiles summary={query.data?.summary} />
-            <OverviewList rows={rows} />
+            <OverviewList rows={rows} compute={compute} />
             <OverviewFootnote />
           </DataState>
         </section>

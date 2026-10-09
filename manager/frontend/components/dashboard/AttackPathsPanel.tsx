@@ -8,6 +8,7 @@ import { AttackPathStyles } from "../attack-paths/AttackPathStyles";
 import { AttackPathsTiles, AttackPathsTilesSkeleton } from "../attack-paths/AttackPathsTiles";
 import { FixFirstCard } from "../attack-paths/FixFirstCard";
 import { OverviewFootnote, OverviewList } from "../attack-paths/OverviewList";
+import { useComputeAttackPaths } from "../attack-paths/useComputeAttackPaths";
 import { useConsoleQuery } from "../../lib/console-source";
 import { overviewState, overviewSummary, type Overview } from "../../lib/attack-paths";
 
@@ -19,6 +20,7 @@ const SHOWN_ON_DASHBOARD = 5;
  *  Loading, failure and "no engagements" are three different claims and are shown as such. */
 export function AttackPathsPanel() {
   const query = useConsoleQuery<Overview>("attackPaths", { refetchInterval: 120_000 });
+  const compute = useComputeAttackPaths();
   const rows = query.data?.engagements ?? [];
   const shown = rows.slice(0, SHOWN_ON_DASHBOARD);
   const total = query.data?.total ?? rows.length;
@@ -39,7 +41,7 @@ export function AttackPathsPanel() {
       >
         <AttackPathsTiles summary={query.data?.summary} />
         <div className="apx-split" data-focus={focusRow ? "true" : "false"}>
-          <OverviewList rows={shown} />
+          <OverviewList rows={shown} compute={compute} />
           {focusRow && <FixFirstCard row={focusRow} />}
         </div>
         <OverviewFootnote />

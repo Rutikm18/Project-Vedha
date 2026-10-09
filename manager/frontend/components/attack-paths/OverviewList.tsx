@@ -2,9 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronRight, Info } from "lucide-react";
+import { AlertTriangle, ChevronRight, Info, Loader2, Play } from "lucide-react";
 import { formatCompact } from "../portal/Timestamp";
-import { overviewLine, trendView, type OverviewRow, type OverviewState } from "../../lib/attack-paths";
+import { canCompute, overviewLine, trendView, type OverviewRow, type OverviewState } from "../../lib/attack-paths";
 import { JewelMeter } from "./JewelMeter";
 import { Sparkline } from "./Sparkline";
 
@@ -19,16 +19,22 @@ const RAIL: Record<OverviewState, string> = {
 };
 
 /** One engagement per row, each a link into that engagement's Attack paths page. Used by the
- *  dashboard section (a handful) and the /attack-paths page (all). Needs <AttackPathStyles />. */
-export function OverviewList({ rows }: { rows: OverviewRow[] }) {
+ *  dashboard section (a handful) and the /attack-paths page (all). Needs <AttackPathStyles />.
+ *  `compute` adds a Compute button to rows nobody has computed (or whose analysis recorded no per-jewel
+ *  data); the button is a sibling of the link, never inside it, and does nothing until clicked. */
+export function OverviewList({ rows, compute }: {
+  rows: OverviewRow[];
+  compute?: { run: (row: OverviewRow) => void; pendingId: string | null };
+}) {
   return (
     <div className="apx">
       <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {rows.map((row) => {
           const line = overviewLine(row);
           const trend = trendView(row);
+          const busy = compute?.pendingId === row.engagement_id;
           return (
-            <li key={row.engagement_id}>
+            <li key={row.engagement_id} className="apo-li">
               <Link
                 href={`/engagements/${encodeURIComponent(row.engagement_id)}/attack-paths`}
                 className="console-row focusable apo-row"
@@ -68,6 +74,14 @@ export function OverviewList({ rows }: { rows: OverviewRow[] }) {
                 </div>
                 <ChevronRight size={16} className="apo-go" aria-hidden="true" />
               </Link>
+              {compute && canCompute(row) && (
+                <button type="button" className="btn btn-secondary apo-compute focusable" disabled={compute.pendingId !== null}
+                  aria-label={busy ? `Computing attack paths for ${row.name}` : `Compute attack paths for ${row.name}`}
+                  onClick={() => compute.run(row)}>
+                  {busy ? <Loader2 size={13} className="apx-spin" aria-hidden="true" /> : <Play size={13} aria-hidden="true" />}
+                  {busy ? "Computing…" : "Compute"}
+                </button>
+              )}
             </li>
           );
         })}
