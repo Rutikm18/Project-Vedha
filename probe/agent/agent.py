@@ -477,7 +477,36 @@ def configure_logging() -> str:
     transport_level = logging.DEBUG if level_name == "DEBUG" else logging.WARNING
     for noisy in ("httpx", "httpcore", "websockets", "asyncio", "urllib3"):
         logging.getLogger(noisy).setLevel(transport_level)
+    aio = logging.getLogger("asyncio")
+    if not any(isinstance(f, _QuietPeerResets) for f in aio.filters):
+        aio.addFilter(_QuietPeerResets())
     return level_name
+
+
+class _QuietPeerResets(logging.Filter):
+    """A scanned host closing a connection is not an agent error.
+
+    On Windows the Proactor loop logs a full ERROR traceback when a peer resets a
+    socket while asyncio is closing it ("Exception in callback
+    _ProactorBasePipeTransport._call_connection_lost ... WinError 10054"). Banner
+    grabs and deep branches hit this on every host that hangs up on them, which
+    reads as a crashing agent. Such a record becomes one DEBUG line (shown only
+    at DEBUG); every other asyncio error is untouched.
+    """
+
+    _RESETS = (ConnectionResetError, ConnectionAbortedError)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        exc = record.exc_info[1] if record.exc_info else None
+        if not (isinstance(exc, self._RESETS)
+                and "_call_connection_lost" in record.getMessage()):
+            return True
+        if not logging.getLogger().isEnabledFor(logging.DEBUG):
+            return False
+        record.levelno, record.levelname = logging.DEBUG, "DEBUG"
+        record.msg, record.args = f"peer reset a closing connection ({exc})", None
+        record.exc_info = record.exc_text = None
+        return True
 
 
 LOG_FILE_MAX_BYTES = 10 * 1024 * 1024
