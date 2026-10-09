@@ -19,6 +19,8 @@ export function useComputeAttackPaths() {
       void qc.invalidateQueries({ queryKey: ["console"] , predicate: (q) => q.queryKey[2] === "attackPaths" });
       void qc.invalidateQueries({ queryKey: ["attack-paths-overview"] });
       void qc.invalidateQueries({ queryKey: ["attack-paths-focus"] });
+      void qc.invalidateQueries({ queryKey: ["attack-paths", row.engagement_id] });
+      void qc.invalidateQueries({ queryKey: ["attack-path-zones", row.engagement_id] });
       void qc.invalidateQueries({ queryKey: ["attack-path", row.engagement_id] });
       void qc.invalidateQueries({ queryKey: ["attack-path-analysis", row.engagement_id] });
       toast.success("Attack paths computed", `${row.name}: the row now shows what was found.`);

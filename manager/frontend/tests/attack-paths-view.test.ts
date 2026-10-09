@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   basisInfo, caveatSummary, emptyReasons, fixFirstSummary, fixPointIds, fixSentence, focusBars, focusLead,
-  attackPathAttention, canCompute, freshnessInfo, layoutPathMap, MAP, meterCells, overviewLine, overviewState, overviewSummary, overviewTiles,
-  percent, riskLabel, riskShare, routeChainView, shortDate, sparkline, targetExposed, techniqueLabel, trendView, truncateLabel,
+  attackPathAttention, canCompute, freshnessInfo, layoutPathMap, layoutZoneMap, MAP, meterCells, overviewLine, overviewState, overviewSummary, overviewTiles,
+  percent, riskLabel, riskShare, routeChainView, shortDate, sparkline, targetExposed, techniqueLabel, trendView, truncateLabel, ZONE, zoneRoles, zoneSummary,
   type ChokeAnalysis, type Coverage, type Diagnostics, type Focus, type FocusNode, type FocusRoute,
-  type FreshnessReport, type HistoryPoint, type Overview, type OverviewRow, type OverviewSummary, type PathSummary,
+  type FreshnessReport, type HistoryPoint, type Overview, type Zone, type ZoneLink, type ZoneView, type OverviewRow, type OverviewSummary, type PathSummary,
 } from "../lib/attack-paths";
 
 function route(id: string, ...hosts: string[]): PathSummary {
@@ -633,4 +633,107 @@ test("only rows nobody computed, or whose analysis recorded no per-jewel data, c
     assert.equal(canCompute(orow({ state })), false, state);
   }
   assert.equal(canCompute({ state: undefined, computed: false, jewels_total: null }), true, "a server that predates `state`");
+});
+
+// ── zones ────────────────────────────────────────────────────────────────────
+
+const zone = (key: string, over: Partial<Zone> = {}): Zone => ({
+  key, label: key, hosts: 3, stale_hosts: 0, inferred: false, in_scope: true, entry: false, jewel: false, fix: false, routes: 4, ...over,
+});
+const link = (from: string, to: string, over: Partial<ZoneLink> = {}): ZoneLink => ({ from, to, routes: 2, basis: "assumed", weak: true, ...over });
+const view = (zones: Zone[], links: ZoneLink[], over: Partial<ZoneView> = {}): ZoneView => ({
+  engagement_id: "e1", computed: true, computed_at: "2026-10-09T09:00:00Z", routes_considered: 6, zones, links, other_zones: 0,
+  unplaced_assets: 0, zones_hidden: 0, links_hidden: 0, routes_unplaced: 0, entry_unplaced: 0, jewel_unplaced: 0, ...over,
+});
+
+test("roles are words, in reading order, and an inferred subnet says so", () => {
+  assert.deepEqual(zoneRoles({ entry: true, jewel: true, fix: true, inferred: true }), ["Entry", "Crown jewel", "Fix here", "Inferred subnet"]);
+  assert.deepEqual(zoneRoles({ entry: false, jewel: false, fix: false, inferred: false }), []);
+});
+
+test("subnets sit one column after the nearest subnet that leads to them, entries on the left", () => {
+  const l = layoutZoneMap(
+    [zone("dmz", { entry: true }), zone("app"), zone("db", { jewel: true })],
+    [link("dmz", "app"), link("app", "db")],
+  );
+  const col = Object.fromEntries(l.nodes.map((n) => [n.key, n.col]));
+  assert.deepEqual(col, { dmz: 0, app: 1, db: 2 });
+  assert.equal(l.width, ZONE.pad * 2 + 2 * (ZONE.boxWidth + ZONE.colGap) + ZONE.boxWidth);
+  assert.equal(l.edges.length, 2);
+  assert.ok(l.edges.every((e) => !e.backward && e.x2 > e.x1));
+});
+
+test("two entries and two jewels fit in two columns without boxes overlapping", () => {
+  const l = layoutZoneMap(
+    [zone("a", { entry: true }), zone("b", { entry: true }), zone("c", { jewel: true }), zone("d", { jewel: true })],
+    [link("a", "c"), link("a", "d"), link("b", "c"), link("b", "d")],
+  );
+  assert.deepEqual(l.nodes.map((n) => n.col).sort(), [0, 0, 1, 1]);
+  const spots = new Set(l.nodes.map((n) => `${n.x},${n.y}`));
+  assert.equal(spots.size, 4, "no two boxes share a position");
+  for (const a of l.nodes) for (const b of l.nodes) {
+    if (a !== b && a.col === b.col) assert.ok(Math.abs(a.y - b.y) >= ZONE.boxHeight, "boxes in one column do not overlap");
+  }
+});
+
+test("the layout is the same for the same input, whatever the order it arrives in", () => {
+  const zs = [zone("x", { entry: true }), zone("y"), zone("z", { jewel: true })];
+  const ls = [link("x", "y"), link("y", "z")];
+  const a = layoutZoneMap(zs, ls);
+  const b = layoutZoneMap([...zs].reverse(), [...ls].reverse());
+  const pos = (m: typeof a) => Object.fromEntries(m.nodes.map((n) => [n.key, [n.x, n.y]]));
+  assert.deepEqual(pos(a), pos(b));
+});
+
+test("a step against the flow, a cycle and a subnet no step leads to are all drawn", () => {
+  const l = layoutZoneMap([zone("a", { entry: true }), zone("b"), zone("lonely", { entry: true, jewel: true })], [link("a", "b"), link("b", "a")]);
+  assert.equal(l.nodes.length, 3, "nothing disappears");
+  assert.equal(l.edges.find((e) => e.key === "b>a")?.backward, true);
+  assert.equal(l.nodes.find((n) => n.key === "lonely")?.col, 0);
+  assert.equal(layoutZoneMap([zone("only", { entry: true, jewel: true })], []).edges.length, 0);
+});
+
+test("links to a subnet that is not drawn, or back to the same one, are dropped rather than crashing the map", () => {
+  const l = layoutZoneMap([zone("a", { entry: true })], [link("a", "ghost"), link("a", "a")]);
+  assert.equal(l.edges.length, 0);
+  assert.deepEqual(layoutZoneMap([], []), { nodes: [], edges: [], width: 0, height: 0 });
+});
+
+test("an edge carries its basis in words", () => {
+  const l = layoutZoneMap([zone("a", { entry: true }), zone("b", { jewel: true })], [link("a", "b", { basis: "assumed" })]);
+  assert.equal(l.edges[0].basisLabel, "Assumed route");
+  assert.equal(l.edges[0].weak, true);
+});
+
+test("the sentence over the map counts steps and says how many rest on an assumed link", () => {
+  const zs = [zone("a", { entry: true }), zone("b", { jewel: true }), zone("c", { jewel: true })];
+  assert.equal(zoneSummary(view(zs, [link("a", "b"), link("a", "c")])).lead,
+    "The listed routes start in 1 subnet and end in 2 subnets; 2 steps cross between subnets, and all of them rest on assumed links.");
+  assert.equal(zoneSummary(view(zs, [link("a", "b", { basis: "observed", weak: false }), link("a", "c")])).lead,
+    "The listed routes start in 1 subnet and end in 2 subnets; 2 steps cross between subnets, and 1 of them rests on an assumed link.");
+  assert.match(zoneSummary(view(zs, [link("a", "b", { basis: "same_subnet", weak: false })])).lead ?? "", /1 step crosses between subnets, and none of them rests on an assumed link\.$/);
+  assert.match(zoneSummary(view([zone("a", { entry: true, jewel: true })], [])).lead ?? "", /no step crosses from one subnet to another\.$/);
+  assert.match(zoneSummary(view(zs, [link("a", "b")])).lead ?? "", /1 step crosses between subnets, and it rests on an assumed link\.$/);
+});
+
+test("what the map leaves out is said, each in its own sentence", () => {
+  const s = zoneSummary(view([zone("a", { entry: true })], [], {
+    other_zones: 2, unplaced_assets: 3, zones_hidden: 1, entry_unplaced: 1, jewel_unplaced: 2, routes_truncated: true,
+  }));
+  assert.equal(s.notes.length, 6);
+  assert.match(s.notes.join(" "), /1 listed route starts at a host the analysis did not place in a subnet, so no entry subnet is claimed for it\./);
+  assert.match(s.notes.join(" "), /2 listed routes end at a crown jewel the analysis did not place in a subnet\./);
+  assert.match(s.notes.join(" "), /2 other subnets have hosts but no listed route touches them\./);
+  assert.match(s.notes.join(" "), /3 hosts could not be placed in any subnet and are not drawn\./);
+  assert.match(s.notes.join(" "), /1 more subnet is not drawn/);
+  assert.match(s.notes.join(" "), /Only the first 500 stored routes were aggregated\./);
+});
+
+test("nothing is said for a never-computed engagement, and routes that place no host say that and nothing safer", () => {
+  assert.deepEqual(zoneSummary(null), { lead: null, notes: [] });
+  assert.deepEqual(zoneSummary(view([], [], { computed: false })), { lead: null, notes: [] });
+  const none = zoneSummary(view([], [], { routes_unplaced: 2 }));
+  assert.equal(none.lead, null);
+  assert.deepEqual(none.notes, ["2 listed routes could not be placed in any subnet, so none is drawn."]);
+  assert.deepEqual(zoneSummary(view([], [], { routes_considered: 0 })), { lead: null, notes: [] });
 });

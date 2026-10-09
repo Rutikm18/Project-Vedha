@@ -1093,3 +1093,197 @@ export function canCompute(row: Pick<OverviewRow, "state" | "computed" | "jewels
   const state = overviewState(row as OverviewRow);
   return state === "not_computed" || state === "unrecorded";
 }
+
+// ── Zones: the stored routes grouped into the subnets they cross ─────────────
+
+export interface Zone {
+  key: string;
+  /** "10.0.1.0/24", or "10.0.1.0/24 @ HQ" when the subnet belongs to a site. */
+  label: string;
+  /** Hosts the analysis observed in it; null = not recorded. */
+  hosts: number | null;
+  stale_hosts: number | null;
+  inferred: boolean;
+  in_scope: boolean;
+  entry: boolean;
+  jewel: boolean;
+  fix: boolean;
+  /** Stored routes (a capped list) that pass through it. */
+  routes: number;
+}
+
+export interface ZoneLink {
+  from: string;
+  to: string;
+  /** Stored routes (a capped list) that take this step. */
+  routes: number;
+  basis: string;
+  weak: boolean;
+}
+
+export interface ZoneView {
+  engagement_id: string | null;
+  computed: boolean;
+  computed_at: string | null;
+  routes_considered: number | null;
+  routes_truncated?: boolean;
+  zones: Zone[];
+  links: ZoneLink[];
+  /** Subnets with hosts that no stored route touches. */
+  other_zones: number;
+  /** Hosts the analysis could not place in any subnet. */
+  unplaced_assets: number | null;
+  zones_hidden: number;
+  links_hidden: number;
+  routes_unplaced: number;
+  entry_unplaced: number;
+  jewel_unplaced: number;
+}
+
+export const ZONE = { boxWidth: 176, boxHeight: 66, colGap: 132, rowGap: 24, pad: 16 } as const;
+
+export interface ZoneNode extends Zone {
+  col: number;
+  row: number;
+  x: number;
+  y: number;
+  /** The roles in words (never colour alone), in reading order. */
+  roles: string[];
+}
+
+export interface ZoneEdge extends ZoneLink {
+  key: string;
+  x1: number; y1: number; x2: number; y2: number;
+  /** Runs against the left-to-right flow, or within one column: drawn as an arc over the top. */
+  backward: boolean;
+  basisLabel: string;
+}
+
+export interface ZoneMapLayout {
+  nodes: ZoneNode[];
+  edges: ZoneEdge[];
+  width: number;
+  height: number;
+}
+
+export function zoneRoles(z: Pick<Zone, "entry" | "jewel" | "fix" | "inferred">): string[] {
+  const roles: string[] = [];
+  if (z.entry) roles.push("Entry");
+  if (z.jewel) roles.push("Crown jewel");
+  if (z.fix) roles.push("Fix here");
+  if (z.inferred) roles.push("Inferred subnet");
+  return roles;
+}
+
+/**
+ * Subnets left to right: the ones routes start in on the left, and each further subnet one column
+ * after the nearest subnet that leads to it. Deterministic. A subnet no step leads to (all of a route
+ * stays inside it, or the steps form a cycle) sits in the first column rather than disappearing, and
+ * a step that runs against the flow is drawn as an arc, not hidden.
+ */
+export function layoutZoneMap(zones: Zone[], links: ZoneLink[]): ZoneMapLayout {
+  if (zones.length === 0) return { nodes: [], edges: [], width: 0, height: 0 };
+  const known = new Set(zones.map((z) => z.key));
+  const usable = links.filter((l) => known.has(l.from) && known.has(l.to) && l.from !== l.to);
+  const incoming = new Set(usable.map((l) => l.to));
+  const starts = zones.filter((z) => z.entry || !incoming.has(z.key)).map((z) => z.key);
+
+  const depth = new Map<string, number>(starts.map((k) => [k, 0]));
+  const queue = [...starts];
+  while (queue.length) {
+    const k = queue.shift() as string;
+    for (const l of usable) {
+      if (l.from === k && !depth.has(l.to)) { depth.set(l.to, (depth.get(k) ?? 0) + 1); queue.push(l.to); }
+    }
+  }
+  for (const z of zones) if (!depth.has(z.key)) depth.set(z.key, 0);
+
+  const columns = new Map<number, Zone[]>();
+  for (const z of [...zones].sort((a, b) => a.label.localeCompare(b.label))) {
+    const c = depth.get(z.key) ?? 0;
+    columns.set(c, [...(columns.get(c) ?? []), z]);
+  }
+  // Order each column by where its sources sit in the column before (fewer crossings), then by name.
+  const rowOf = new Map<string, number>();
+  const maxCol = Math.max(...columns.keys());
+  for (let c = 0; c <= maxCol; c++) {
+    const col = columns.get(c) ?? [];
+    const score = (z: Zone) => {
+      const src = usable.filter((l) => l.to === z.key && (depth.get(l.from) ?? 0) < c).map((l) => rowOf.get(l.from) ?? 0);
+      return src.length ? src.reduce((a, b) => a + b, 0) / src.length : Number.MAX_SAFE_INTEGER;
+    };
+    col.sort((a, b) => score(a) - score(b) || a.label.localeCompare(b.label));
+    col.forEach((z, i) => rowOf.set(z.key, i));
+    columns.set(c, col);
+  }
+
+  const maxRows = Math.max(...[...columns.values()].map((v) => v.length));
+  const nodes: ZoneNode[] = [];
+  for (const [c, col] of columns) {
+    col.forEach((z, i) => nodes.push({
+      ...z, col: c, row: i, roles: zoneRoles(z),
+      x: ZONE.pad + c * (ZONE.boxWidth + ZONE.colGap),
+      y: ZONE.pad + i * (ZONE.boxHeight + ZONE.rowGap),
+    }));
+  }
+  const at = new Map(nodes.map((n) => [n.key, n]));
+  const edges: ZoneEdge[] = usable.map((l) => {
+    const a = at.get(l.from) as ZoneNode;
+    const b = at.get(l.to) as ZoneNode;
+    return {
+      ...l, key: `${l.from}>${l.to}`,
+      x1: a.x + ZONE.boxWidth, y1: a.y + ZONE.boxHeight / 2, x2: b.x, y2: b.y + ZONE.boxHeight / 2,
+      backward: b.col <= a.col, basisLabel: basisInfo(l.basis).label,
+    };
+  });
+  return {
+    nodes, edges,
+    width: ZONE.pad * 2 + maxCol * (ZONE.boxWidth + ZONE.colGap) + ZONE.boxWidth,
+    height: ZONE.pad * 2 + (maxRows - 1) * (ZONE.boxHeight + ZONE.rowGap) + ZONE.boxHeight,
+  };
+}
+
+export interface ZoneSummary {
+  /** One sentence on what the picture says, with the counts it rests on. Null when there is nothing drawn. */
+  lead: string | null;
+  /** What the picture leaves out, each as its own sentence. */
+  notes: string[];
+}
+
+/** The sentence above the zone map and the things it does not show. Counts are of STORED routes, a capped
+ *  list, and are worded as "listed", never as how exposed a subnet is. */
+export function zoneSummary(v: ZoneView | null | undefined): ZoneSummary {
+  if (!v || !v.computed) return { lead: null, notes: [] };
+  const notes: string[] = [];
+  if (v.zones.length === 0) {
+    if ((v.routes_considered ?? 0) > 0 && v.routes_unplaced > 0) {
+      notes.push(`${plural(v.routes_unplaced, "listed route")} could not be placed in any subnet, so none is drawn.`);
+    }
+    return { lead: null, notes };
+  }
+  const entries = v.zones.filter((z) => z.entry).length;
+  const jewels = v.zones.filter((z) => z.jewel).length;
+  const weak = v.links.filter((l) => l.weak).length;
+  const steps = v.links.length;
+  const where = [
+    entries > 0 ? `start in ${plural(entries, "subnet")}` : null,
+    jewels > 0 ? `end in ${plural(jewels, "subnet")}` : null,
+  ].filter(Boolean).join(" and ");
+  let crossing: string;
+  if (steps === 0) {
+    crossing = "no step crosses from one subnet to another";
+  } else {
+    const basis = weak === 0 ? "none of them rests on an assumed link"
+      : weak === steps ? (steps === 1 ? "it rests on an assumed link" : "all of them rest on assumed links")
+      : `${weak} of them ${weak === 1 ? "rests" : "rest"} on ${weak === 1 ? "an assumed link" : "assumed links"}`;
+    crossing = `${plural(steps, "step")} ${steps === 1 ? "crosses" : "cross"} between subnets, and ${basis}`;
+  }
+  const lead = `The listed routes ${where || "pass through these subnets"}; ${crossing}.`;
+  if (v.entry_unplaced > 0) notes.push(`${plural(v.entry_unplaced, "listed route")} start${v.entry_unplaced === 1 ? "s" : ""} at a host the analysis did not place in a subnet, so no entry subnet is claimed for ${v.entry_unplaced === 1 ? "it" : "them"}.`);
+  if (v.jewel_unplaced > 0) notes.push(`${plural(v.jewel_unplaced, "listed route")} end${v.jewel_unplaced === 1 ? "s" : ""} at a crown jewel the analysis did not place in a subnet.`);
+  if (v.other_zones > 0) notes.push(`${plural(v.other_zones, "other subnet")} ${v.other_zones === 1 ? "has" : "have"} hosts but no listed route touches ${v.other_zones === 1 ? "it" : "them"}.`);
+  if ((v.unplaced_assets ?? 0) > 0) notes.push(`${plural(v.unplaced_assets as number, "host")} could not be placed in any subnet and ${v.unplaced_assets === 1 ? "is" : "are"} not drawn.`);
+  if (v.zones_hidden > 0) notes.push(`${plural(v.zones_hidden, "more subnet")} ${v.zones_hidden === 1 ? "is" : "are"} not drawn (the ones with a role are shown first).`);
+  if (v.routes_truncated) notes.push("Only the first 500 stored routes were aggregated.");
+  return { lead, notes };
+}
