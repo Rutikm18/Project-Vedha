@@ -9,6 +9,7 @@ malware — a deliberate stop is respected.
 from __future__ import annotations
 
 import os
+import posixpath
 import shlex
 import subprocess
 
@@ -66,8 +67,8 @@ def macos_log_path(state_dir: str) -> str:
     output, so a launchd-installed macOS probe was un-debuggable. Kept under the
     state dir so logs/state/spool live together — mirrors the Windows
     ProgramData\\vedha-agent\\logs\\agent.log layout. Absolute (launchd does not
-    expand ~)."""
-    return os.path.expanduser(os.path.join(state_dir, "logs", "agent.log"))
+    expand ~). POSIX-joined: a plist is a macOS file wherever it is rendered."""
+    return posixpath.expanduser(posixpath.join(state_dir, "logs", "agent.log"))
 
 
 def render_unit(os_name: str, values: dict, python_exe: str, probe_dir: str,

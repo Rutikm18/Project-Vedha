@@ -41,6 +41,13 @@ if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 & $py tools\agent_closure.py --export $stage
 if ($LASTEXITCODE -ne 0) { throw 'agent closure export failed' }
 
+# Nuitka refuses company/product names without a numeric file/product version.
+# The agent's own VERSION constant is the single source of truth.
+$verMatch = Select-String -Path (Join-Path $probeRoot 'agent\agent.py') `
+  -Pattern '^VERSION\s*=\s*"(\d+(?:\.\d+){0,3})' -CaseSensitive | Select-Object -First 1
+if (-not $verMatch) { throw 'could not read VERSION from agent\agent.py' }
+$version = $verMatch.Matches[0].Groups[1].Value
+
 # 2) Compile to a standalone folder. Docstrings and asserts are stripped; the
 #    optional credential collectors (paramiko, winrm) are left out on purpose.
 $dist = Join-Path $OutDir 'vedha-agent'
@@ -55,6 +62,7 @@ try {
       --nofollow-import-to=pytest --nofollow-import-to=unittest `
       --windows-console-mode=force --company-name=Vedha --product-name='Vedha Agent' `
       --file-description='Vedha network assessment agent' `
+      "--product-version=$version" "--file-version=$version" `
       "--output-dir=$OutDir" --output-filename=vedha-agent.exe --remove-output `
       agent\agent.py
   if ($LASTEXITCODE -ne 0) { throw 'Nuitka build failed' }
