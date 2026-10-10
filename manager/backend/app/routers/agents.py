@@ -436,8 +436,9 @@ _USE_CASES = {
     "uc_rescan_delta": {
         "display_name": "Re-scan & Change Detection",
         "description": (
-            "Re-runs a full assessment and highlights what changed since the last "
-            "run — new hosts, newly opened ports, and configuration drift."
+            "Re-runs a full assessment and reports what changed since the previous "
+            "completed scan — new hosts, newly observed services, and findings that "
+            "opened, resolved or reopened."
         ),
         "scan_type": "assessment",
         "profile": "it",

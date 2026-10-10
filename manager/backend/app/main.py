@@ -28,6 +28,7 @@ from app.routers.attack_paths import overview_router as attack_paths_overview_ro
 from app.routers.attack_paths import router as attack_paths_router
 from app.routers.detection import router as detection_router
 from app.routers.detection_runs import router as detection_runs_router
+from app.routers.changes import router as changes_router
 from app.routers.agent_advisor import router as agent_advisor_router
 from app.routers.customer_access import (
     router as customer_access_router,
@@ -288,6 +289,7 @@ app.include_router(attack_paths_router)
 app.include_router(attack_paths_overview_router)
 app.include_router(detection_router)
 app.include_router(detection_runs_router)
+app.include_router(changes_router)
 app.include_router(agent_advisor_router)
 app.include_router(ai_report_router)
 app.include_router(ai_router)
