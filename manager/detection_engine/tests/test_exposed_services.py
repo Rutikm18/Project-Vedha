@@ -301,3 +301,31 @@ class TestExposedServiceTraces:
         a = _asset(_fact("port_scan", 4444, {}, status="open"))
         findings = P.detect_exposed_services(a)
         assert [f.port for f in findings] == [4444]
+
+
+# ── dangerous unidentified management ports get an accurate base severity ─────
+# The first lab scan rated Cisco Smart Install (a KEV-listed pre-auth RCE) as a
+# routine "medium remote access". These lock the per-port severity so a takeover
+# port never silently drops back to medium.
+
+def test_cisco_smart_install_is_high_not_medium():
+    r = PI.classify_port(4786, None)
+    assert r is not None and r.category == "remote_access"
+    assert r.severity == "high"            # KEV CVE-2018-0171, unauthenticated
+
+
+def test_unauthenticated_takeover_ports_are_high():
+    for port in (6000, 177, 4899):         # X11, XDMCP, Radmin
+        r = PI.classify_port(port, None)
+        assert r is not None and r.severity == "high", f"port {port} should be high"
+
+
+def test_plain_reachability_ports_stay_medium():
+    for port in (5985, 5900, 179, 427):    # WinRM, VNC (dedicated rule elsewhere), BGP, SLP
+        r = PI.classify_port(port, None)
+        assert r is not None and r.severity == "medium", f"port {port} should stay medium"
+
+
+def test_xdmcp_is_catalogued():
+    # was missing entirely, so an open display manager fell to the generic rule
+    assert 177 in PI.catalog_categories()

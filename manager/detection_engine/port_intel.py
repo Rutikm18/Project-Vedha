@@ -128,21 +128,33 @@ _CLEARTEXT = {
 }
 
 # ── Remote access / management not covered by a dedicated rule ────────────────
+# {port: (name, base severity)}. Base severity escalates +1 when the service is
+# internet-facing (see PortRisk.severity). Most remote-access ports are "medium"
+# (reachability is the issue); the few that are an unauthenticated takeover or a
+# documented pre-auth RCE by default are rated higher so they never read as a
+# routine "medium remote access" (first lab scan rated Cisco Smart Install medium).
 _REMOTE = {
-    5900: "VNC", 5901: "VNC", 5902: "VNC", 5903: "VNC",
-    5800: "VNC over HTTP",
-    5985: "WinRM (HTTP)",
-    5986: "WinRM (HTTPS)",
-    6000: "X11 (often unauthenticated)",
-    3283: "Apple Remote Desktop",
+    5900: ("VNC", "medium"), 5901: ("VNC", "medium"), 5902: ("VNC", "medium"), 5903: ("VNC", "medium"),
+    5800: ("VNC over HTTP", "medium"),
+    5985: ("WinRM (HTTP)", "medium"),
+    5986: ("WinRM (HTTPS)", "medium"),
+    # X11 with no access control streams keystrokes/screens to any client — a direct
+    # unauthenticated compromise of the session, not just reachability.
+    6000: ("X11 (often unauthenticated)", "high"),
+    3283: ("Apple Remote Desktop", "medium"),
     # Management/discovery services the first lab scan found open but unnamed. Each is a
     # HYPOTHESIS from the port number (a banner can overrule it) — the unidentified-service
     # rule covers every port NOT named here.
-    4786: "Cisco Smart Install (unauthenticated config/RCE history, CVE-2018-0171)",
-    4899: "Radmin remote control",
-    4369: "Erlang EPMD (distributed-Erlang node discovery)",
-    179: "BGP (routing session; should only face peers)",
-    427: "SLP (service location; reflection/RCE history)",
+    # Cisco Smart Install needs no authentication and has a KEV-listed RCE (CVE-2018-0171);
+    # Shadowserver rates an exposed Smart Install client critical. Base high → internet-facing critical.
+    4786: ("Cisco Smart Install (unauthenticated config/RCE history, CVE-2018-0171)", "high"),
+    4899: ("Radmin remote control", "high"),           # full remote control, weak legacy auth
+    4369: ("Erlang EPMD (distributed-Erlang node discovery)", "medium"),
+    179: ("BGP (routing session; should only face peers)", "medium"),
+    427: ("SLP (service location; reflection/RCE history)", "medium"),
+    # XDMCP hands out remote X login sessions to any client (UDP/177); add it so an open
+    # display manager is named rather than left to the generic unidentified-service rule.
+    177: ("XDMCP (remote X login manager)", "high"),
 }
 
 # ── Exposed admin / dev / CI web UIs ──────────────────────────────────────────
@@ -270,7 +282,8 @@ def classify_port(port: int, banner: str | None = None,
                         "Legacy/cleartext protocol — credentials and data are "
                         "sniffable; replace with an encrypted equivalent.")
     if port in _REMOTE:
-        return PortRisk("remote_access", _REMOTE[port], "medium", "CWE-284", "T1021",
+        name, sev = _REMOTE[port]
+        return PortRisk("remote_access", name, sev, "CWE-284", "T1021",
                         "Remote-access/management service exposed — restrict to "
                         "VPN/jump hosts and enforce strong auth + MFA.")
     if port in _ADMIN_UI:
