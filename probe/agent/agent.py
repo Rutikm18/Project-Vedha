@@ -295,6 +295,28 @@ def _detect_primary_ipv4() -> str | None:
         return None
 
 
+def _preflight_connect_fast_fail() -> None:
+    """Windows only: say whether scan sockets report a closed port at network
+    speed. Without it every closed port costs ~2 s and connect scans read closed
+    ports as filtered (scanner/win_fast_connect.py). One loopback connect; never
+    blocks startup."""
+    try:
+        from scanner import win_fast_connect
+        result = win_fast_connect.self_check(include_default=False)
+    except Exception:  # noqa: BLE001 — a preflight must never stop the agent
+        return
+    if result is None:
+        return
+    fast = result.get("fast_fail_s")
+    if result.get("effective"):
+        say(f"✓ Port scans: closed ports report in {fast * 1000:.0f} ms "
+            f"(Windows SYN retry off, mode {result['mode']}).", 1)
+    else:
+        say("⚠ Port scans: Windows still retries refused connections (~2 s per closed "
+            "port); full-port sweeps from this agent will be slow. "
+            "Run `doctor` for details.", 1)
+
+
 def _preflight_scope_check(network_segments: list[str]) -> None:
     """Auto-troubleshoot the single silent killer of job execution: a scan
     ceiling that doesn't match the network this probe is actually on.
@@ -455,7 +477,36 @@ def configure_logging() -> str:
     transport_level = logging.DEBUG if level_name == "DEBUG" else logging.WARNING
     for noisy in ("httpx", "httpcore", "websockets", "asyncio", "urllib3"):
         logging.getLogger(noisy).setLevel(transport_level)
+    aio = logging.getLogger("asyncio")
+    if not any(isinstance(f, _QuietPeerResets) for f in aio.filters):
+        aio.addFilter(_QuietPeerResets())
     return level_name
+
+
+class _QuietPeerResets(logging.Filter):
+    """A scanned host closing a connection is not an agent error.
+
+    On Windows the Proactor loop logs a full ERROR traceback when a peer resets a
+    socket while asyncio is closing it ("Exception in callback
+    _ProactorBasePipeTransport._call_connection_lost ... WinError 10054"). Banner
+    grabs and deep branches hit this on every host that hangs up on them, which
+    reads as a crashing agent. Such a record becomes one DEBUG line (shown only
+    at DEBUG); every other asyncio error is untouched.
+    """
+
+    _RESETS = (ConnectionResetError, ConnectionAbortedError)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        exc = record.exc_info[1] if record.exc_info else None
+        if not (isinstance(exc, self._RESETS)
+                and "_call_connection_lost" in record.getMessage()):
+            return True
+        if not logging.getLogger().isEnabledFor(logging.DEBUG):
+            return False
+        record.levelno, record.levelname = logging.DEBUG, "DEBUG"
+        record.msg, record.args = f"peer reset a closing connection ({exc})", None
+        record.exc_info = record.exc_text = None
+        return True
 
 
 LOG_FILE_MAX_BYTES = 10 * 1024 * 1024
@@ -612,6 +663,7 @@ def main() -> None:
     # scans" cause) at startup instead of leaving it to be discovered by a job
     # that quietly never runs. Warnings only — never blocks startup.
     _preflight_scope_check(NETWORK_SEGMENTS)
+    _preflight_connect_fast_fail()
 
     # ── Step 1: Startup gauntlet ─────────────────────────────────────────────
     # One function: HW bind → license → anti-debug.  Fails fast with clear,

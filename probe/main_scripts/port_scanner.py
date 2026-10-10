@@ -81,6 +81,7 @@ from .scanner_base import (
     AdaptiveRateController, RateLimiter,
 )
 from .adaptive_timeout import AdaptiveTimeout
+from . import win_fast_connect
 
 # The errno→(state,reason) classifier now lives in scanner_base (Phase 2 — one
 # shared model). Local alias kept so existing references are unchanged.
@@ -554,6 +555,9 @@ class PortScanner(BaseScanner):
         # dependent, so the vantage is part of the evidence: the same port can
         # be OPEN from one network and FILTERED from another.
         self.vantage = vantage or socket.gethostname()
+        # Windows only: open scan sockets opted out of SYN retransmission so a
+        # refused port reports at network speed (see _connect).
+        self._fast_fail = win_fast_connect.describe()["applies"]
 
     def _build(self, target: str, port: int, state: str, reason: str,
                evidence: str | None, *, rtt_ms: float | None = None,
@@ -587,6 +591,40 @@ class PortScanner(BaseScanner):
         return ScanResult(self.name, target, port=port, proto="tcp",
                           status=state, data=data, evidence=evidence, error=error)
 
+    async def _connect(self, target: str, port: int, local_addr, timeout: float):
+        """asyncio.open_connection, except where Windows would hide a refusal.
+
+        Windows answers an RST by re-sending the SYN (~2.2 s per closed port,
+        measured), so a connect scan read closed ports as `filtered`. There the
+        socket is built here and opted out of SYN retransmission before the
+        connect (scanner/win_fast_connect.py). Hostnames keep the plain path:
+        resolving them belongs to asyncio.
+        """
+        if not self._fast_fail:
+            return await asyncio.wait_for(
+                asyncio.open_connection(target, port, local_addr=local_addr),
+                timeout=timeout)
+        try:
+            family = (socket.AF_INET6 if ipaddress.ip_address(target).version == 6
+                      else socket.AF_INET)
+        except ValueError:
+            return await asyncio.wait_for(
+                asyncio.open_connection(target, port, local_addr=local_addr),
+                timeout=timeout)
+        sock = socket.socket(family, socket.SOCK_STREAM)
+        try:
+            sock.setblocking(False)
+            if local_addr:
+                sock.bind(local_addr)
+            win_fast_connect.enable(sock)
+            await asyncio.wait_for(
+                asyncio.get_running_loop().sock_connect(sock, (target, port)),
+                timeout=timeout)
+        except BaseException:
+            sock.close()
+            raise
+        return await asyncio.open_connection(sock=sock)
+
     async def _attempt(self, target: str, port: int,
                        est: AdaptiveTimeout | None = None,
                        min_timeout: float | None = None) -> ScanResult:
@@ -604,8 +642,7 @@ class PortScanner(BaseScanner):
         t0 = time.monotonic()
         try:
             local_addr = ("", self.source_port) if self.source_port else None
-            fut = asyncio.open_connection(target, port, local_addr=local_addr)
-            reader, writer = await asyncio.wait_for(fut, timeout=to)
+            reader, writer = await self._connect(target, port, local_addr, to)
             rtt_ms = round((time.monotonic() - t0) * 1000, 2)
             src_ip = peer_ip = None
             stack: dict = {}
@@ -1021,6 +1058,26 @@ class PortScanner(BaseScanner):
                 LOG.info("[port_scan] host budget spent on %s — %d ambiguous "
                          "port(s) keep their 'filtered' verdict without a "
                          "second look", target, reprobe_stats["skipped"])
+            if reprobe_stats["capped"]:
+                LOG.info("[port_scan] cleanup pass capped at %d port(s) on %s — %d "
+                         "ambiguous port(s) keep their 'filtered' verdict without "
+                         "a second look", self.reprobe_max_candidates, target,
+                         reprobe_stats["capped"])
+            # A `filtered` nobody re-checked is only as good as this host's own
+            # evidence. When most re-checked ports turned out CLOSED, the rest
+            # are probably closed too (on Windows before the SYN-retry fix this
+            # was ~97% of a sweep): count them apart and say so, so a report
+            # never presents them as a firewall.
+            unverified = reprobe_stats["capped"] + reprobe_stats["skipped"]
+            retested = reprobe_stats["resolved"] + reprobe_stats["remaining"]
+            reprobe_stats["unverified"] = unverified
+            if unverified and retested and reprobe_stats["resolved"] / retested >= 0.5:
+                LOG.warning(
+                    "[port_scan] %d port(s) on %s are reported filtered without a "
+                    "second look, but the cleanup pass found %d of %d re-checked "
+                    "silent ports were really closed — treat them as unverified, "
+                    "not as a firewall", unverified, target,
+                    reprobe_stats["resolved"], retested)
 
         # Record FINAL states, then apply output filtering.
         for port in sorted(collected):
@@ -1046,6 +1103,9 @@ class PortScanner(BaseScanner):
             summ = metrics.summary()
             # Always present so consumers can branch without a key check.
             summ["budget_exhausted"] = budget_exhausted
+            # Part of `filtered` that no second look confirmed (cleanup cap or
+            # host clock). Not firewall evidence on its own.
+            summ["filtered_unverified"] = (reprobe_stats or {}).get("unverified", 0)
             if self.scan_meta:
                 summ["audit"] = self.scan_meta        # profile + ulimit + concurrency
             if reprobe_stats is not None:
