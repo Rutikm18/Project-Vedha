@@ -3,8 +3,8 @@
 import { AlertTriangle, ArrowRight, CheckCircle2, Info, ShieldAlert, Target } from "lucide-react";
 import { SkeletonRows } from "../../../../components/states/DataState";
 import {
-  basisInfo, caveatSummary, emptyReasons, fixFirstSummary, freshnessInfo, percent, riskLabel, riskShare,
-  techniqueLabel,
+  basisInfo, caveatSummary, capabilityLabel, emptyReasons, fixFirstSummary, freshnessInfo, percent, riskLabel, riskShare,
+  suggestedTargetsNote, techniqueLabel,
   type Analysis, type ChokeAnalysis, type ChokeTarget, type Diagnostics, type PathDetail, type PathSummary,
 } from "../../../../lib/attack-paths";
 
@@ -57,6 +57,20 @@ export function CoveragePanel({ analysis }: { analysis: Analysis | undefined }) 
         </ul>
       )}
     </>
+  );
+}
+
+/** P4b: when no asset was marked critical, the targets were SUGGESTED (domain controllers,
+ *  hypervisors, datastores). Say so, so an auto-picked target never reads as a chosen scope. */
+export function SuggestedTargetsNote({ analysis }: { analysis: Analysis | undefined }) {
+  if (!analysis || !analysis.computed) return null;
+  const note = suggestedTargetsNote(analysis.target_selection);
+  if (!note) return null;
+  return (
+    <p className="ap-note" data-tone="neutral">
+      <Target size={14} />
+      <span>{note}</span>
+    </p>
   );
 }
 
@@ -236,6 +250,7 @@ export function PathDetailPanel({ detail }: { detail: PathDetail }) {
               </div>
               <div className="ap-hop-chips">
                 <span className="ap-chip">{techniqueLabel(h.technique)}</span>
+                {capabilityLabel(h.capability) && <span className="ap-chip" data-tone="neutral">{capabilityLabel(h.capability)}</span>}
                 <span className="ap-chip" data-tone={basis.tone} title={basis.caveat ?? undefined}>{basis.label}</span>
                 <span className="ap-chip" title="Ranks steps against each other. Not a prediction.">Likelihood {percent(h.likelihood)}</span>
                 {h.exploited && <span className="ap-chip" data-priority="high"><ShieldAlert size={11} aria-hidden="true" /> Exploits a finding{h.cvss != null ? ` · CVSS ${h.cvss}` : ""}</span>}

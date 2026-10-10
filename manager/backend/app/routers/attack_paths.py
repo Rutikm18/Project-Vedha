@@ -293,6 +293,7 @@ async def get_attack_path(
             "basis": edge.get("basis"),
             "likelihood": edge.get("likelihood"),
             "stale": bool(edge.get("stale")),
+            "capability": edge.get("capability"),       # P2: foothold/lateral/priv_esc for the final step
             "explanation": _explain_hop(edge, labels),
         })
 

@@ -13,7 +13,7 @@ import { fixPointIds, targetExposed, zoneSummary, type Analysis, type Diagnostic
 import { errorMessage, fetchJson } from "../../../../lib/fetcher";
 import { PathMap } from "./PathMap";
 import { ZoneMap } from "./ZoneMap";
-import { BetaNotice, CoveragePanel, EmptyExplainer, ExposedCallout, FixFirstPanel, PathDetailPanel, PathTable } from "./Panels";
+import { BetaNotice, CoveragePanel, EmptyExplainer, ExposedCallout, FixFirstPanel, PathDetailPanel, PathTable, SuggestedTargetsNote } from "./Panels";
 import { ATTACK_PATH_STYLES } from "./styles";
 
 const PAGE_SIZE = 50;
@@ -150,6 +150,7 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
               <h2 className="ap-card-title"><Layers size={15} /> Fix first</h2>
               {choke && <span className="ap-card-meta">ranked by modelled risk removed</span>}
             </header>
+            <SuggestedTargetsNote analysis={analysis.data as Analysis | undefined} />
             {choke
               ? <FixFirstPanel choke={choke} />
               : analysis.isError

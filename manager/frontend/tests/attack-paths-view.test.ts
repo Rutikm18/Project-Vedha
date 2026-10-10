@@ -737,3 +737,47 @@ test("nothing is said for a never-computed engagement, and routes that place no 
   assert.deepEqual(none.notes, ["2 listed routes could not be placed in any subnet, so none is drawn."]);
   assert.deepEqual(zoneSummary(view([], [], { routes_considered: 0 })), { lead: null, notes: [] });
 });
+
+// ── P2/P3/P4b/D8 view-model additions ────────────────────────────────────────
+import {
+  capabilityLabel, suggestedTargetsNote, type TargetSelection,
+} from "../lib/attack-paths";
+
+test("techniqueLabel names an NTLM relay", () => {
+  assert.equal(techniqueLabel("RELAY"), "NTLM relay");
+});
+
+test("capabilityLabel maps control capabilities and ignores unknowns", () => {
+  assert.equal(capabilityLabel("foothold"), "Foothold");
+  assert.equal(capabilityLabel("lateral"), "Lateral move");
+  assert.equal(capabilityLabel("priv_esc"), "Privilege escalation");
+  assert.equal(capabilityLabel("recon"), "Reconnaissance");
+  assert.equal(capabilityLabel(null), null);
+  assert.equal(capabilityLabel("nonsense"), null);
+});
+
+test("routeChainView labels a step by its capability, and a relay by its technique", () => {
+  const r: FocusRoute = {
+    path_id: "p", risk_score: 40, freshness: "fresh",
+    nodes: [
+      { asset_id: "a", label: "A", role: "entry", on_fix_list: false },
+      { asset_id: "b", label: "B", role: "jewel", on_fix_list: false },
+    ],
+    hops: [{ basis: "assumed", technique: "RELAY", stale: false, exploited: true, capability: null }],
+  };
+  const chain = routeChainView(r);
+  const node = chain.find((c) => c.kind === "node" && c.hop) as Extract<typeof chain[number], { kind: "node" }>;
+  assert.equal(node.hop?.step, "NTLM relay");
+});
+
+test("suggestedTargetsNote speaks only when targets were suggested", () => {
+  const operator: TargetSelection = { basis: "operator", suggested: [] };
+  assert.equal(suggestedTargetsNote(operator), null);
+  const suggested: TargetSelection = {
+    basis: "suggested",
+    suggested: [{ asset_id: "dc", label: "DC01", reason: "domain controller" }],
+  };
+  const note = suggestedTargetsNote(suggested);
+  assert.ok(note && note.includes("DC01 (domain controller)"));
+  assert.ok(note && note.toLowerCase().includes("no asset was marked critical"));
+});

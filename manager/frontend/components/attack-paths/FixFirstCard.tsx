@@ -66,7 +66,7 @@ function ChainRow({ item }: { item: ChainItem }) {
         {hop && (
           <div className="apx-hop" data-tone={hop.weak ? "weak" : undefined}>
             {hop.weak && <AlertTriangle size={11} aria-hidden="true" />}
-            {hop.label}{hop.stale ? " · not seen recently" : ""}
+            {hop.step ? `${hop.step} · ` : ""}{hop.label}{hop.stale ? " · not seen recently" : ""}
             {hop.caveat ? ` — ${hop.caveat}` : ""}
           </div>
         )}
@@ -145,6 +145,14 @@ function FocusBody({ focus }: { focus: Focus }) {
           )}
           <p className="apx-cap">The highest-risk of the stored routes (a capped list, not a count of routes).</p>
         </>
+      )}
+
+      {focus.state !== "exposed" && (focus.fix?.exposed_targets?.length ?? 0) > 0 && (
+        <p className="apx-cap" data-tone="weak">
+          {focus.fix!.exposed_targets!.length === 1
+            ? `${focus.fix!.exposed_targets![0].label} is a crown jewel exposed to the internet outright — fixing the hosts above does not protect it; remove its own exposure.`
+            : `${focus.fix!.exposed_targets!.length} crown jewels are exposed to the internet outright — remove their own exposure, which fixing other hosts does not do.`}
+        </p>
       )}
 
       {bars.length > 0 ? (

@@ -404,6 +404,9 @@ def build_focus(
             "size": fix.get("size", len(fix.get("assets") or [])),
             "assets": [{"asset_id": str(a), "label": label(a)} for a in fix.get("assets") or []],
             "independent_routes": {label(k): v for k, v in (fix.get("independent_routes") or {}).items()},
+            # D8: crown jewels exposed outright — their own exposure must be removed.
+            "exposed_targets": [{"asset_id": str(a), "label": label(a)}
+                                for a in fix.get("exposed_targets") or []],
         }
 
     on_list = fix_point_ids(choke)
@@ -437,6 +440,7 @@ def build_focus(
             "hops": [{
                 "basis": e.get("basis"), "technique": e.get("technique"),
                 "stale": bool(e.get("stale")), "exploited": e.get("exploited"),
+                "capability": e.get("capability"),
             } for e in route.get("edges") or [] if isinstance(e, dict)],
         }
     return out

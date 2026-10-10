@@ -41,6 +41,8 @@ export interface Diagnostics {
   assets: number;
   findings: number;
   exploitable_findings: number;
+  /** Findings that can compromise a host: exploitable OR a foothold/lateral/priv-esc capability (P2). */
+  compromising_findings?: number;
   entry_points: number;
   internet_exposed_assets: number;
   targets: number;
@@ -72,6 +74,8 @@ export interface Hop {
   basis: string | null;
   likelihood: number | null;
   stale: boolean;
+  /** What the final step of this hop lets the attacker do: foothold/lateral/priv_esc (P2). */
+  capability?: string | null;
   explanation: string;
 }
 
@@ -101,6 +105,16 @@ export interface FixSet {
   assets: { asset_id: string; label: string }[];
   /** Vertex-disjoint routes to each target, keyed by the target's label. */
   independent_routes: Record<string, number>;
+  /** Crown jewels exposed to the internet outright: their OWN exposure must be removed —
+   *  cutting other hosts cannot protect them (D8). Absent in analyses stored before the field. */
+  exposed_targets?: { asset_id: string; label: string }[];
+}
+
+/** How the path targets were chosen (P4b). `suggested` = nothing was marked critical, so
+ *  high-value hosts were picked automatically; the UI must say so. */
+export interface TargetSelection {
+  basis: "operator" | "suggested" | "explicit" | "none";
+  suggested: { asset_id: string; label: string; reason: string | null }[];
 }
 
 export interface ChokeTarget {
@@ -172,6 +186,7 @@ export type Analysis =
       coverage: Coverage | null;
       freshness: FreshnessReport | null;
       diagnostics: Diagnostics | null;
+      target_selection?: TargetSelection | null;
     };
 
 // ── Wording ──────────────────────────────────────────────────────────────────
@@ -248,11 +263,36 @@ export function techniqueLabel(technique: string | null | undefined): string {
     case "CROSS_SUBNET": return "Across subnets";
     case "GATEWAY_ROUTE": return "Through a gateway";
     case "CREDENTIAL_REUSE": return "Reused credentials";
+    case "RELAY": return "NTLM relay";
     case "SAME_HOST": return "Same machine";
     case "SAME_SEGMENT": return "Within segment";
     case "CONNECTS_TO": return "Network connection";
     default: return technique ? humanize(technique) : "Step";
   }
+}
+
+/** What an attacker gains at a step (P2): a short phrase for the capability that made the
+ *  destination compromisable. Null/unknown shows nothing. */
+export function capabilityLabel(capability: string | null | undefined): string | null {
+  switch (capability) {
+    case "foothold": return "Foothold";
+    case "lateral": return "Lateral move";
+    case "priv_esc": return "Privilege escalation";
+    case "credential_access": return "Credential access";
+    case "recon": return "Reconnaissance";
+    default: return null;
+  }
+}
+
+/** The note shown when path targets were SUGGESTED, not operator-chosen (P4b). Null when the
+ *  operator marked the targets (or picked one explicitly), so nothing is claimed about scoping. */
+export function suggestedTargetsNote(selection: TargetSelection | null | undefined): string | null {
+  if (!selection || selection.basis !== "suggested" || selection.suggested.length === 0) return null;
+  const named = selection.suggested
+    .map((s) => (s.reason ? `${s.label} (${s.reason})` : s.label))
+    .join(", ");
+  return `No asset was marked critical, so these high-value hosts were used as crown jewels: ${named}. `
+    + `Mark the assets that matter to aim the analysis deliberately.`;
 }
 
 // ── Empty results ────────────────────────────────────────────────────────────
@@ -875,6 +915,7 @@ export interface FocusHop {
   technique: string | null;
   stale: boolean;
   exploited: boolean | null;
+  capability?: string | null;
 }
 
 export interface FocusRoute {
@@ -905,7 +946,12 @@ export interface Focus {
   path_count: number | null;
   exposed: { asset_id: string; label: string }[];
   route: FocusRoute | null;
-  fix: { size: number; assets: { asset_id: string; label: string }[]; independent_routes: Record<string, number> } | null;
+  fix: {
+    size: number;
+    assets: { asset_id: string; label: string }[];
+    independent_routes: Record<string, number>;
+    exposed_targets?: { asset_id: string; label: string }[];
+  } | null;
   ranked: FocusBar[];
 }
 
@@ -924,7 +970,7 @@ export function focusLead(f: Focus): string | null {
 }
 
 export type ChainItem =
-  | { kind: "node"; node: FocusNode; hop: { label: string; caveat: string | null; weak: boolean; stale: boolean } | null }
+  | { kind: "node"; node: FocusNode; hop: { label: string; step: string | null; caveat: string | null; weak: boolean; stale: boolean } | null }
   | { kind: "gap"; hidden: number; weakHidden: boolean };
 
 const CHAIN_MAX = 5;
@@ -940,11 +986,16 @@ export function routeChainView(route: FocusRoute | null | undefined): ChainItem[
   route.nodes.forEach((node, i) => { if (node.on_fix_list) keep.add(i); });
   for (let i = 1; i < n - 1 && keep.size < CHAIN_MAX; i++) keep.add(i);
 
-  const hopFor = (i: number): { label: string; caveat: string | null; weak: boolean; stale: boolean } | null => {
+  const hopFor = (i: number): { label: string; step: string | null; caveat: string | null; weak: boolean; stale: boolean } | null => {
     const h = route.hops[i];
     if (!h) return null;
     const info = basisInfo(h.basis);
-    return { label: info.label, caveat: info.caveat, weak: info.tone === "weak", stale: h.stale };
+    // What the step IS: an NTLM relay / reused credential names itself; otherwise the
+    // capability the destination's weakness grants (foothold/lateral), else the movement.
+    const step = h.technique === "RELAY" || h.technique === "CREDENTIAL_REUSE"
+      ? techniqueLabel(h.technique)
+      : (capabilityLabel(h.capability) ?? techniqueLabel(h.technique));
+    return { label: info.label, step, caveat: info.caveat, weak: info.tone === "weak", stale: h.stale };
   };
 
   const out: ChainItem[] = [];
