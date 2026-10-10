@@ -31,6 +31,7 @@ Scans you can run today, each validated against live targets.
 | **Internet-Exposure Mapping** | With two or more probes, compares what each vantage point can reach. | Separates *truly internet-exposed* services from internal-only ones — answers "what can an outside attacker actually reach?" *5–15 min per /24.* |
 | **Deep Port Sweep** *(few hosts)* | Every TCP port plus the full assessment on a small set of your most critical hosts. | A crown-jewel deep dive, budgeted so it always finishes. *20–90 min per host, up to 3 hosts.* |
 | **IoT & Embedded Device Discovery** | Surfaces cameras (RTSP), MQTT brokers, printers, DVRs and Telnet-exposed gear, with service banners. | Inventories the unmanaged corner of the network most tools miss. *3–10 min per /24.* |
+| **Re-scan & Change Detection** | Re-runs an assessment and highlights *what changed* since last time — new hosts, newly opened ports, configuration drift, certificate and version changes. | Turns a point-in-time scan into a watch: shows the drift between runs, not just today's state. *15–60 min per /24.* |
 
 ---
 
@@ -42,7 +43,6 @@ promise.
 
 | Scan | What it will do |
 |---|---|
-| **Re-scan & Change Detection** | Re-runs an assessment and highlights *what changed* since last time — new hosts, newly opened ports, configuration drift, certificate and version changes. |
 | **Web & TLS/SSL Security Check** | Grades TLS/SSL configuration on your web servers — protocol versions, cipher strength, certificate health. |
 | **Web Application Security Check** | Fingerprints web applications — supported methods, security headers, server technology — a read-only pre-flight before a full web-app penetration test. |
 | **Database Exposure Check** | Checks whether MySQL, PostgreSQL, SQL Server, Redis or MongoDB are reachable on the network and accept unauthenticated connections. |
