@@ -403,6 +403,9 @@ class ReportFinding(BaseModel):
     # caveat) — kept apart from the description, which explains the weakness itself.
     detection_rationale: str | None = None
     service_port: int | None = None
+    # Why CVE / CVSS / EPSS / CWE are legitimately empty (recorded, or derived for
+    # configuration findings): an empty score with a reason is "not applicable", not a gap.
+    not_applicable_reasons: dict[str, str] = Field(default_factory=dict)
     # Per narrative field: "recorded" (analyst/AI/evidence) or "knowledge_base" (standard text).
     narrative_sources: dict[str, str] = Field(default_factory=dict)
     severity: str

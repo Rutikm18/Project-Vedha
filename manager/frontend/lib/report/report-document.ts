@@ -410,6 +410,8 @@ export interface ReportFinding {
   /** Why the platform flagged this (rule, evidence basis, false-positive caveat). */
   detection_rationale?: string | null;
   service_port?: number | null;
+  /** Why CVE / CVSS / EPSS / CWE are legitimately empty (recorded, or derived for configuration findings). */
+  not_applicable_reasons?: Record<string, string>;
   /** Per narrative field: "recorded" or "knowledge_base" (standard text). */
   narrative_sources?: Record<string, string>;
   severity: string;

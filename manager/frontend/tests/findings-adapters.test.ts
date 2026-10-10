@@ -95,3 +95,16 @@ test("finding detail preserves provenance on legacy evidence arrays", () => {
     sha256: undefined,
   });
 });
+
+test("risk acceptance terms reach the API as risk_acceptance", () => {
+  const body = toApiFindingPatch({
+    status: "ACCEPTED",
+    actionReason: "Business exception",
+    riskAcceptance: { riskOwner: "CISO", expiresAt: "2027-01-01T00:00:00.000Z", compensatingControls: "ACL to jump host" },
+  });
+  assert.deepEqual(body, {
+    status: "accepted",
+    action_reason: "Business exception",
+    risk_acceptance: { risk_owner: "CISO", expires_at: "2027-01-01T00:00:00.000Z", compensating_controls: "ACL to jump host" },
+  });
+});

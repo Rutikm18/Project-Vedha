@@ -167,6 +167,29 @@ class FindingActionTrackingPatch(BaseModel):
         return value
 
 
+class FindingRiskAcceptance(BaseModel):
+    """What accepting a risk requires: who answers for it, until when, and what limits the
+    exposure meanwhile. Without all three an "accepted" finding is just a hidden one."""
+    risk_owner: str = Field(min_length=1, max_length=200)
+    expires_at: datetime
+    compensating_controls: str = Field(min_length=3, max_length=2_000)
+
+    @field_validator("risk_owner", "compensating_controls")
+    @classmethod
+    def strip_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be blank")
+        return value
+
+    @field_validator("expires_at")
+    @classmethod
+    def expiry_is_timezone_aware(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("expires_at must include a timezone")
+        return value
+
+
 class FindingPatch(BaseModel):
     """All fields optional — PATCH semantics."""
     status: FindingStatus | None = None
@@ -184,6 +207,8 @@ class FindingPatch(BaseModel):
     action_reason: str | None = Field(default=None, max_length=1000)
     closure: FindingClosurePacket | None = None
     action_tracking: FindingActionTrackingPatch | None = None
+    # Required when moving a finding to `accepted` (owner + expiry + compensating control).
+    risk_acceptance: FindingRiskAcceptance | None = None
 
     @field_validator("action_reason")
     @classmethod
@@ -191,6 +216,12 @@ class FindingPatch(BaseModel):
         if value is None:
             return None
         return value.strip() or None
+
+    @model_validator(mode="after")
+    def validate_risk_acceptance_scope(self) -> "FindingPatch":
+        if self.risk_acceptance is not None and self.status != FindingStatus.accepted:
+            raise ValueError("risk_acceptance requires status=accepted")
+        return self
 
     @model_validator(mode="after")
     def validate_closure_packet(self) -> "FindingPatch":

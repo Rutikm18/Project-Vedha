@@ -81,7 +81,11 @@ async def test_customer_transition_mutates_shared_row_and_records_origin():
 
     updated = await patch_portal_finding(
         finding.id,
-        FindingPatch(status=FindingStatus.accepted, action_reason="Approved exception"),
+        FindingPatch(
+            status=FindingStatus.accepted, action_reason="Approved exception",
+            risk_acceptance={"risk_owner": "CISO", "expires_at": "2099-01-01T00:00:00+00:00",
+                             "compensating_controls": "Segmented VLAN, ACL to jump host only"},
+        ),
         user,
         db,
     )
@@ -90,7 +94,11 @@ async def test_customer_transition_mutates_shared_row_and_records_origin():
     assert finding.status == FindingStatus.accepted
     event = next(row for row in added if isinstance(row, FindingEvent))
     assert event.actor_type == "customer"
-    assert event.detail == {"origin": "portal", "reason": "Approved exception"}
+    assert event.detail == {
+        "origin": "portal", "reason": "Approved exception", "risk_owner": "CISO",
+        "expires_at": "2099-01-01T00:00:00+00:00",
+        "compensating_controls": "Segmented VLAN, ACL to jump host only",
+    }
     audit = next(row for row in added if isinstance(row, AuditLog))
     assert audit.engagement_id == engagement_id
     assert audit.detail["origin"] == "portal"

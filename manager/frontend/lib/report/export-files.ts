@@ -152,7 +152,7 @@ const FINDING_HEADERS = [
   "Regional profile source", "Regional sector", "Regional jurisdictions",
   "Applicable regional frameworks", "Regional reporting clocks", "Regional context disclaimer",
   "Readiness gaps",
-  "Detection rationale", "Fix plan (ordered steps)", "Standard-text fields",
+  "Detection rationale", "Fix plan (ordered steps)", "Standard-text fields", "Score not-applicable reasons",
 ];
 
 function findingRows(report: ReportDocument): Cell[][] {
@@ -248,6 +248,7 @@ function findingRows(report: ReportDocument): Cell[][] {
     finding.detection_rationale ?? "",
     fixPlanText(finding),
     standardTextFields(finding),
+    Object.entries(finding.not_applicable_reasons ?? {}).map(([key, reason]) => `${key.toUpperCase()}: ${reason}`).join(" | "),
   ]);
 }
 

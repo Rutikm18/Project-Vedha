@@ -1470,17 +1470,13 @@ def _finding(
         gaps.append("exploitation_context_absent")
     if reproduction_steps is None:
         gaps.append("reproduction_steps_absent")
-    finding_evidence = finding.evidence if isinstance(finding.evidence, dict) else {}
-    if not finding.cve_ids and not _text(
-        finding_evidence.get("cve_not_applicable_reason")
-    ):
+    na_reasons = enrich.not_applicable_reasons(finding)
+    if not finding.cve_ids and not na_reasons.get("cve"):
         gaps.append("cve_reference_or_not_applicable_reason_absent")
     cwe_ids = _cwe_ids(finding.evidence)
-    if not cwe_ids and not _text(finding_evidence.get("cwe_not_applicable_reason")):
+    if not cwe_ids and not na_reasons.get("cwe"):
         gaps.append("cwe_reference_or_not_applicable_reason_absent")
-    if finding.cvss_score is None and not _text(
-        finding_evidence.get("cvss_not_applicable_reason")
-    ):
+    if finding.cvss_score is None and not na_reasons.get("cvss"):
         gaps.append("cvss_score_or_not_applicable_reason_absent")
     if finding.cvss_score is not None and not finding.cvss_vector:
         gaps.append("cvss_vector_absent")
@@ -1525,6 +1521,7 @@ def _finding(
         description=description,
         detection_rationale=enrich.detection_rationale(finding),
         service_port=enrich.service_port(finding),
+        not_applicable_reasons=na_reasons,
         narrative_sources=narrative_sources,
         technical_details=technical_details,
         impact=impact,

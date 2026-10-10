@@ -832,6 +832,16 @@ export function FindingReport({ finding, ordinal, anchor = true }: { finding: Re
           <div><h5>Technical impact<StandardTextChip finding={finding} field="impact" /></h5><RecordedBlock value={finding.impact} empty="No technical impact recorded." /></div>
           <div><h5>Business impact<StandardTextChip finding={finding} field="business_impact" /></h5><RecordedBlock value={finding.business_impact} empty="No business impact recorded." /></div>
           <div><h5>Exploitation and attack context<StandardTextChip finding={finding} field="exploitation" /></h5><RecordedBlock value={finding.exploitation} empty="No exploitation context recorded." /></div>
+          {finding.not_applicable_reasons && Object.keys(finding.not_applicable_reasons).length > 0 && (
+            <div>
+              <h5>Scoring not applicable</h5>
+              <ul className="cr-list">
+                {Object.entries(finding.not_applicable_reasons).map(([key, reason]) => (
+                  <li key={key}><strong>{key.toUpperCase()}</strong> — {reason}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {finding.detection_rationale && (
             <div><h5>Why this was flagged</h5><RecordedBlock value={finding.detection_rationale} /></div>
           )}

@@ -385,6 +385,14 @@ export function toApiFindingPatch(ui: any): any {
   const out: any = {};
   if (ui.status) out.status = FIND_STATUS_TO_API[String(ui.status).toUpperCase()] ?? "open";
   if (ui.actionReason != null) out.action_reason = String(ui.actionReason);
+  if (ui.riskAcceptance) {
+    // Accepting a risk needs an owner, an expiry and a compensating control (the API refuses otherwise).
+    out.risk_acceptance = {
+      risk_owner: String(ui.riskAcceptance.riskOwner ?? ""),
+      expires_at: String(ui.riskAcceptance.expiresAt ?? ""),
+      compensating_controls: String(ui.riskAcceptance.compensatingControls ?? ""),
+    };
+  }
   if (ui.notes != null) out.notes = ui.notes;
   if (ui.remediation != null) out.remediation = ui.remediation;
   if (typeof ui.exploitable === "boolean") out.exploitable = ui.exploitable;

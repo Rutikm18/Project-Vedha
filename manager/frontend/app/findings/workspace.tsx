@@ -1503,6 +1503,9 @@ function HistoryTimeline({
 /* ─── Finding detail ──────────────────────────────────────────────────────*/
 type DetailTab = "overview" | "intel" | "evidence" | "remediation" | "compliance" | "history";
 
+/** What the API requires to accept a risk: an accountable owner, an expiry, a compensating control. */
+type RiskAcceptanceInput = { riskOwner: string; expiresAt: string; compensatingControls: string };
+
 const WORKFLOW: { status: FindingStatus; label: string; color: string; hint: string }[] = [
   { status: "CONFIRMED",      label: "Confirm",            color: SEV_PALETTE.ORANGE, hint: "Record the evidence or analyst decision that confirms the finding." },
   { status: "REMEDIATED",     label: "Close as fixed",     color: SEV_PALETTE.GREEN,  hint: "Describe the fix applied and the verification performed." },
@@ -1545,7 +1548,7 @@ function FindingDetail({
   allFindings: Finding[];
   sla: Sla;
   now: number;
-  onStatusChange: (id: string, s: FindingStatus, reason: string) => Promise<void>;
+  onStatusChange: (id: string, s: FindingStatus, reason: string, acceptance?: RiskAcceptanceInput) => Promise<void>;
   statusUpdating: boolean;
   onReopen: (id: string, reason: string) => Promise<void>;
   reopening: boolean;
@@ -1562,6 +1565,9 @@ function FindingDetail({
   const [tab, setTab] = useState<DetailTab>("overview");
   const [pendingAction, setPendingAction] = useState<FindingStatus | null>(null);
   const [actionReason, setActionReason] = useState("");
+  const [acceptOwner, setAcceptOwner] = useState("");
+  const [acceptExpiry, setAcceptExpiry] = useState("");
+  const [acceptControls, setAcceptControls] = useState("");
   const reasonRef = useRef<HTMLTextAreaElement>(null);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -1570,7 +1576,21 @@ function FindingDetail({
     ? WORKFLOW.filter((action) => action.status === "OPEN")
     : WORKFLOW.filter((action) => action.status !== "OPEN" && action.status !== f.status);
   const actionBusy = statusUpdating || reopening;
-  const reasonValid = actionReason.trim().length >= 3;
+  const accepting = pendingAction === "ACCEPTED";
+  // Expiry is a calendar date from the picker; accepted until the END of that day, in the viewer's zone.
+  const acceptExpiryIso = acceptExpiry ? new Date(`${acceptExpiry}T23:59:59`).toISOString() : "";
+  const acceptanceValid = !accepting || (
+    acceptOwner.trim().length > 0 && acceptControls.trim().length >= 3
+    && acceptExpiry !== "" && new Date(`${acceptExpiry}T23:59:59`).getTime() > now
+  );
+  const reasonValid = actionReason.trim().length >= 3 && acceptanceValid;
+  const resetAction = () => {
+    setPendingAction(null);
+    setActionReason("");
+    setAcceptOwner("");
+    setAcceptExpiry("");
+    setAcceptControls("");
+  };
 
   const submitAction = async () => {
     if (!pendingAction || !reasonValid) return;
@@ -1578,14 +1598,17 @@ function FindingDetail({
     try {
       if (pendingAction === "OPEN" && f.status === "REMEDIATED") {
         await onReopen(f.id, reason);
+      } else if (pendingAction === "ACCEPTED") {
+        await onStatusChange(f.id, pendingAction, reason, {
+          riskOwner: acceptOwner.trim(), expiresAt: acceptExpiryIso, compensatingControls: acceptControls.trim(),
+        });
       } else {
         await onStatusChange(f.id, pendingAction, reason);
       }
     } catch {
       return; // The mutation already surfaces an actionable toast.
     }
-    setPendingAction(null);
-    setActionReason("");
+    resetAction();
   };
 
   const related = allFindings.filter((r) => r.id !== f.id && (f.relatedFindings ?? []).includes(r.id));
@@ -1718,7 +1741,14 @@ function FindingDetail({
             <button
               key={action.status}
               type="button"
-              onClick={() => { setPendingAction(action.status); setActionReason(""); }}
+              onClick={() => {
+                setPendingAction(action.status);
+                setActionReason("");
+                // Propose the asset's recorded owner; the analyst still confirms it.
+                setAcceptOwner(action.status === "ACCEPTED" ? (f.assetContext?.owner ?? "") : "");
+                setAcceptExpiry("");
+                setAcceptControls("");
+              }}
               disabled={actionBusy}
               data-selected={pendingAction === action.status || undefined}
               style={{ borderColor: tint(action.color, TINT.edge), background: tint(action.color, TINT.fill), color: action.color }}
@@ -1753,6 +1783,22 @@ function FindingDetail({
                 </div>
               )}
             </div>
+            {accepting && (
+              <div className="finding-action-acceptance" role="group" aria-label="Risk acceptance terms">
+                <label>Risk owner
+                  <input type="text" value={acceptOwner} maxLength={200} onChange={(event) => setAcceptOwner(event.target.value)}
+                    placeholder="Who answers for this risk" />
+                </label>
+                <label>Accepted until
+                  <input type="date" value={acceptExpiry} min={new Date(now + 86_400_000).toISOString().slice(0, 10)}
+                    onChange={(event) => setAcceptExpiry(event.target.value)} />
+                </label>
+                <label>Compensating control
+                  <input type="text" value={acceptControls} maxLength={2000} onChange={(event) => setAcceptControls(event.target.value)}
+                    placeholder="What limits the exposure meanwhile" />
+                </label>
+              </div>
+            )}
             <textarea
               ref={reasonRef}
               id={`finding-action-reason-${f.id}`}
@@ -1760,7 +1806,7 @@ function FindingDetail({
               onChange={(event) => setActionReason(event.target.value)}
               onKeyDown={(event) => {
                 if ((event.metaKey || event.ctrlKey) && event.key === "Enter") { event.preventDefault(); void submitAction(); }
-                if (event.key === "Escape") { event.stopPropagation(); setPendingAction(null); setActionReason(""); }
+                if (event.key === "Escape") { event.stopPropagation(); resetAction(); }
               }}
               maxLength={1000}
               rows={3}
@@ -1769,9 +1815,9 @@ function FindingDetail({
             />
             <div className="finding-action-composer-footer">
               <span data-warn={!reasonValid && actionReason.length > 0 || undefined}>
-                {reasonValid ? `${actionReason.length} / 1000` : "At least 3 characters"}
+                {reasonValid ? `${actionReason.length} / 1000` : accepting && !acceptanceValid ? "Owner, a future expiry date and a compensating control are required" : "At least 3 characters"}
               </span>
-              <button type="button" className="btn btn-ghost" onClick={() => { setPendingAction(null); setActionReason(""); }} disabled={actionBusy}>
+              <button type="button" className="btn btn-ghost" onClick={resetAction} disabled={actionBusy}>
                 Cancel
               </button>
               <button type="button" className="btn btn-primary" onClick={() => { void submitAction(); }} disabled={actionBusy || !reasonValid} aria-busy={actionBusy}>
@@ -2964,6 +3010,13 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   font: 400 12px/1.5 var(--font-ui); caret-color: var(--accent);
 }
 .finding-action-composer textarea::placeholder { color: var(--text-muted); opacity: 1; }
+.finding-action-acceptance { grid-column: 2; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.finding-action-acceptance ~ textarea { grid-column: 2; }
+.finding-action-acceptance input {
+  display: block; width: 100%; margin-top: 4px; border: var(--hairline) solid var(--border-default);
+  border-radius: 8px; padding: 7px 9px; color: var(--text-primary); background: var(--bg-app);
+  font: 400 12px/1.4 var(--font-ui); caret-color: var(--accent);
+}
 .finding-action-composer-footer { grid-column: 2; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .finding-action-composer-footer > span { margin-right: auto; color: var(--text-muted); font: 500 9.5px/1.2 var(--font-mono); }
 .finding-action-composer-footer > span[data-warn] { color: var(--sev-high-color); }
@@ -3654,8 +3707,8 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   }, [queryClient]);
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, status, reason }: { id: string; status: FindingStatus; reason: string }) =>
-      api.update<Finding>(id, { status, actionReason: reason }),
+    mutationFn: ({ id, status, reason, acceptance }: { id: string; status: FindingStatus; reason: string; acceptance?: RiskAcceptanceInput }) =>
+      api.update<Finding>(id, { status, actionReason: reason, ...(acceptance ? { riskAcceptance: acceptance } : {}) }),
     onError: (mutationError) => showError("Status update failed", errorMessage(mutationError)),
     onSuccess: (updated) => success("Status updated", `${updated.id} → ${STATUS_LABEL[updated.status]}`),
     onSettled: invalidateFindingData,
@@ -3693,8 +3746,8 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   };
   const closeRemediationWorkspace = useCallback(() => setWorkspaceOpen(false), [setWorkspaceOpen]);
 
-  const handleStatusChange = useCallback(async (id: string, newStatus: FindingStatus, reason: string) => {
-    await statusMutation.mutateAsync({ id, status: newStatus, reason });
+  const handleStatusChange = useCallback(async (id: string, newStatus: FindingStatus, reason: string, acceptance?: RiskAcceptanceInput) => {
+    await statusMutation.mutateAsync({ id, status: newStatus, reason, acceptance });
   }, [statusMutation]);
   const handleReopen = useCallback(async (id: string, reason: string) => {
     await reopenMutation.mutateAsync({ id, reason });

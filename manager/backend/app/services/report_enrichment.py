@@ -52,6 +52,35 @@ def service_port(finding: Any) -> int | None:
     return port if isinstance(port, int) and not isinstance(port, bool) and 0 < port < 65536 else None
 
 
+_POSTURE_REASONS = {
+    "cve": "Configuration or exposure finding, not a flaw in a specific product version, so no CVE applies.",
+    "cvss": ("CVSS scores a specific vulnerability; this is a configuration weakness. Priority is "
+             "expressed by the severity and the 0-1000 risk score."),
+    "epss": "No CVE, so EPSS (a per-CVE exploit-prediction score) is not applicable.",
+}
+
+
+def not_applicable_reasons(finding: Any) -> dict[str, str]:
+    """Why CVE / CVSS / EPSS / CWE are empty for this finding, when emptiness is legitimate.
+
+    Recorded reasons always win. Derived reasons apply only to posture (configuration)
+    findings — a vulnerability finding with no CVSS is a data gap, not "not applicable"."""
+    ev = _evidence(finding)
+    out: dict[str, str] = {}
+    for key in ("cve", "cvss", "epss", "cwe"):
+        recorded = ev.get(f"{key}_not_applicable_reason")
+        if isinstance(recorded, str) and recorded.strip():
+            out[key] = recorded.strip()
+    if not str(ev.get("rule_id") or "").startswith("POSTURE-"):
+        return out
+    if not getattr(finding, "cve_ids", None):
+        out.setdefault("cve", _POSTURE_REASONS["cve"])
+        out.setdefault("epss", _POSTURE_REASONS["epss"])
+    if getattr(finding, "cvss_score", None) is None:
+        out.setdefault("cvss", _POSTURE_REASONS["cvss"])
+    return out
+
+
 def kb_narrative(finding: Any, asset: Any | None = None) -> dict[str, Any]:
     """The KB's technical details / impact / business impact / exploitation context.
 
@@ -141,6 +170,6 @@ def plan_text(plan: dict[str, Any] | None) -> str:
     return "\n".join(l for l in lines if l)
 
 
-__all__ = ["service_port", "SOURCE_RECORDED", "SOURCE_KB", "kb_narrative", "first_sentence",
+__all__ = ["not_applicable_reasons", "service_port", "SOURCE_RECORDED", "SOURCE_KB", "kb_narrative", "first_sentence",
            "description_is_rule_metadata", "detection_rationale", "fix_plan", "plan_text",
            "content_category"]

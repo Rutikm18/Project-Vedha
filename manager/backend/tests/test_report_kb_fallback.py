@@ -155,3 +155,36 @@ def test_finding_without_a_port_is_its_own_issue():
         engagement=eng, finding_rows=rows, event_rows=[], remediation_plan_rows=[],
         resolution_runs={}, generated_at=NOW, sla_windows=_WINDOWS)
     assert doc.summary.issue_count == 2
+
+
+# ── M9: CVSS / EPSS / CVE are "not applicable" with a reason for configuration findings ──
+
+def test_posture_finding_gets_honest_not_applicable_reasons_and_no_score_gaps():
+    eng = _engagement()
+    asset = _asset(eng.id)
+    item = _doc(_posture(eng, asset), asset).findings[0]
+    assert {"cve", "cvss", "epss"} <= set(item.not_applicable_reasons)
+    assert "EPSS" in item.not_applicable_reasons["epss"]
+    for gap in ("cve_reference_or_not_applicable_reason_absent",
+                "cvss_score_or_not_applicable_reason_absent"):
+        assert gap not in item.readiness_gaps
+
+
+def test_vulnerability_finding_without_cvss_stays_a_gap():
+    eng = _engagement()
+    asset = _asset(eng.id)
+    finding = _finding(eng.id, asset.id, None, cve_ids=["CVE-2026-0001"], cvss_score=None,
+                       cvss_vector=None, evidence={"output": "x"})
+    item = _doc(finding, asset).findings[0]
+    assert "cvss_score_or_not_applicable_reason_absent" in item.readiness_gaps
+    assert "cvss" not in item.not_applicable_reasons
+
+
+def test_recorded_reason_beats_the_derived_one():
+    eng = _engagement()
+    asset = _asset(eng.id)
+    finding = _posture(eng, asset, evidence={
+        "rule_id": "POSTURE-VNC-NO-AUTH", "port": 5900,
+        "cvss_not_applicable_reason": "Scored as a policy violation per client SOP-12."})
+    item = _doc(finding, asset).findings[0]
+    assert item.not_applicable_reasons["cvss"] == "Scored as a policy violation per client SOP-12."
