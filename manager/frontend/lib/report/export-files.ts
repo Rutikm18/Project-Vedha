@@ -104,6 +104,23 @@ function remediationText(finding: ReportDocument["findings"][number]): string {
   ].filter(Boolean).join(" | ");
 }
 
+function fixPlanText(finding: ReportDocument["findings"][number]): string {
+  const plan = finding.remediation.fix_plan;
+  if (!plan) return "";
+  const lines = [plan.title || plan.summary || ""];
+  for (const step of plan.steps) lines.push(`${step.step}. ${step.tier ? `[${step.tier}] ` : ""}${step.title}`);
+  const check = plan.verification_check;
+  if (check?.check) lines.push(`Verify: ${check.check}${check.expected ? ` — expected: ${check.expected}` : ""}`);
+  return lines.filter(Boolean).join("\n");
+}
+
+function standardTextFields(finding: ReportDocument["findings"][number]): string {
+  return Object.entries(finding.narrative_sources ?? {})
+    .filter(([, source]) => source === "knowledge_base")
+    .map(([field]) => field)
+    .join("; ");
+}
+
 function recommendationText(finding: ReportDocument["findings"][number]): string {
   return [
     ...finding.remediation.recommendations.map((recommendation) => recommendation.text),
@@ -135,6 +152,7 @@ const FINDING_HEADERS = [
   "Regional profile source", "Regional sector", "Regional jurisdictions",
   "Applicable regional frameworks", "Regional reporting clocks", "Regional context disclaimer",
   "Readiness gaps",
+  "Detection rationale", "Fix plan (ordered steps)", "Standard-text fields",
 ];
 
 function findingRows(report: ReportDocument): Cell[][] {
@@ -227,6 +245,9 @@ function findingRows(report: ReportDocument): Cell[][] {
     recordedText(report.derived_regional_compliance.reporting_clocks),
     report.derived_regional_compliance.disclaimer,
     finding.readiness_gaps.join("; "),
+    finding.detection_rationale ?? "",
+    fixPlanText(finding),
+    standardTextFields(finding),
   ]);
 }
 
@@ -328,7 +349,7 @@ function buildXlsx(report: ReportDocument): Buffer {
   const remediationRows: Cell[][] = [[
     "Finding ID", "Recorded remediation", "Recorded at", "Updated by", "Timestamp gap",
     "Reviewed plans", "Structured recommendation records", "Compatibility recommendations",
-    "Combined recommendation text", "Remediation gaps",
+    "Combined recommendation text", "Remediation gaps", "Fix plan (ordered steps)",
   ]];
   const closureRows: Cell[][] = [[
     "Finding ID", "Disposition", "Terminal", "Resolved at", "Resolution method", "Resolution run",
@@ -382,7 +403,7 @@ function buildXlsx(report: ReportDocument): Buffer {
       finding.remediation.timestamp_gap ?? "", recordedText(finding.remediation.reviewed_plans),
       recordedText(finding.remediation.recommendations),
       finding.remediation.recorded_recommendations.join(" | "), recommendationText(finding),
-      finding.remediation.gaps.join("; "),
+      finding.remediation.gaps.join("; "), fixPlanText(finding),
     ]);
     const retest = finding.closure.retest;
     closureRows.push([

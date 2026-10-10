@@ -41,6 +41,7 @@ import {
   type ReportRegulatoryProfile,
   type ReportRecommendation,
   type ReportRemediationPlan,
+  type ReportFixPlan,
   type ReportRetestRecord,
 } from "../../lib/report/report-document";
 import { SEV_COLOR, toSeverity } from "../../lib/severity";
@@ -483,6 +484,42 @@ function RecommendationRecord({ recommendation, index }: {
   );
 }
 
+function StandardTextChip({ finding, field }: { finding: ReportFinding; field: string }) {
+  if (finding.narrative_sources?.[field] !== "knowledge_base") return null;
+  return (
+    <span className="cr-chip" title="Standard text for this class of weakness from the knowledge base; not written for this specific finding.">
+      Standard text
+    </span>
+  );
+}
+
+function FixPlan({ plan }: { plan: ReportFixPlan }) {
+  return (
+    <article className="cr-plan">
+      <div className="cr-plan-head">
+        <div><strong>{plan.title || plan.summary || "Fix plan"}</strong></div>
+        <span className="cr-chip">Standard fix plan — not reviewed</span>
+      </div>
+      <dl className="cr-inline-meta">
+        <div><dt>Effort</dt><dd>{plan.effort ?? "Not recorded"}</dd></div>
+        <div><dt>Remediation risk</dt><dd>{plan.remediation_risk ?? "Not recorded"}</dd></div>
+      </dl>
+      <ol className="cr-plan-steps">
+        {plan.steps.map((step) => (
+          <li key={step.step}>
+            <strong>{step.tier ? `[${step.tier}] ` : ""}{step.title}</strong>
+            {step.description && <p>{step.description}</p>}
+            {step.commands_for_os?.length ? <pre>{step.commands_for_os.join("\n")}</pre> : null}
+          </li>
+        ))}
+      </ol>
+      {plan.verification_check?.check && (
+        <p><strong>Verify:</strong> {plan.verification_check.check}{plan.verification_check.expected ? ` — expected: ${plan.verification_check.expected}` : ""}</p>
+      )}
+    </article>
+  );
+}
+
 function RemediationPlan({ plan }: { plan: ReportRemediationPlan }) {
   return (
     <article className="cr-plan">
@@ -790,11 +827,14 @@ export function FindingReport({ finding, ordinal, anchor = true }: { finding: Re
       <section className="cr-finding-section">
         <h4><ListChecks size={14} />Description, technical detail, and recorded impact</h4>
         <div className="cr-two-up">
-          <div><h5>Description</h5><RecordedBlock value={finding.description} empty="No description recorded." /></div>
-          <div><h5>Technical details</h5><RecordedBlock value={finding.technical_details} empty="No technical details recorded." /></div>
-          <div><h5>Technical impact</h5><RecordedBlock value={finding.impact} empty="No technical impact recorded." /></div>
-          <div><h5>Business impact</h5><RecordedBlock value={finding.business_impact} empty="No business impact recorded." /></div>
-          <div><h5>Exploitation and attack context</h5><RecordedBlock value={finding.exploitation} empty="No exploitation context recorded." /></div>
+          <div><h5>Description<StandardTextChip finding={finding} field="description" /></h5><RecordedBlock value={finding.description} empty="No description recorded." /></div>
+          <div><h5>Technical details<StandardTextChip finding={finding} field="technical_details" /></h5><RecordedBlock value={finding.technical_details} empty="No technical details recorded." /></div>
+          <div><h5>Technical impact<StandardTextChip finding={finding} field="impact" /></h5><RecordedBlock value={finding.impact} empty="No technical impact recorded." /></div>
+          <div><h5>Business impact<StandardTextChip finding={finding} field="business_impact" /></h5><RecordedBlock value={finding.business_impact} empty="No business impact recorded." /></div>
+          <div><h5>Exploitation and attack context<StandardTextChip finding={finding} field="exploitation" /></h5><RecordedBlock value={finding.exploitation} empty="No exploitation context recorded." /></div>
+          {finding.detection_rationale && (
+            <div><h5>Why this was flagged</h5><RecordedBlock value={finding.detection_rationale} /></div>
+          )}
           <div><h5>Reproduction or validation steps</h5><RecordedBlock value={finding.reproduction_steps} empty="No reproduction or validation steps recorded." /></div>
           <div><h5>Root cause</h5><RecordedBlock value={finding.root_cause} empty="No root cause recorded." /></div>
           <div><h5>Preconditions</h5><RecordedBlock value={finding.preconditions} empty="No preconditions recorded." /></div>
@@ -936,6 +976,7 @@ export function FindingReport({ finding, ordinal, anchor = true }: { finding: Re
         </div>
         <div className="cr-stack">
           {finding.remediation.reviewed_plans.map((plan) => <RemediationPlan key={plan.id} plan={plan} />)}
+          {finding.remediation.fix_plan && <FixPlan plan={finding.remediation.fix_plan} />}
         </div>
         <GapList gaps={finding.remediation.gaps} />
       </section>

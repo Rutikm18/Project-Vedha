@@ -247,14 +247,15 @@ export interface ReportRemediationPlan {
 
 export interface ReportRecommendation {
   text: string;
-  source_type: "finding_evidence" | "reviewed_remediation_plan";
+  source_type: "finding_evidence" | "reviewed_remediation_plan" | "knowledge_base_recipe";
   source_id: string | null;
   author: string | null;
   reviewer: string | null;
   recorded_at: string | null;
   generated_at: string | null;
   reviewed_at: string | null;
-  review_state: "unreviewed_recorded" | "recorded_as_reviewed" | "human_reviewed_plan";
+  review_state:
+    | "unreviewed_recorded" | "recorded_as_reviewed" | "human_reviewed_plan" | "unreviewed_knowledge_base";
 }
 
 export interface ReportRemediation {
@@ -265,7 +266,33 @@ export interface ReportRemediation {
   reviewed_plans: ReportRemediationPlan[];
   recommendations: ReportRecommendation[];
   recorded_recommendations: string[];
+  /** The rule-keyed recipe rendered for this finding (standard knowledge-base content, not a reviewed plan). */
+  fix_plan?: ReportFixPlan | null;
   gaps: string[];
+}
+
+export interface ReportFixPlanStep {
+  step: number;
+  tier?: string;
+  title: string;
+  description?: string;
+  commands_for_os?: string[];
+  downtime?: string;
+  rollback?: string;
+  risk?: string;
+}
+
+export interface ReportFixPlan {
+  source: string;
+  recipe_id?: string;
+  title?: string;
+  summary?: string;
+  effort?: string;
+  remediation_risk?: string;
+  steps: ReportFixPlanStep[];
+  verification_check?: { check?: string; expected?: string; manual_command?: string };
+  long_term_recommendations?: string[];
+  compensating_controls?: string;
 }
 
 export interface ReportComplianceMapping {
@@ -380,6 +407,11 @@ export interface ReportFinding {
   reproduction_steps: unknown;
   root_cause: unknown;
   preconditions: unknown;
+  /** Why the platform flagged this (rule, evidence basis, false-positive caveat). */
+  detection_rationale?: string | null;
+  service_port?: number | null;
+  /** Per narrative field: "recorded" or "knowledge_base" (standard text). */
+  narrative_sources?: Record<string, string>;
   severity: string;
   status: string;
   asset: ReportAsset | null;
@@ -414,7 +446,23 @@ export interface ReportFinding {
   readiness_gaps: string[];
 }
 
+export interface ReportIssueGroup {
+  key: string;
+  asset_id: string | null;
+  asset_label: string | null;
+  port: number | null;
+  title: string;
+  severity: string;
+  open: boolean;
+  finding_count: number;
+  finding_ids: string[];
+  signals: string[];
+}
+
 export interface ReportSummary {
+  /** Findings roll up to issues (one per asset + service port). */
+  issue_count?: number;
+  issue_groups?: ReportIssueGroup[];
   total_findings: number;
   by_severity: Record<string, number>;
   by_status: Record<string, number>;

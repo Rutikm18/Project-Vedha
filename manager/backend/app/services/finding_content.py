@@ -177,6 +177,184 @@ _CONTENT: dict[str, dict[str, str]] = {
             "privileged sessions or direct compromise of the host."
         ),
     },
+    "vnc_no_auth": {
+        "technical": (
+            "The VNC server accepts connections without authentication (security type None) "
+            "or with a trivially weak scheme. Anyone who can reach the port gets the "
+            "graphical console of the machine."
+        ),
+        "impact": (
+            "An attacker with network access gets full interactive control of the desktop as "
+            "the logged-in user: they can read data on screen, run commands and install "
+            "persistence, with no credential to steal or guess."
+        ),
+        "business": (
+            "unauthenticated remote control of a workstation or server exposes every system "
+            "and dataset that machine can reach."
+        ),
+    },
+    "unauth_datastore": {
+        "technical": (
+            "A database or cache service accepts clients without authentication, or is "
+            "reachable from networks that should never talk to it. Such stores (Redis, "
+            "MongoDB, Elasticsearch, memcached and similar) typically ship with open access "
+            "unless it is explicitly closed."
+        ),
+        "impact": (
+            "A network-adjacent attacker can read, modify or delete the stored data, and on "
+            "several engines can turn write access into code execution on the host."
+        ),
+        "business": (
+            "customer, session or application data held in the store can be exfiltrated, "
+            "tampered with or destroyed, with direct data-protection and availability "
+            "consequences."
+        ),
+    },
+    "nfs_export": {
+        "technical": (
+            "The NFS server exports a filesystem that is readable by any client (a wildcard "
+            "or overly broad client list), and NFS authenticates the client host, not the "
+            "user. Any machine that can reach the portmapper/NFS ports can mount it."
+        ),
+        "impact": (
+            "Anyone on the network can mount the share and read its files; if it is also "
+            "writable they can plant files or, with root squashing off, take over ownership."
+        ),
+        "business": (
+            "documents, backups, source code or credentials stored on the export are "
+            "exposed to every host on the network."
+        ),
+    },
+    "rsync_module": {
+        "technical": (
+            "The rsync daemon serves one or more modules without a password, so any client "
+            "can list and download (and, if the module is writable, upload) files."
+        ),
+        "impact": (
+            "An unauthenticated client can copy the module's contents, and a writable module "
+            "lets an attacker replace files that the host or other systems later trust."
+        ),
+        "business": (
+            "backup and deployment data shared through rsync leaves the organisation, or is "
+            "silently altered, without any credential being involved."
+        ),
+    },
+    "snmp_exposure": {
+        "technical": (
+            "The SNMP agent answers to a default community string (public/private). SNMP v1/v2c "
+            "uses that string as its only credential and sends it in clear text, so a default "
+            "value is equivalent to no authentication."
+        ),
+        "impact": (
+            "An attacker can read the device's configuration, interface, routing and "
+            "connection tables, and with a writable (private) community can change settings."
+        ),
+        "business": (
+            "network topology and device configuration are disclosed, which accelerates "
+            "targeted attacks, and write access can disrupt connectivity."
+        ),
+    },
+    "amplification": {
+        "technical": (
+            "The service answers small spoofable UDP requests with much larger responses "
+            "(for example DNS open recursion, NTP monlist, SNMP GETBULK, memcached), so it "
+            "can be used as a reflector in distributed denial-of-service attacks."
+        ),
+        "impact": (
+            "An attacker spoofing a victim's address can make this host send amplified "
+            "traffic to the victim, consuming your bandwidth and getting your address "
+            "blocklisted."
+        ),
+        "business": (
+            "the organisation's address space is abused to attack third parties, with "
+            "bandwidth cost, reputational damage and possible upstream throttling."
+        ),
+    },
+    "ipmi_cipher_zero": {
+        "technical": (
+            "The BMC's IPMI 2.0 (RMCP+) interface accepts cipher suite 0, which performs no "
+            "authentication or encryption of the session (CVE-2013-4782 class)."
+        ),
+        "impact": (
+            "An attacker who can reach UDP/623 can authenticate with any password and issue "
+            "management commands: power control, console access and credential disclosure."
+        ),
+        "business": (
+            "out-of-band management of the server is open to anyone on the network, "
+            "bypassing the operating system's access controls entirely."
+        ),
+    },
+    "mqtt_unauth": {
+        "technical": (
+            "The MQTT broker accepts anonymous CONNECT requests (CONNACK return code 0), so "
+            "any client can subscribe to topics, including the wildcard '#', and publish."
+        ),
+        "impact": (
+            "An attacker can read all telemetry and commands flowing through the broker and "
+            "inject messages that devices will act on."
+        ),
+        "business": (
+            "operational data is exposed and connected devices or processes can be "
+            "manipulated by an unauthenticated party."
+        ),
+    },
+    "ai_endpoint": {
+        "technical": (
+            "An AI/LLM or MCP endpoint answers requests without authentication, exposing the "
+            "model, its tools and any data or actions those tools can reach."
+        ),
+        "impact": (
+            "An attacker can run the model at your cost, invoke its tools, and use prompt "
+            "injection to read data or trigger actions the endpoint is connected to."
+        ),
+        "business": (
+            "compute spend, proprietary data and any systems the agent can act on are "
+            "available to anyone who finds the endpoint."
+        ),
+    },
+    "cleartext_protocol": {
+        "technical": (
+            "The service carries credentials or data over an unencrypted protocol (FTP, "
+            "Telnet, POP3/IMAP, plain HTTP login, SMTP without STARTTLS, and similar)."
+        ),
+        "impact": (
+            "Anyone able to observe the traffic on the path (shared network, compromised "
+            "switch, rogue access point) can read passwords and content directly."
+        ),
+        "business": (
+            "credentials and business data in transit can be harvested passively, and "
+            "cleartext transport fails common audit baselines (PCI DSS, ISO 27001)."
+        ),
+    },
+    "suspicious_listener": {
+        "technical": (
+            "A listener is open on a port commonly associated with backdoors, remote-access "
+            "tools or command-and-control, with no legitimate service identified on it."
+        ),
+        "impact": (
+            "If it is not an approved service it may indicate a compromise or an unapproved "
+            "tool giving someone remote access to the host."
+        ),
+        "business": (
+            "an unexplained remote-access listener is either a sign of intrusion or an "
+            "unmanaged risk; both need an owner to confirm what it is."
+        ),
+    },
+    "sip_exposure": {
+        "technical": (
+            "A SIP service answers on the network and can be probed for extensions, "
+            "registrations and supported methods; SIP is also a common target for "
+            "credential brute force and toll fraud."
+        ),
+        "impact": (
+            "An attacker can enumerate extensions, attempt to register, and abuse the PBX "
+            "for premium-rate calls if credentials are weak."
+        ),
+        "business": (
+            "telephony fraud generates direct costs, and call systems can be disrupted or "
+            "eavesdropped."
+        ),
+    },
     "generic": {
         "technical": (
             "The service exhibits a security weakness in its exposure or configuration. Review "
@@ -253,6 +431,37 @@ def _float_or_none(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+# Exact rule -> content category. A posture rule id is a precise identity, so it beats
+# the keyword guess in remediation_kb.classify_finding; rules not listed here (and every
+# non-posture finding) still go through that classifier. The fix plan is rule-keyed too
+# (app/remediation/recipes.py), so the explanation and the fix describe the same problem.
+_RULE_CATEGORY: dict[str, str] = {
+    "POSTURE-VNC-NO-AUTH": "vnc_no_auth", "POSTURE-VNC-WEAK-AUTH": "vnc_no_auth",
+    "POSTURE-DB-UNAUTHENTICATED-ACCESS": "unauth_datastore",
+    "POSTURE-EXPOSED-DATASTORE": "unauth_datastore", "POSTURE-EXPOSED-DATABASE": "unauth_datastore",
+    "POSTURE-NFS-WORLD-READABLE-EXPORT": "nfs_export",
+    "POSTURE-RSYNC-ANONYMOUS-MODULE": "rsync_module",
+    "POSTURE-SNMP-DEFAULT-COMMUNITY": "snmp_exposure",
+    "POSTURE-SNMP-AMPLIFIER": "amplification", "POSTURE-UDP-AMPLIFIER": "amplification",
+    "POSTURE-IPMI-CIPHER-ZERO": "ipmi_cipher_zero",
+    "POSTURE-MQTT-UNAUTHENTICATED": "mqtt_unauth",
+    "POSTURE-AI-ENDPOINT-UNAUTHENTICATED": "ai_endpoint",
+    "POSTURE-EXPOSED-CLEARTEXT": "cleartext_protocol", "POSTURE-SMTP-NO-STARTTLS": "cleartext_protocol",
+    "POSTURE-DB-CLEARTEXT-TRANSPORT": "cleartext_protocol",
+    "POSTURE-EXPOSED-BACKDOOR": "suspicious_listener",
+    "POSTURE-SIP-EXPOSED": "sip_exposure",
+}
+
+
+def content_category(finding: Any) -> str:
+    """The content category for a finding: its exact rule id when known, else the
+    shared keyword classifier."""
+    rule_id = _evidence(finding).get("rule_id")
+    if isinstance(rule_id, str) and rule_id in _RULE_CATEGORY:
+        return _RULE_CATEGORY[rule_id]
+    return classify_finding(finding)
 
 
 def exploitation_signals(finding: Any) -> dict[str, Any]:
@@ -393,7 +602,7 @@ def finding_content(finding: Any, *, asset_criticality: str | None = None,
     — the ``generic`` category guarantees no empty states.
     """
     overrides = overrides or {}
-    category = classify_finding(finding)
+    category = content_category(finding)
     base = _CONTENT.get(category, _CONTENT["generic"])
 
     signals = exploitation_signals(finding)
