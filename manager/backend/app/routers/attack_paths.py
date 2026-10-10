@@ -226,11 +226,12 @@ async def list_attack_paths(
 ):
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
-    stored = (await db.execute(
-        select(AttackPath.id).where(AttackPath.engagement_id == engagement_id).limit(1)
-    )).first()
+    # "Never computed" is the absence of the stored analysis row, not of route rows: a
+    # computed engagement with zero routes (or only an exposed jewel) has an analysis
+    # and no routes, and reading it must not recompute and write on every open.
+    never_computed = await db.get(AttackPathAnalysis, engagement_id) is None
     diagnostics = None
-    if refresh or stored is None:
+    if refresh or never_computed:
         # First read of a never-computed engagement still produces a result.
         diagnostics = await _recompute_and_store(db, engagement_id, target_asset_id)
 

@@ -502,8 +502,12 @@ in separate sentences. A machine with a second address is **not** assumed to sha
 - Nobody has looked at this on real engagement data, and CI has not run on any of it.
 - `min_fix_set` in the analyzer still excludes an exposed jewel (the views handle it; fixing the analyzer is D8).
 - At tile level "reachable" can rest on assumed links between subnets; only the card's route shows each step's basis.
-- `GET /engagements/{id}/attack-paths` still **recomputes and writes** when no routes are stored (R8). The dashboard
-  never calls it, but opening the engagement page for a zero-route engagement does. Not changed here.
+- ~~`GET /engagements/{id}/attack-paths` recomputes and writes when no routes are stored (R8)~~ **Fixed (10 Oct audit).** It now
+  computes on a read only when no analysis row exists ("never computed"); a computed engagement with zero routes, or only an
+  exposed jewel, is read without a write. `refresh=true` still recomputes. Tests: `test_attack_paths_list_readonly.py`.
+- **Not built, and not agent work, but a scope decision for you rather than a gap:** P2, P3 and P4b (see
+  [ATTACK_PATH_PLAN.md](../../manager/docs/ATTACK_PATH_PLAN.md) §7.1), D7 (demote `completed`/`paused` rows; status is shown on
+  every row today but does not change the order) and D8 (`min_fix_set` including exposed jewels).
 
 ---
 
