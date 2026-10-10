@@ -32,7 +32,8 @@ export function withBackend<P = Record<string, string>>(
       return await handler(req, { token }, params as P);
     } catch (e) {
       if (e instanceof BackendError) {
-        return NextResponse.json({ error: e.message }, { status: e.status });
+        const headers = e.retryAfter !== undefined ? { "Retry-After": String(e.retryAfter) } : undefined;
+        return NextResponse.json({ error: e.message }, { status: e.status, headers });
       }
       if (e instanceof SyntaxError) {
         return NextResponse.json({ error: "Request body must contain valid JSON." }, { status: 400 });
