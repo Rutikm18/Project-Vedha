@@ -5,6 +5,8 @@
 
 **Constant constraint:** the **probe collects facts only; the manager does all detection, scoring and correlation**. Every manager change lands in `manager/`; every agent change lands in `probe/scanner` and its byte-identical `probe/main_scripts` mirror, is wired into `probe/workflow`, and keeps the two-tree parity and wiring gates green. New check = scanner fact + manager rule + fact-contract corpus entry + `ingest._validate` acceptance, or it is silently dropped.
 
+**See also:** [noise reduction and detection plan](../research/2026-10-10-noise-reduction-and-detection-plan.md), a companion root-cause table and agent plan (coverage manifest, observed-service routing). That file is cut off after its row A4 and has no manager section; this document is the complete agent + manager plan.
+
 Everything below cites the file and line I read on 2026-10-10. Where a cause is not proven from code alone it says *(verify)*.
 
 ---
@@ -13,7 +15,7 @@ Everything below cites the file and line I read on 2026-10-10. Where a cause is 
 
 | Observation | Root cause in code | Verified? |
 |---|---|---|
-| TLS on 8444/8445 not graded (T14, T15) | `tls_scan` only runs on `scanner.service_enum.TLS_PORTS` (443, 8443, 9443, 993, 995, 2376, 8883 …). `_get_cert_der` **can** fetch a 1024-bit and a SHA-1 cert fine (I tested it against live `openssl s_server`), so the scanner is capable; it is simply never pointed at 8444/8445. `workflow/router.py` is meant to route a TLS port found by the banner, but 8444/8445 were not in the scan's port list in the first place | ✅ tested |
+| TLS on 8444/8445 not graded (T14, T15) | `tls_scan` only runs on `scanner.service_enum.TLS_PORTS` (443, 8443, 9443, 993, 995, 2376, 8883 …). `_get_cert_der` **can** fetch a 1024-bit and a SHA-1 cert (tested against live `openssl s_server`, on macOS Python with OpenSSL 3.0.16, both at defaults and with the client context set to `@SECLEVEL=2`, because with verification off OpenSSL does not abort on key-size or signature-strength checks), so the scanner is capable; it is simply never pointed at 8444/8445. **Not yet proven:** the shipped Debian probe image, and servers that only speak TLS 1.0/1.1 (`_get_cert_der` sets no `@SECLEVEL=0`, unlike the version probes at `tls_scanner.py:192-205`). Add a container test for both `workflow/router.py` is meant to route a TLS port found by the banner, but 8444/8445 were not in the scan's port list in the first place | ✅ tested |
 | MQTT (T18), ADB (T21), RTSP, CWMP, UPnP missed | IT profile deep branches (`workflow/gates.py:83`) have no `iot`/`mobile` branch: `{tls, web, smb, db, mcp_ai, snmp, ssh, smb_enum, ldap, dns, nfs, ftp, rsync, vnc, ipmi, smtp, msrpc, rdp, printer}`. These checks live only in the `iot` profile | ✅ |
 | ADB 5555 produced nothing although 5555 is in the default IT ports and in `_BACKDOOR` | Not explained by reading code — needs the detection run's ingest trace | *(verify)* |
 | "confirmed" on port-only guesses | `posture_rules.py:131` `_STATE_FACTOR={confirmed:1.0, suspected:0.8, potential:0.6}`; validated scanners (`VALIDATED_SCANNERS`, line 43) include `port_scan`, so an exposed-port signal from `port_scan` is treated as a confirmed-tier source | ✅ |
