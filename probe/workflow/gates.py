@@ -77,11 +77,24 @@ SMTP_PORTS = {25, 587}
 MSRPC_PORTS = {135}
 RDP_PORTS = {3389}
 PRINTER_PORTS = {9100, 631}
+# Host-level IoT / mobile collectors. Each scanner probes its own fixed protocol
+# set per host and takes no `ports` argument, so these tables are TRIGGERS: an
+# open port here is the evidence that the host speaks the protocol and is worth
+# the handshakes. They are exactly the TCP ports the scanners connect to
+# (iot_scanner._RTSP/_MQTT/_CWMP_PORTS; mobile_scanner ADB 5555 + iOS lockdownd)
+# — tests/test_iot_mobile_branches.py pins that. iot_scanner also sends one UDP
+# datagram each to SSDP/mDNS/CoAP once the branch runs.
+IOT_SERVICE_PORTS = {554, 8554, 1883, 8883, 7547, 7548}
+MOBILE_SERVICE_PORTS = {5555, 62078}
 
 PROFILE_PORTS = {"it": IT_PORTS, "iot": IOT_PORTS, "ot": []}
+# iot/mobile were collected by nothing until 2026-10-10: the scanners existed, the
+# manager had four rules for their facts (MQTT anonymous, CWMP, RTSP, the critical
+# ADB unauthenticated shell), and no profile allowed a branch for them.
 PROFILE_DEEP_BRANCHES = {
-    "it": {"tls", "web", "smb", "db", "mcp_ai", "snmp", "ssh", "smb_enum", "ldap", "dns", "nfs", "ftp", "rsync", "vnc", "ipmi", "smtp", "msrpc", "rdp", "printer"},
-    "iot": {"tls", "web", "ssh", "ftp", "vnc", "printer"},
+    "it": {"tls", "web", "smb", "db", "mcp_ai", "snmp", "ssh", "smb_enum", "ldap", "dns", "nfs", "ftp", "rsync", "vnc", "ipmi", "smtp", "msrpc", "rdp", "printer",
+           "iot", "mobile"},
+    "iot": {"tls", "web", "ssh", "ftp", "vnc", "printer", "iot", "mobile"},
     "ot": set(),
 }
 LIVENESS_RECHECK_THRESHOLD = {"it": timedelta(hours=1), "iot": timedelta(minutes=5)}
@@ -92,7 +105,14 @@ _BRANCH_PORT_TABLE = {"tls": TLS_PORTS, "web": WEB_PORTS, "smb": SMB_PORTS,
                       "dns": DNS_PORTS, "nfs": NFS_PORTS, "ftp": FTP_PORTS,
                       "rsync": RSYNC_PORTS, "vnc": VNC_PORTS, "ipmi": IPMI_PORTS,
                       "smtp": SMTP_PORTS, "msrpc": MSRPC_PORTS, "rdp": RDP_PORTS,
-                      "printer": PRINTER_PORTS}
+                      "printer": PRINTER_PORTS, "iot": IOT_SERVICE_PORTS,
+                      "mobile": MOBILE_SERVICE_PORTS}
+
+
+def branch_trigger_ports(branch: str) -> set[int]:
+    """The TCP ports whose being open makes `branch` eligible — and therefore the
+    ports the sweep must put on the wire for the branch to ever run."""
+    return set(_BRANCH_PORT_TABLE.get(branch, ()))
 
 
 def gate_0_is_passive_profile(profile: str) -> bool:

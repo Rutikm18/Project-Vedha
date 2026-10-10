@@ -60,6 +60,12 @@ DEFAULT_PORT_ROUTES: dict[str, list[int]] = {
     "msrpc": [135],
     "rdp": [3389],
     "printer": [9100, 631],
+    # Host-level IoT / mobile collectors: these ports TRIGGER the scanner, which
+    # then probes its own fixed protocol set (RTSP, MQTT, CWMP + SSDP/mDNS/CoAP;
+    # ADB + iOS lockdownd). Kept equal to workflow/gates.py IOT_SERVICE_PORTS /
+    # MOBILE_SERVICE_PORTS by tests/test_iot_mobile_branches.py.
+    "iot": [554, 8554, 1883, 8883, 7547, 7548],
+    "mobile": [5555, 62078],
 }
 
 
@@ -293,6 +299,8 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
     from .msrpc_scanner import MSRPCScanner
     from .rdp_scanner import RDPScanner
     from .printer_scanner import PrinterScanner
+    from .iot_scanner import IoTScanner
+    from .mobile_scanner import MobileScanner
 
     common = dict(rate=rate, concurrency=concurrency, timeout=timeout)
 
@@ -355,6 +363,14 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
     def printer_factory(ports):
         return PrinterScanner(scope, ports=ports, **common)
 
+    def iot_factory(ports):
+        # Host-level: the open trigger port is the evidence; the scanner probes
+        # its own protocol set and takes no `ports` (same shape as smb_factory).
+        return IoTScanner(scope, **common)
+
+    def mobile_factory(ports):
+        return MobileScanner(scope, **common)
+
     return ScanFunnel(
         scope,
         discovery=discovery,
@@ -377,6 +393,8 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
             "msrpc": msrpc_factory,
             "rdp": rdp_factory,
             "printer": printer_factory,
+            "iot": iot_factory,
+            "mobile": mobile_factory,
         },
         udp_scanner=UDPScanner(scope, **common) if with_udp else None,
         force=force,
