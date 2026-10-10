@@ -218,6 +218,7 @@ export function toUiFinding(api: any): any {
     epssScore: epss,
     epssPercentile: api.epss_percentile ?? 0,
     epssRecorded: api.epss_score != null,
+    notApplicable: (api.scoring_not_applicable ?? {}) as Record<string, string>,
     kevListed: api.kev_listed ?? false,
     kevStatusRecorded: api.kev_listed != null,
     kevDateAdded: api.kev_added_at ?? api.kev_date_added ?? undefined,
@@ -275,6 +276,7 @@ export function toUiFinding(api: any): any {
       criticality: api.asset_context.criticality ?? "unknown",
       owner: api.asset_context.owner ?? null,
       environment: api.asset_context.environment ?? null,
+      suggestedRiskOwner: api.asset_context.suggested_risk_owner ?? null,
     } : null,
     // The scan that most recently produced/confirmed this finding (per-scan-findings).
     // Lets the UI label each finding with its SCN reference / intensity / use-case.

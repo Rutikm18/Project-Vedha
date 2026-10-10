@@ -442,6 +442,111 @@ _CONTENT: dict[str, dict[str, str]] = {
             "under the organisation's address, with legal and reputational consequences."
         ),
     },
+    "smbv1": {
+        "technical": ("The server still negotiates the SMBv1 dialect, a 1980s-era protocol with no "
+                      "pre-authentication integrity and a long record of remote-code-execution flaws."),
+        "impact": ("An attacker with network access can attack the SMBv1 stack directly (the "
+                   "EternalBlue/WannaCry class) and downgrade other SMB sessions to it."),
+        "business": ("a single unpatched SMBv1 host has repeatedly been the entry point for "
+                     "ransomware that then spreads across the whole Windows estate."),
+    },
+    "smb_null_session": {
+        "technical": ("The SMB server accepted a null (anonymous) session and answered enumeration "
+                      "requests for shares, users or groups without credentials."),
+        "impact": ("An unauthenticated attacker can map accounts and shares, which feeds password "
+                   "guessing and targeted attacks."),
+        "business": "directory and file-share structure is disclosed to anyone on the network.",
+    },
+    "tls_certificate": {
+        "technical": ("The certificate presented by the service is expired, self-signed, or uses a "
+                      "weak key or signature algorithm, so clients cannot rely on it to authenticate "
+                      "the server."),
+        "impact": ("Clients either reject the service or learn to click through warnings, which "
+                   "makes an active man-in-the-middle attack indistinguishable from normal use."),
+        "business": ("trust in the service erodes, and expired or weak certificates fail audits and "
+                     "can cause outages when strict clients refuse them."),
+    },
+    "msrpc_exposed": {
+        "technical": ("The Windows RPC endpoint mapper answers anonymous queries and lists the "
+                      "services running on the host and the dynamic ports they use."),
+        "impact": ("An attacker can enumerate the host's RPC services and plan attacks against any "
+                   "that are exposed or vulnerable."),
+        "business": "internal service layout is disclosed beyond the segment that needs it.",
+    },
+    "eol_os": {
+        "technical": ("The operating system release is past its vendor end-of-support date, so it no "
+                      "longer receives security updates."),
+        "impact": ("Every vulnerability disclosed after end of support stays exploitable "
+                   "permanently; the host cannot be brought to a safe state by patching alone."),
+        "business": ("an unsupported platform is a standing, growing risk and typically fails "
+                     "compliance baselines that require supported software."),
+    },
+    "dns_zone_transfer": {
+        "technical": ("The DNS server answered a full zone transfer (AXFR) to an arbitrary client, "
+                      "returning every record in the zone."),
+        "impact": ("An attacker obtains a complete map of internal and external hostnames, "
+                   "including systems that were never meant to be public."),
+        "business": "the organisation's network inventory is handed to anyone who asks.",
+    },
+    "ldap_anonymous": {
+        "technical": ("The directory service accepts anonymous binds or searches and returns "
+                      "directory entries without credentials."),
+        "impact": ("An unauthenticated attacker can enumerate users, groups and computers, which "
+                   "supports password spraying and targeted phishing."),
+        "business": "staff and system details from the directory are exposed to the network.",
+    },
+    "smtp_enumeration": {
+        "technical": ("The mail server answers VRFY/EXPN or RCPT probes in a way that confirms which "
+                      "mailbox names exist."),
+        "impact": "An attacker can build a valid user list for phishing and password attacks.",
+        "business": "the staff address list leaks without authentication.",
+    },
+    "web_methods": {
+        "technical": ("The web server allows HTTP methods that change or expose content (PUT, DELETE, "
+                      "TRACE, CONNECT) where only read methods are expected."),
+        "impact": ("Depending on configuration an attacker may upload or remove content, or abuse "
+                   "TRACE/CONNECT to steal credentials or pivot."),
+        "business": "the integrity of a public website can be altered without exploiting a bug.",
+    },
+    "web_hsts": {
+        "technical": ("The HTTPS site does not send the Strict-Transport-Security header, so "
+                      "browsers are not told to refuse plain-HTTP connections to it."),
+        "impact": ("A network attacker can strip HTTPS on a user's first or later visit and capture "
+                   "the session."),
+        "business": "customer sessions on untrusted networks are easier to hijack.",
+    },
+    "dns_disclosure": {
+        "technical": "The DNS server reveals its software and version in response to a version query.",
+        "impact": "Attackers can match the version to known flaws and choose an exploit.",
+        "business": "a small disclosure that shortens an attacker's reconnaissance.",
+    },
+    "rtsp_exposed": {
+        "technical": ("An RTSP streaming endpoint (cameras and media servers) answers requests from "
+                      "the network, often with weak or no authentication."),
+        "impact": "Anyone who can reach it may view live video or probe the device for known flaws.",
+        "business": "physical-security footage and privacy exposure, plus a foothold on an embedded device.",
+    },
+    "adb_unauth": {
+        "technical": ("The Android Debug Bridge is listening over the network and accepted a shell "
+                      "without authentication."),
+        "impact": ("An attacker gets a command shell on the device: install apps, read data, and "
+                   "use it as a pivot."),
+        "business": "a device with full remote control by anyone on the network, typically a managed endpoint or kiosk.",
+    },
+    "mgmt_plane": {
+        "technical": ("An out-of-band or remote-administration interface (IPMI/BMC, WinRM, RDP) is "
+                      "reachable from the network, in a state that skips or weakens authentication."),
+        "impact": ("Control of the management plane is control of the machine beneath its operating "
+                   "system: power, console, firmware and credentials."),
+        "business": "one reachable management interface can undo every control on the host it manages.",
+    },
+    "container_api": {
+        "technical": ("A container or orchestration API (Docker, registry, Kubernetes, etcd) is "
+                      "reachable and may accept commands without authentication."),
+        "impact": ("Control of the API usually means running arbitrary containers, which equals "
+                   "root on the host and access to every workload secret."),
+        "business": "compromise of the container platform exposes every application and credential it runs.",
+    },
     "generic": {
         "technical": (
             "The service exhibits a security weakness in its exposure or configuration. Review "
@@ -525,6 +630,28 @@ def _float_or_none(value: Any) -> float | None:
 # non-posture finding) still go through that classifier. The fix plan is rule-keyed too
 # (app/remediation/recipes.py), so the explanation and the fix describe the same problem.
 _RULE_CATEGORY: dict[str, str] = {
+    "POSTURE-SMB-V1-ENABLED": "smbv1", "POSTURE-SMB-NULL-SESSION": "smb_null_session",
+    "POSTURE-SMB-SIGNING-OFF": "smb_signing",
+    "POSTURE-TLS-DEPRECATED-VERSION": "weak_tls", "POSTURE-TLS-WEAK-CIPHER": "weak_tls",
+    "POSTURE-TLS-EXPIRED-CERT": "tls_certificate", "POSTURE-TLS-SELF-SIGNED": "tls_certificate",
+    "POSTURE-TLS-WEAK-KEY": "tls_certificate", "POSTURE-TLS-WEAK-SIGNATURE": "tls_certificate",
+    "POSTURE-RDP-NO-NLA": "exposed_rdp", "POSTURE-RDP-NO-TLS": "exposed_rdp", "POSTURE-RDP-EXPOSED": "exposed_rdp",
+    "POSTURE-MSRPC-EPMAP-EXPOSED": "msrpc_exposed", "POSTURE-OS-END-OF-LIFE": "eol_os",
+    "POSTURE-SSH-TERRAPIN": "outdated_ssh", "POSTURE-SSH-WEAK-ALGORITHMS": "outdated_ssh",
+    "POSTURE-SSH-LEGACY-ALGORITHMS": "outdated_ssh",
+    "POSTURE-DNS-ZONE-TRANSFER": "dns_zone_transfer", "POSTURE-DNS-VERSION-DISCLOSURE": "dns_disclosure",
+    "POSTURE-LDAP-ANONYMOUS-BIND": "ldap_anonymous", "POSTURE-LDAP-ANONYMOUS-SEARCH": "ldap_anonymous",
+    "POSTURE-SMTP-USER-ENUMERATION": "smtp_enumeration",
+    "POSTURE-WEB-DANGEROUS-METHODS": "web_methods", "POSTURE-WEB-NO-HSTS": "web_hsts",
+    "POSTURE-RTSP-EXPOSED": "rtsp_exposed", "POSTURE-ADB-UNAUTHENTICATED": "adb_unauth",
+    "POSTURE-CWMP-EXPOSED": "open_mgmt_port", "POSTURE-DEFAULT-CRED-CANDIDATE": "default_credentials",
+    "POSTURE-FTP-ANONYMOUS-LOGIN": "anon_ftp",
+    "POSTURE-EXPOSED-CONTAINER": "container_api", "POSTURE-EXPOSED-REMOTE_ACCESS": "open_mgmt_port",
+    "POSTURE-EXPOSED-ADMIN_UI": "open_mgmt_port",
+    "CORR-NTLM-RELAY-PATH": "smb_signing", "CORR-LEGACY-WINDOWS-SURFACE": "smbv1",
+    "CORR-CLEARTEXT-CLUSTER": "cleartext_protocol", "CORR-DB-UNAUTH-EXPOSED": "unauth_datastore",
+    "CORR-SNMP-PUBLIC-LATERAL": "snmp_exposure", "CORR-AD-EXPOSURE": "ldap_anonymous",
+    "CORR-MGMT-PLANE-EXPOSED": "mgmt_plane",
     "POSTURE-VNC-NO-AUTH": "vnc_no_auth", "POSTURE-VNC-WEAK-AUTH": "vnc_no_auth",
     "POSTURE-DB-UNAUTHENTICATED-ACCESS": "unauth_datastore",
     "POSTURE-EXPOSED-DATASTORE": "unauth_datastore", "POSTURE-EXPOSED-DATABASE": "unauth_datastore",
@@ -613,6 +740,36 @@ _CAUSE: dict[str, dict[str, Any]] = {
                       "preconditions": ["Network access to UDP/161", "Knowledge of the user name (often a documented default)"]},
     "ftp_anonymous_write": {"root_cause": "The anonymous FTP account has write permission on at least one directory.",
                             "preconditions": ["Network access to the FTP port"]},
+    "smbv1": {"root_cause": "SMBv1 was never disabled on a server that still carries the legacy feature.",
+              "preconditions": ["Network access to the SMB port", "An exploit for an unpatched SMBv1 flaw"]},
+    "smb_null_session": {"root_cause": "The host allows anonymous enumeration (restrict-anonymous not set).",
+                         "preconditions": ["Network access to the SMB port"]},
+    "tls_certificate": {"root_cause": "The certificate was not renewed, was issued internally without trust distribution, or was generated with a weak key or signature algorithm.",
+                        "preconditions": ["A client connecting to the service", "For interception: a network position between client and server"]},
+    "msrpc_exposed": {"root_cause": "The RPC endpoint mapper is reachable from segments that do not need it.",
+                      "preconditions": ["Network access to TCP/135"]},
+    "eol_os": {"root_cause": "The platform was not upgraded before its vendor support ended.",
+               "preconditions": ["Network access to any vulnerable service on the host"]},
+    "dns_zone_transfer": {"root_cause": "Zone transfers are not restricted to the authorised secondary servers.",
+                          "preconditions": ["Network access to the DNS service"]},
+    "ldap_anonymous": {"root_cause": "The directory permits anonymous bind or search.",
+                       "preconditions": ["Network access to the directory port"]},
+    "smtp_enumeration": {"root_cause": "The mail server answers address-verification commands.",
+                         "preconditions": ["Network access to the SMTP port"]},
+    "web_methods": {"root_cause": "The server or application permits more HTTP methods than the site needs.",
+                    "preconditions": ["Network access to the web service"]},
+    "web_hsts": {"root_cause": "The site does not send an HSTS header.",
+                 "preconditions": ["A victim on a network the attacker controls", "A request made over plain HTTP"]},
+    "dns_disclosure": {"root_cause": "The DNS software answers version queries with its real banner.",
+                       "preconditions": ["Network access to the DNS service"]},
+    "rtsp_exposed": {"root_cause": "A camera or media service is reachable from networks that do not need it.",
+                     "preconditions": ["Network access to the RTSP port"]},
+    "adb_unauth": {"root_cause": "ADB over TCP was enabled and left without an authorised-key requirement.",
+                   "preconditions": ["Network access to the ADB port"]},
+    "mgmt_plane": {"root_cause": "Management interfaces were left reachable from general networks instead of a dedicated management segment.",
+                   "preconditions": ["Network access to the management interface"]},
+    "container_api": {"root_cause": "The container or orchestration API is bound to a network interface without authentication or TLS.",
+                      "preconditions": ["Network access to the API port"]},
     "generic": {"root_cause": "The service is exposed or configured beyond what its role requires.",
                 "preconditions": ["Network access to the affected service"]},
 }

@@ -154,6 +154,19 @@ All twelve manager items are in code on `claude/elegant-noether-ggdafj`, each wi
 | M11 | `coverage_sheet` from the latest completed detection run (per-rule outcome, scan use case/intensity, ports when recorded), shown in the report and as a "Coverage" workbook sheet. | Ports scanned are shown only if the scan job recorded them; otherwise the sheet says so. |
 | M12 | `accepted` requires `risk_acceptance` (owner, future expiry, compensating control) — enforced in the shared finding workflow (operator and portal), with a suggested owner from the asset; the findings workspace asks for the three fields. | The accept form was not exercised in a browser. |
 
+
+### Manager hardening pass (10 Oct 2026, after the first build)
+
+Found by auditing the built manager side against live data (a real Postgres, the real API and a browser), not by reading the plan again:
+
+- **Merged signals had no lifecycle.** They are now stamped with the run that saw them, pruned at the end of the run, excluded from the custody digest and shown nested under the issue in the report; the probe-path merge also keeps the strongest severity.
+- **An acceptance expiry nothing enforced.** `workers/acceptance_watch.py` reopens accepted findings whose recorded expiry passed (immutable event naming the owner and lapsed terms); an accepted risk can be renewed with new terms; the report flags an expired acceptance. Verified against a real database.
+- **The role was not shown.** The report states each asset's role with its confidence and whether the OS fingerprint overruled it (M10's "show the role confidence").
+- **Narrative columns still empty.** Root cause, preconditions and a re-check procedure now come from the KB, labelled as such.
+- **Rules still on the generic explanation.** 25 detection rules and all seven composite attack-path findings fell to "The service exhibits a security weakness" and the generic fix plan. Every rule now has specific content, a root cause and a real recipe (composites borrow the recipe of the weakness they are built from); a test fails if a new rule ships without them.
+- **UI contradicted the score.** Risk colours used 800/600/400 cut-offs against bands of 750/500/250; findings cards said "Not recorded" where CVSS/EPSS are not applicable; the accept form now prefills the owner from the asset's owner or team tag.
+- Report payload: the fix plan carried per finding was trimmed from about 5 KB to under 3.5 KB (a report multiplies it by the finding count); 2,100 findings build in about 2.7 s.
+
 ## Implementation status — agent side (10 Oct 2026)
 
 Built and tested on a localhost mini weak-lab (`probe/tests/rig/localhost_lab_e2e.py`): the **real** probe workflow against the repo's own emulators plus a real `pysnmp` agent, then the **real** manager detection engine and report. It is not the Ubuntu VM, so it proves the wiring and parsing, not detection rates on real products.

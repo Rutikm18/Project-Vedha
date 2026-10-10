@@ -279,6 +279,9 @@ class FindingAssetContext(BaseModel):
     criticality: str
     owner: str | None = None
     environment: str | None = None
+    # Who to propose as the accountable owner when a risk on this asset is accepted: the asset's
+    # owner, else an owner/team tag. A suggestion the analyst confirms, never applied silently.
+    suggested_risk_owner: str | None = None
 
 
 class FindingEventOut(BaseModel):
@@ -402,6 +405,9 @@ class FindingOut(BaseModel):
     scan_outcome: str | None = None
     # P4 unified priority (computed; see services/risk_rank.py).
     risk_rank: int | None = None
+    # Why CVE / CVSS / EPSS / CWE are legitimately empty (recorded, or derived for configuration
+    # findings) — so a list can say "not applicable" instead of "not recorded".
+    scoring_not_applicable: dict[str, str] = Field(default_factory=dict)
     # Populated on the detail endpoint. List responses intentionally leave this
     # null to keep portfolio reads bounded and avoid an asset N+1 query.
     asset_context: FindingAssetContext | None = None
@@ -443,6 +449,13 @@ class FindingOut(BaseModel):
         # Persisted rows are non-null, but legacy/transient ORM objects may
         # expose SQLAlchemy's pre-flush ``None`` instead of the server default.
         return 0 if value is None else value
+
+    @model_validator(mode="after")
+    def _populate_scoring_not_applicable(self) -> "FindingOut":
+        if not self.scoring_not_applicable:
+            from app.services.report_enrichment import not_applicable_reasons
+            self.scoring_not_applicable = not_applicable_reasons(self)
+        return self
 
     @model_validator(mode="after")
     def _populate_risk_rank(self) -> "FindingOut":

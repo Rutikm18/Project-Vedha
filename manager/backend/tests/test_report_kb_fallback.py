@@ -336,3 +336,47 @@ def test_fix_plan_is_compact_but_keeps_what_a_reader_acts_on():
     assert all("commands" not in s and "commands_for_os" in s for s in plan["steps"])
     assert plan["verification_check"]["check"] and plan["provenance"]["recipe_id"] == "POSTURE-VNC-NO-AUTH"
     assert len(json.dumps(plan)) < 3500
+
+
+def test_no_detection_rule_falls_back_to_generic_content():
+    """A rule that reads 'The service exhibits a security weakness' tells a client nothing; every
+    posture rule and every exposed-service class must have specific explanatory content AND a
+    root cause."""
+    from types import SimpleNamespace
+    from app.detection.engine_bridge import _ensure_importable
+    if not _ensure_importable():
+        import pytest
+        pytest.skip("detection_engine not importable in this environment")
+    import port_intel
+    import posture_rules as P
+    from app.services.finding_content import _CAUSE, _CONTENT, content_category
+    ids = [r.rule_id for r in P.RULES] + [f"POSTURE-EXPOSED-{c.upper()}"
+                                           for c in sorted(set(port_intel.catalog_categories().values()))]
+    generic = []
+    for rid in ids:
+        probe = SimpleNamespace(evidence={"rule_id": rid}, title="", description="", remediation="", cve_ids=None)
+        cat = content_category(probe)
+        if cat == "generic":
+            generic.append(rid)
+        assert cat in _CONTENT and cat in _CAUSE, (rid, cat)
+    assert not generic, f"rules still using the generic explanation: {generic}"
+
+
+def test_composite_attack_path_findings_get_specific_content_and_a_real_fix_plan():
+    """The highest-severity findings are the composites; they must not fall to generic text or the
+    generic recipe. They borrow the weakness they are built from."""
+    from types import SimpleNamespace
+    from app.remediation.context import build_context
+    from app.remediation.recipes import CORRELATION_RECIPE, RECIPES, resolve_recipe
+    from app.services.finding_content import _CAUSE, _CONTENT, content_category
+    for rule_id, target in CORRELATION_RECIPE.items():
+        f = SimpleNamespace(evidence={"rule_id": rule_id}, title="x", description="", remediation="",
+                            cve_ids=None, severity="high", id=None)
+        assert content_category(f) != "generic", rule_id
+        assert content_category(f) in _CONTENT and content_category(f) in _CAUSE
+        recipe = resolve_recipe(build_context(f), f)
+        assert recipe.recipe_id == target and recipe.recipe_id in RECIPES and recipe.recipe_id != "GENERIC"
+    ipmi = SimpleNamespace(evidence={"rule_id": "CORR-MGMT-PLANE-EXPOSED", "correlated": ["IPMI-CIPHER-ZERO"]},
+                           title="Exposed host management plane", description="IPMI cipher suite 0 accepts ANY password",
+                           remediation="", cve_ids=None, severity="critical", id=None)
+    assert resolve_recipe(build_context(ipmi), ipmi).recipe_id == "POSTURE-IPMI-CIPHER-ZERO"

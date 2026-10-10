@@ -1569,10 +1569,39 @@ LEGACY_CATEGORY: dict[str, str] = {
 }
 
 
+# A composite attack-path finding (CORR-*) is fixed by fixing the weakness it is built from, so it
+# borrows that weakness's recipe instead of falling to the generic one.
+CORRELATION_RECIPE: dict[str, str] = {
+    "CORR-NTLM-RELAY-PATH": "POSTURE-SMB-SIGNING-OFF",
+    "CORR-LEGACY-WINDOWS-SURFACE": "POSTURE-SMB-V1-ENABLED",
+    "CORR-CLEARTEXT-CLUSTER": "POSTURE-EXPOSED-CLEARTEXT",
+    "CORR-DB-UNAUTH-EXPOSED": "POSTURE-DB-UNAUTHENTICATED-ACCESS",
+    "CORR-SNMP-PUBLIC-LATERAL": "POSTURE-SNMP-DEFAULT-COMMUNITY",
+    "CORR-AD-EXPOSURE": "POSTURE-LDAP-ANONYMOUS-BIND",
+    "CORR-MGMT-PLANE-EXPOSED": "POSTURE-RDP-EXPOSED",       # IPMI variant chosen below
+}
+
+
+def _correlation_recipe_id(rule_id: str, finding: Any) -> str | None:
+    target = CORRELATION_RECIPE.get(rule_id)
+    if target is None:
+        return None
+    if rule_id == "CORR-MGMT-PLANE-EXPOSED":
+        ev = getattr(finding, "evidence", None)
+        blob = str((ev or {}).get("correlated") if isinstance(ev, dict) else "")
+        text = f"{getattr(finding, 'title', '')} {getattr(finding, 'description', '')} {blob}".lower()
+        if "ipmi" in text or "bmc" in text:
+            return "POSTURE-IPMI-CIPHER-ZERO"
+    return target
+
+
 def resolve_recipe(ctx: Any, finding: Any) -> Recipe:
-    """rule id → exposed-service category → CVE → legacy keyword class → generic."""
+    """rule id → composite's component → exposed-service category → CVE → legacy keyword class → generic."""
     if ctx.rule_id and ctx.rule_id in RECIPES:
         return RECIPES[ctx.rule_id]
+    corr = _correlation_recipe_id(ctx.rule_id or "", finding) if ctx.rule_id else None
+    if corr and corr in RECIPES:
+        return RECIPES[corr]
     if ctx.category:
         key = f"POSTURE-EXPOSED-{ctx.category.upper()}"
         if key in RECIPES:

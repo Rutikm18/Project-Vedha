@@ -501,13 +501,13 @@ function CoverageSheet({ sheet }: { sheet: ReportCoverageSheet }) {
       <p className="cr-caution">{sheet.interpretation}</p>
       {notChecked.length > 0 && (
         <details>
-          <summary>{notChecked.length} checks did not run — absence of a finding says nothing about them</summary>
+          <summary>{notChecked.length} {notChecked.length === 1 ? "check did" : "checks did"} not run — absence of a finding says nothing about {notChecked.length === 1 ? "it" : "them"}</summary>
           <ul className="cr-list">{notChecked.map((rule) => <li key={rule.rule_id}><code>{rule.rule_id}</code> {rule.title ?? ""}</li>)}</ul>
         </details>
       )}
       {unassessed.length > 0 && (
         <details>
-          <summary>{unassessed.length} checks could not be assessed</summary>
+          <summary>{unassessed.length} {unassessed.length === 1 ? "check" : "checks"} could not be assessed</summary>
           <ul className="cr-list">{unassessed.map((rule) => <li key={rule.rule_id}><code>{rule.rule_id}</code> — {rule.reasons.join("; ") || rule.verdict}</li>)}</ul>
         </details>
       )}

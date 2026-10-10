@@ -48,6 +48,7 @@ test("finding detail maps bounded asset context for the overview", () => {
     criticality: "high",
     owner: "Platform Engineering",
     environment: "production",
+    suggestedRiskOwner: null,
   });
 });
 
@@ -107,4 +108,12 @@ test("risk acceptance terms reach the API as risk_acceptance", () => {
     action_reason: "Business exception",
     risk_acceptance: { risk_owner: "CISO", expires_at: "2027-01-01T00:00:00.000Z", compensating_controls: "ACL to jump host" },
   });
+});
+
+test("the suggested risk owner reaches the UI model", () => {
+  const finding = toUiFinding({
+    id: "finding-2", engagement_id: "e", title: "t", severity: "high", status: "open",
+    asset_context: { id: "a", asset_type: "server", criticality: "high", suggested_risk_owner: "Platform SRE" },
+  });
+  assert.equal(finding.assetContext?.suggestedRiskOwner, "Platform SRE");
 });

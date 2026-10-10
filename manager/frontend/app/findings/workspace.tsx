@@ -184,6 +184,8 @@ interface Finding {
   epssScore: number;
   epssPercentile: number;
   epssRecorded: boolean;
+  /** Why CVSS / EPSS / CVE are legitimately empty for this finding (configuration finding, no CVE). */
+  notApplicable?: Record<string, string>;
   kevListed: boolean;
   kevStatusRecorded: boolean;
   kevDateAdded?: string;
@@ -223,6 +225,7 @@ interface Finding {
     criticality: string;
     owner: string | null;
     environment: string | null;
+    suggestedRiskOwner?: string | null;
   } | null;
   // The scan that most recently produced/confirmed this finding (per-scan-findings).
   scan?: {
@@ -825,6 +828,9 @@ function EvidenceView({ finding }: { finding: Finding }) {
   );
 }
 
+/** The adapter renders a missing score as an em dash; only a real score counts as recorded. */
+const hasCvss = (cvss: string | null | undefined): boolean => Boolean(cvss) && cvss !== "—";
+
 /* ─── CVSS vector decoding ────────────────────────────────────────────────
  * A recorded vector like CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H is the
  * densest fact on the whole finding and the page previously rendered it as an
@@ -1162,7 +1168,7 @@ function FindingOverview({
           <h3>Scores and identifiers</h3>
           <dl>
             <div><dt>Manager risk</dt><dd style={{ color: riskScoreColor(finding.riskScore) }}>{finding.riskScore} / 1000</dd></div>
-            <div><dt>CVSS</dt><dd>{finding.cvss || "Not recorded"}</dd></div>
+            <div><dt>CVSS</dt><dd title={finding.notApplicable?.cvss}>{hasCvss(finding.cvss) ? finding.cvss : (finding.notApplicable?.cvss ? "Not applicable — configuration finding" : "Not recorded")}</dd></div>
             <div><dt>Vector</dt><dd><code>{finding.cvssVector || "Not recorded"}</code></dd></div>
             <div><dt>CVE</dt><dd>{finding.cves?.length ? finding.cves.join(", ") : "None recorded"}</dd></div>
             <div><dt>Category</dt><dd>{finding.category}</dd></div>
@@ -1565,7 +1571,11 @@ function FindingDetail({
   const [tab, setTab] = useState<DetailTab>("overview");
   const [pendingAction, setPendingAction] = useState<FindingStatus | null>(null);
   const [actionReason, setActionReason] = useState("");
-  const [acceptOwner, setAcceptOwner] = useState("");
+  // null = the analyst has not typed: show the suggestion, even if the detail loads after the click.
+  const [acceptOwnerEdit, setAcceptOwnerEdit] = useState<string | null>(null);
+  const suggestedOwner = f.assetContext?.suggestedRiskOwner ?? f.assetContext?.owner ?? "";
+  const acceptOwner = acceptOwnerEdit ?? suggestedOwner;
+  const setAcceptOwner = (value: string) => setAcceptOwnerEdit(value);
   const [acceptExpiry, setAcceptExpiry] = useState("");
   const [acceptControls, setAcceptControls] = useState("");
   const reasonRef = useRef<HTMLTextAreaElement>(null);
@@ -1587,7 +1597,7 @@ function FindingDetail({
   const resetAction = () => {
     setPendingAction(null);
     setActionReason("");
-    setAcceptOwner("");
+    setAcceptOwnerEdit(null);
     setAcceptExpiry("");
     setAcceptControls("");
   };
@@ -1744,8 +1754,8 @@ function FindingDetail({
               onClick={() => {
                 setPendingAction(action.status);
                 setActionReason("");
-                // Propose the asset's recorded owner; the analyst still confirms it.
-                setAcceptOwner(action.status === "ACCEPTED" ? (f.assetContext?.owner ?? "") : "");
+                // The owner field shows the asset's recorded/suggested owner until the analyst edits it.
+                setAcceptOwnerEdit(null);
                 setAcceptExpiry("");
                 setAcceptControls("");
               }}
@@ -2360,12 +2370,12 @@ const FindingRow = React.memo(function FindingRow({
         <div>
           <dt>EPSS</dt>
           <dd style={{ color: f.epssRecorded ? epssColor(f.epssScore) : "var(--text-muted)" }}>
-            {f.epssRecorded ? `${(f.epssScore * 100).toFixed(1)}%` : "Not recorded"}
+            {f.epssRecorded ? `${(f.epssScore * 100).toFixed(1)}%` : f.notApplicable?.epss ? "N/A (no CVE)" : "Not recorded"}
           </dd>
         </div>
         <div>
           <dt>CVSS</dt>
-          <dd>{f.cvss || "Not recorded"}</dd>
+          <dd title={f.notApplicable?.cvss}>{hasCvss(f.cvss) ? f.cvss : (f.notApplicable?.cvss ? "N/A (config)" : "Not recorded")}</dd>
         </div>
         <div>
           <dt>SLA</dt>

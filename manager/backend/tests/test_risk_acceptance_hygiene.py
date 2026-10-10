@@ -108,3 +108,36 @@ async def test_other_transitions_are_unaffected():
     finding = _finding()
     await _patch(finding, FindingPatch(status=FindingStatus.confirmed, action_reason="valid"))
     assert finding.status == FindingStatus.confirmed
+
+
+@pytest.mark.asyncio
+async def test_an_accepted_risk_can_be_renewed_with_new_terms_and_the_event_records_it():
+    finding = _finding()
+    finding.status = FindingStatus.accepted
+    db = _db()
+    body = FindingPatch(status=FindingStatus.accepted, action_reason="Extended after review",
+                        risk_acceptance={"risk_owner": "CISO", "expires_at": FUTURE,
+                                         "compensating_controls": "ACL plus IDS rule"})
+    await _patch(finding, body, db)
+    from app.models.finding_event import FindingEvent
+    event = next(c.args[0] for c in db.add.call_args_list if isinstance(c.args[0], FindingEvent))
+    assert event.event_type == "accepted" and event.detail["renewal"] is True
+    assert event.detail["compensating_controls"] == "ACL plus IDS rule"
+
+
+@pytest.mark.asyncio
+async def test_resending_accepted_without_terms_is_a_noop_not_a_new_acceptance():
+    finding = _finding()
+    finding.status = FindingStatus.accepted
+    db = _db()
+    await _patch(finding, FindingPatch(status=FindingStatus.accepted), db)     # no terms, already accepted
+    from app.models.finding_event import FindingEvent
+    assert not [c for c in db.add.call_args_list if isinstance(c.args[0], FindingEvent)]
+
+
+def test_the_finding_detail_carries_the_suggested_owner_for_the_accept_form():
+    from app.schemas.finding import FindingAssetContext
+    assert "suggested_risk_owner" in FindingAssetContext.model_fields
+    import inspect
+    from app.routers import findings
+    assert "suggest_risk_owner(asset)" in inspect.getsource(findings)

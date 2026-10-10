@@ -151,7 +151,9 @@ async def patch_finding(
 
     acceptance_detail: dict[str, object] = {}
     patch.pop("risk_acceptance", None)
-    if target_status == FindingStatus.accepted and previous_status != FindingStatus.accepted:
+    renewal = (target_status == FindingStatus.accepted and previous_status == FindingStatus.accepted
+               and body.risk_acceptance is not None)
+    if (target_status == FindingStatus.accepted and previous_status != FindingStatus.accepted) or renewal:
         acceptance_detail = await _require_risk_acceptance(db, finding, body.risk_acceptance)
 
     if target_status is None:
@@ -257,6 +259,14 @@ async def patch_finding(
             from_status=previous_status, to_status=finding.status,
             detail=detail,
         )
+    elif renewal:
+        # Same status, new terms: an extension is a decision and gets its own immutable event,
+        # so the expiry watcher and the report read the CURRENT terms.
+        await finding_events.record_event(
+            db, finding, "accepted", actor=actor, actor_type=actor_type,
+            from_status=previous_status, to_status=finding.status,
+            detail={"origin": origin, "renewal": True, **({"reason": action_reason} if action_reason else {}),
+                    **acceptance_detail})
     elif closure_packet is not None:
         await finding_events.record_event(
             db,
