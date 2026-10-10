@@ -21,6 +21,13 @@ This plan lists them, says why each matters, and splits the fixes into small tas
 | F10 | Never run on a real database | `_suggest_target_assets` (SQL) and the stored `target_selection` JSON were only exercised through patched unit tests | A type or query error would surface only in production | unit tests patch `_resolve_targets` |
 | F11 | Stale or duplicated status | STATUS P1-3 still says P2/P3/P4b are not built; four rows appear twice; the stray `probe copy` row is already clean; P1-4 / P1-7 list SNMPv3 noAuth, FTP write and SIP/NetBIOS/mDNS/IKE as missing though they exist | The owner plans from a list that is wrong | `docs/STATUS.md` |
 
+**Status: H1–H6 built, tested and pushed on `claude/elegant-noether-ggdafj`** (commits `e49e8bb7`
+H1, `e0d08305` H2, `051c2277` H3, `b11d388f` H4, `fd9d9c0c` H5, `8dfad69a` H6). Local verification:
+backend 3,143 passed / 8 skipped, detection engine 553, frontend 664, `tsc` clean, the 9-fixture
+attack-path harness 9/9 with 0 fabricated paths, and a live PostgreSQL 16 run of the recompute,
+overview and the new `/changes` endpoint (H6) that found and fixed a real boundary bug. Not run:
+the Ubuntu weak-lab VM, Windows, CI, and a human review on real engagement data.
+
 ## 2. Tasks (small, done in order, each tested before the next)
 
 | Task | Fixes | Done when |

@@ -344,6 +344,25 @@ auto-pick never reads as a deliberate scope (FM-04). `diagnose` reports `comprom
 hidden). `min_fix_set` now returns `exposed_targets` — crown jewels exposed to the internet outright, whose own
 exposure must be removed — which the fix-first card and analysis name.
 
+### 7.3 Hardening refinements after an adversarial review (2026-10-10)
+
+A second read of P2/P3/P4b against the code found places that over-granted control or would not
+scale; all are fixed (`docs/planning/2026-10-10-hardening-plan-after-p2-p3-p4b.md`).
+- **Control only from curated rules.** `capability_map.classify` returns the capability AND its
+  source; only a curated rule-id source grants control. A category/ATT&CK fallback (an imported
+  finding tagged `T1190`) classifies but never becomes a foothold.
+- **Exposure ≠ ownership.** `POSTURE-RDP-EXPOSED` / `POSTURE-RTSP-EXPOSED` are recon (the login
+  screen answers; a credential is still needed), and `CORR-NTLM-RELAY-PATH` is a relay precondition
+  like signing-off, not an own-host takeover.
+- **Unverified exploit preconditions.** SMBv1, RDP-without-NLA, end-of-life OS and TR-069 are a
+  low-weight `exploit_precondition` step (base 0.2), raised only by KEV/EPSS evidence — a patched
+  host still speaks SMBv1.
+- **Shared default credentials are information, not edges** (the FM-08 fallacy; also an O(k²)
+  blow-up on identical devices). Recorded in the analysis for the report.
+- **Relay through a per-subnet hub**, O(sources+targets) not O(n²).
+- **Suggested crown jewels capped** (10, DC/hypervisor first) and labelled "suggested" on the
+  dashboard and the engagement empty state.
+
 Each phase ships with unit tests (pure functions, fixture graphs) and keeps the
 backend detection suite green; no probe changes (detection stays on the manager).
 
