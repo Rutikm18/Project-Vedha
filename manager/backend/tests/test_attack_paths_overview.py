@@ -632,10 +632,10 @@ def test_a_recompute_records_its_snapshot_with_the_analysis_timestamp_and_its_tr
         def add(self, row): pass
         async def flush(self): pass
     async def build(_db, _eid): return PathAnalyzer(graph), graph
-    async def targets(_db, _eid, _t): return ["jewel"]
+    async def targets(_db, _eid, _t): return ["jewel"], {"basis": "operator", "suggested": []}
     store = AsyncMock(return_value=NOW_UTC)
     record = AsyncMock()
-    with patch.object(R, "_build_analyzer", build), patch.object(R, "_target_ids", targets), \
+    with patch.object(R, "_build_analyzer", build), patch.object(R, "_resolve_targets", targets), \
             patch.object(R, "_lock_engagement_paths", AsyncMock()), patch.object(R, "_store_analysis", store), \
             patch.object(R, "_record_snapshot", record):
         asyncio.run(R._recompute_and_store(DB(), E1, None, trigger="detection"))

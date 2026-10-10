@@ -359,6 +359,20 @@ async def attack_path_analysis(
         "coverage": analysis.get("coverage"),
         "freshness": analysis.get("freshness"),
         "diagnostics": analysis.get("diagnostics"),
+        "target_selection": _labelled_target_selection(analysis.get("target_selection"), labels),
+    }
+
+
+def _labelled_target_selection(selection: dict | None, labels: dict[str, str]) -> dict:
+    """The stored target selection (P4b) with host labels added to any suggested
+    crown jewels, so the page can say 'targets suggested automatically: dc01 (domain
+    controller)'. `basis` is operator / suggested / explicit / none."""
+    selection = selection or {"basis": "operator", "suggested": []}
+    return {
+        "basis": selection.get("basis", "operator"),
+        "suggested": [{"asset_id": s["asset_id"], "reason": s.get("reason"),
+                       "label": labels.get(str(s["asset_id"]), str(s["asset_id"]))}
+                      for s in (selection.get("suggested") or [])],
     }
 
 
@@ -486,11 +500,47 @@ async def _lock_engagement_paths(db: AsyncSession, engagement_id: uuid.UUID) -> 
         logger.debug("graph.paths.lock_unavailable", error=str(exc))
 
 
+async def _suggest_target_assets(db: AsyncSession, engagement_id: uuid.UUID) -> list[dict[str, str]]:
+    """Crown-jewel suggestions (P4b) for an engagement with nothing marked critical:
+    domain controllers, virtualization hosts and datastores, from role evidence and
+    observed datastore services. Each carries the reason it was picked."""
+    from app.detection.crown_jewels import suggest_crown_jewels
+    from app.models.service import Service
+
+    assets = (await db.execute(
+        select(Asset.id, Asset.asset_type, Asset.device_role, Asset.role_detail, Asset.role_confidence)
+        .where(Asset.engagement_id == engagement_id)
+    )).all()
+    asset_views = [{"id": a[0], "asset_type": a[1], "device_role": a[2],
+                    "role_detail": a[3], "role_confidence": a[4]} for a in assets]
+    asset_ids = [a[0] for a in assets]
+    services = (await db.execute(
+        select(Service.asset_id, Service.port).where(Service.asset_id.in_(asset_ids))
+    )).all() if asset_ids else []
+    service_views = [{"asset_id": s[0], "port": s[1]} for s in services]
+    return suggest_crown_jewels(asset_views, service_views)
+
+
+async def _resolve_targets(db: AsyncSession, engagement_id: uuid.UUID,
+                           target_asset_id: uuid.UUID | None) -> tuple[list[str], dict]:
+    """The path targets and how they were chosen (P4b). Operator-marked critical
+    assets always win; only when none is marked do we fall back to SUGGESTED crown
+    jewels, and the returned selection says which, so the UI never presents an
+    auto-picked target as a deliberate scoping choice."""
+    if target_asset_id:
+        return [str(target_asset_id)], {"basis": "explicit", "suggested": []}
+    critical = await _critical_asset_ids(db, engagement_id)
+    if critical:
+        return critical, {"basis": "operator", "suggested": []}
+    suggestions = await _suggest_target_assets(db, engagement_id)
+    ids = [s["asset_id"] for s in suggestions]
+    return ids, {"basis": "suggested" if ids else "none", "suggested": suggestions}
+
+
 async def _target_ids(db: AsyncSession, engagement_id: uuid.UUID,
                       target_asset_id: uuid.UUID | None) -> list[str]:
-    if target_asset_id:
-        return [str(target_asset_id)]
-    return await _critical_asset_ids(db, engagement_id)
+    ids, _selection = await _resolve_targets(db, engagement_id, target_asset_id)
+    return ids
 
 
 async def _recompute_and_store(
@@ -500,7 +550,7 @@ async def _recompute_and_store(
     diagnostics so the caller can explain an empty result."""
     await _lock_engagement_paths(db, engagement_id)
     analyzer, graph = await _build_analyzer(db, engagement_id)
-    targets = await _target_ids(db, engagement_id, target_asset_id)
+    targets, target_selection = await _resolve_targets(db, engagement_id, target_asset_id)
     paths = _all_paths_to_critical(analyzer, targets)
 
     # Engagement-wide facts are computed once, measured on the network (not counted
@@ -534,6 +584,7 @@ async def _recompute_and_store(
     payload = {
         "choke": choke, "diagnostics": diagnostics,
         "coverage": coverage_report(graph), "freshness": freshness_report(graph),
+        "target_selection": target_selection,       # P4b: operator vs suggested crown jewels
     }
     computed_at = await _store_analysis(db, engagement_id, payload, len(wanted))
     await _record_snapshot(db, engagement_id, payload, len(wanted), trigger, computed_at)
@@ -635,7 +686,10 @@ def labelled_choke(choke: dict, labels: dict[str, str]) -> dict:
                    for r in choke.get("ranked") or []],
         "min_fix_set": {"size": fix.get("size", 0),
                         "assets": [{"asset_id": a, "label": label(a)} for a in fix.get("assets") or []],
-                        "independent_routes": {label(k): v for k, v in (fix.get("independent_routes") or {}).items()}},
+                        "independent_routes": {label(k): v for k, v in (fix.get("independent_routes") or {}).items()},
+                        # D8: crown jewels exposed outright — their OWN exposure must be removed.
+                        "exposed_targets": [{"asset_id": a, "label": label(a)}
+                                            for a in fix.get("exposed_targets") or []]},
         "targets": [{**x, "label": label(x["asset_id"])} for x in choke.get("targets") or []],
     }
 
@@ -714,6 +768,7 @@ def _explain_hop(edge: dict, labels: dict[str, str]) -> str:
         "CONNECTS_TO": "pivots over the network to",
         "SAME_SEGMENT": "moves laterally within the same segment to",
         "CREDENTIAL_REUSE": "reuses captured credentials to access",
+        "RELAY": "relays coerced authentication to take over",
         "SAME_HOST": "is already on the same machine, which also answers as",
         "SAME_SUBNET": f"moves laterally within subnet {via[0] if via else ''} to",
         "CROSS_SUBNET": f"crosses from subnet {via[0] if via else '?'} into "
@@ -724,7 +779,13 @@ def _explain_hop(edge: dict, labels: dict[str, str]) -> str:
     suffix = f" and exploits it (CVSS {edge.get('cvss')})" if edge.get("exploited") else ""
     basis = edge.get("basis")
     caveats = []
-    if basis == "assumed":
+    if technique == "RELAY":
+        caveats.append("This NTLM relay assumes a coercion primitive is reachable and that LDAP "
+                       "channel binding / EPA does not block it — verify before relying on it.")
+    elif basis == "possible":
+        caveats.append("This step reuses a shared/default credential; it holds only where that "
+                       "credential has not been changed.")
+    if basis == "assumed" and technique != "RELAY":
         caveats.append("Reachability between these subnets is assumed, not observed — verify segmentation.")
     elif basis == "assumed_cross_site":
         caveats.append("These are different SITES' private networks. That they are connected at all is "

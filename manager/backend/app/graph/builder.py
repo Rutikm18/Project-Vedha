@@ -160,6 +160,55 @@ def freshness_days_from_roe(rules_of_engagement: dict | None) -> int | None:
     return val or None
 
 
+def _finding_evidence(finding: Any) -> dict[str, Any]:
+    ev = getattr(finding, "evidence", None)
+    return ev if isinstance(ev, dict) else {}
+
+
+def _finding_capability(finding: Any) -> str | None:
+    """The attacker capability this finding grants (P2), from its rule_id /
+    category / ATT&CK technique. None when it is not an attack step."""
+    from app.detection.capability_map import capability_for
+
+    ev = _finding_evidence(finding)
+    return capability_for(
+        ev.get("rule_id"),
+        ev.get("category"),
+        getattr(finding, "mitre_techniques", None) or ev.get("mitre"),
+    )
+
+
+def _finding_state(finding: Any) -> str | None:
+    """The finding's own state for step likelihood: the posture state when present
+    (confirmed/suspected/potential), else the verification verdict."""
+    ev = _finding_evidence(finding)
+    return ev.get("state") or getattr(finding, "verification_state", None)
+
+
+def _finding_confidence(finding: Any) -> Any:
+    """Verification confidence, or the posture rule's own confidence when the
+    finding was never verification-stamped (posture findings carry 0–100)."""
+    vc = getattr(finding, "verification_confidence", None)
+    if vc is not None:
+        return vc
+    return _finding_evidence(finding).get("confidence")
+
+
+def _finding_kev(finding: Any) -> bool:
+    """True when the finding is linked to a CISA KEV-listed CVE (exploitability.py
+    records this on posture evidence; the CVE track sets evidence.kev)."""
+    ev = _finding_evidence(finding)
+    if ev.get("kev"):
+        return True
+    return any(r.get("kev_listed") for r in (ev.get("kev_refs") or []) if isinstance(r, dict))
+
+
+def _finding_exploitability(finding: Any) -> str | None:
+    """The exploitability tier exploitability.py stamped on a posture finding
+    (actively_exploited / likely / elevated / unknown), when present."""
+    return _finding_evidence(finding).get("exploitability")
+
+
 def is_internet_exposed(asset: Any) -> bool:
     tags = getattr(asset, "tags", None) or {}
     if isinstance(tags, dict) and tags.get("internet_exposed"):
@@ -254,6 +303,7 @@ class GraphBuilder:
         for f in findings:
             fid = finding_node_id(f.id)
             cvss = _to_float(getattr(f, "cvss_score", None))
+            cap = _finding_capability(f)
             g.add_node(
                 fid,
                 type="Finding",
@@ -268,7 +318,15 @@ class GraphBuilder:
                 # exploitation probability; AC and confidence refine the estimate).
                 epss=_to_float(getattr(f, "epss_score", None)),
                 attack_complexity=_attack_complexity(f),
-                confidence=getattr(f, "verification_confidence", None),
+                confidence=_finding_confidence(f),
+                # P2: what the weakness lets an attacker DO, independent of the
+                # `exploitable` flag (which only the AD modules ever set). The
+                # analyzer turns a control-granting capability into a compromise
+                # step just as it does for an exploitable finding (FM-03/12/19).
+                capability=cap,
+                state=_finding_state(f),
+                kev=_finding_kev(f),
+                exploitability=_finding_exploitability(f),
             )
             aid = asset_node_id(getattr(f, "asset_id", None))
             if getattr(f, "asset_id", None) is not None and g.has_node(aid):
@@ -418,20 +476,42 @@ class GraphBuilder:
     def _add_credential_edges(self, credentials: Iterable[dict[str, Any]]) -> int:
         """
         CREDENTIAL_REUSE edges between assets sharing a credential.
-        ``credentials`` items: {"id": ..., "label": ..., "reused_on": [asset_ids]}.
+        ``credentials`` items: {"id", "label", "reused_on": [asset_ids], "basis"?}.
+        ``basis`` (P3, e.g. "possible" for a shared default credential) rides on the
+        edge so the analyzer and the UI can say how sure the reuse is.
         """
         added = 0
         for cred in credentials:
             cid = f"credential:{cred.get('id')}"
-            self.graph.add_node(cid, type="Credential", label=cred.get("label", str(cred.get("id"))))
+            basis = cred.get("basis", "observed")
+            self.graph.add_node(cid, type="Credential", label=cred.get("label", str(cred.get("id"))),
+                                basis=basis)
             hosts = [asset_node_id(h) for h in cred.get("reused_on", []) if self.graph.has_node(asset_node_id(h))]
             for h in hosts:
                 self.graph.add_edge(h, cid, type="HAS_CREDENTIAL")
             for i, a in enumerate(hosts):
                 for b in hosts[i + 1:]:
-                    self.graph.add_edge(a, b, type="CREDENTIAL_REUSE", weight=0.5, credential=cid)
-                    self.graph.add_edge(b, a, type="CREDENTIAL_REUSE", weight=0.5, credential=cid)
+                    self.graph.add_edge(a, b, type="CREDENTIAL_REUSE", weight=0.5, credential=cid, basis=basis)
+                    self.graph.add_edge(b, a, type="CREDENTIAL_REUSE", weight=0.5, credential=cid, basis=basis)
                     added += 2
+        return added
+
+    def add_relay_edges(self, relay_edges: Iterable[dict[str, Any]]) -> int:
+        """NTLM-relay movement edges src→dst from credentials.derive_credential_edges
+        (P3). A relay grants CONTROL of the target (an attacker on the source relays
+        coerced authentication to it), so it is a one-directional movement edge the
+        analyzer treats like credential reuse. ``basis``/``confidence`` carry the
+        preconditions it rests on. Returns edges added."""
+        added = 0
+        for e in relay_edges:
+            src, dst = asset_node_id(e.get("src")), asset_node_id(e.get("dst"))
+            if not (self.graph.has_node(src) and self.graph.has_node(dst)) or src == dst:
+                continue
+            self.graph.add_edge(
+                src, dst, type="RELAY", basis=e.get("basis", "assumed"),
+                reachability_confidence=e.get("confidence", 0.4),
+                technique=e.get("technique"), preconditions=e.get("preconditions"))
+            added += 1
         return added
 
     # ── assembly: the engagement graph from plain objects (no DB) ───────────────
@@ -472,6 +552,15 @@ class GraphBuilder:
             assets, scope, posture_from_roe(rules_of_engagement), identity_mode=identity_mode))
         # P1b-4: one machine seen at several addresses (the dual-homed pivot).
         self.add_machine_links(link_machines(assets, identity_mode, now=now, freshness_days=freshness_days))
+
+        # P3: credential-reuse and NTLM-relay edges, derived from facts with their
+        # preconditions checked and labelled. Before this, GraphBuilder was never
+        # given a `credentials` structure, so no reuse/relay movement existed (FM-08/09).
+        from app.detection.credentials import derive_credential_edges
+
+        cred = derive_credential_edges(assets, [f for f in findings if is_live_finding(f)], services)
+        self._add_credential_edges(cred["credentials"])
+        self.add_relay_edges(cred["relay_edges"])
         return graph
 
     # ── PostgreSQL loader ───────────────────────────────────────────────────────

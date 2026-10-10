@@ -40,6 +40,8 @@ from typing import Any
 import networkx as nx
 import structlog
 
+from app.detection.capability_map import grants_control, step_likelihood_for_capability
+
 logger = structlog.get_logger()
 
 # ── Cypher query examples (server-side equivalents) ───────────────────────────
@@ -78,18 +80,20 @@ RETURN hop.entity_id AS asset_id, path_count ORDER BY path_count DESC
 """
 
 # Relationship types an attacker can traverse for lateral movement.
-_MOVEMENT_RELS = frozenset({"CONNECTS_TO", "SAME_SEGMENT", "CREDENTIAL_REUSE", "SAME_HOST"})
+_MOVEMENT_RELS = frozenset({"CONNECTS_TO", "SAME_SEGMENT", "CREDENTIAL_REUSE", "SAME_HOST", "RELAY"})
 
 # When several movement relationships link the same asset pair, the most
 # reliable one labels the projected edge. SAME_HOST (one machine, two addresses)
-# is identity, not a hop; credential reuse is the next most reliable.
-_REL_PRIORITY = {"SAME_HOST": 4, "CREDENTIAL_REUSE": 3, "CONNECTS_TO": 2, "SAME_SEGMENT": 1}
+# is identity, not a hop; credential reuse is the next most reliable; an NTLM
+# relay rests on unverified preconditions, so it ranks below plain reachability.
+_REL_PRIORITY = {"SAME_HOST": 4, "CREDENTIAL_REUSE": 3, "CONNECTS_TO": 2, "SAME_SEGMENT": 1, "RELAY": 1}
 
 # ── step likelihood model ─────────────────────────────────────────────────────
 # Exploit evidence, strongest first. Values are deliberately coarse: they ORDER
 # steps sensibly; they are not a calibrated probability of compromise.
 P_VALIDATED = 0.95            # exploit actually validated in this engagement
 P_CREDENTIAL_REUSE = 0.85     # valid credentials grant access without an exploit
+P_RELAY = 0.6                 # NTLM relay (intrinsic); the edge's reach carries the assumed preconditions
 _P_ATTACK_COMPLEXITY = {"L": 0.75, "M": 0.5, "H": 0.3}
 _P_SEVERITY = {"critical": 0.65, "high": 0.5, "medium": 0.35, "low": 0.2, "info": 0.1}
 P_FLOOR = 0.1                 # a known weakness is never "impossible" (FM-19)
@@ -155,19 +159,34 @@ class PathAnalyzer:
     # ── attacker movement projection ──────────────────────────────────────────────
 
     def _exploit_info(self, asset_node: str) -> dict[str, Any]:
-        """Most likely exploitable step on an asset: {finding, cvss, likelihood}.
-        Empty when the asset has no exploitable finding (it cannot be compromised
-        by exploitation)."""
+        """Most likely step by which an attacker gains CONTROL of an asset:
+        {finding, cvss, likelihood, capability}. Empty when the asset carries no
+        weakness that grants control (it cannot be compromised).
+
+        A step is control-granting when the finding is marked exploitable/validated
+        (the CVE/AD path), OR its capability map result is a control capability —
+        foothold, lateral or priv_esc (P2). The latter admits the misconfiguration
+        and posture weaknesses that chain on real networks but never carried the
+        `exploitable` flag (FM-03/12/19). credential_access and recon findings do
+        not grant control and never make a host a pivot here."""
         best: dict[str, Any] | None = None
         for _, fid, edata in self.graph.out_edges(asset_node, data=True):
             if edata.get("type") != "HAS_FINDING":
                 continue
             fdata = self.graph.nodes[fid]
-            if not (fdata.get("exploitable") or fdata.get("exploit_validated")):
+            flagged = fdata.get("exploitable") or fdata.get("exploit_validated")
+            cap = fdata.get("capability")
+            if flagged:
+                p = step_likelihood(fdata)
+                via = "exploit"
+            elif grants_control(cap):
+                p = step_likelihood_for_capability(fdata)
+                via = cap
+            else:
                 continue
-            p = step_likelihood(fdata)
             cand = {"finding": fdata.get("entity_id"), "cvss": fdata.get("cvss", 0.0),
-                    "likelihood": p, "validated": bool(fdata.get("exploit_validated"))}
+                    "likelihood": p, "validated": bool(fdata.get("exploit_validated")),
+                    "capability": cap, "via": via}
             if best is None or cand["likelihood"] > best["likelihood"]:
                 best = cand
         return best or {}
@@ -219,6 +238,13 @@ class PathAnalyzer:
             elif info["rel"] == "CREDENTIAL_REUSE":
                 step_p = max(P_CREDENTIAL_REUSE, dest_exploit.get("likelihood", 0.0))
                 grants = True
+            elif info["rel"] == "RELAY":
+                # An NTLM relay owns the target through a coerced authentication, so it
+                # grants control even if the target carries no exploit of its own. Its
+                # intrinsic success is modest and the edge's `reach` carries the assumed
+                # preconditions, so a relay hop ranks below an observed one (FM-09).
+                step_p = max(P_RELAY, dest_exploit.get("likelihood", 0.0))
+                grants = True
             elif dest_exploit:
                 step_p = dest_exploit["likelihood"]
                 grants = True
@@ -238,6 +264,7 @@ class PathAnalyzer:
                 dest_compromisable=bool(dest_exploit),
                 dest_cvss=dest_exploit.get("cvss", 0.0),
                 dest_finding=dest_exploit.get("finding"),
+                dest_capability=dest_exploit.get("capability"),
             )
         self._movement = mv
         return mv
@@ -269,7 +296,8 @@ class PathAnalyzer:
                     p = _clamp_p(exploit["likelihood"] * CONF_SAME_SUBNET * (P_STALE_FACTOR if stale else 1.0))
                     _hub_edge(mv, v, u, p, "SEGMENT_MEMBER", "same_subnet", stale=stale,
                               dest_compromisable=True, dest_cvss=exploit.get("cvss", 0.0),
-                              dest_finding=exploit.get("finding"))
+                              dest_finding=exploit.get("finding"),
+                              dest_capability=exploit.get("capability"))
             elif rel == "SEGMENT_LINK":
                 _hub_edge(mv, u, v, _clamp_reach(d.get("reachability_confidence", 1.0)),
                           "SEGMENT_LINK", d.get("basis") or "assumed")
@@ -376,6 +404,7 @@ class PathAnalyzer:
                 "exploited": last.get("dest_compromisable", False),
                 "finding": last.get("dest_finding"),
                 "cvss": last.get("dest_cvss", 0.0),
+                "capability": last.get("dest_capability"),
             })
         tgt = mv.nodes[node_path[-1]]
         path = {
@@ -511,9 +540,16 @@ class PathAnalyzer:
         (Menger): that many independent hosts must fall before it is safe."""
         mv = self.movement_graph()
         targets = [t for t in targets if mv.has_node(t)]
+        # D8: a crown jewel that is itself an exploitable internet-exposed host is its own
+        # entry point. The vertex cut cannot protect it by cutting other hosts (it is the
+        # target, never a cuttable interior node), so name it here: its OWN exposure must be
+        # removed. Computed from the ORIGINAL sources, before a jewel is filtered out of them
+        # below — an exposed-only jewel would otherwise return early and never be named.
+        original_sources = set(sources)
+        exposed_targets = [mv.nodes[t].get("entity_id") for t in targets if t in original_sources]
         sources = [s for s in sources if mv.has_node(s) and s not in targets]
         if not sources or not targets:
-            return {"size": 0, "assets": [], "independent_routes": {}}
+            return {"size": 0, "assets": [], "independent_routes": {}, "exposed_targets": exposed_targets}
 
         source_set = set(sources)
 
@@ -551,7 +587,7 @@ class PathAnalyzer:
         size, cut = solve(targets)
         routes = {mv.nodes[t].get("entity_id"): solve([t])[0] for t in targets}
         return {"size": size, "assets": [mv.nodes[n].get("entity_id") for n in cut],
-                "independent_routes": routes}
+                "independent_routes": routes, "exposed_targets": exposed_targets}
 
     def choke_analysis(self, target_asset_ids: list[str], source_type: str = "internet_exposed",
                        top: int = 20, max_candidates: int = 80) -> dict[str, Any]:
@@ -670,6 +706,12 @@ class PathAnalyzer:
         assets = sum(1 for _, d in g.nodes(data=True) if d.get("type") == "Asset")
         findings = [d for _, d in g.nodes(data=True) if d.get("type") == "Finding"]
         exploitable = sum(1 for d in findings if d.get("exploitable") or d.get("exploit_validated"))
+        # P2: a finding compromises a host when it is exploitable OR its capability
+        # grants control (foothold/lateral/priv_esc). Posture findings carry the
+        # latter, so "no exploitable finding" is no longer the same as "no step".
+        compromising = sum(1 for d in findings
+                           if d.get("exploitable") or d.get("exploit_validated")
+                           or grants_control(d.get("capability")))
         movement_rels = sum(1 for _, _, d in g.edges(data=True)
                             if d.get("type") in _MOVEMENT_RELS | _HUB_RELS)
         sources = len(self._source_assets(source_type))
@@ -696,17 +738,19 @@ class PathAnalyzer:
         if movement_rels == 0:
             reasons.append({"code": "no_reachability",
                             "detail": "no network reachability or credential edges between assets"})
-        if exploitable == 0:
+        if compromising == 0:
             reasons.append({"code": "no_exploitable_steps",
-                            "detail": "no finding is marked exploitable, so no host can be compromised"})
+                            "detail": "no finding can compromise a host: none is marked exploitable "
+                                      "and none is a foothold/lateral/priv-esc weakness"})
         control_edges = sum(1 for _, v in mv.edges() if _is_asset(mv, v))
-        if exploitable and control_edges == 0 and movement_rels:
+        if compromising and control_edges == 0 and movement_rels:
             reasons.append({"code": "no_control_edges",
                             "detail": "hosts are reachable but none reachable host can be compromised"})
         return {
             "assets": assets,
             "findings": len(findings),
             "exploitable_findings": exploitable,
+            "compromising_findings": compromising,
             "entry_points": sources,
             "internet_exposed_assets": exposed,
             "targets": len(targets),

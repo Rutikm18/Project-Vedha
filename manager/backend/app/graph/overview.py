@@ -212,15 +212,28 @@ def build_row(
     return row
 
 
-def row_sort_key(row: dict[str, Any]) -> tuple[int, int, float, str]:
-    """Exposed first, then engagements with reachable jewels (most reachable, then highest
-    modelled risk), then ones computed with none reachable, then the ones that cannot be
-    assessed; ties by name so the order is stable. Never ranks on the capped route count."""
+# D7: completed/paused engagements are historical — they are shown, never hidden, but
+# they sink below the active ones so the dashboard leads with what can still be acted on.
+_INACTIVE_STATUSES = frozenset({"completed", "paused"})
+
+
+def is_demoted(row: dict[str, Any]) -> bool:
+    return str(row.get("status") or "").lower() in _INACTIVE_STATUSES
+
+
+def row_sort_key(row: dict[str, Any]) -> tuple[int, int, int, float, str]:
+    """Active engagements first (completed/paused ones are demoted, not hidden — D7);
+    then within each group: exposed first, then engagements with reachable jewels (most
+    reachable, then highest modelled risk), then ones computed with none reachable, then
+    the ones that cannot be assessed; ties by name so the order is stable. Never ranks on
+    the capped route count."""
+    active = 1 if is_demoted(row) else 0
     state = row.get("state") or NOT_COMPUTED
     name = str(row.get("name") or "").lower()
     if state in (EXPOSED, REACHABLE):
-        return (STATE_ORDER[state], -int(row.get("jewels_reachable") or 0), -float(row.get("top_risk") or 0), name)
-    return (STATE_ORDER.get(state, 9), 0, 0.0, name)
+        return (active, STATE_ORDER[state], -int(row.get("jewels_reachable") or 0),
+                -float(row.get("top_risk") or 0), name)
+    return (active, STATE_ORDER.get(state, 9), 0, 0.0, name)
 
 
 def build_summary(rows: list[dict[str, Any]]) -> dict[str, int]:

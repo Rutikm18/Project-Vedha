@@ -293,8 +293,8 @@ def test_recompute_keeps_ids_and_removes_only_stale_paths():
             return _analyzer_returning(paths), nx.MultiDiGraph()
 
         async def _targets(_db, _eid, _t):
-            return ["z"]
-        with patch.object(R, "_build_analyzer", _build), patch.object(R, "_target_ids", _targets), \
+            return ["z"], {"basis": "operator", "suggested": []}
+        with patch.object(R, "_build_analyzer", _build), patch.object(R, "_resolve_targets", _targets), \
                 patch.object(R, "_record_snapshot", new=AsyncMock()):          # history has its own tests
             await R._recompute_and_store(db, eng, None)
 
