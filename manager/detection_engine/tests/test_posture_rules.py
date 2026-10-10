@@ -34,11 +34,16 @@ class TestTrustTier:
         assert f.rule_id == "POSTURE-SMB-SIGNING-OFF" and f.state == "confirmed"
         assert f.confidence >= 85
 
-    def test_unvalidated_scanner_only_suspects(self):
-        # snmp_scan is NOT in the validated tier → suspected, not confirmed.
+    def test_snmp_default_community_is_confirmed(self):
+        # snmp_scan was promoted into the validated tier (M5) after the lab-rig verification.
         a = _asset(_fact("snmp_scan", 161, {"community": "public"}))
         f = P.detect_posture(a)[0]
-        assert f.rule_id == "POSTURE-SNMP-DEFAULT-COMMUNITY" and f.state == "suspected"
+        assert f.rule_id == "POSTURE-SNMP-DEFAULT-COMMUNITY" and f.state == "confirmed"
+
+    def test_unvalidated_scanner_only_suspects(self):
+        # A scanner outside the validated tier can only SUSPECT.
+        assert not P.is_validated("web_scan")
+        assert P._state_for("web_scan") == "suspected"
 
     def test_registry_contains_user_validated_set(self):
         for s in ("smb_scan", "rdp_scan", "tls_scan", "msrpc_scan", "udp_scan",
@@ -118,9 +123,28 @@ class TestVulnerableHost:
 
 # ── UDP honesty carries into detection ────────────────────────────────────────
 class TestUdpHonesty:
-    def test_amplifier_fires_only_when_it_answered(self):
-        answered = _asset(_fact("udp_scan", 161, {"service": "snmp", "responded": True}))
-        assert any(f.rule_id == "POSTURE-UDP-AMPLIFIER" for f in P.detect_posture(answered))
+    def test_plain_answer_is_not_an_amplifier(self):
+        """M4: answering a normal query (DNS recursion off, stock SNMP) is exposure only."""
+        for svc, port, extra in (("dns", 53, {"recursion_available": False, "open_recursion": False}),
+                                 ("snmp", 161, {}), ("ntp", 123, {"monlist_enabled": False})):
+            a = _asset(_fact("udp_scan", port, {"service": svc, "responded": True, **extra}))
+            assert not any(f.rule_id == "POSTURE-UDP-AMPLIFIER" for f in P.detect_posture(a)), svc
+
+    def test_amplifier_fires_on_protocol_proof(self):
+        for svc, port, extra in (("dns", 53, {"open_recursion": True}),
+                                 ("ntp", 123, {"monlist_enabled": True}),
+                                 ("memcached", 11211, {"exposed_unauthenticated": True}),
+                                 ("chargen", 19, {})):
+            a = _asset(_fact("udp_scan", port, {"service": svc, "responded": True, **extra}))
+            assert any(f.rule_id == "POSTURE-UDP-AMPLIFIER" for f in P.detect_posture(a)), svc
+
+    def test_amplifier_measured_factor_gate(self):
+        def fires(svc, port, factor):
+            a = _asset(_fact("udp_scan", port, {"service": svc, "responded": True,
+                                                "amplification_factor": factor}))
+            return any(f.rule_id == "POSTURE-UDP-AMPLIFIER" for f in P.detect_posture(a))
+        assert fires("ssdp", 1900, 31.0) and not fires("ssdp", 1900, 12.0)
+        assert fires("dns", 53, 40.0) and not fires("dns", 53, 3.0)
 
     def test_no_reply_udp_raises_nothing(self):
         silent = _asset(_fact("udp_scan", 161, {"service": "snmp", "responded": False},
@@ -169,3 +193,44 @@ class TestInvariants:
                    _fact("msrpc_scan", 135, {"msrpc": True, "endpoint_count": 5}))  # medium
         fs = P.detect_all({a.ip: a})
         assert fs[0].risk_score >= fs[-1].risk_score
+
+
+# ── M2: state follows evidence strength, not scanner membership ───────────────
+class TestEvidenceBasis:
+    def test_inference_is_never_confirmed_even_from_a_validated_scanner(self):
+        assert P.is_validated("port_scan")
+        assert P._state_for("port_scan", P.BASIS_PORT_INFERENCE) == "suspected"
+        assert P._state_for("port_scan", P.BASIS_BANNER_INFERENCE) == "suspected"
+        assert P._state_for("port_scan", P.BASIS_PROTOCOL_OBSERVED) == "confirmed"
+
+    def test_unvalidated_scanner_cannot_confirm_even_with_protocol_basis(self):
+        assert P._state_for("web_scan", P.BASIS_PROTOCOL_OBSERVED) == "suspected"
+
+    def test_every_rule_declares_a_known_basis(self):
+        assert all(r.evidence_basis in P.EVIDENCE_BASES for r in P.RULES)
+
+    def test_dedicated_rule_findings_carry_their_basis(self):
+        a = _asset(_fact("smb_scan", 445, {"smb2_supported": True, "signing_required": False}))
+        f = P.detect_posture(a)[0]
+        assert f.evidence["evidence_basis"] == "protocol_observed" and f.state == "confirmed"
+
+
+# ── M1: canonical condition key ───────────────────────────────────────────────
+def test_engine_rules_stamp_canonical_keys():
+    assert P.condition_key_for("POSTURE-EXPOSED-CLEARTEXT", "exposure", 23) == "exposed:23"
+    # dedicated NFS scanner and the port-intel NFS row are the SAME condition
+    assert P.condition_key_for("POSTURE-NFS-WORLD-READABLE-EXPORT", "misconfiguration", 2049) == "exposed:2049"
+    # amplifier + exposure on SNMP collapse; default-community is a different weakness
+    assert (P.condition_key_for("POSTURE-SNMP-AMPLIFIER", "amplification", 161, "udp")
+            == P.condition_key_for("POSTURE-UDP-AMPLIFIER", "amplification", 161, "udp"))
+    assert (P.condition_key_for("POSTURE-SNMP-DEFAULT-COMMUNITY", "default_credentials", 161, "udp")
+            != P.condition_key_for("POSTURE-SNMP-AMPLIFIER", "amplification", 161, "udp"))
+    # two different weak-crypto weaknesses on 443 stay apart
+    assert (P.condition_key_for("POSTURE-TLS-WEAK-CIPHER", "weak_crypto", 443)
+            != P.condition_key_for("POSTURE-TLS-DEPRECATED-VERSION", "weak_crypto", 443))
+
+
+def test_engine_stamps_dedup_key_on_findings():
+    a = _asset(_fact("smb_scan", 445, {"smb2_supported": True, "signing_required": False}))
+    f = P.detect_posture(a)[0]
+    assert f.evidence["dedup_key"] == "smb-signing-off:445"

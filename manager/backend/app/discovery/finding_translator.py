@@ -194,7 +194,7 @@ def probe_finding_condition(finding: dict) -> str | None:
     """The cross-producer condition for a probe self-assessed finding, or None —
     only for the exposed-service class, keyed by port (gap #2)."""
     if isinstance(finding, dict) and finding.get("category") in _EXPOSED_CATEGORIES:
-        return exposed_service_condition(finding.get("port"))
+        return exposed_service_condition(finding.get("port"), finding.get("proto"))
     return None
 
 
@@ -283,11 +283,50 @@ async def _find_open_duplicate(
     return (await db.execute(q.limit(1))).scalar_one_or_none()
 
 
-def exposed_service_condition(port: int | None) -> str | None:
+def exposed_service_condition(port: int | None, proto: str | None = None) -> str | None:
     """The cross-producer condition key for an exposed-service finding (gap #2):
     one such finding per (asset, port), whatever producer raised it or how it is
-    titled. None when there is no port to key on."""
-    return f"exposed:{port}" if isinstance(port, int) else None
+    titled. None when there is no port to key on. UDP gets its own `/udp` key so
+    UDP/161 and TCP/161 stay two services (spelling shared with the engine's
+    `posture_rules.condition_key`, which is the canonical definition)."""
+    if not isinstance(port, int):
+        return None
+    return f"exposed:{port}/udp" if str(proto or "").lower() == "udp" else f"exposed:{port}"
+
+
+_SEVERITY_ORDER = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
+_MAX_SIGNALS = 12
+
+
+def stronger_severity(current, incoming):
+    """The higher of two FindingSeverity values (merging two signals into one finding
+    must never LOWER what the strongest signal said)."""
+    cur = _SEVERITY_ORDER.get(getattr(current, "value", current), -1)
+    inc = _SEVERITY_ORDER.get(getattr(incoming, "value", incoming), -1)
+    return incoming if inc > cur else current
+
+
+def merge_signals(previous_evidence, *, existing_rule_id=None, existing_title=None,
+                  existing_severity=None, incoming: dict | None = None) -> list[dict]:
+    """The signals (producer rows) that collapsed into one finding, for the report's
+    roll-up: one `{rule_id, title, severity}` per distinct rule/title, bounded.
+
+    The finding's own first signal is seeded from the stored row so it is not lost
+    when a later producer's evidence replaces the evidence body."""
+    prev = previous_evidence if isinstance(previous_evidence, dict) else {}
+    signals: list[dict] = [s for s in (prev.get("signals") or []) if isinstance(s, dict)]
+
+    def _add(rule_id, title, severity):
+        sev = getattr(severity, "value", severity)
+        sig = {"rule_id": rule_id, "title": title, "severity": sev}
+        if not any((s.get("rule_id") or s.get("title")) == (rule_id or title) for s in signals):
+            signals.append(sig)
+
+    if not signals and (existing_rule_id or existing_title):
+        _add(existing_rule_id or prev.get("rule_id"), existing_title, existing_severity)
+    if incoming:
+        _add(incoming.get("rule_id"), incoming.get("title"), incoming.get("severity"))
+    return signals[:_MAX_SIGNALS]
 
 
 async def create_findings_from_probe_result(

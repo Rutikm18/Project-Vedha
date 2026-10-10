@@ -18,11 +18,11 @@ class TestScannerRegistry:
     def test_user_validated_scanners_are_verified(self):
         for s in ("host_discovery", "port_scan", "syn_scan", "os_fingerprint",
                   "smb_scan", "rdp_scan", "tls_scan", "msrpc_scan",
-                  "rpc_reconcile", "udp_scan"):
+                  "rpc_reconcile", "udp_scan", "snmp_scan"):
             assert R.is_verified(s), s
 
     def test_unvalidated_scanners_are_not_verified(self):
-        for s in ("web_scan", "ssh_scan", "snmp_scan", "smb_enum_scan"):
+        for s in ("web_scan", "ssh_scan", "smb_enum_scan"):
             assert not R.is_verified(s)
 
     def test_unknown_scanner_is_not_trusted(self):

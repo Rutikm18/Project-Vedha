@@ -52,6 +52,7 @@ VALIDATED_SCANNERS: frozenset = frozenset({
     "os_fingerprint",                        # os_fusion (build-backed)
     "service_banner",                        # banner grab (honest 'no banner')
     "printer_scan",                          # real PJL handshake confirm
+    "snmp_scan",                             # SNMP default-community rig-verified (lab, 9 Oct)
 })
 
 
@@ -233,6 +234,10 @@ class PostureRule:
     # set of paths that gate assessability — for rules with OR-alternative inputs,
     # leave it empty rather than declare a path that isn't always required.
     requires: tuple[str, ...] = ()
+    # What the detector's evidence IS (see BASIS_*). Dedicated-scanner rules read a
+    # protocol-level answer, hence the default; a rule that keys off an open port or a
+    # banner heuristic must say so and is then capped at SUSPECTED.
+    evidence_basis: str = "protocol_observed"
 
 
 # ── detectors (pure: Fact -> evidence dict | None) ────────────────────────────
@@ -374,21 +379,92 @@ def _msrpc_exposed(f: Fact) -> Optional[dict]:
     return None
 
 
+# US-CERT/CISA TA14-017A bandwidth-amplification factors (lower bound of the published
+# range). A measured response/request ratio at or above a protocol's factor makes the
+# service a usable reflective-DDoS source; below it the service is merely exposed.
+_AMP_FACTOR_THRESHOLDS = {
+    "dns": 28.0, "ntp": 556.0, "snmp": 6.3, "ssdp": 30.8,
+    "chargen": 358.0, "memcached": 10000.0, "ldap": 46.0,
+}
+
+
+def _num(v: Any) -> Optional[float]:
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
 def _udp_amplifier(f: Fact) -> Optional[dict]:
+    """A UDP service that is demonstrably usable as a reflective-DDoS amplifier.
+
+    Fires only on a protocol-level proof or a measured factor — NEVER on "the service
+    answered a normal query" (a closed-recursion DNS server or a stock NTP daemon
+    answers one too, and is not an amplifier):
+      * NTP    — monlist actually enabled;
+      * DNS    — open recursion (RA set, NOERROR, answers present);
+      * memcached — stats served to an unauthenticated UDP client;
+      * chargen — any reply (the service IS the amplifier, TA14-017A ~358x);
+      * any of the above protocols — a measured `amplification_factor` at or above the
+        TA14-017A threshold.
+    Below that it is exposure (handled by the exposure rules), not amplification."""
     d = _d(f)
     if d.get("monlist_enabled") is True:
-        return {"service": "ntp", "monlist_enabled": True}
+        return {"service": "ntp", "monlist_enabled": True, "basis": "protocol_observed"}
     if d.get("open_recursion") is True:
-        return {"service": "dns", "open_resolver": True}
+        return {"service": "dns", "open_resolver": True, "basis": "protocol_observed"}
     svc = str(d.get("service") or "").lower()
-    if d.get("responded") is True and svc in _AMPLIFIERS and f.status == "open":
-        return {"service": svc}
+    if d.get("responded") is not True or f.status != "open" or svc not in _AMPLIFIERS:
+        return None
+    if svc == "memcached" and d.get("exposed_unauthenticated") is True:
+        return {"service": svc, "exposed_unauthenticated": True, "basis": "protocol_observed"}
+    if svc == "chargen":
+        return {"service": svc, "basis": "protocol_observed",
+                "factor_reference": _AMP_FACTOR_THRESHOLDS["chargen"]}
+    factor = _num(d.get("amplification_factor"))
+    threshold = _AMP_FACTOR_THRESHOLDS.get(svc)
+    if factor is not None and threshold is not None and factor >= threshold:
+        return {"service": svc, "amplification_factor": round(factor, 2),
+                "threshold": threshold, "basis": "measured_factor"}
     return None
 
 
 def _snmp_default(f: Fact) -> Optional[dict]:
     c = _d(f).get("community")
     return {"community": c} if c in _DEFAULT_COMMUNITIES else None
+
+
+# ── canonical condition key (cross-producer identity) ─────────────────────────
+# Identity of "the same issue on the same service", independent of which producer raised
+# it or how it is titled: (service/port, weakness-class). Findings with equal keys on one
+# asset are ONE issue; the manager merges them (DefectDojo-style hash over a fixed field
+# set, with the service/port always part of it). Rules that describe different weaknesses
+# of one service (weak-TLS vs web-method on 443; default-community vs amplifier on 161)
+# get different classes, so the "two genuinely different issues on one port stay
+# separate" guard holds — the report rolls those up under the service instead.
+DEDUP_KEY = "dedup_key"
+CLASS_EXPOSED = "exposed"
+# Rules that say "this service is reachable / usable from where it should not be", however
+# they got there. Everything in categories exposure/amplification, plus the dedicated
+# scanners whose finding is the same condition a port-intel row reports for that port.
+_EXPOSED_CLASS_RULES = frozenset({"POSTURE-NFS-WORLD-READABLE-EXPORT"})
+_EXPOSED_CLASS_CATEGORIES = frozenset({"exposure", "amplification"})
+
+
+def condition_key(weakness_class: str, port: Optional[int], proto: Optional[str] = None) -> str:
+    """`<class>:<port>` (`/udp` suffix for UDP). The exposed class keeps the historical
+    `exposed:<port>` spelling so rows stored before this existed still merge."""
+    suffix = "/udp" if str(proto or "").lower() == "udp" else ""
+    return f"{weakness_class}:{port}{suffix}" if isinstance(port, int) else weakness_class
+
+
+def weakness_class_for(rule_id: str, category: Optional[str] = None) -> str:
+    if (rule_id.startswith("POSTURE-EXPOSED-") or rule_id in _EXPOSED_CLASS_RULES
+            or category in _EXPOSED_CLASS_CATEGORIES):
+        return CLASS_EXPOSED
+    return rule_id.removeprefix("POSTURE-").lower()      # one class per rule
+
+
+def condition_key_for(rule_id: str, category: Optional[str], port: Optional[int],
+                      proto: Optional[str] = None) -> str:
+    return condition_key(weakness_class_for(rule_id, category), port, proto)
 
 
 def group_key_for(rule_id: str, evidence: dict | None) -> str:
@@ -722,9 +798,9 @@ def _ldap_anonymous_search(f: Fact) -> Optional[dict]:
 
 # An amplification ratio at or above this is a usable reflective-DDoS source: a
 # small query yields a response this many times larger (US-CERT TA14-017A lists
-# SNMP GETBULK at ~6x+; we require a clear, measured multiple to avoid flagging
-# a near-1x responder).
-_SNMP_AMP_FACTOR = 5.0
+# SNMPv2 at 6.3x; we require a measured multiple at that published factor to avoid
+# flagging a near-1x responder).
+_SNMP_AMP_FACTOR = _AMP_FACTOR_THRESHOLDS["snmp"]
 
 
 def _snmp_amplification(f: Fact) -> Optional[dict]:
@@ -928,15 +1004,17 @@ RULES: list[PostureRule] = [
         "medium", "CWE-406", "T1498.002", "amplification", ("udp_scan",), _udp_amplifier,
         "Restrict the service to trusted networks; disable monlist / open recursion; "
         "enable response-rate limiting.",
-        fp_notes="Only fires when the service actually ANSWERED (responded=True) — "
-                 "no-reply / open|filtered never triggers it.",
+        fp_notes="Fires only on a protocol-level proof (NTP monlist, DNS open recursion, "
+                 "unauthenticated memcached stats, chargen reply) or a measured factor at "
+                 "the TA14-017A threshold. A service that merely answered a normal query "
+                 "(e.g. DNS with recursion off) is exposure, not an amplifier.",
         requires=()),   # OR-alternative signals (monlist/open_recursion/service) — no single required path
     PostureRule(
         "POSTURE-SNMP-DEFAULT-COMMUNITY", "SNMP default community string",
         "high", "CWE-1392", "T1078", "default_credentials", ("snmp_scan",), _snmp_default,
         "Change the community string; move to SNMPv3 with auth+priv; restrict by ACL.",
-        fp_notes="snmp_scan is not in the validated trust tier yet, so this is "
-                 "reported SUSPECTED pending validation.",
+        fp_notes="snmp_scan is in the validated trust tier (default community verified "
+                 "on the lab rig), so a community that answered is CONFIRMED.",
         requires=("community",)),
 
     PostureRule(
@@ -1212,8 +1290,7 @@ RULES: list[PostureRule] = [
         "GETBULK on large tables for untrusted sources — a readable agent with a "
         "high response/request ratio is a reflective-DDoS source.",
         fp_notes="Keyed off the MEASURED GETBULK amplification_factor, not a port "
-                 "guess; only fires at or above a clear multiple. snmp_scan is not "
-                 "validated, so SUSPECTED.",
+                 "guess; only fires at or above the TA14-017A SNMPv2 factor (6.3x).",
         requires=()),   # amplification_factor only present when the walk measured it
     PostureRule(
         "POSTURE-MQTT-UNAUTHENTICATED", "MQTT broker accepts unauthenticated clients",
@@ -1281,7 +1358,21 @@ def is_credentialed(scanner: str) -> bool:
 
 
 # ── runner ────────────────────────────────────────────────────────────────────
-def _state_for(scanner: str) -> str:
+# How the evidence behind a finding was obtained. Separate from WHICH scanner saw it: a
+# validated port scanner proves the port is open, not that the service on it is what the
+# port number suggests.
+BASIS_PROTOCOL_OBSERVED = "protocol_observed"   # a protocol-level answer (flag, status byte, handshake)
+BASIS_BANNER_INFERENCE = "banner_inference"     # a banner/port heuristic, no protocol proof
+BASIS_PORT_INFERENCE = "port_inference"         # only "this port is open"
+EVIDENCE_BASES = frozenset({BASIS_PROTOCOL_OBSERVED, BASIS_BANNER_INFERENCE, BASIS_PORT_INFERENCE})
+
+
+def _state_for(scanner: str, basis: str = BASIS_PROTOCOL_OBSERVED) -> str:
+    """CONFIRMED needs both a trusted scanner AND a protocol-level observation. An
+    inference (open port, banner heuristic) is at most SUSPECTED whoever saw the port —
+    the same discipline as matcher.py's `source_confidence == authoritative` gate."""
+    if basis != BASIS_PROTOCOL_OBSERVED:
+        return FindingState.suspected.value
     if is_validated(scanner) or is_credentialed(scanner):
         return FindingState.confirmed.value
     return FindingState.suspected.value
@@ -1388,7 +1479,7 @@ def detect_posture_traced(
                 continue
             seen.add(key)
 
-            state = _state_for(f.scanner)
+            state = _state_for(f.scanner, rule.evidence_basis)
             auth = (rule.auth_enforced(f) if rule.auth_enforced else None)
             if auth is None:
                 auth = default_auth
@@ -1399,7 +1490,10 @@ def detect_posture_traced(
                 category=rule.category, severity=rule.severity, state=state,
                 confidence=_STATE_CONF.get(state, 65), cwe=rule.cwe, mitre=rule.mitre,
                 port=f.port, proto=f.proto, evidence_refs=[_evidence_ref(f)],
-                evidence=row.evidence, remediation=rule.remediation,
+                evidence={**(row.evidence or {}), "evidence_basis": rule.evidence_basis,
+                          DEDUP_KEY: condition_key_for(rule.rule_id, rule.category,
+                                                       f.port, f.proto)},
+                remediation=rule.remediation,
                 fp_notes=rule.fp_notes, internet_facing=internet_facing,
                 auth_enforced=auth, risk_score=risk, priority=priority,
                 created_at=now, scanner=f.scanner)
@@ -1620,11 +1714,22 @@ def detect_exposed_services_traced(
             continue
         internet = (port in externally) or bool(exp_internet)
         severity = escalate(risk.severity) if internet else risk.severity
-        state = _state_for(f.scanner)                 # validated port scan → confirmed
+        # A port scan proves the port is open, not what runs on it. Only a protocol-level
+        # observation (service_banner's identified protocol / Basic-over-cleartext flag)
+        # supports CONFIRMED; a bare port or a banner string is an inference → SUSPECTED.
+        if svc_labels.get(port) or port in basic_cleartext:
+            basis = BASIS_PROTOCOL_OBSERVED
+        elif banners.get(port):
+            basis = BASIS_BANNER_INFERENCE
+        else:
+            basis = BASIS_PORT_INFERENCE
+        state = _state_for(f.scanner, basis)
         risk_score, priority = compute_risk(severity, state, internet, default_auth)
         rule_id = f"POSTURE-EXPOSED-{risk.category.upper()}"
         ev: dict[str, Any] = {"port": port, "category": risk.category,
-                              "service": risk.service, "internet_facing": internet}
+                              "service": risk.service, "internet_facing": internet,
+                              "evidence_basis": basis,
+                              DEDUP_KEY: condition_key(CLASS_EXPOSED, port, "tcp")}
         if banners.get(port):
             ev["banner"] = banners[port]
         if svc_labels.get(port):

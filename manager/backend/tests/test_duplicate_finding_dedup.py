@@ -174,3 +174,57 @@ async def test_service_vuln_still_emits_ssh_weak_crypto():
           patch("app.discovery.service_vuln._find_open_duplicate", AsyncMock(return_value=None))):
         created = await create_service_vuln_findings(db, ENGAGEMENT, ssh)
     assert created == 1
+
+
+# ── M1: canonical condition key from the rule definition ─────────────────────
+
+def _nfs_dedicated(asset_ip="10.0.0.9"):
+    return {
+        "rule_id": "POSTURE-NFS-WORLD-READABLE-EXPORT", "title": "NFS export world-readable",
+        "asset_ip": asset_ip, "severity": "high", "state": "confirmed",
+        "category": "misconfiguration", "port": 2049, "remediation": "Restrict the export.",
+        "evidence": {"dedup_key": "exposed:2049"},
+    }
+
+
+def test_probe_udp_exposed_condition_is_distinct_from_tcp():
+    assert exposed_service_condition(161, "udp") == "exposed:161/udp"
+    assert probe_finding_condition({"category": "amplification", "port": 161, "proto": "udp"}) == "exposed:161/udp"
+
+
+@pytest.mark.asyncio
+async def test_dedicated_scanner_merges_with_port_intel_row_and_keeps_strongest_severity():
+    from app.models.enums import FindingSeverity
+    db = _FakeSession()
+    asset = Asset(engagement_id=ENGAGEMENT, ip_address="10.0.0.9")
+    asset.id = uuid.uuid4()
+    port_intel = Finding(
+        engagement_id=ENGAGEMENT, asset_id=asset.id,
+        title="Network file service exposed on 2049 (NFS) (port 2049)",
+        severity=FindingSeverity.medium, status=FindingStatus.open,
+        evidence={"dedup_key": "exposed:2049", "rule_id": "POSTURE-EXPOSED-FILESHARE"})
+    index = {(asset.id, port_intel.title): port_intel,
+             condition_index_key(asset.id, "exposed:2049"): port_intel}
+
+    created, reaffirmed = await _persist(db, [_nfs_dedicated()], open_index=index,
+                                         cache={"10.0.0.9": asset})
+
+    assert (created, reaffirmed) == (0, 1)
+    assert port_intel.severity == FindingSeverity.high            # strongest signal wins
+    rules = {s["rule_id"] for s in port_intel.evidence["signals"]}
+    assert rules == {"POSTURE-EXPOSED-FILESHARE", "POSTURE-NFS-WORLD-READABLE-EXPORT"}
+
+
+@pytest.mark.asyncio
+async def test_different_weakness_on_one_port_stays_a_separate_finding():
+    db = _FakeSession()
+    asset = Asset(engagement_id=ENGAGEMENT, ip_address="10.0.0.7")
+    asset.id = uuid.uuid4()
+    base = {"asset_ip": "10.0.0.7", "state": "confirmed", "category": "weak_crypto",
+            "port": 443, "remediation": "x", "severity": "medium"}
+    cipher = {**base, "rule_id": "POSTURE-TLS-WEAK-CIPHER", "title": "Weak TLS cipher",
+              "evidence": {"dedup_key": "tls-weak-cipher:443"}}
+    version = {**base, "rule_id": "POSTURE-TLS-DEPRECATED-VERSION", "title": "Deprecated TLS",
+               "evidence": {"dedup_key": "tls-deprecated-version:443"}}
+    created, reaffirmed = await _persist(db, [cipher, version], cache={"10.0.0.7": asset})
+    assert (created, reaffirmed) == (2, 0)

@@ -77,7 +77,21 @@ class TestDetect:
         a = _asset(_fact("syn_scan", 4444, {}))
         f = _by_port(P.detect_exposed_services(a))[4444]
         assert f.severity == "high" and f.category == "exposure"
-        assert "backdoor" in f.title.lower() and f.state == "confirmed"
+        # a bare open port is an inference, not a protocol observation (M2)
+        assert "backdoor" in f.title.lower() and f.state == "suspected"
+        assert f.evidence["evidence_basis"] == "port_inference"
+
+    def test_observed_protocol_label_confirms(self):
+        a = _asset(_fact("syn_scan", 23, {}),
+                   _fact("service_banner", 23, {"service": "telnet", "banner": "login:"}))
+        f = _by_port(P.detect_exposed_services(a))[23]
+        assert f.evidence["evidence_basis"] == "protocol_observed" and f.state == "confirmed"
+
+    def test_banner_text_alone_is_an_inference(self):
+        a = _asset(_fact("syn_scan", 4444, {}),
+                   _fact("service_banner", 4444, {"banner": "VEDHA-LAB-CRITICAL-TCP-4444"}))
+        f = _by_port(P.detect_exposed_services(a))[4444]
+        assert f.evidence["evidence_basis"] == "banner_inference" and f.state == "suspected"
 
     def test_internet_facing_escalates_severity(self):
         a = _asset(_fact("syn_scan", 4444, {}), _fact("syn_scan", 3306, {}),

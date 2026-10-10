@@ -42,6 +42,7 @@ from app.models.detection_run_finding import (
 from app.discovery.finding_translator import (
     AssetCache, _resolve_asset, _find_open_duplicate, prime_asset_cache,
     exposed_service_condition, condition_index_key, DEDUP_KEY,
+    merge_signals, stronger_severity,
 )
 from app.detection.attack_paths import attack_path_findings
 from app.detection.prioritization import _posture_risk_on_manager_scale
@@ -495,15 +496,33 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             # producer's exposed-service finding on that port, merging instead of
             # adding a second, differently-titled row. Dedicated-scanner findings
             # (SMB/RDP/TLS) are not keyed by port — two real issues can share one.
-            condition = (exposed_service_condition(p.get("port"))
-                         if str(p.get("rule_id") or "").startswith("POSTURE-EXPOSED-")
-                         else None)
+            # Every rule carries its canonical condition key (posture_rules.condition_key),
+            # so dedicated-scanner findings merge with port-intel rows of the SAME
+            # (service, weakness-class) while a different weakness on the same port stays
+            # its own finding. Older engine output without the key keeps the legacy rule.
+            ev_in = p.get("evidence") if isinstance(p.get("evidence"), dict) else {}
+            condition = ev_in.get(DEDUP_KEY) or (
+                exposed_service_condition(p.get("port"), p.get("proto"))
+                if str(p.get("rule_id") or "").startswith("POSTURE-EXPOSED-") else None)
             if condition:
                 p[DEDUP_KEY] = condition
 
             dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
                                              condition=condition, index=open_index)
             if dup is not None:
+                new_sev = _POSTURE_SEV.get(p.get("severity"), FindingSeverity.info)
+                if condition and (dup.title != title or
+                                  (dup.evidence or {}).get("rule_id") != p.get("rule_id")):
+                    # A different producer/rule describing the SAME condition: keep the
+                    # strongest severity and remember every signal for the report roll-up.
+                    p["signals"] = merge_signals(
+                        dup.evidence, existing_rule_id=(dup.evidence or {}).get("rule_id"),
+                        existing_title=dup.title, existing_severity=dup.severity,
+                        incoming={"rule_id": p.get("rule_id"), "title": title,
+                                  "severity": p.get("severity")})
+                    dup.severity = stronger_severity(dup.severity, new_sev)
+                elif isinstance(dup.evidence, dict) and dup.evidence.get("signals"):
+                    p["signals"] = dup.evidence["signals"]
                 dup.evidence = preserve_trusted_scan_provenance(
                     p,
                     previous_evidence=dup.evidence,

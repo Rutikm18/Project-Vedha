@@ -39,7 +39,7 @@ class TestAssessor:
     def test_validated_base_higher_than_unvalidated(self):
         cv, _ = C.assess_confidence(rule_id="R", scanner="smb_scan", evidence_ref_count=1,
                                     reachable=True, host_rule_ids={"R"})
-        cu, _ = C.assess_confidence(rule_id="R", scanner="snmp_scan", evidence_ref_count=1,
+        cu, _ = C.assess_confidence(rule_id="R", scanner="web_scan", evidence_ref_count=1,
                                     reachable=True, host_rule_ids={"R"})
         assert cv == C._VALIDATED_BASE and cu == C._UNVALIDATED_BASE and cv > cu
 
