@@ -361,6 +361,10 @@ async def attack_path_analysis(
         "freshness": analysis.get("freshness"),
         "diagnostics": analysis.get("diagnostics"),
         "target_selection": _labelled_target_selection(analysis.get("target_selection"), labels),
+        "shared_default_credentials": [
+            {**c, "labels": [labels.get(str(h), str(h)) for h in (c.get("reused_on") or [])]}
+            for c in (analysis.get("shared_default_credentials") or [])
+        ],
     }
 
 
@@ -586,6 +590,8 @@ async def _recompute_and_store(
         "choke": choke, "diagnostics": diagnostics,
         "coverage": coverage_report(graph), "freshness": freshness_report(graph),
         "target_selection": target_selection,       # P4b: operator vs suggested crown jewels
+        # H2: shared default credentials are reported as information, not graph edges.
+        "shared_default_credentials": graph.graph.get("shared_default_credentials") or [],
     }
     computed_at = await _store_analysis(db, engagement_id, payload, len(wanted))
     await _record_snapshot(db, engagement_id, payload, len(wanted), trigger, computed_at)

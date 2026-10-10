@@ -3,8 +3,8 @@ and honest labels (FM-08/09).
 
 Signing-off alone is never a path (that is the FM-09 false positive); a relay edge
 appears only when a distinct coercion source shares the target's subnet, and it is
-always labelled `assumed`. Shared default credentials form a `possible` reuse
-cluster. Reflection to the same host is blocked.
+always labelled `assumed`. Shared default credentials are reported as INFORMATION
+(no movement edge, H2). Reflection to the same host is blocked.
 """
 from __future__ import annotations
 
@@ -80,24 +80,26 @@ def test_relay_to_a_domain_controller_scores_higher():
     assert edge["confidence"] > 0.4
 
 
-def test_shared_default_snmp_community_is_a_possible_reuse_cluster():
+def test_shared_default_snmp_community_is_reported_as_information():
     assets = [_asset("a1", "10.0.0.5"), _asset("a2", "10.0.0.6"), _asset("a3", "10.0.0.7")]
     findings = [
         _finding("f1", "a1", "POSTURE-SNMP-DEFAULT-COMMUNITY", "T1078", community="public"),
         _finding("f2", "a2", "POSTURE-SNMP-DEFAULT-COMMUNITY", "T1078", community="public"),
         _finding("f3", "a3", "POSTURE-SNMP-DEFAULT-COMMUNITY", "T1078", community="private"),
     ]
-    creds = derive_credential_edges(assets, findings, [])["credentials"]
-    assert len(creds) == 1                      # only the shared 'public', not the lone 'private'
-    cluster = creds[0]
-    assert cluster["basis"] == "possible"
-    assert sorted(cluster["reused_on"]) == ["a1", "a2"]
+    out = derive_credential_edges(assets, findings, [])
+    shared = out["shared_default_credentials"]
+    assert len(shared) == 1                     # only the shared 'public', not the lone 'private'
+    assert shared[0]["basis"] == "possible"
+    assert sorted(shared[0]["reused_on"]) == ["a1", "a2"]
+    # H2: information only — no movement edge is produced from a shared default
+    assert "credentials" not in out
 
 
-def test_a_credential_on_one_host_is_not_reuse():
+def test_a_credential_on_one_host_is_not_shared():
     assets = [_asset("a1", "10.0.0.5")]
     findings = [_finding("f1", "a1", "POSTURE-SNMP-DEFAULT-COMMUNITY", "T1078", community="public")]
-    assert derive_credential_edges(assets, findings, [])["credentials"] == []
+    assert derive_credential_edges(assets, findings, [])["shared_default_credentials"] == []
 
 
 # ── wired through the graph ─────────────────────────────────────────────────
@@ -132,3 +134,23 @@ def test_without_a_relay_a_signing_off_only_host_is_not_compromisable():
     b.assemble(eid, assets, services, findings, scope_cidrs=["10.0.0.0/24"])
     analyzer = PathAnalyzer(b.graph)
     assert analyzer.find_paths_to_target("a2") == []
+
+
+def test_shared_default_credentials_create_no_graph_edge(monkeypatch=None):
+    # H2 end to end: two printers on the same default SNMP community and nothing else
+    # must not let a path cross between them.
+    import uuid as _uuid
+    eid = _uuid.uuid4()
+    assets = [_asset("a1", "10.0.0.5", exposed=True), _asset("a2", "10.0.0.9", crit="critical")]
+    services = []
+    findings = [
+        _finding("f1", "a1", "POSTURE-SNMP-DEFAULT-COMMUNITY", "T1078", community="public"),
+        _finding("f2", "a2", "POSTURE-SNMP-DEFAULT-COMMUNITY", "T1078", community="public"),
+    ]
+    b = GraphBuilder()
+    g = b.assemble(eid, assets, services, findings, scope_cidrs=["10.0.0.0/24"])
+    # the cluster is recorded for the report …
+    assert len(g.graph.get("shared_default_credentials") or []) == 1
+    # … but there is no CREDENTIAL_REUSE edge and no route
+    assert not any(d.get("type") == "CREDENTIAL_REUSE" for _, _, d in g.edges(data=True))
+    assert PathAnalyzer(g).find_paths_to_target("a2") == []

@@ -561,8 +561,13 @@ class GraphBuilder:
         from app.detection.credentials import derive_credential_edges
 
         cred = derive_credential_edges(assets, [f for f in findings if is_live_finding(f)], services)
-        self._add_credential_edges(cred["credentials"])
         self.add_relay_edges(cred["relay_edges"])
+        # H2: shared default credentials are INFORMATION for the report, not graph edges.
+        # A read-only community grants no control, a vendor default is already each host's
+        # own foothold finding, and the default is public (nothing is captured on one host to
+        # reuse on another) — emitting CREDENTIAL_REUSE edges was the FM-08 fallacy and
+        # exploded the graph O(k²) on an estate of identical devices.
+        graph.graph["shared_default_credentials"] = cred["shared_default_credentials"]
         return graph
 
     # ── PostgreSQL loader ───────────────────────────────────────────────────────

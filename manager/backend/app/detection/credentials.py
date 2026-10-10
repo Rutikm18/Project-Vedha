@@ -25,12 +25,15 @@ What this builds, and the preconditions it checks (FM-08/09):
                  controller is the canonical high-value case and scores a little
                  higher, still `assumed`.
 
-  * Shared default-credential cluster  (CREDENTIAL_REUSE, basis `possible`)
+  * Shared default-credential cluster  (INFORMATION, not a movement edge)
       Hosts that each carry the SAME default credential — the same default SNMP
-      community, or the same vendor/product known to ship default web creds — share
-      a working credential by construction: owning one with that default owns the
-      others. Labelled `possible` because a default MAY have been changed on some
-      of them.
+      community, or the same vendor/product default — are reported together so an
+      operator fixes them as one, but they create NO attack-graph edge. A read-only
+      SNMP community grants no control, a vendor web default is already each host's
+      own foothold finding, and the "credential" is public, so there is nothing an
+      attacker captures on one host to reuse on another (that would be the FM-08
+      shared-password fallacy, and it also exploded the graph with O(k²) edges on a
+      estate of identical devices). Shown in the report, absent from the graph.
 
 NOT built here, and why (kept honest rather than faked):
   * Shared LOCAL-ADMIN password reuse (BloodHound's AdminTo): needs a per-host
@@ -99,10 +102,10 @@ def _is_domain_controller(asset: Any, findings_by_asset: dict[str, list]) -> boo
 
 def derive_credential_edges(assets: Iterable[Any], findings: Iterable[Any],
                             services: Iterable[Any] = ()) -> dict[str, Any]:
-    """Return {"credentials": [...], "relay_edges": [...]} from the engagement's
-    assets, findings and services.
+    """Return {"shared_default_credentials": [...], "relay_edges": [...]} from the
+    engagement's assets, findings and services.
 
-    `credentials` items feed GraphBuilder._add_credential_edges:
+    `shared_default_credentials` is INFORMATION for the report, not graph edges:
         {"id", "label", "reused_on": [asset_id...], "basis"}
     `relay_edges` items feed GraphBuilder.add_relay_edges:
         {"src", "dst", "basis", "confidence", "technique", "preconditions": {...}}
@@ -188,16 +191,16 @@ def derive_credential_edges(assets: Iterable[Any], findings: Iterable[Any],
                 clusters[key].append(aid)
             labels[key] = label
 
-    credentials: list[dict[str, Any]] = []
+    shared: list[dict[str, Any]] = []
     for key in sorted(clusters):
         hosts = sorted(clusters[key])
         if len(hosts) < 2:
-            continue                       # a credential one host uses is not "reuse"
-        credentials.append({
+            continue                       # a credential one host uses is not "shared"
+        shared.append({
             "id": f"{key[0]}:{key[1]}",
             "label": labels[key],
             "reused_on": hosts,
             "basis": BASIS_POSSIBLE,
         })
 
-    return {"credentials": credentials, "relay_edges": relay_edges}
+    return {"shared_default_credentials": shared, "relay_edges": relay_edges}
