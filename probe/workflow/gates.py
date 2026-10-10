@@ -53,16 +53,36 @@ VA_RISK_PORTS = [
     2376, 2379, 2380, 10255,                 # docker-tls, etcd client/peer, kubelet ro
     3283, 5800, 5902, 5903, 6000,            # ARD, vnc-http, vnc:2/:3, X11
     8006, 8088, 9090, 10000, 15672, 16010, 50070,     # admin UIs
+    # Long-tail management/discovery services the first lab scan found open but unnamed
+    # (A4): BGP, SLP, AFP, EPMD, Cisco Smart Install, Radmin. Swept so the unidentified-port
+    # fact exists for them; the manager decides what each one means.
+    179, 427, 548, 4369, 4786, 4899,
 ]
 
-IT_PORTS = sorted(set(_IT_BASE_PORTS) | set(VA_RISK_PORTS))
+# Port-TRIGGERED branches (A2): the IoT/mobile checks run on any profile, but only for a
+# host that actually has one of these open — so they are never swept across every host,
+# and never missed on the one host that exposes them. MQTT 1883/8883, RTSP 554/8554,
+# TR-069/CWMP 7547, CoAP-over-TCP is not probed here; ADB 5555 and iOS lockdownd 62078.
+IOT_TRIGGER_PORTS = {1883, 8883, 554, 8554, 7547}
+MOBILE_TRIGGER_PORTS = {5555, 62078}
+
+# A port that triggers a branch must be SWEPT, or the trigger can never fire.
+# Every branch must be able to FIRE. A branch whose table names a port the sweep never probes
+# is dark on a default network_va: printer (9100/631), rsync (873), Ollama/AI (11434 ...), the
+# alt-SSH/LDAP-GC/VNC-1 ports and a dozen TLS ports were all in a branch table but not in the
+# sweep. So the sweep includes the union of the branch tables (UDP-only snmp excluded).
+# Defined after the tables below; see _BRANCH_SWEEP_PORTS.
+IT_PORTS: list[int] = []
 IOT_PORTS = [22, 23, 80, 443, 554, 1883, 8883, 5683, 8080, 8443, 8888, 9000, 9100,
             49152, 62078, 5000, 8081, 37777]
 WEB_PORTS = {80, 443, 8080, 8443, 8000, 8888, 9000, 9200, 8081, 5000}
 SMB_PORTS = {139, 445}
 DB_PORTS = set(DEFAULT_DB_PORTS)
 AI_PORTS = {11434, 8000, 8080, 5000, 3000, 1234, 8001, 7860, 11435}  # DEFAULT_AI_PORTS in mcp_ai_scanner.py
-UDP_PORTS = {53, 123, 161, 137, 11211}                # UDP_PROBES.keys() in udp_scanner.py
+# Every service udp_scanner has a probe for (UDP_PROBES.keys()). The default used to be five
+# of the twelve, so TFTP, IKE, IPMI, SSDP, SIP and mDNS were never asked even though the
+# manager has rules for them. A test pins this to UDP_PROBES so it cannot fall behind again.
+UDP_PORTS = {53, 69, 123, 137, 161, 500, 623, 1900, 4500, 5060, 5353, 11211}
 SNMP_PORTS = {161}
 SSH_PORTS = {22, 2222}
 LDAP_PORTS = {389, 636, 3268, 3269}
@@ -80,8 +100,8 @@ PRINTER_PORTS = {9100, 631}
 
 PROFILE_PORTS = {"it": IT_PORTS, "iot": IOT_PORTS, "ot": []}
 PROFILE_DEEP_BRANCHES = {
-    "it": {"tls", "web", "smb", "db", "mcp_ai", "snmp", "ssh", "smb_enum", "ldap", "dns", "nfs", "ftp", "rsync", "vnc", "ipmi", "smtp", "msrpc", "rdp", "printer"},
-    "iot": {"tls", "web", "ssh", "ftp", "vnc", "printer"},
+    "it": {"tls", "web", "smb", "db", "mcp_ai", "snmp", "ssh", "smb_enum", "ldap", "dns", "nfs", "ftp", "rsync", "vnc", "ipmi", "smtp", "msrpc", "rdp", "printer", "iot", "mobile"},
+    "iot": {"tls", "web", "ssh", "ftp", "vnc", "printer", "iot", "mobile"},
     "ot": set(),
 }
 LIVENESS_RECHECK_THRESHOLD = {"it": timedelta(hours=1), "iot": timedelta(minutes=5)}
@@ -92,7 +112,14 @@ _BRANCH_PORT_TABLE = {"tls": TLS_PORTS, "web": WEB_PORTS, "smb": SMB_PORTS,
                       "dns": DNS_PORTS, "nfs": NFS_PORTS, "ftp": FTP_PORTS,
                       "rsync": RSYNC_PORTS, "vnc": VNC_PORTS, "ipmi": IPMI_PORTS,
                       "smtp": SMTP_PORTS, "msrpc": MSRPC_PORTS, "rdp": RDP_PORTS,
-                      "printer": PRINTER_PORTS}
+                      "printer": PRINTER_PORTS, "iot": IOT_TRIGGER_PORTS,
+                      "mobile": MOBILE_TRIGGER_PORTS}
+
+
+# Kerberos (88) is not a deep branch but is the only way to see a domain controller's KDC.
+_EXTRA_SWEEP_PORTS = {88}
+_BRANCH_SWEEP_PORTS = set().union(*(p for b, p in _BRANCH_PORT_TABLE.items() if b != "snmp"))
+IT_PORTS[:] = sorted(set(_IT_BASE_PORTS) | set(VA_RISK_PORTS) | _BRANCH_SWEEP_PORTS | _EXTRA_SWEEP_PORTS)
 
 
 def gate_0_is_passive_profile(profile: str) -> bool:

@@ -66,6 +66,8 @@ from scanner.smtp_scanner import SMTPScanner as SMTPScanner
 from scanner.msrpc_scanner import MSRPCScanner as MSRPCScanner
 from scanner.rdp_scanner import RDPScanner as RDPScanner
 from scanner.printer_scanner import PrinterScanner as PrinterScanner
+from scanner.iot_scanner import IoTScanner as IoTScanner
+from scanner.mobile_scanner import MobileScanner as MobileScanner
 from scanner.ssh_collector import SSHCollector
 from scanner.windows_collector import WindowsCollector
 

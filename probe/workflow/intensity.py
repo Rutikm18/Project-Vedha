@@ -128,9 +128,10 @@ def intensity_first_pass(
     return resolve_profile(profile_name)
 
 
-#: The common UDP services standard/light sample (mirrors gates.UDP_PORTS). The
-#: wide set is every service the UDP scanner has a probe for.
-_UDP_NARROW = (53, 123, 137, 161, 11211)
+#: The UDP services standard/stealth sample: every one the manager has a rule for (DNS, NTP,
+#: NetBIOS, SNMP, IKE, IPMI, SSDP, SIP, mDNS, memcached). The wide set is every service the UDP
+#: scanner has a probe for (adds TFTP and IKE NAT-T).
+_UDP_NARROW = (53, 123, 137, 161, 500, 623, 1900, 5060, 5353, 11211)
 
 
 def intensity_udp_ports(name: str | None) -> list[int] | None:

@@ -60,6 +60,9 @@ DEFAULT_PORT_ROUTES: dict[str, list[int]] = {
     "msrpc": [135],
     "rdp": [3389],
     "printer": [9100, 631],
+    # Port-triggered (A2): run only for a host with one of these open.
+    "iot": [1883, 8883, 554, 8554, 7547],
+    "mobile": [5555, 62078],
 }
 
 
@@ -293,6 +296,8 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
     from .msrpc_scanner import MSRPCScanner
     from .rdp_scanner import RDPScanner
     from .printer_scanner import PrinterScanner
+    from .iot_scanner import IoTScanner
+    from .mobile_scanner import MobileScanner
 
     common = dict(rate=rate, concurrency=concurrency, timeout=timeout)
 
@@ -355,6 +360,13 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
     def printer_factory(ports):
         return PrinterScanner(scope, ports=ports, **common)
 
+    def iot_factory(ports):
+        # Probes its own fixed protocol set; the open trigger port only made it eligible.
+        return IoTScanner(scope, **common)
+
+    def mobile_factory(ports):
+        return MobileScanner(scope, **common)
+
     return ScanFunnel(
         scope,
         discovery=discovery,
@@ -377,6 +389,8 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
             "msrpc": msrpc_factory,
             "rdp": rdp_factory,
             "printer": printer_factory,
+            "iot": iot_factory,
+            "mobile": mobile_factory,
         },
         udp_scanner=UDPScanner(scope, **common) if with_udp else None,
         force=force,

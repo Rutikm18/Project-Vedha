@@ -201,22 +201,93 @@ def _build_getbulk_v2c(community: str, oid: bytes,
     return _snmp_msg(1, community, 0xa5, pdu_body)  # 0xa5 = GetBulkRequest (v2c)
 
 
-_SNMPv3_DISCOVERY = (
-    b"\x30\x3a"
-    b"\x02\x01\x03"                       # msgVersion = 3
-    b"\x30\x0f"                           # msgGlobalData
-    b"\x02\x04\x00\x00\x00\x01"          #   msgID
-    b"\x02\x02\x05\xdc"                   #   msgMaxSize = 1500
-    b"\x04\x01\x04"                       #   msgFlags = reportable
-    b"\x02\x01\x03"                       #   msgSecurityModel = USM
-    b"\x04\x10"                           # msgSecurityParameters (empty USM)
-    b"\x30\x00\x02\x01\x00\x02\x01\x00"
-    b"\x04\x00\x04\x00\x04\x00"
-    b"\x30\x12"                           # ScopedPDU
-    b"\x04\x00\x04\x00"                   #   contextEngineID, contextName
-    b"\xa0\x0a"                           #   GetRequest PDU
-    b"\x02\x01\x01\x02\x01\x00\x02\x01\x00\x30\x00"
-)
+
+
+# ── SNMPv3 noAuthNoPriv user check (A3) ───────────────────────────────────────
+# A v3 agent that still has a user configured at security level noAuthNoPriv answers a
+# plain read with NO authentication and NO encryption: equivalent to a default community.
+# Only the engine discovery's authoritative engineID/boots/time are reused; one read of
+# sysDescr is sent per documented DEFAULT user name (never a wordlist). The reply PDU type
+# tells the cases apart: GetResponse (0xA2) = the user exists at noAuth; Report (0xA8) =
+# unknown user / wrong level (the secure answer).
+V3_DEFAULT_USERS = ("initial", "admin", "guest")
+_PDU_RESPONSE = 0xA2
+_PDU_REPORT = 0xA8
+
+
+def _octet(b: bytes) -> bytes:
+    return b"\x04" + _ber_len(len(b)) + b
+
+
+def _int_tlv(n: int) -> bytes:
+    raw = n.to_bytes(max(1, (n.bit_length() + 8) // 8), "big", signed=False)
+    return b"\x02" + _ber_len(len(raw)) + raw
+
+
+def _seq(content: bytes) -> bytes:
+    return b"\x30" + _ber_len(len(content)) + content
+
+
+def parse_v3_engine(resp: bytes) -> dict | None:
+    """Authoritative engine parameters from a v3 discovery Report, or None."""
+    outer = _ber_parse(resp)
+    if not outer or outer[0][0] != 0x30:
+        return None
+    parts = _ber_parse(outer[0][1])            # version, globalData, secParams, scopedPDU
+    if len(parts) < 3 or parts[2][0] != 0x04:
+        return None
+    sec = _ber_parse(parts[2][1])
+    if not sec or sec[0][0] != 0x30:
+        return None
+    fields = _ber_parse(sec[0][1])             # engineID, boots, time, user, authP, privP
+    if len(fields) < 3 or fields[0][0] != 0x04 or not fields[0][1]:
+        return None
+    return {"engine_id": fields[0][1],
+            "boots": int.from_bytes(fields[1][1], "big") if fields[1][0] == 0x02 else 0,
+            "time": int.from_bytes(fields[2][1], "big") if fields[2][0] == 0x02 else 0}
+
+
+def build_v3_noauth_get(engine: dict, user: str, msg_id: int = 0x2001) -> bytes:
+    """A noAuthNoPriv (flags: reportable only) GetRequest for sysDescr as `user`."""
+    usm = _seq(_octet(engine["engine_id"]) + _int_tlv(engine["boots"])
+               + _int_tlv(engine["time"]) + _octet(user.encode()) + _octet(b"") + _octet(b""))
+    global_data = _seq(_int_tlv(msg_id) + _int_tlv(1500) + _octet(b"\x04") + _int_tlv(3))
+    pdu_body = _int_tlv(1) + _int_tlv(0) + _int_tlv(0) + _varbind_list(_SYSDESCR_OID)
+    pdu = b"\xa0" + _ber_len(len(pdu_body)) + pdu_body
+    scoped = _seq(_octet(engine["engine_id"]) + _octet(b"") + pdu)
+    return _seq(_int_tlv(3) + global_data + _octet(usm) + scoped)
+
+
+def classify_v3_reply(resp: bytes) -> str:
+    """'response' (user answered at noAuthNoPriv), 'report' (refused) or 'unknown'."""
+    outer = _ber_parse(resp)
+    if not outer or outer[0][0] != 0x30:
+        return "unknown"
+    parts = _ber_parse(outer[0][1])
+    if len(parts) < 4 or parts[3][0] != 0x30:
+        return "unknown"                       # encrypted scopedPDU (OCTET) or malformed
+    inner = _ber_parse(parts[3][1])            # contextEngineID, contextName, PDU
+    if len(inner) < 3:
+        return "unknown"
+    if inner[2][0] == _PDU_RESPONSE:
+        return "response"
+    if inner[2][0] == _PDU_REPORT:
+        return "report"
+    return "unknown"
+
+def build_v3_discovery(msg_id: int = 0x1001) -> bytes:
+    """The standard RFC 3414 engine-discovery message: empty engineID and user name,
+    msgFlags = reportable (noAuthNoPriv), an empty GetRequest. A v3 agent answers with a
+    Report carrying its authoritative engineID. (The hand-written byte string this replaces
+    declared a 58-byte body but carried 56, so no real agent ever answered it.)"""
+    usm = _seq(_octet(b"") + _int_tlv(0) + _int_tlv(0) + _octet(b"") + _octet(b"") + _octet(b""))
+    global_data = _seq(_int_tlv(msg_id) + _int_tlv(1500) + _octet(b"\x04") + _int_tlv(3))
+    pdu_body = _int_tlv(1) + _int_tlv(0) + _int_tlv(0) + _seq(b"")
+    pdu = b"\xa0" + _ber_len(len(pdu_body)) + pdu_body
+    return _seq(_int_tlv(3) + global_data + _octet(usm) + _seq(_octet(b"") + _octet(b"") + pdu))
+
+
+_SNMPv3_DISCOVERY = build_v3_discovery()
 
 # ── High-value OID subtrees for targeted walk ────────────────────────────────
 
@@ -326,6 +397,21 @@ class SNMPScanner(BaseScanner):
         resp = self._udp(target, _SNMPv3_DISCOVERY)
         return resp is not None and len(resp) > 4
 
+    def _snmpv3_noauth_user(self, target: str) -> tuple[bool, str | None]:
+        """(v3_present, user): discover the engine, then try the documented default users at
+        noAuthNoPriv. `user` is the first that got a GetResponse, else None."""
+        disc = self._udp(target, _SNMPv3_DISCOVERY)
+        if disc is None or len(disc) <= 4:
+            return False, None
+        engine = parse_v3_engine(disc)
+        if engine is None:
+            return True, None
+        for i, user in enumerate(V3_DEFAULT_USERS):
+            resp = self._udp(target, build_v3_noauth_get(engine, user, msg_id=0x2001 + i))
+            if resp and classify_v3_reply(resp) == "response":
+                return True, user
+        return True, None
+
     async def scan_target(self, target: str) -> list[ScanResult]:
         loop = asyncio.get_running_loop()
 
@@ -342,10 +428,15 @@ class SNMPScanner(BaseScanner):
                 v3 = await loop.run_in_executor(
                     None, self._snmpv3_present, target)
             if v3:
+                await self.limiter.wait()
+                async with self.sem:
+                    _present, noauth_user = await loop.run_in_executor(
+                        None, self._snmpv3_noauth_user, target)
                 return [ScanResult(
                     self.name, target, port=self.port, proto="udp",
                     status="open",
-                    data={"snmpv3_present": True, "v1v2c_community": None},
+                    data={"snmpv3_present": True, "v1v2c_community": None,
+                          "snmpv3_noauth_user": noauth_user},
                     evidence="SNMPv3 agent detected (v1/v2c communities did not match)")]
             # No SNMP reply is NOT proof of a firewall: the agent may simply
             # reject our communities/versions while the UDP port is open. Absent
@@ -390,6 +481,12 @@ class SNMPScanner(BaseScanner):
                 v3 = await loop.run_in_executor(
                     None, self._snmpv3_present, target)
             data["snmpv3_present"] = v3
+            if v3:
+                await self.limiter.wait()
+                async with self.sem:
+                    _present, noauth_user = await loop.run_in_executor(
+                        None, self._snmpv3_noauth_user, target)
+                data["snmpv3_noauth_user"] = noauth_user
 
         evidence = (f"community '{community}'"
                     + (f" -> {sysdescr[:100]}" if sysdescr else ""))

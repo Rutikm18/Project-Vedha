@@ -181,9 +181,22 @@ def evaluate_algorithms(kexinit: dict) -> dict:
     terrapin_applicable = chacha or cbc_etm
     terrapin_vulnerable = terrapin_applicable and not supports_strict_kex
 
+    # Structured buckets (ssh-audit's fail/warn levels, per algorithm family) so the manager
+    # can grade by WHAT is weak, not just count a flat list. Names only — the reasons stay on
+    # `failures` / `warnings`.
+    bucket_name = {"kex": "kex", "enc": "ciphers", "mac": "macs", "key": "host_key"}
+    buckets: dict[str, dict[str, list[str]]] = {
+        name: {"fail": [], "warn": []} for name in bucket_name.values()}
+    for level, entries in (("fail", failures), ("warn", warnings)):
+        for entry in entries:
+            name = bucket_name.get(entry["category"])
+            if name and entry["algorithm"] not in buckets[name][level]:
+                buckets[name][level].append(entry["algorithm"])
+
     return {
         "failures": failures,
         "warnings": warnings,
+        "buckets": buckets,
         "unknown": unknown,
         "supports_strict_kex": supports_strict_kex,
         "terrapin_vulnerable": terrapin_vulnerable,

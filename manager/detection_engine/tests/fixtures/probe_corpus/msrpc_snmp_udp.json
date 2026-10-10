@@ -95,5 +95,49 @@
    "exchange_type": 4,
    "vendor_fingerprint": "ikev1"
   }
+ },
+ {
+  "scanner": "service_banner",
+  "target": "10.0.0.20",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 6100,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "banner": null,
+   "tls_probed": true,
+   "identified": false,
+   "raw_hex": ""
+  }
+ },
+ {
+  "scanner": "snmp_scan",
+  "target": "10.0.0.21",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 161,
+  "proto": "udp",
+  "status": "open",
+  "data": {
+   "snmpv3_present": true,
+   "v1v2c_community": null,
+   "snmpv3_noauth_user": "initial"
+  }
+ },
+ {
+  "scanner": "ftp_scan",
+  "target": "10.0.0.22",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 21,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "ftp": true,
+   "banner": "220 redacted",
+   "software": "vsftpd",
+   "anonymous_login": true,
+   "anon_read": true,
+   "file_sample": [],
+   "anon_write": true
+  }
  }
 ]

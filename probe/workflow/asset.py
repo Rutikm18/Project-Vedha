@@ -71,6 +71,8 @@ class Asset:
     msrpc_facts: dict[int, dict] = field(default_factory=dict)
     rdp_facts: dict[int, dict] = field(default_factory=dict)
     printer_facts: dict[int, dict] = field(default_factory=dict)
+    iot_facts: dict[int, dict] = field(default_factory=dict)
+    mobile_facts: dict[int, dict] = field(default_factory=dict)
     smb_enum_state: dict | None = None
     nfs_state: dict | None = None
     passive_facts: list[dict] = field(default_factory=list)
@@ -237,6 +239,14 @@ class Asset:
         if r.port is not None:
             self.printer_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
 
+    def _merge_iot_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.iot_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_mobile_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.mobile_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
     def _merge_udp_scan(self, r: ScanResult) -> None:
         if r.port is not None:
             self.open_ports[r.port] = PortFact(
@@ -293,6 +303,8 @@ _MERGE_DISPATCH = {
     "msrpc_scan": Asset._merge_msrpc_scan,
     "rdp_scan": Asset._merge_rdp_scan,
     "printer_scan": Asset._merge_printer_scan,
+    "iot_scan": Asset._merge_iot_scan,
+    "mobile_scan": Asset._merge_mobile_scan,
     "udp_scan": Asset._merge_udp_scan,
     "passive_collect": Asset._merge_passive_collect,
     "ssh_inventory": Asset._merge_ssh_inventory,

@@ -11,9 +11,16 @@ check is strictly non-destructive.
 
 POLICY BOUNDARY: the anonymous account is a *documented, well-known* account, not
 a guessed credential — logging into it stays inside the "no guessed credentials"
-invariant (same class as an SMB null session). Write access is deliberately NOT
-tested (that would modify the target); the finding recommends verifying write
-manually. This upgrades the existing port-based FTP finding from a hint to a
+invariant (same class as an SMB null session). Write access is NOT tested by default
+(that modifies the target): `anon_write` is then None ("not tested"), and the finding
+recommends verifying it manually.
+
+OPT-IN EXCEPTION (`write_test=True`, CLI `--allow-write-test`): upload one tiny,
+uniquely-named file and delete it straight away, recording `anon_write` True/False and
+whether the cleanup worked. It is never enabled by the workflow or any default; an
+operator must switch it on for an engagement whose rules of engagement permit writes.
+If the delete fails the file name is reported (`anon_write_leftover`) so it can be
+removed by hand. This upgrades the existing port-based FTP finding from a hint to a
 confirmed observation.
 
 SAFETY: line-based control protocol over BaseScanner timeouts; the passive data
@@ -24,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import secrets
 import socket
 
 from .scanner_base import (
@@ -62,9 +70,11 @@ def banner_software(banner: str) -> str:
 class FTPScanner(BaseScanner):
     name = "ftp_scan"
 
-    def __init__(self, *args, ports: list[int] | None = None, **kwargs):
+    def __init__(self, *args, ports: list[int] | None = None, write_test: bool = False,
+                 **kwargs):
         super().__init__(*args, **kwargs)
         self.ports = ports or DEFAULT_FTP_PORTS
+        self.write_test = bool(write_test)      # opt-in only; see the module docstring
 
     def _read_response(self, sock: socket.socket) -> tuple[int, str]:
         """Read one (possibly multi-line) FTP reply; return (code, full_text)."""
@@ -117,6 +127,10 @@ class FTPScanner(BaseScanner):
 
                 if data.get("anonymous_login"):
                     data["anon_read"], data["file_sample"] = self._list_bounded(s, target)
+                    # None = not tested (the default). Only an explicit opt-in writes anything.
+                    data["anon_write"] = None
+                    if self.write_test:
+                        data.update(self._write_test(s, target))
                 try:
                     self._cmd(s, "QUIT")
                 except OSError:
@@ -144,10 +158,40 @@ class FTPScanner(BaseScanner):
                     if not chunk:
                         break
                     blob += chunk
+            # Consume the transfer-complete reply (226) the server sends after the listing, so
+            # it cannot be mistaken for the answer to the NEXT command.
+            self._read_response(ctrl)
             lines = [ln for ln in blob.decode("latin-1", "replace").splitlines() if ln.strip()]
             return True, lines[:MAX_SAMPLE_LINES]
         except OSError:
             return False, []
+
+    def _write_test(self, ctrl: socket.socket, target: str) -> dict:
+        """Upload one tiny uniquely-named file over PASV, then delete it. Returns
+        {anon_write, anon_write_leftover?}. Only ever called when write_test is on."""
+        name = f"vedha-write-test-{secrets.token_hex(4)}.txt"
+        out: dict = {"anon_write": False}
+        try:
+            code, text = self._cmd(ctrl, "PASV")
+            dport = parse_pasv(text) if code == 227 else None
+            if not dport:
+                return out
+            with socket.create_connection((target, dport), timeout=self.timeout) as d:
+                d.settimeout(self.timeout)
+                code, _ = self._cmd(ctrl, f"STOR {name}")
+                if code not in (125, 150):
+                    return out                       # 550/553: the write was refused
+                d.sendall(b"vedha write test - safe to delete\r\n")
+            code, _ = self._read_response(ctrl)      # 226 once the transfer completes
+            if code not in (226, 250):
+                return out
+            out["anon_write"] = True
+            dele, _ = self._cmd(ctrl, f"DELE {name}")
+            if dele not in (250, 200):
+                out["anon_write_leftover"] = name    # tell the operator what to remove
+        except OSError:
+            pass
+        return out
 
     async def _scan_port(self, target: str, port: int) -> ScanResult:
         await self.limiter.wait()
@@ -164,6 +208,7 @@ class FTPScanner(BaseScanner):
                               data=data)
         evidence = (f"anon_login={data.get('anonymous_login')} "
                     f"anon_read={data.get('anon_read')} "
+                    f"anon_write={data.get('anon_write')} "
                     f"software={data.get('software')!r}")
         return ScanResult(self.name, target, port=port, proto="tcp",
                           status="open", data=data, evidence=evidence)
@@ -176,6 +221,9 @@ class FTPScanner(BaseScanner):
 def main() -> None:
     parser = base_argparser("FTP anonymous-access check")
     parser.add_argument("-p", "--ports", default=None, help="FTP ports (default: 21)")
+    parser.add_argument("--allow-write-test", action="store_true",
+                        help="ALSO upload and delete one tiny file to test anonymous WRITE. "
+                             "Modifies the target; use only where the rules of engagement allow.")
     args = parser.parse_args()
     setup_logging(args.verbose)
 
@@ -184,7 +232,8 @@ def main() -> None:
         scope = ScopeGuard.from_file(args.scope)
         targets = expand_targets(args.targets)
         scanner = FTPScanner(scope, rate=args.rate, concurrency=args.concurrency,
-                             timeout=args.timeout, ports=ports)
+                             timeout=args.timeout, ports=ports,
+                             write_test=args.allow_write_test)
         writer = ResultWriter(args.output, also_stdout=True)
         try:
             await scanner.run(targets, writer)

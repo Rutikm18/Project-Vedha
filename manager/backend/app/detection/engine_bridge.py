@@ -458,6 +458,21 @@ async def _find_remediated_match(db, engagement_id, asset_id, title, *,
 
 
 def _posture_description(p: dict) -> str | None:
+    """What a reader sees as the finding's description: a plain-language sentence about the
+    weakness from the knowledge base. The rule's own metadata (CWE, ATT&CK, scanner, false-
+    positive note) lives in the evidence and in the report's `detection_rationale`, not here.
+    Falls back to that metadata line only when the KB has nothing for the rule."""
+    try:
+        from types import SimpleNamespace
+        from app.services import report_enrichment as enrich
+        probe = SimpleNamespace(evidence=p, title=p.get("title"), description="",
+                                remediation=p.get("remediation"), cve_ids=None,
+                                severity=p.get("severity"))
+        sentence = enrich.first_sentence(enrich.kb_narrative(probe)["technical_details"])
+        if sentence:
+            return sentence
+    except Exception:  # noqa: BLE001 — a description is decoration, never a reason to drop a finding
+        pass
     bits: list[str] = []
     if p.get("cwe"):
         bits.append(p["cwe"])

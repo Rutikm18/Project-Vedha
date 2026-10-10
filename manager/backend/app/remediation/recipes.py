@@ -465,6 +465,26 @@ _P: list[Recipe] = [
         ("CWE-327", "MITRE T1040", "CIS Benchmark — SSH Server Configuration (ciphers/MACs/KEX)"), effort="low"),
 
     Recipe(
+        "POSTURE-SSH-LEGACY-ALGORITHMS", 1, "Retire legacy SSH algorithms on {host}", "mitigation", "mitigate",
+        "Only current KEX/cipher/MAC/host-key algorithms offered",
+        (
+            S("fix", "Trim deprecated algorithms from sshd",
+              "{product} {version} on {host}:{port} still offers deprecated (not broken) algorithms such "
+              "as SHA-1 MACs or CBC ciphers. Remove them once your clients no longer need them.",
+              lin=("# /etc/ssh/sshd_config:",
+                   "#   MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com",
+                   "#   Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr",
+                   "sudo sshd -t && sudo systemctl reload sshd"),
+              net=("Set the appliance's SSH profile to modern algorithms only",),
+              pre=("Check that no automation still depends on the deprecated algorithms.",),
+              downtime="none (reload)", rollback="Restore the previous sshd_config and reload", risk="low"),
+        ),
+        "Review the SSH algorithm policy at each OpenSSH upgrade.",
+        V("ssh_scan", "SSH algorithm negotiation on {ip}:{port} offers no SHA-1 or CBC algorithms",
+          "Legacy algorithms absent", linux="ssh -Q mac; nmap --script ssh2-enum-algos -p {port} {ip}"),
+        ("CWE-327", "MITRE T1040", "CIS Benchmark — SSH Server Configuration (ciphers/MACs/KEX)"), effort="low"),
+
+    Recipe(
         "POSTURE-FTP-ANONYMOUS-LOGIN", 1, "Disable anonymous FTP on {host}", "mitigation", "mitigate",
         "Anonymous FTP login refused",
         (
@@ -1463,6 +1483,74 @@ _P_UDP: list[Recipe] = [
         V("udp_scan", "An IKE probe to {ip}:{port}/udp is not answered in aggressive mode",
           "Exchange type is not 4 (aggressive)"),
         ("CWE-522", "MITRE T1110.002"), effort="medium"),
+
+    Recipe(
+        "POSTURE-SNMPV3-NOAUTH-USER", 1, "Require authentication for SNMPv3 on {host}", "mitigation",
+        "mitigate", "Every SNMPv3 user is authPriv (SHA-2 + AES); no noAuthNoPriv users",
+        (
+            _FIREWALL_CONTAIN,
+            S("fix", "Delete noAuthNoPriv users and require authPriv",
+              "An SNMPv3 user on {host} answers reads with no authentication or encryption. Remove it "
+              "and configure users with SHA-2 authentication and AES privacy.",
+              lin=("# net-snmp: remove the user from /var/lib/snmp/snmpd.conf and snmpd.conf, then:",
+                   "sudo net-snmp-create-v3-user -ro -A '<auth-passphrase>' -a SHA -X '<priv-passphrase>' -x AES <user>",
+                   "sudo systemctl restart snmpd"),
+              net=("Delete SNMPv3 users at noAuthNoPriv and require authPriv in the SNMP group settings",),
+              downtime="brief SNMP agent restart", rollback="Restore the previous SNMP configuration"),
+        ),
+        "Restrict SNMP to the management network and monitor for unauthenticated reads.",
+        V("snmp_scan", "An SNMPv3 noAuthNoPriv read to {ip}:{port}/udp returns a Report, not a GetResponse",
+          "No noAuthNoPriv user answers"),
+        ("CWE-306", "MITRE T1078"), effort="low"),
+
+    Recipe(
+        "POSTURE-FTP-ANONYMOUS-WRITE", 1, "Remove anonymous upload on {host}", "mitigation", "mitigate",
+        "Anonymous FTP cannot create, modify or delete files",
+        (
+            _FIREWALL_CONTAIN,
+            S("fix", "Revoke write permission from the anonymous account",
+              "{product} on {host}:{port} accepted an anonymous upload. Remove write access, or "
+              "disable anonymous access altogether.",
+              lin=("# vsftpd: in /etc/vsftpd.conf set",
+                   "#   anonymous_enable=NO   (or: anon_upload_enable=NO, anon_mkdir_write_enable=NO, anon_other_write_enable=NO)",
+                   "sudo systemctl restart vsftpd"),
+              win=("Set-WebConfigurationProperty -Filter /system.ftpServer/security/authentication/"
+                   "anonymousAuthentication -Name enabled -Value False -PSPath IIS:\\",),
+              gen=("Disable anonymous FTP or make its directories read-only",),
+              pre=("Check the FTP root for unexpected files an attacker may already have uploaded.",),
+              downtime="brief FTP service restart", rollback="Restore the previous FTP configuration",
+              risk="low"),
+        ),
+        "Replace FTP with SFTP and authenticated access.",
+        V("ftp_scan", "An anonymous upload to {ip}:{port}/tcp is refused (550/553)", "Write refused"),
+        ("CWE-732", "MITRE T1105"), effort="low"),
+
+    Recipe(
+        "POSTURE-UNIDENTIFIED-SERVICE", 1, "Identify and review the service on {host}:{port}",
+        "mitigation", "mitigate", "The listener is identified, approved and restricted, or closed",
+        (
+            S("containment", "Restrict the unknown listener",
+              "Until it is identified, allow port {port} on {host} ({ip}) only from the networks "
+              "that must reach it.",
+              lin=("sudo ufw allow from <trusted-subnet> to any port {port} proto tcp",
+                   "sudo ufw deny {port}/tcp"),
+              win=("New-NetFirewallRule -DisplayName 'Restrict {port}' -Direction Inbound -Protocol TCP "
+                   "-LocalPort {port} -RemoteAddress <trusted-subnet> -Action Allow",),
+              net=("Add an ACL on the upstream firewall permitting {port}/tcp to {ip} only from <trusted-subnet>",),
+              gen=("Restrict {port}/tcp on {ip} to <trusted-subnet> at the nearest firewall",),
+              rollback="Remove the rule to restore the previous reachability."),
+            S("fix", "Identify the owner of the listener",
+              "Find the process behind port {port} on {host}, confirm it is approved, then close it "
+              "or document it.",
+              lin=("sudo ss -ltnp | grep ':{port} '",),
+              win=("Get-NetTCPConnection -LocalPort {port} | Select-Object OwningProcess; "
+                   "Get-Process -Id (Get-NetTCPConnection -LocalPort {port}).OwningProcess",),
+              gen=("Identify the application listening on {port}/tcp and confirm it is approved",)),
+        ),
+        "Keep a register of approved listening services per host and alert on new ones.",
+        V("service_banner", "A banner probe of {ip}:{port}/tcp identifies the service or the port is closed",
+          "identified is true, or the port is closed"),
+        ("CWE-1188", "MITRE T1046"), effort="low"),
 ]
 
 RECIPES: dict[str, Recipe] = {r.recipe_id: r for r in (*_P, *_P_V2, *_P_UDP, *_E, CVE_PATCH, GENERIC)}

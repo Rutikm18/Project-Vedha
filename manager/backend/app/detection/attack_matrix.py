@@ -48,6 +48,7 @@ TECHNIQUES: dict[str, tuple[str, str]] = {
     "T1210": ("Exploitation of Remote Services", "Lateral Movement"),
     "T1213": ("Data from Information Repositories", "Collection"),
     "T1496": ("Resource Hijacking", "Impact"),
+    "T1105": ("Ingress Tool Transfer", "Command and Control"),
     "T1110.002": ("Brute Force: Password Cracking", "Credential Access"),
     "T1498.002": ("Network DoS: Reflection Amplification", "Impact"),
     "T1595.002": ("Active Scanning: Vulnerability Scanning", "Reconnaissance"),

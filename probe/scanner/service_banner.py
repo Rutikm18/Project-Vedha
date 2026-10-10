@@ -473,6 +473,15 @@ class ServiceBannerScanner(BaseScanner):
             # inferring "silent, so maybe TLS" about binary protocols like SMB,
             # MSRPC and RDP and speculatively re-probing them.
             data["tls_probed"] = True
+        # A4: say outright whether ANYTHING identified what listens here. A port that is
+        # open but unidentified (no protocol match, no HTTP-shaped reply, no TLS handshake)
+        # was previously just an absent field, which the manager could not tell from "not
+        # looked at". `identified: false` plus the first raw bytes lets it raise a
+        # low-severity "unidentified service" finding instead of staying silent.
+        identified = bool(matched) or bool(tls_meta) or bool(parse_http_head(best))
+        data["identified"] = identified
+        if not identified:
+            data["raw_hex"] = best[:64].hex()
         if not best:
             data["banner"] = None
             evidence = "open, no banner returned"

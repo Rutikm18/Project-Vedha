@@ -398,6 +398,50 @@ _CONTENT: dict[str, dict[str, str]] = {
             "a cracked VPN key gives a remote attacker a foothold inside the network perimeter."
         ),
     },
+    "unidentified_service": {
+        "technical": (
+            "A TCP port accepted a connection but no probe identified the protocol behind it: "
+            "no recognizable banner, no HTTP-shaped reply and no completed TLS handshake."
+        ),
+        "impact": (
+            "Unknown listeners are where unmanaged management interfaces, forgotten test "
+            "services and implants live; without knowing what it is, its exposure cannot be judged."
+        ),
+        "business": (
+            "an unowned listening service is an unmanaged risk until someone confirms what it is "
+            "and whether it should be reachable."
+        ),
+    },
+    "snmpv3_noauth": {
+        "technical": (
+            "An SNMPv3 user is configured at security level noAuthNoPriv: the agent answers reads "
+            "for that user with no authentication and no encryption, which makes it the SNMPv3 "
+            "equivalent of a default community string."
+        ),
+        "impact": (
+            "Anyone who can reach UDP/161 can read the device's configuration, interface, routing "
+            "and connection tables, and learn the topology around it."
+        ),
+        "business": (
+            "network and device details leak to any host on the path, easing targeted attacks, "
+            "while the deployment looks secure because it runs SNMPv3."
+        ),
+    },
+    "ftp_anonymous_write": {
+        "technical": (
+            "The FTP server lets the anonymous account upload files. Anonymous read access is a "
+            "disclosure risk; anonymous write turns the server into a place anyone can store and "
+            "serve content from."
+        ),
+        "impact": (
+            "An attacker can upload tools, malware or web shells (especially when the FTP root is "
+            "also served by a web server), host stolen data, or overwrite files other systems trust."
+        ),
+        "business": (
+            "the server can be used to stage attacks and distribute illegal or malicious content "
+            "under the organisation's address, with legal and reputational consequences."
+        ),
+    },
     "generic": {
         "technical": (
             "The service exhibits a security weakness in its exposure or configuration. Review "
@@ -495,6 +539,9 @@ _RULE_CATEGORY: dict[str, str] = {
     "POSTURE-DB-CLEARTEXT-TRANSPORT": "cleartext_protocol",
     "POSTURE-EXPOSED-BACKDOOR": "suspicious_listener",
     "POSTURE-SIP-EXPOSED": "sip_exposure",
+    "POSTURE-SNMPV3-NOAUTH-USER": "snmpv3_noauth",
+    "POSTURE-FTP-ANONYMOUS-WRITE": "ftp_anonymous_write",
+    "POSTURE-UNIDENTIFIED-SERVICE": "unidentified_service",
     "POSTURE-NETBIOS-EXPOSED": "netbios_exposure",
     "POSTURE-MDNS-EXPOSED": "mdns_exposure",
     "POSTURE-IKE-AGGRESSIVE-MODE": "ike_aggressive",

@@ -123,6 +123,7 @@ _CLEARTEXT = {
     143: ("IMAP (cleartext)", "medium"),
     25: ("SMTP (verify STARTTLS)", "low"),
     2049: ("NFS", "medium"),
+    548: ("AFP (Apple Filing Protocol)", "medium"),
     111: ("RPCbind/portmapper", "medium"),
 }
 
@@ -134,6 +135,14 @@ _REMOTE = {
     5986: "WinRM (HTTPS)",
     6000: "X11 (often unauthenticated)",
     3283: "Apple Remote Desktop",
+    # Management/discovery services the first lab scan found open but unnamed. Each is a
+    # HYPOTHESIS from the port number (a banner can overrule it) — the unidentified-service
+    # rule covers every port NOT named here.
+    4786: "Cisco Smart Install (unauthenticated config/RCE history, CVE-2018-0171)",
+    4899: "Radmin remote control",
+    4369: "Erlang EPMD (distributed-Erlang node discovery)",
+    179: "BGP (routing session; should only face peers)",
+    427: "SLP (service location; reflection/RCE history)",
 }
 
 # ── Exposed admin / dev / CI web UIs ──────────────────────────────────────────

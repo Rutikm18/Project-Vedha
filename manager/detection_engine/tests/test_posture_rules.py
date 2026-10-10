@@ -282,3 +282,90 @@ class TestUdpServiceRules:
         nb = _fact("udp_scan", 137, {"service": "netbios-ns", "responded": True}, proto="udp")
         f = next(f for f in P.detect_posture(_asset(nb)) if f.rule_id == "POSTURE-NETBIOS-EXPOSED")
         assert f.state == "confirmed" and f.evidence["dedup_key"] == "exposed:137/udp"
+
+
+# ── A4/B7: an open port nothing identified ────────────────────────────────────
+class TestUnidentifiedService:
+    @staticmethod
+    def _rules(*facts):
+        return {f.rule_id for f in P.detect_posture(_asset(*facts))}
+
+    def test_fires_when_the_banner_stage_found_nothing(self):
+        f = _fact("service_banner", 6100, {"banner": None, "identified": False, "raw_hex": "00ff"})
+        assert "POSTURE-UNIDENTIFIED-SERVICE" in self._rules(f)
+        finding = next(x for x in P.detect_posture(_asset(f)) if x.rule_id == "POSTURE-UNIDENTIFIED-SERVICE")
+        assert finding.severity == "low" and finding.state == "suspected"
+        assert finding.evidence["dedup_key"] == "exposed:6100"
+
+    def test_a_probe_build_without_the_flag_is_not_read_as_unidentified(self):
+        assert "POSTURE-UNIDENTIFIED-SERVICE" not in self._rules(
+            _fact("service_banner", 6100, {"banner": None}))
+
+    def test_identified_services_never_fire(self):
+        assert "POSTURE-UNIDENTIFIED-SERVICE" not in self._rules(
+            _fact("service_banner", 6100, {"banner": "x", "identified": True}))
+
+    def test_silent_by_design_catalog_and_ephemeral_ports_are_excluded(self):
+        for port in (445, 3389, 135, 4444, 6379, 50000, 60000):
+            assert "POSTURE-UNIDENTIFIED-SERVICE" not in self._rules(
+                _fact("service_banner", port, {"identified": False})), port
+
+
+# ── A3: SNMPv3 noAuth user and anonymous FTP write ────────────────────────────
+class TestA3Rules:
+    @staticmethod
+    def _rules(*facts):
+        return {f.rule_id for f in P.detect_posture(_asset(*facts))}
+
+    def test_snmpv3_noauth_user(self):
+        hit = _fact("snmp_scan", 161, {"snmpv3_present": True, "snmpv3_noauth_user": "initial"}, proto="udp")
+        miss = _fact("snmp_scan", 161, {"snmpv3_present": True, "snmpv3_noauth_user": None}, proto="udp")
+        old_probe = _fact("snmp_scan", 161, {"snmpv3_present": True}, proto="udp")
+        assert "POSTURE-SNMPV3-NOAUTH-USER" in self._rules(hit)
+        assert "POSTURE-SNMPV3-NOAUTH-USER" not in self._rules(miss)
+        assert "POSTURE-SNMPV3-NOAUTH-USER" not in self._rules(old_probe)
+
+    def test_snmpv3_noauth_is_a_confirmed_high(self):
+        f = next(x for x in P.detect_posture(_asset(_fact(
+            "snmp_scan", 161, {"snmpv3_noauth_user": "admin"}, proto="udp")))
+            if x.rule_id == "POSTURE-SNMPV3-NOAUTH-USER")
+        assert (f.severity, f.state) == ("high", "confirmed")
+
+    def test_ftp_anonymous_write_needs_a_proven_upload(self):
+        base = {"ftp": True, "anonymous_login": True, "anon_read": True, "software": "vsftpd"}
+        assert "POSTURE-FTP-ANONYMOUS-WRITE" in self._rules(_fact("ftp_scan", 21, {**base, "anon_write": True}))
+        for value in (False, None):
+            assert "POSTURE-FTP-ANONYMOUS-WRITE" not in self._rules(
+                _fact("ftp_scan", 21, {**base, "anon_write": value}))
+        assert "POSTURE-FTP-ANONYMOUS-WRITE" not in self._rules(_fact("ftp_scan", 21, base))
+
+    def test_leftover_file_is_reported(self):
+        f = next(x for x in P.detect_posture(_asset(_fact("ftp_scan", 21, {
+            "ftp": True, "anonymous_login": True, "anon_write": True,
+            "anon_write_leftover": "vedha-write-test-ab12.txt"})))
+            if x.rule_id == "POSTURE-FTP-ANONYMOUS-WRITE")
+        assert f.severity == "critical" and f.evidence["leftover_file"] == "vedha-write-test-ab12.txt"
+
+    def test_measured_amplification_factor_flows_to_the_amplifier_rule(self):
+        fact = _fact("udp_scan", 1900, {"service": "ssdp", "responded": True,
+                                        "request_bytes": 100, "reply_bytes": 3200,
+                                        "amplification_factor": 32.0}, proto="udp")
+        assert "POSTURE-UDP-AMPLIFIER" in self._rules(fact)
+
+
+def test_unidentified_service_is_not_raised_for_a_port_another_scanner_explained():
+    banner = _fact("service_banner", 1883, {"banner": None, "identified": False})
+    mqtt = _fact("iot_scan", 1883, {"mqtt_connack": True, "unauthenticated_access": True})
+    rules = {f.rule_id for f in P.detect_posture(_asset(banner, mqtt))}
+    assert "POSTURE-MQTT-UNAUTHENTICATED" in rules
+    assert "POSTURE-UNIDENTIFIED-SERVICE" not in rules
+    # …and still fires when nothing else saw the port.
+    assert "POSTURE-UNIDENTIFIED-SERVICE" in {f.rule_id for f in P.detect_posture(_asset(banner))}
+
+
+def test_catalogued_long_tail_ports_are_named_not_unidentified():
+    """Smart Install, Radmin, EPMD, BGP, SLP and AFP are in the exposure catalog, so a silent
+    listener on them is that finding — never the generic 'unidentified service'."""
+    for port in (4786, 4899, 4369, 179, 427, 548):
+        f = _fact("service_banner", port, {"banner": None, "identified": False})
+        assert "POSTURE-UNIDENTIFIED-SERVICE" not in {x.rule_id for x in P.detect_posture(_asset(f))}

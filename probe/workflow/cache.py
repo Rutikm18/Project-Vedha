@@ -54,6 +54,8 @@ FACT_CERTAINTY = {
     "msrpc_scan": "deterministic",
     "rdp_scan": "deterministic",
     "printer_scan": "deterministic",
+    "iot_scan": "deterministic",
+    "mobile_scan": "deterministic",
     # Datagram probes: silence is ambiguous (lost packet vs filtered vs absent),
     # so an unanswered probe must stay re-checkable — same call as udp_scan.
     "ipmi_scan": "uncertain",

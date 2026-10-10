@@ -27,6 +27,7 @@ DESIGN (mirrors the CVE engine's discipline):
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
@@ -234,6 +235,10 @@ class PostureRule:
     # set of paths that gate assessability — for rules with OR-alternative inputs,
     # leave it empty rather than declare a path that isn't always required.
     requires: tuple[str, ...] = ()
+    # True for a rule that only means something when NOTHING else explained the port: it is
+    # skipped when another scanner already produced an open-port fact for the same port (the
+    # unidentified-service rule must not fire on a port the MQTT or ADB scanner identified).
+    unless_explained: bool = False
     # What the detector's evidence IS (see BASIS_*). Dedicated-scanner rules read a
     # protocol-level answer, hence the default; a rule that keys off an open port or a
     # banner heuristic must say so and is then capped at SUSPECTED.
@@ -423,6 +428,60 @@ def _udp_amplifier(f: Fact) -> Optional[dict]:
     if factor is not None and threshold is not None and factor >= threshold:
         return {"service": svc, "amplification_factor": round(factor, 2),
                 "threshold": threshold, "basis": "measured_factor"}
+    return None
+
+
+# Ports where an open socket that returns no identifiable banner is the NORMAL case: these
+# protocols are client-first or binary, and have dedicated scanners / rules of their own.
+_SILENT_BY_DESIGN_PORTS = frozenset({
+    53, 88, 111, 135, 139, 389, 445, 464, 593, 636, 873, 2049, 3268, 3269, 3389, 5985, 5986,
+})
+_EPHEMERAL_FLOOR = 49152          # dynamic RPC / ephemeral range: unidentified by nature
+
+
+def _unidentified_service(f: Fact) -> Optional[dict]:
+    """An open TCP port that the banner stage tried to identify and could not.
+
+    Fires only when service_banner SAYS it found nothing (`identified is False`) — a fact
+    from a probe build that predates the flag is never read as "unidentified". Ports the
+    exposed-service catalog already names, silent-by-design protocols and the ephemeral range
+    are excluded, so this is the long tail: Smart Install 4786, SLP 427, Radmin 4899, AFP 548,
+    EPMD 4369, BGP 179 and whatever else answers on a non-standard port."""
+    d = _d(f)
+    port = f.port
+    if d.get("identified") is not False or f.status != "open" or (f.proto or "tcp") == "udp":
+        return None
+    if not isinstance(port, int) or port <= 0 or port >= _EPHEMERAL_FLOOR \
+            or port in _SILENT_BY_DESIGN_PORTS:
+        return None
+    try:
+        from port_intel import catalog_categories     # standalone module, no cycle
+        if port in catalog_categories():
+            return None
+    except ImportError:                                # pragma: no cover
+        pass
+    ev: dict = {"port": port, "identified": False}
+    if d.get("raw_hex"):
+        ev["raw_hex"] = str(d["raw_hex"])[:128]
+    return ev
+
+
+def _snmpv3_noauth(f: Fact) -> Optional[dict]:
+    """An SNMPv3 user that answered a read at security level noAuthNoPriv: no authentication
+    and no encryption, the v3 equivalent of a default community. The probe tries only a few
+    documented default user names and records the first that got a GetResponse."""
+    user = _d(f).get("snmpv3_noauth_user")
+    return {"user": user} if isinstance(user, str) and user else None
+
+
+def _ftp_anonymous_write(f: Fact) -> Optional[dict]:
+    """Anonymous FTP accepted an upload (the probe stored a tiny file and tried to delete it).
+    Only present when the operator explicitly enabled the opt-in write test; `anon_write` is
+    None when it was not tested, and that is never read as a clean result."""
+    d = _d(f)
+    if d.get("ftp") is True and d.get("anonymous_login") is True and d.get("anon_write") is True:
+        return {"software": d.get("software"),
+                "leftover_file": d.get("anon_write_leftover") or None}
     return None
 
 
@@ -619,15 +678,53 @@ def _ssh_terrapin(f: Fact) -> Optional[dict]:
     return None
 
 
-def _ssh_weak_algos(f: Fact) -> Optional[dict]:
+# Reasons (ssh-audit's wording, vendored in the probe) that mean an algorithm is BROKEN —
+# a practical attack, not just deprecation. Anything else ssh-audit fails (SHA-1 MACs and
+# signatures, RIPEMD, SEED, a 1024-bit group on its own, ...) is LEGACY: worth retiring, not
+# an emergency. A stock current OpenSSH still offers hmac-sha1, so it must not read as High.
+_SSH_BROKEN_REASON = re.compile(
+    r"rc4|3des|blowfish|cast|broken des|\bdes cipher|md5|no encryption|logjam|small ecc|"
+    r"untrusted|backdoored", re.IGNORECASE)
+_SSH_BROKEN_ALGO = re.compile(
+    r"^(arcfour|3des|des-|blowfish|cast128|none$|diffie-hellman-group1-sha1|hmac-md5)",
+    re.IGNORECASE)
+
+
+def _ssh_entry_is_broken(entry: Any) -> bool:
+    if not isinstance(entry, dict):
+        return False
+    reasons = entry.get("reasons")
+    if isinstance(reasons, list) and reasons:
+        return any(_SSH_BROKEN_REASON.search(str(r)) for r in reasons)
+    return bool(_SSH_BROKEN_ALGO.search(str(entry.get("algorithm") or "")))     # old facts
+
+
+def _ssh_failures(f: Fact) -> list:
     d = _d(f)
     if d.get("ssh_confirmed") is not True:
-        return None
+        return []
     failures = d.get("failures")
-    if not isinstance(failures, list) or not failures:
+    return failures if isinstance(failures, list) else []
+
+
+def _ssh_weak_algos(f: Fact) -> Optional[dict]:
+    """SSH offering an algorithm with a practical attack (RC4, 3DES, DES, Blowfish, MD5,
+    Logjam-class groups, no encryption). Merely deprecated algorithms are the LEGACY rule."""
+    broken = [e for e in _ssh_failures(f) if _ssh_entry_is_broken(e)]
+    if not broken:
         return None
-    return {"software": d.get("software"), "weak_count": len(failures),
-            "weak": failures[:8]}
+    d = _d(f)
+    return {"software": d.get("software"), "weak_count": len(broken), "weak": broken[:8]}
+
+
+def _ssh_legacy_algos(f: Fact) -> Optional[dict]:
+    """SSH offering only deprecated-but-not-broken algorithms (SHA-1 MACs, CBC, ...)."""
+    failures = _ssh_failures(f)
+    if not failures or any(_ssh_entry_is_broken(e) for e in failures):
+        return None
+    d = _d(f)
+    return {"software": d.get("software"), "legacy_count": len(failures),
+            "legacy": failures[:8], "buckets": d.get("buckets")}
 
 
 def _ftp_anonymous(f: Fact) -> Optional[dict]:
@@ -1095,6 +1192,35 @@ RULES: list[PostureRule] = [
                  "responder is shown answering in aggressive mode.",
         requires=()),
     PostureRule(
+        "POSTURE-UNIDENTIFIED-SERVICE", "Unidentified service listening", "low", "CWE-1188",
+        "T1046", "exposure", ("service_banner",), _unidentified_service,
+        "Find out what is listening: identify the owning process (ss -ltnp / netstat -ano), "
+        "confirm it is approved, and close or firewall it if it is not. Management and discovery "
+        "protocols (Smart Install, SLP, Radmin, AFP, EPMD, BGP) are common on non-standard ports "
+        "and should not be reachable from untrusted networks.",
+        fp_notes="The banner stage opened the port and nothing identified the service. This is a "
+                 "prompt to look, not a verdict: legitimate custom or binary protocols look the "
+                 "same. Ports in the exposure catalog, silent-by-design protocols and the "
+                 "ephemeral range are excluded.",
+        requires=(), evidence_basis="port_inference", unless_explained=True),
+    PostureRule(
+        "POSTURE-SNMPV3-NOAUTH-USER", "SNMPv3 user accepted without authentication", "high",
+        "CWE-306", "T1078", "misconfiguration", ("snmp_scan",), _snmpv3_noauth,
+        "Set every SNMPv3 user to authPriv (SHA-2 authentication and AES privacy) and delete "
+        "users configured at noAuthNoPriv; restrict SNMP to the management network.",
+        fp_notes="Fires only when a read at noAuthNoPriv got a GetResponse for a documented "
+                 "default user name. An agent that answers with a Report (unknown user) is the "
+                 "secure outcome and never fires this.",
+        requires=()),
+    PostureRule(
+        "POSTURE-FTP-ANONYMOUS-WRITE", "FTP allows anonymous upload", "critical",
+        "CWE-732", "T1105", "misconfiguration", ("ftp_scan",), _ftp_anonymous_write,
+        "Remove write permission from the anonymous account on every directory (vsftpd "
+        "anon_upload_enable=NO, anon_mkdir_write_enable=NO) or disable anonymous access.",
+        fp_notes="Proven by a completed upload, only when the operator opted in to the write "
+                 "test. Not tested (anon_write is None) is never treated as read-only.",
+        requires=()),
+    PostureRule(
         "POSTURE-SNMP-DEFAULT-COMMUNITY", "SNMP default community string",
         "high", "CWE-1392", "T1078", "default_credentials", ("snmp_scan",), _snmp_default,
         "Change the community string; move to SNMPv3 with auth+priv; restrict by ACL.",
@@ -1156,9 +1282,21 @@ RULES: list[PostureRule] = [
         "Restrict KexAlgorithms, Ciphers, MACs and HostKeyAlgorithms in sshd_config "
         "to the current recommended set; remove CBC ciphers, SHA-1 MACs and "
         "1024-bit Diffie-Hellman groups.",
-        fp_notes="Graded against the scanner's vendored weakness table. Offering a "
-                 "weak algorithm is not proof it is negotiated — but it is reachable "
-                 "by any client that asks for it.",
+        fp_notes="Fires only on algorithms with a practical attack (RC4, 3DES, DES, "
+                 "Blowfish, MD5, Logjam-class groups, no encryption). Merely deprecated ones "
+                 "(SHA-1 MACs, CBC) are POSTURE-SSH-LEGACY-ALGORITHMS. Offering a weak "
+                 "algorithm is not proof it is negotiated — but it is reachable by any client "
+                 "that asks for it.",
+        requires=("ssh_confirmed", "failures")),
+    PostureRule(
+        "POSTURE-SSH-LEGACY-ALGORITHMS", "SSH offers legacy algorithms",
+        "low", "CWE-327", "T1040", "weak_crypto", ("ssh_scan",), _ssh_legacy_algos,
+        "Retire the deprecated algorithms (SHA-1 MACs, CBC ciphers, 1024-bit DH groups) from "
+        "KexAlgorithms, Ciphers and MACs in sshd_config when clients allow. Nothing here has a "
+        "practical attack today; this is hygiene, not an emergency.",
+        fp_notes="Every algorithm ssh-audit fails is deprecated or weak-by-policy but none is on "
+                 "the broken list (RC4, 3DES, DES, Blowfish, MD5, Logjam-class groups). A stock "
+                 "current OpenSSH offers hmac-sha1 and lands here, not under the High rule.",
         requires=("ssh_confirmed", "failures")),
     PostureRule(
         "POSTURE-FTP-ANONYMOUS-LOGIN", "FTP allows anonymous login",
@@ -1551,9 +1689,16 @@ def detect_posture_traced(
 
     # 1) Evaluate every rule whose scanner produced a fact for this asset.
     scanners_seen = {f.scanner for f in asset.facts}
+    # Ports a dedicated scanner reported open: those are explained, whatever the banner said.
+    _generic = {"port_scan", "syn_scan", "mass_scan", "service_banner", "udp_scan",
+                "host_discovery", "os_fingerprint", "exposure_matrix"}
+    explained_ports = {(x.port, x.proto or "tcp") for x in asset.facts
+                       if x.scanner not in _generic and x.port and x.status == "open"}
     for f in asset.facts:
         for rule in RULES:
             if f.scanner not in rule.scanners:
+                continue
+            if rule.unless_explained and (f.port, f.proto or "tcp") in explained_ports:
                 continue
             row = evaluate_rule(rule, f)
             traces.append(row)
