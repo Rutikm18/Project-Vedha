@@ -12,7 +12,7 @@ import {
   severityKey,
   severityRows,
 } from "./presentation";
-import type { ReportDocument } from "./report-document";
+import { roleSummary, type ReportDocument } from "./report-document";
 import { redact } from "./finding-model";
 
 export type ReportExportFormat = "csv" | "xlsx" | "pdf" | "docx";
@@ -153,6 +153,7 @@ const FINDING_HEADERS = [
   "Applicable regional frameworks", "Regional reporting clocks", "Regional context disclaimer",
   "Readiness gaps",
   "Detection rationale", "Fix plan (ordered steps)", "Standard-text fields", "Score not-applicable reasons",
+  "Device role (confidence)",
 ];
 
 function findingRows(report: ReportDocument): Cell[][] {
@@ -249,6 +250,7 @@ function findingRows(report: ReportDocument): Cell[][] {
     fixPlanText(finding),
     standardTextFields(finding),
     Object.entries(finding.not_applicable_reasons ?? {}).map(([key, reason]) => `${key.toUpperCase()}: ${reason}`).join(" | "),
+    finding.asset ? (roleSummary(finding.asset) ?? "") : "",
   ]);
 }
 

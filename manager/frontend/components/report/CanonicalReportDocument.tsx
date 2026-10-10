@@ -35,6 +35,7 @@ import {
   type ReportDerivedRegionalObligationPointer,
   type ReportDocument,
   type ReportEvidence,
+  roleSummary,
   type ReportEvidenceArtifact,
   type ReportFinding,
   type ReportFindingEvent,
@@ -927,6 +928,7 @@ export function FindingReport({ finding, ordinal, anchor = true }: { finding: Re
             <div><dt>FQDN</dt><dd>{finding.asset.fqdn ?? "Not recorded"}</dd></div>
             <div><dt>Type</dt><dd>{finding.asset.asset_type}</dd></div>
             <div><dt>Criticality</dt><dd>{finding.asset.criticality}</dd></div>
+            {roleSummary(finding.asset) && <div><dt>Role</dt><dd>{roleSummary(finding.asset)}</dd></div>}
             <div><dt>Operating system</dt><dd>{[finding.asset.os, finding.asset.os_version].filter(Boolean).join(" ") || "Not recorded"}</dd></div>
             <div><dt>Environment</dt><dd>{finding.asset.environment ?? "Not recorded"}</dd></div>
             <div><dt>Owner</dt><dd>{finding.asset.owner ?? "Not recorded"}</dd></div>

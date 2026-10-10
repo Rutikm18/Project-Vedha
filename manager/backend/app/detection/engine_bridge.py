@@ -42,7 +42,7 @@ from app.models.detection_run_finding import (
 from app.discovery.finding_translator import (
     AssetCache, _resolve_asset, _find_open_duplicate, prime_asset_cache,
     exposed_service_condition, condition_index_key, DEDUP_KEY,
-    merge_signals, stronger_severity,
+    merge_signals, prune_stale_signals, stronger_severity,
 )
 from app.detection.attack_paths import attack_path_findings
 from app.detection.prioritization import _posture_risk_on_manager_scale
@@ -526,18 +526,21 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                                              condition=condition, index=open_index)
             if dup is not None:
                 new_sev = _POSTURE_SEV.get(p.get("severity"), FindingSeverity.info)
-                if condition and (dup.title != title or
-                                  (dup.evidence or {}).get("rule_id") != p.get("rule_id")):
-                    # A different producer/rule describing the SAME condition: keep the
-                    # strongest severity and remember every signal for the report roll-up.
+                prev_ev = dup.evidence if isinstance(dup.evidence, dict) else {}
+                different_producer = bool(condition) and (
+                    dup.title != title or prev_ev.get("rule_id") != p.get("rule_id"))
+                if different_producer or prev_ev.get("signals"):
+                    # Another producer/rule describing the SAME condition: keep the strongest
+                    # severity and remember every signal (stamped with this run) for the
+                    # report roll-up. A finding already carrying signals refreshes its own.
                     p["signals"] = merge_signals(
-                        dup.evidence, existing_rule_id=(dup.evidence or {}).get("rule_id"),
+                        prev_ev, existing_rule_id=prev_ev.get("rule_id"),
                         existing_title=dup.title, existing_severity=dup.severity,
+                        existing_run_id=dup.detection_run_id, run_id=run_id,
                         incoming={"rule_id": p.get("rule_id"), "title": title,
                                   "severity": p.get("severity")})
-                    dup.severity = stronger_severity(dup.severity, new_sev)
-                elif isinstance(dup.evidence, dict) and dup.evidence.get("signals"):
-                    p["signals"] = dup.evidence["signals"]
+                    if different_producer:
+                        dup.severity = stronger_severity(dup.severity, new_sev)
                 dup.evidence = preserve_trusted_scan_provenance(
                     p,
                     previous_evidence=dup.evidence,
@@ -1098,6 +1101,7 @@ async def create_findings_from_facts(
         # touched BEFORE resolution reads them, so the engagement report can prove
         # the recorded evidence is unchanged. Unconditional (unlike verification)
         # and best-effort; the final flush persists it.
+        prune_stale_signals(touched, run.id)
         _stamp_chain_of_custody(touched, now)
 
         # Coverage ledger + coverage-gated auto-resolution (Phase 0/1). Best-effort:

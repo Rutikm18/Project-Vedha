@@ -557,6 +557,72 @@ def content_category(finding: Any) -> str:
     return classify_finding(finding)
 
 
+# Root cause and preconditions per category: what normally leads to this weakness, and what an
+# attacker needs for it to matter. Standard text about the CLASS of weakness (never a claim about
+# this specific host); the report labels it as knowledge-base content.
+_CAUSE: dict[str, dict[str, Any]] = {
+    "weak_tls": {"root_cause": "The TLS configuration still permits legacy protocol versions or weak ciphers, usually inherited defaults or a compatibility setting nobody revisited.",
+                 "preconditions": ["Network position that can observe or modify traffic to the service", "A client that can be made to negotiate the weak option"]},
+    "smb_signing": {"root_cause": "SMB message signing is not required by the server policy; on non-domain-controller Windows hosts this is the default.",
+                    "preconditions": ["Network access to the SMB port", "A way to coerce or capture an NTLM authentication from a victim"]},
+    "exposed_rdp": {"root_cause": "Remote Desktop is reachable from networks that do not need it, often without network-level authentication.",
+                    "preconditions": ["Network access to the RDP port", "Valid or guessable credentials, or an unpatched RDP flaw"]},
+    "default_credentials": {"root_cause": "A vendor-default or well-known credential was never changed at deployment.",
+                            "preconditions": ["Network access to the login surface", "The vendor's published default credential"]},
+    "missing_patch": {"root_cause": "The software version in use is older than the release that fixes the issue.",
+                      "preconditions": ["Network access to the vulnerable component", "A public or reproducible exploit for the version"]},
+    "open_mgmt_port": {"root_cause": "A management or legacy service is exposed beyond the administrative network.",
+                       "preconditions": ["Network access to the service port"]},
+    "anon_ftp": {"root_cause": "The FTP server keeps its built-in anonymous account enabled.",
+                 "preconditions": ["Network access to the FTP port"]},
+    "outdated_ssh": {"root_cause": "The SSH server offers older algorithms or runs an old release because the configuration was never hardened.",
+                     "preconditions": ["Network access to the SSH port", "A client able to negotiate the weak algorithm"]},
+    "vnc_no_auth": {"root_cause": "The VNC server was configured without a password, or with the None security type.",
+                    "preconditions": ["Network access to the VNC port"]},
+    "unauth_datastore": {"root_cause": "The data store ships with open access and was not given authentication or network restrictions.",
+                         "preconditions": ["Network access to the data store port"]},
+    "nfs_export": {"root_cause": "The export lists a wildcard or very broad client set, and NFS trusts the client host rather than a user.",
+                   "preconditions": ["Network access to the NFS and portmapper ports", "A client that can mount the export"]},
+    "rsync_module": {"root_cause": "The rsync daemon module has no authentication configured.",
+                     "preconditions": ["Network access to the rsync port"]},
+    "snmp_exposure": {"root_cause": "The SNMP agent still uses a default community string, which is its only credential in v1/v2c.",
+                      "preconditions": ["Network access to UDP/161", "Knowledge of the default community name"]},
+    "amplification": {"root_cause": "The UDP service answers small unauthenticated requests with large responses and is reachable from networks that can spoof source addresses.",
+                      "preconditions": ["Ability to send spoofed UDP packets to the service", "A victim address to reflect to"]},
+    "ipmi_cipher_zero": {"root_cause": "The BMC firmware enables IPMI 2.0 cipher suite 0, which skips authentication.",
+                         "preconditions": ["Network access to UDP/623"]},
+    "mqtt_unauth": {"root_cause": "The MQTT broker allows anonymous connections.",
+                    "preconditions": ["Network access to the broker port"]},
+    "ai_endpoint": {"root_cause": "The AI or MCP endpoint was published without an authentication layer.",
+                    "preconditions": ["Network access to the endpoint"]},
+    "cleartext_protocol": {"root_cause": "A legacy protocol without transport encryption is in use where an encrypted alternative exists.",
+                           "preconditions": ["A network position that can observe the traffic"]},
+    "suspicious_listener": {"root_cause": "A listener is bound on a port used by remote-access tooling or malware, with no recorded owner.",
+                            "preconditions": ["Network access to the port"]},
+    "sip_exposure": {"root_cause": "The SIP service is reachable from networks other than the trunks and phones that need it.",
+                     "preconditions": ["Network access to the SIP port"]},
+    "netbios_exposure": {"root_cause": "NetBIOS over TCP/IP is enabled and reachable beyond the segment that needs Windows name resolution.",
+                         "preconditions": ["Network access to UDP/137"]},
+    "mdns_exposure": {"root_cause": "The multicast-DNS responder answers queries that did not originate on its local link.",
+                      "preconditions": ["Network access to UDP/5353"]},
+    "ike_aggressive": {"root_cause": "The VPN gateway accepts IKEv1 aggressive mode, often left enabled for compatibility with pre-shared-key peers.",
+                       "preconditions": ["Network access to UDP/500", "A weak or guessable pre-shared key for the offline attack to succeed"]},
+    "unidentified_service": {"root_cause": "A service listens on a port that no probe could identify; its owner and purpose are not recorded.",
+                             "preconditions": ["Network access to the port"]},
+    "snmpv3_noauth": {"root_cause": "An SNMPv3 user was created at security level noAuthNoPriv.",
+                      "preconditions": ["Network access to UDP/161", "Knowledge of the user name (often a documented default)"]},
+    "ftp_anonymous_write": {"root_cause": "The anonymous FTP account has write permission on at least one directory.",
+                            "preconditions": ["Network access to the FTP port"]},
+    "generic": {"root_cause": "The service is exposed or configured beyond what its role requires.",
+                "preconditions": ["Network access to the affected service"]},
+}
+
+
+def cause_for(finding: Any) -> dict[str, Any]:
+    """Standard root cause and preconditions for the finding's category."""
+    return _CAUSE.get(content_category(finding), _CAUSE["generic"])
+
+
 def exploitation_signals(finding: Any) -> dict[str, Any]:
     """Extract the raw exploitation signals from a finding + its evidence.
 

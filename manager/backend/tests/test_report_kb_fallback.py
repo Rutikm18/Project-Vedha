@@ -244,3 +244,95 @@ def test_report_carries_the_coverage_sheet():
     assert build_report_document(
         engagement=eng, finding_rows=[], event_rows=[], remediation_plan_rows=[],
         resolution_runs={}, generated_at=NOW, sla_windows=_WINDOWS).coverage_sheet is None
+
+
+def test_merged_producers_are_nested_under_the_issue_not_lost():
+    eng = _engagement()
+    asset = _asset(eng.id)
+    merged = _posture(eng, asset, title="NFS export world-readable (port 2049)", evidence={
+        "rule_id": "POSTURE-NFS-WORLD-READABLE-EXPORT", "port": 2049,
+        "signals": [{"rule_id": "POSTURE-NFS-WORLD-READABLE-EXPORT", "title": "NFS export world-readable (port 2049)", "severity": "high"},
+                    {"rule_id": "POSTURE-EXPOSED-CLEARTEXT", "title": "Cleartext protocol exposed on 2049 (NFS)", "severity": "medium"}]})
+    doc = build_report_document(
+        engagement=eng, finding_rows=[(merged, asset)], event_rows=[], remediation_plan_rows=[],
+        resolution_runs={}, generated_at=NOW, sla_windows=_WINDOWS)
+    item = doc.findings[0]
+    assert [s["rule_id"] for s in item.merged_signals] == ["POSTURE-NFS-WORLD-READABLE-EXPORT", "POSTURE-EXPOSED-CLEARTEXT"]
+    group = doc.summary.issue_groups[0]
+    assert group.finding_count == 1 and group.signals == ["Cleartext protocol exposed on 2049 (NFS)"]
+
+
+# ── M10: the report states the role and how far it can be trusted ────────────
+
+def test_report_shows_role_confidence_and_flags_an_os_contradicted_role():
+    eng = _engagement()
+    router_claim = _asset(eng.id, device_role="network_device", role_confidence=0.9, os="Ubuntu 22.04")
+    item = _doc(_posture(eng, router_claim), router_claim).findings[0]
+    a = item.asset
+    assert (a.device_role, a.resolved_role) == ("network_device", "server")
+    assert a.role_trusted is False and a.role_basis == "os_fingerprint_overrides_port_inference"
+    real_router = _asset(eng.id, device_role="network_device", role_confidence=0.9, os="Cisco IOS XE")
+    b = _doc(_posture(eng, real_router), real_router).findings[0].asset
+    assert b.resolved_role == "network_device" and b.role_trusted is True
+
+
+def test_report_leaves_the_role_out_when_nothing_classified_the_host():
+    eng = _engagement()
+    plain = _asset(eng.id)
+    a = _doc(_posture(eng, plain), plain).findings[0].asset
+    assert a.device_role is None and a.role_trusted is None
+
+
+def test_expired_risk_acceptance_is_a_readiness_gap():
+    from datetime import timedelta
+    from tests.test_report_document import _event
+    eng = _engagement()
+    asset = _asset(eng.id)
+    finding = _posture(eng, asset, status="accepted")
+    ev = _event(finding.id, "accepted", NOW - timedelta(days=40), detail={
+        "risk_owner": "CISO", "compensating_controls": "ACL",
+        "expires_at": (NOW - timedelta(days=1)).isoformat()})
+    doc = build_report_document(
+        engagement=eng, finding_rows=[(finding, asset)], event_rows=[ev], remediation_plan_rows=[],
+        resolution_runs={}, generated_at=NOW, sla_windows=_WINDOWS)
+    assert "risk_acceptance_expired" in doc.findings[0].closure.completeness_gaps
+
+
+# ── root cause / preconditions / reproduction come from the KB, labelled ─────
+
+def test_root_cause_preconditions_and_reproduction_are_filled_and_labelled():
+    eng = _engagement()
+    asset = _asset(eng.id)
+    item = _doc(_posture(eng, asset), asset).findings[0]
+    assert item.root_cause and "VNC" in item.root_cause
+    assert isinstance(item.preconditions, list) and item.preconditions
+    assert isinstance(item.reproduction_steps, list) and item.reproduction_steps[0].startswith("Re-check:")
+    for field in ("root_cause", "preconditions", "reproduction_steps"):
+        assert item.narrative_sources[field] == "knowledge_base"
+    for gap in ("reproduction_steps_absent",):
+        assert gap not in item.readiness_gaps
+
+
+def test_recorded_root_cause_wins():
+    eng = _engagement()
+    asset = _asset(eng.id)
+    item = _doc(_finding(eng.id, asset.id, None), asset).findings[0]       # evidence records it
+    assert item.root_cause == "The server policy still permits a deprecated protocol."
+    assert item.narrative_sources["root_cause"] == "recorded"
+
+
+def test_every_content_category_has_a_cause_entry():
+    from app.services.finding_content import _CAUSE, _CONTENT
+    assert set(_CONTENT) == set(_CAUSE)
+    assert all(v["root_cause"] and v["preconditions"] for v in _CAUSE.values())
+
+
+def test_fix_plan_is_compact_but_keeps_what_a_reader_acts_on():
+    import json
+    eng = _engagement()
+    asset = _asset(eng.id)
+    plan = _doc(_posture(eng, asset), asset).findings[0].remediation.fix_plan
+    assert "context" not in plan and "fragile_guard" not in plan
+    assert all("commands" not in s and "commands_for_os" in s for s in plan["steps"])
+    assert plan["verification_check"]["check"] and plan["provenance"]["recipe_id"] == "POSTURE-VNC-NO-AUTH"
+    assert len(json.dumps(plan)) < 3500

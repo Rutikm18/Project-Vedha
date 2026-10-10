@@ -69,6 +69,22 @@ export interface ReportAsset {
   environment: string | null;
   tags: Record<string, unknown>;
   last_seen: string | null;
+  /** The probe classifier's role, and that claim checked against the OS fingerprint. */
+  device_role?: string | null;
+  role_confidence?: number | null;
+  resolved_role?: string | null;
+  role_basis?: string | null;
+  role_trusted?: boolean | null;
+}
+
+/** One line for a reader: "server (classifier said network_device; OS says otherwise) — low confidence". */
+export function roleSummary(asset: ReportAsset): string | null {
+  if (!asset.device_role) return null;
+  const pct = asset.role_confidence == null ? "confidence not recorded" : `${Math.round(asset.role_confidence * 100)}% confidence`;
+  const resolved = asset.resolved_role ?? asset.device_role;
+  const overruled = resolved !== asset.device_role ? ` (classifier said ${asset.device_role}; the OS fingerprint disagrees)` : "";
+  const trust = asset.role_trusted === false ? " — too uncertain to drive severity or routing" : "";
+  return `${resolved}${overruled}, ${pct}${trust}`;
 }
 
 export interface ReportEvidenceArtifact {

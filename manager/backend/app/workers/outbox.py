@@ -481,7 +481,9 @@ def main() -> None:
         # (detection etc.) and the lease reaper (requeue jobs from dead probes).
         from app.workers.reaper import run_reaper
         from app.workers.sla_watch import run_sla_watch
-        await asyncio.gather(run_worker(stop), run_reaper(stop), run_sla_watch(stop))
+        from app.workers.acceptance_watch import run_acceptance_watch
+        await asyncio.gather(run_worker(stop), run_reaper(stop), run_sla_watch(stop),
+                             run_acceptance_watch(stop))
 
     asyncio.run(_run())
 

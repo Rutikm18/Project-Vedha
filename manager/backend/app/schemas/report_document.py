@@ -86,6 +86,14 @@ class ReportAsset(BaseModel):
     environment: str | None = None
     tags: dict[str, Any] = Field(default_factory=dict)
     last_seen: datetime | None = None
+    # The one role this asset is treated as, and how far that can be trusted. `device_role` is
+    # what the probe's classifier said; `resolved_role` is that claim checked against the OS
+    # fingerprint (a Linux server answering on router ports resolves to "server").
+    device_role: str | None = None
+    role_confidence: float | None = None
+    resolved_role: str | None = None
+    role_basis: str | None = None
+    role_trusted: bool | None = None
 
 
 class ReportEvidenceArtifact(BaseModel):
@@ -403,6 +411,8 @@ class ReportFinding(BaseModel):
     # caveat) — kept apart from the description, which explains the weakness itself.
     detection_rationale: str | None = None
     service_port: int | None = None
+    # Producers that collapsed into this one finding (same asset, service and weakness class).
+    merged_signals: list[dict[str, Any]] = Field(default_factory=list)
     # Why CVE / CVSS / EPSS / CWE are legitimately empty (recorded, or derived for
     # configuration findings): an empty score with a reason is "not applicable", not a gap.
     not_applicable_reasons: dict[str, str] = Field(default_factory=dict)

@@ -19,7 +19,7 @@ from typing import Any
 
 import structlog
 
-from app.services.finding_content import content_category, finding_content
+from app.services.finding_content import cause_for, content_category, finding_content
 
 logger = structlog.get_logger(__name__)
 
@@ -147,6 +147,16 @@ def coverage_sheet(run: Any, job: Any | None = None,
     }
 
 
+def merged_signals(finding: Any) -> list[dict[str, Any]]:
+    """The producers that collapsed into this one finding (evidence["signals"]), as
+    {rule_id, title, severity}; empty when the finding is not a merge."""
+    signals = _evidence(finding).get("signals")
+    if not isinstance(signals, list) or len(signals) < 2:
+        return []
+    return [{"rule_id": s.get("rule_id"), "title": s.get("title"), "severity": s.get("severity")}
+            for s in signals if isinstance(s, dict) and (s.get("title") or s.get("rule_id"))]
+
+
 def kb_narrative(finding: Any, asset: Any | None = None) -> dict[str, Any]:
     """The KB's technical details / impact / business impact / exploitation context.
 
@@ -154,7 +164,10 @@ def kb_narrative(finding: Any, asset: Any | None = None) -> dict[str, Any]:
     which is what a retest needs; it is not an exploit procedure."""
     criticality = _enum(getattr(asset, "criticality", None)) if asset is not None else None
     content = finding_content(finding, asset_criticality=criticality)
+    cause = cause_for(finding)
     return {
+        "root_cause": cause["root_cause"],
+        "preconditions": list(cause["preconditions"]),
         "category": content.category,
         "technical_details": content.technical_details,
         "impact": content.impact,
@@ -218,7 +231,36 @@ def fix_plan(finding: Any, asset: Any | None = None) -> dict[str, Any] | None:
         logger.warning("report.fix_plan_failed", finding_id=str(getattr(finding, "id", "")),
                        error=str(exc))
         return None
-    return plan
+    return compact_plan(plan)
+
+
+def compact_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    """The rendered recipe without what a report does not need: the full per-OS command map
+    (the selected OS's commands stay), the context dump and the provenance fact list. A report
+    carries one fix plan per finding, so the payload is multiplied by the finding count."""
+    out = {k: v for k, v in plan.items() if k not in ("context", "provenance", "fragile_guard")}
+    out["steps"] = [{k: v for k, v in step.items() if k != "commands"}
+                    for step in plan.get("steps") or []]
+    prov = plan.get("provenance") or {}
+    out["provenance"] = {k: prov.get(k) for k in ("source", "recipe_id", "recipe_version")}
+    return out
+
+
+def reproduction_from_plan(plan: dict[str, Any] | None) -> list[str]:
+    """How to confirm the finding again, from the recipe's verification check: the re-scan
+    statement, what a clean result looks like, and a manual command when the recipe has one.
+    A re-check procedure, never an exploit."""
+    if not plan:
+        return []
+    check = plan.get("verification_check") or {}
+    steps: list[str] = []
+    if check.get("check"):
+        steps.append(f"Re-check: {check['check']}")
+    if check.get("manual_command"):
+        steps.append(f"Manually: {check['manual_command']}")
+    if check.get("expected"):
+        steps.append(f"The weakness is present while this does not hold: {check['expected']}")
+    return steps
 
 
 def plan_text(plan: dict[str, Any] | None) -> str:
@@ -236,6 +278,6 @@ def plan_text(plan: dict[str, Any] | None) -> str:
     return "\n".join(l for l in lines if l)
 
 
-__all__ = ["coverage_sheet", "not_applicable_reasons", "service_port", "SOURCE_RECORDED", "SOURCE_KB", "kb_narrative", "first_sentence",
+__all__ = ["reproduction_from_plan", "merged_signals", "coverage_sheet", "not_applicable_reasons", "service_port", "SOURCE_RECORDED", "SOURCE_KB", "kb_narrative", "first_sentence",
            "description_is_rule_metadata", "detection_rationale", "fix_plan", "plan_text",
            "content_category"]

@@ -228,3 +228,31 @@ async def test_different_weakness_on_one_port_stays_a_separate_finding():
                "evidence": {"dedup_key": "tls-deprecated-version:443"}}
     created, reaffirmed = await _persist(db, [cipher, version], cache={"10.0.0.7": asset})
     assert (created, reaffirmed) == (2, 0)
+
+
+@pytest.mark.asyncio
+async def test_probe_path_merge_keeps_the_strongest_severity_and_records_the_other_producer():
+    """A probe finding for the same exposed service as an existing engine finding merges onto it;
+    a higher severity from the probe must not be lost."""
+    from app.discovery import finding_translator as T
+    from app.models.enums import FindingSeverity
+    db = _FakeSession()
+    asset = Asset(engagement_id=ENGAGEMENT, ip_address="10.0.0.5")
+    asset.id = uuid.uuid4()
+    existing = Finding(engagement_id=ENGAGEMENT, asset_id=asset.id, title="Telnet exposed",
+                       severity=FindingSeverity.medium, status=FindingStatus.open,
+                       evidence={"dedup_key": "exposed:23", "rule_id": "POSTURE-EXPOSED-CLEARTEXT"})
+    index = {(asset.id, existing.title): existing, condition_index_key(asset.id, "exposed:23"): existing}
+
+    async def fake_resolve(*a, **k):
+        return asset
+
+    async def fake_find(db_, eid, aid, title, *, condition=None, index=None):
+        return existing if condition == "exposed:23" else None
+    with patch.object(T, "_resolve_asset", fake_resolve), patch.object(T, "_find_open_duplicate", fake_find):
+        await T.create_findings_from_probe_result(
+            db, ENGAGEMENT, {"scan_type": "tls_scan", "findings": [
+                {"title": "Cleartext Telnet service reachable", "severity": "high", "target": "10.0.0.5",
+                 "port": 23, "category": "cleartext_protocol", "rule_id": "PROBE-TELNET"}]})
+    assert existing.severity == FindingSeverity.high
+    assert {s["title"] for s in existing.evidence["signals"]} == {"Telnet exposed", "Cleartext Telnet service reachable"}

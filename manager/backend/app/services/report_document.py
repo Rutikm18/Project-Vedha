@@ -1054,6 +1054,9 @@ def _closure(
                 gaps.append("risk_acceptance_expiry_absent")
             if not _has_detail(detail, "compensating_controls"):
                 gaps.append("risk_acceptance_compensating_controls_absent")
+            expiry = _parse_rfc3339(_text(detail.get("expires_at") or detail.get("expiry")))
+            if expiry is not None and expiry <= generated_at:
+                gaps.append("risk_acceptance_expired")
         elif status == "fp" and not evidence.artifacts:
             gaps.append("false_positive_contradiction_evidence_absent")
 
@@ -1237,6 +1240,24 @@ def _remediation(finding: Finding, rows: list[RemediationPlan],
     )
 
 
+def _role_fields(asset: Asset) -> dict[str, Any]:
+    """The role the report shows, with its confidence (M10): only roles a classifier actually
+    recorded are shown, and an untrustworthy one says so instead of being presented as fact."""
+    role = getattr(asset, "device_role", None)
+    if not role:
+        return {}
+    from app.intel.device_role import drives_amplifier, resolve_role
+    confidence = getattr(asset, "role_confidence", None)
+    verdict = resolve_role(str(role), confidence, getattr(asset, "os", None))
+    return {
+        "device_role": str(role),
+        "role_confidence": float(confidence) if confidence is not None else None,
+        "resolved_role": verdict.role,
+        "role_basis": verdict.basis,
+        "role_trusted": drives_amplifier(str(role), confidence, getattr(asset, "os", None)),
+    }
+
+
 def _asset(asset: Asset | None) -> ReportAsset | None:
     if asset is None:
         return None
@@ -1253,6 +1274,7 @@ def _asset(asset: Asset | None) -> ReportAsset | None:
         environment=asset.environment,
         tags=asset.tags if isinstance(asset.tags, dict) else {},
         last_seen=asset.last_seen,
+        **_role_fields(asset),
     )
 
 
@@ -1419,6 +1441,24 @@ def _finding(
         impact = kb["impact"]
     if business_impact is None:
         business_impact = kb["business_impact"]
+    # Root cause and preconditions are standard text about the weakness CLASS, filled only when
+    # nothing was recorded. Reproduction is the recipe's own re-check ("how to confirm it again").
+    for field_name, recorded, standard in (
+        ("root_cause", root_cause, kb["root_cause"]),
+        ("preconditions", preconditions, kb["preconditions"]),
+        ("reproduction_steps", reproduction_steps,
+         enrich.reproduction_from_plan(remediation.fix_plan)),
+    ):
+        narrative_sources[field_name] = (
+            enrich.SOURCE_RECORDED if recorded is not None else enrich.SOURCE_KB
+        )
+        if recorded is None and standard:
+            if field_name == "root_cause":
+                root_cause = standard
+            elif field_name == "preconditions":
+                preconditions = standard
+            else:
+                reproduction_steps = standard
     if exploitation is None:
         exploitation = kb["exploitation"]
     description = finding.description
@@ -1523,6 +1563,7 @@ def _finding(
         description=description,
         detection_rationale=enrich.detection_rationale(finding),
         service_port=enrich.service_port(finding),
+        merged_signals=enrich.merged_signals(finding),
         not_applicable_reasons=na_reasons,
         narrative_sources=narrative_sources,
         technical_details=technical_details,
@@ -1791,6 +1832,19 @@ def _engagement(engagement: Engagement) -> ReportEngagement:
 _SEVERITY_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
 
 
+def _group_signals(members: list[ReportFinding]) -> list[str]:
+    """Everything that says something about this issue besides its lead finding: the other
+    findings' titles plus the producers merged INTO any of them, de-duplicated, in order."""
+    lead = members[0].title
+    out: list[str] = []
+    for m in members:
+        for title in ([m.title] if m is not members[0] else []) + [
+                s.get("title") for s in m.merged_signals if s.get("title")]:
+            if title and title != lead and title not in out:
+                out.append(title)
+    return out
+
+
 def _issue_groups(findings: list[ReportFinding]) -> list[ReportIssueGroup]:
     """Roll findings up to issues: everything about one service (port) of one asset is one
     row, with the individual findings nested. A finding with no asset or no port is its own
@@ -1816,7 +1870,7 @@ def _issue_groups(findings: list[ReportFinding]) -> list[ReportIssueGroup]:
             open=any(m.status in {"open", "confirmed"} for m in members),
             finding_count=len(members),
             finding_ids=[m.id for m in members],
-            signals=[m.title for m in members[1:]],
+            signals=_group_signals(members),
         ))
     groups.sort(key=lambda g: (-_SEVERITY_RANK.get(g.severity, 0), -g.finding_count,
                                g.asset_label or "", g.port or 0))
