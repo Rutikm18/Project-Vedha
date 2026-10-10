@@ -78,7 +78,11 @@ async def engagement_changes(
                 "latest_run_at": latest.started_at.isoformat(),
                 "detail": "Only one completed scan; nothing to compare yet."}
 
-    since = prev.started_at
+    # "New since the last scan" means first observed AFTER the previous scan finished —
+    # NOT during it. Using the previous run's start would re-list everything that run itself
+    # discovered (verified against PostgreSQL in H6). Fall back to its start if it recorded no
+    # finish time.
+    since = prev.finished_at or prev.started_at
     asset_ids = (select(Asset.id).where(Asset.engagement_id == engagement_id)).subquery()
 
     async def _count(q) -> int:
@@ -86,23 +90,23 @@ async def engagement_changes(
 
     # New hosts: assets first recorded at or after the previous scan.
     new_hosts_q = (select(Asset.id, Asset.hostname, Asset.ip_address)
-                   .where(Asset.engagement_id == engagement_id, Asset.created_at >= since)
+                   .where(Asset.engagement_id == engagement_id, Asset.created_at > since)
                    .order_by(Asset.created_at.desc()))
     # Newly observed services on this engagement's assets.
     new_svc_q = (select(Service.id, Service.asset_id, Service.port, Service.protocol,
                         Service.service_name)
-                 .where(Service.asset_id.in_(select(asset_ids.c.id)), Service.created_at >= since)
+                 .where(Service.asset_id.in_(select(asset_ids.c.id)), Service.created_at > since)
                  .order_by(Service.created_at.desc()))
     new_find_q = (select(Finding).where(Finding.engagement_id == engagement_id,
-                                        Finding.first_seen.is_not(None), Finding.first_seen >= since)
+                                        Finding.first_seen.is_not(None), Finding.first_seen > since)
                   .order_by(Finding.severity))
     resolved_q = (select(Finding).where(Finding.engagement_id == engagement_id,
                                         Finding.status.in_(_RESOLVED),
-                                        Finding.resolved_at.is_not(None), Finding.resolved_at >= since)
+                                        Finding.resolved_at.is_not(None), Finding.resolved_at > since)
                   .order_by(Finding.severity))
     reopened_q = (select(Finding).where(Finding.engagement_id == engagement_id,
                                         Finding.reopened_count > 0, Finding.status.in_(_OPEN),
-                                        Finding.last_seen.is_not(None), Finding.last_seen >= since)
+                                        Finding.last_seen.is_not(None), Finding.last_seen > since)
                   .order_by(Finding.severity))
 
     new_hosts = (await db.execute(new_hosts_q.limit(limit))).all()
