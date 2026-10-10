@@ -79,6 +79,37 @@ def test_exemptions_name_real_branches():
     assert not unknown, f"KNOWN_UNASSESSED names non-existent branches: {sorted(unknown)}"
 
 
+# ── the reverse direction: every scanner a rule READS must be RUN by the probe ──
+#
+# The guards above run from the branch outward. This one runs from the rule
+# inward, and it is the one that was missing: iot_scanner and mobile_scanner
+# existed in both probe trees with unit tests, and four rules read their facts
+# (POSTURE-MQTT-UNAUTHENTICATED, POSTURE-CWMP-EXPOSED, POSTURE-RTSP-EXPOSED,
+# POSTURE-ADB-UNAUTHENTICATED) — but no workflow stage ever constructed either
+# scanner, on any job, in any profile. Four rules, one of them CRITICAL, that
+# could never fire, while every health signal stayed green.
+#
+# Probe stages that produce facts OUTSIDE the deep-branch table. The probe test
+# tests/test_iot_mobile_branches.py pins this exact set against the scanner
+# classes workflow_engine really constructs, so a rename on either side fails a
+# test instead of quietly exempting a dead rule.
+NON_BRANCH_PRODUCERS = frozenset({
+    "host_discovery", "port_scan", "syn_scan", "os_fingerprint",
+    "service_banner", "udp_scan", "passive_collect",
+    "ssh_inventory", "windows_inventory",   # credentialed collectors
+})
+
+
+def test_every_scanner_a_rule_reads_is_produced_by_the_probe():
+    produced = _branch_components() | NON_BRANCH_PRODUCERS
+    dead = _scanners_with_rules() - produced
+    assert not dead, (
+        "These rules read facts from scanners that NO probe job ever runs, so the "
+        f"rules can never fire: {sorted(dead)}\n"
+        "Wire the scanner into the probe workflow (a branch in probe/workflow/"
+        "branches.py), or delete the rule.")
+
+
 def test_db_scan_is_assessed():
     """The regression this whole file exists for."""
     assert "db_scan" in _scanners_with_rules()
