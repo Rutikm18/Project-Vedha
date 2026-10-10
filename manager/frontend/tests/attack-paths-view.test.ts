@@ -782,3 +782,14 @@ test("suggestedTargetsNote speaks only when targets were suggested", () => {
   assert.ok(note && note.includes("DC01 (domain controller)"));
   assert.ok(note && note.toLowerCase().includes("no asset was marked critical"));
 });
+
+test("overviewLine carries the suggested flag through to the row (H4)", () => {
+  // the row render reads row.targets_suggested; overviewLine itself stays about state.
+  const row = { engagement_id: "e", name: "x", status: "active", state: "reachable",
+    computed: true, computed_at: null, path_count: 1, entry_points: 1, crown_jewels: 1,
+    jewels_total: 1, jewels_reachable: 1, jewels_exposed: 0, ways_in: 1, top_risk: 10,
+    fix_set_size: 1, fix_assets: [], fix_assets_more: 0, coverage: "observed",
+    stale_assets: 0, why_empty: [], targets_suggested: true } as OverviewRow;
+  const line = { ...overviewLine(row), suggested: !!row.targets_suggested };
+  assert.equal(line.suggested, true);
+});

@@ -267,7 +267,8 @@ describe("a crown jewel exposed outright is not an empty result", () => {
 
   test("the page shows it instead of the 'nothing modelled' explainer, and does not call the count exposure", () => {
     const src = readFileSync(join(process.cwd(), "app/engagements/[id]/attack-paths/AttackPathsWorkspace.tsx"), "utf8");
-    assert.match(src, /exposed\.length > 0 \? <ExposedCallout targets=\{exposed\} \/> : <EmptyExplainer/);
+    assert.match(src, /exposed\.length > 0 \? <ExposedCallout targets=\{exposed\} \/> :/);
+    assert.match(src, /<EmptyExplainer diagnostics=\{whyEmpty\} \/>/);
     assert.match(src, /crown jewel\$\{exposed\.length === 1 \? "" : "s"\} directly exposed/);
     assert.match(src, /At most 5 routes are listed per entry point per\s+crown jewel/);
   });

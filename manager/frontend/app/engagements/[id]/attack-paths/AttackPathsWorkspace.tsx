@@ -142,7 +142,12 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
           isEmpty={list.data?.total === 0}
           onRetry={() => void list.refetch()}
           skeleton={<SkeletonRows rows={4} height={64} />}
-          empty={exposed.length > 0 ? <ExposedCallout targets={exposed} /> : <EmptyExplainer diagnostics={whyEmpty} />}
+          empty={exposed.length > 0 ? <ExposedCallout targets={exposed} /> : (
+            <>
+              <SuggestedTargetsNote analysis={analysis.data as Analysis | undefined} />
+              <EmptyExplainer diagnostics={whyEmpty} />
+            </>
+          )}
         >
           {/* Decision first: what to fix. */}
           <section className="ap-card" aria-label="Fix first">

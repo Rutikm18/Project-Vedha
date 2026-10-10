@@ -30,7 +30,7 @@ export function OverviewList({ rows, compute }: {
     <div className="apx">
       <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {rows.map((row) => {
-          const line = overviewLine(row);
+          const line = { ...overviewLine(row), suggested: !!row.targets_suggested };
           const trend = trendView(row);
           const busy = compute?.pendingId === row.engagement_id;
           return (
@@ -59,8 +59,13 @@ export function OverviewList({ rows, compute }: {
                       {trend.note && <span className="apo-chip" data-tone="weak" title={trend.note}>Inputs changed too</span>}
                     </div>
                   )}
-                  {(line.coverage || line.stale || row.computed_at) && (
+                  {(line.coverage || line.stale || row.computed_at || line.suggested) && (
                     <div className="apo-meta">
+                      {line.suggested && (
+                        <span className="apo-chip" data-tone="neutral" title="No asset was marked critical; crown jewels were suggested from host roles">
+                          crown jewels suggested
+                        </span>
+                      )}
                       {line.coverage && (
                         <span className="apo-chip" data-tone={line.coverage.tone}>
                           {line.coverage.tone === "weak" ? <AlertTriangle size={11} aria-hidden="true" /> : <Info size={11} aria-hidden="true" />}

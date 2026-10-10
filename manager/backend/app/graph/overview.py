@@ -174,9 +174,12 @@ def build_row(
         "why_empty": [],
         "history": [],
         "change": None,
+        # H4: the crown jewels were SUGGESTED (nothing marked critical), not operator-chosen.
+        "targets_suggested": False,
     }
     if analysis is None:
         return row
+    row["targets_suggested"] = (analysis.get("target_selection") or {}).get("basis") == "suggested"
     row["history"] = list(history or [])[-HISTORY_POINTS:]
     row["change"] = trend(row["history"])
 
@@ -390,9 +393,11 @@ def build_focus(
         "computed_at": computed_at.isoformat() if computed_at is not None else None,
         "path_count": int(path_count or 0) if analysis is not None else None,
         "exposed": [], "route": None, "fix": None, "ranked": [],
+        "targets_suggested": False,
     }
     if analysis is None:
         return out
+    out["targets_suggested"] = (analysis.get("target_selection") or {}).get("basis") == "suggested"
 
     choke = analysis.get("choke") or {}
     facts = jewel_facts(analysis)

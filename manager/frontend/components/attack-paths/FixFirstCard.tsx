@@ -119,6 +119,12 @@ function FocusBody({ focus }: { focus: Focus }) {
   const bars = focusBars(focus);
   return (
     <>
+      {focus.targets_suggested && (
+        <p className="apx-cap" data-tone="neutral">
+          No asset was marked critical, so the crown jewels here were suggested from host roles
+          (domain controller, hypervisor, datastore). Mark the assets that matter to aim this deliberately.
+        </p>
+      )}
       {lead && <p className="apx-lead">{lead}</p>}
 
       {focus.exposed.length > 0 && (

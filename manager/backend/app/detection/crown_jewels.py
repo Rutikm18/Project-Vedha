@@ -63,11 +63,19 @@ def _datastore_asset_ids(services: Iterable[Any]) -> set[str]:
     return out
 
 
-def suggest_crown_jewels(assets: Iterable[Any],
-                         services: Iterable[Any] = ()) -> list[dict[str, str]]:
+MAX_SUGGESTED = 10
+
+
+def suggest_crown_jewels(assets: Iterable[Any], services: Iterable[Any] = (),
+                         cap: int = MAX_SUGGESTED) -> list[dict[str, str]]:
     """Suggested crown-jewel targets as [{"asset_id", "reason"}], most important role
     first (domain controller, then hypervisor, then datastore), deterministic by id.
-    Empty when nothing high-value is identifiable (the caller then keeps `no_targets`)."""
+    Empty when nothing high-value is identifiable (the caller then keeps `no_targets`).
+
+    Capped at `cap` (default 10): an estate with 50 Redis hosts should not turn every
+    one into a path target — that multiplies the recompute cost (a shortest-path sweep
+    and a max-flow per target) for no extra signal. Domain controllers and hypervisors
+    are kept ahead of datastores by the ordering, so the cap drops the least important."""
     assets = list(assets)
     datastores = _datastore_asset_ids(services)
     # reason -> its importance rank (lower = more important). The result is ordered by this
@@ -95,5 +103,5 @@ def suggest_crown_jewels(assets: Iterable[Any],
         if aid in datastores:
             consider(aid, "datastore")
 
-    return [{"asset_id": aid, "reason": picked[aid]}
-            for aid in sorted(picked, key=lambda i: (_RANK.get(picked[i], 9), i))]
+    ordered = sorted(picked, key=lambda i: (_RANK.get(picked[i], 9), i))
+    return [{"asset_id": aid, "reason": picked[aid]} for aid in ordered[:max(0, cap)]]

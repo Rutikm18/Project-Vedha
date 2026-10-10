@@ -666,6 +666,8 @@ export interface OverviewRow {
   history?: HistoryPoint[];
   /** The last two computations compared. null = nothing to compare, which is not "no change". */
   change?: RowChange | null;
+  /** H4/P4b: the crown jewels were SUGGESTED (nothing marked critical), not operator-chosen. */
+  targets_suggested?: boolean;
 }
 
 export interface HistoryPoint {
@@ -768,6 +770,8 @@ export interface OverviewLine {
   ways: string | null;
   coverage: { label: string; tone: Tone } | null;
   stale: string | null;
+  /** H4/P4b: the crown jewels on this row were suggested, not operator-chosen. */
+  suggested?: boolean;
 }
 
 /** What one overview row says. The wording rules are the page's: not computed is not
@@ -954,6 +958,8 @@ export interface Focus {
     exposed_targets?: { asset_id: string; label: string }[];
   } | null;
   ranked: FocusBar[];
+  /** H4/P4b: the crown jewels were suggested, not operator-chosen. */
+  targets_suggested?: boolean;
 }
 
 /** The card's lead sentence. For an exposed jewel it never says "fix the gateway". */

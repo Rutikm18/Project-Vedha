@@ -72,3 +72,24 @@ def test_two_datastores_keep_a_stable_id_order_within_their_tier():
     assets = [_asset("z"), _asset("a")]
     out = suggest_crown_jewels(assets, [_svc("z", 3306), _svc("a", 5432)])
     assert [o["asset_id"] for o in out] == ["a", "z"]      # same tier → by id
+
+
+def test_suggestions_are_capped_and_keep_the_most_important():
+    # H4: 15 datastores + 1 DC + 1 hypervisor -> capped at 10, DC and hypervisor kept.
+    assets = [_asset("dc", role_detail="domain_controller", role_confidence=0.9),
+              _asset("hv", asset_type="hypervisor", role_confidence=0.9)]
+    svcs = []
+    for i in range(15):
+        assets.append(_asset(f"db{i:02d}"))
+        svcs.append(_svc(f"db{i:02d}", 5432))
+    out = suggest_crown_jewels(assets, svcs)
+    assert len(out) == 10
+    ids = [o["asset_id"] for o in out]
+    assert "dc" in ids and "hv" in ids            # the important roles survive the cap
+    assert out[0]["reason"] == "domain controller" and out[1]["reason"] == "virtualization host"
+
+
+def test_cap_is_configurable():
+    assets = [_asset(f"db{i}") for i in range(5)]
+    svcs = [_svc(f"db{i}", 3306) for i in range(5)]
+    assert len(suggest_crown_jewels(assets, svcs, cap=2)) == 2
