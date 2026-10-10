@@ -1,6 +1,7 @@
 # Engagement-wide, multi-subnet attack-path generation — plan (for review)
 
-Status (2026-10-08): **P0, P1a, P1b, P4a and P5 implemented; the feature is released as Beta** (UI badge, API tag). P2, P3 and P4b are **not implemented**
+Status (2026-10-10): **P0, P1a, P1b, P2, P3, P4a, P4b and P5 implemented; the feature is released as Beta** (UI badge, API tag).
+P2 (finding→capability map), P3 (credential/relay edges) and P4b (crown-jewel suggestion) were built on 2026-10-10; see §7.2.
 (see §7). Decisions: §8 recommendations accepted (flat-internal labelled `assumed`, engagement-scoped,
 (site, IP) identity). Operator-defined crown jewels remain the only path targets.
 Revised 2026-10-06 with a failure-mode analysis (§9): 32 failure modes found,
@@ -225,10 +226,10 @@ So a **P0 correctness phase** now comes first, and P1/P5 designs changed.
 | **P0 — engine correctness** ✅ done | Filter findings to live statuses; **monotonic compromise** (pivot only FROM a compromised node); replace `all_simple_paths` with **Yen k-shortest / Dijkstra**; **multiplicative likelihood** scoring; stable path IDs (upsert by deterministic hash, `refresh=False` default); **explain-empty** result; drop/scope dead Neo4j Cypher. | FM-04, 07, 10, 11, 12, 13, 17, 18, 19, 22, 23 |
 | **P1a — subnet model + topology** ✅ done | `app/detection/reachability.py`: subnet per scope CIDR (/24 or /64 buckets for broad scopes, marked `inferred`); subnet **hub** nodes (O(n) edges); inter-subnet links `assumed` (flat posture) or only via a compromised gateway (segmented, `rules_of_engagement.attack_path_reachability`); hops count hosts; each hop carries `via` subnets, `basis`, likelihood. Wired into `build_from_db`. | FM-01, 11, 21 |
 | **P1b — site-aware identity** ✅ done | `(site, ip)` asset identity (migration + the 5 asset-creation paths), multi-NIC linking, stale-asset ageing. Split out of P1: it changes asset identity across discovery, job results, findings and two routers, so it gets its own review. | FM-14, 15, 16 |
-| **P2 — finding→capability map** ⛔ not implemented | Posture/IOA/misconfig findings as foothold/lateral/priv-esc steps with ATT&CK + per-step success likelihood (confidence × EPSS/KEV × state). | FM-03, 05, 06 |
-| **P3 — credential & relay edges** ⛔ not implemented | Relay edges with **full precondition checks** (target signing off + coercion source + protocol); shared-admin edges **only when LAPS absent**, labelled `possible`. | FM-08, 09 |
+| **P2 — finding→capability map** ✅ done | Posture/IOA/misconfig findings become attacker steps via `app/detection/capability_map.py` (foothold/lateral/priv-esc grant control; credential_access/recon do not), independent of the `exploitable` flag, with a state × confidence × EPSS/KEV step likelihood. | FM-03, 05, 06, 12, 19 |
+| **P3 — credential & relay edges** ✅ done | `app/detection/credentials.py`: NTLM-relay edges only with a distinct same-subnet coercion source (signing-off alone is never a path), always `assumed`; shared default-credential clusters labelled `possible`. Shared-local-admin and reused-SSH-key edges stay unbuilt (the probe collects neither fact). | FM-08, 09 |
 | **P4a — internet entry points** ✅ done | Assets with a service the fleet-fused exposure verdict marks `external` become entry candidates (`exposure_basis`, `exposed_ports` recorded). An entry point must ALSO carry an existing exploitable finding — exposure is reachability, not compromise. `diagnose` separates "nothing exposed" from "exposed but not compromisable". | FM-02 |
-| **P4b — crown-jewel selection** ⛔ not implemented | Not implemented. Targets remain operator-defined (`criticality=critical`); without them the result is empty and `why_empty` reports `no_targets`. | FM-04 |
+| **P4b — crown-jewel selection** ✅ done | `app/detection/crown_jewels.py`: when nothing is marked critical, suggest high-value hosts (domain controller, hypervisor, datastore) as targets, recorded as `target_selection.basis = "suggested"` so the UI never shows an auto-pick as a chosen scope. Operator-marked targets still win. | FM-04 |
 | **P5 — choke points, output, validation** ✅ done | **Min-cut / betweenness** choke points (not path-frequency); subnet-grouped D3; recompute-after-scan (async, not on GET); **validation harness** with ground-truth fixtures + cascade-failure path validity metric. | FM-24, 25, 26 |
 
 ### 7.1 What P1b and P5 delivered (and what they do not claim)
@@ -308,8 +309,40 @@ assets. Migration `0059`.
   numbered 0055/0056 until the integration branch took those numbers; see the merge commit. The Neo4j
   statements have been exercised against fakes only, **not against a live Neo4j**. The Neo4j mirror is not wired into the product by default
   (`neo4j_enabled` is off and nothing reads it); P5 only makes it correct if enabled.
-- P2, P3 and P4b are not built, so only findings already marked exploitable create attacker steps, relay and
-  shared-credential edges beyond what the AD modules emit do not exist, and targets are chosen by the operator.
+- P2, P3 and P4b are now built (§7.2). The remaining honest gaps: shared-local-admin and reused-SSH-key
+  reuse edges are not emitted (the probe collects neither a local-admin inventory with a LAPS signal nor SSH
+  key material), and NTLM relay is modelled within a subnet only (cross-subnet relay is not inferred).
+
+### 7.2 What P2, P3 and P4b delivered (2026-10-10)
+
+**P2 — finding→capability map** (`app/detection/capability_map.py`). Every posture/misconfiguration/CORR finding
+is classified by rule_id (then category, then ATT&CK technique) into a capability: `foothold`, `lateral`,
+`priv_esc`, `credential_access` or `recon`. Only the first three GRANT CONTROL — the analyzer treats a host
+carrying one as compromisable exactly as it treats an exploitable finding, so the ~80% of real exposures that
+are misconfiguration/identity now create steps (FM-03/12/19). `credential_access` and `recon` are classified
+but never make a host a pivot on their own (a host you can only read from is not owned). The step likelihood is
+`base(capability) × state_factor × confidence`, raised by a KEV/EPSS tier bump and floored, so a posture step
+and a CVE step rank on one scale. SMB-signing-off is deliberately `credential_access` (a relay precondition),
+not a foothold, so signing-off alone is never a path (FM-09).
+
+**P3 — credential & relay edges** (`app/detection/credentials.py`, wired into `GraphBuilder.assemble`). An
+NTLM-relay movement edge src→target is emitted only when the target has signing-off evidence AND a DISTINCT
+host on the SAME subnet exposes SMB (the coercion vantage); reflection to the same host is blocked; the edge is
+always `assumed` (the coercion primitive and LDAP channel-binding/EPA state are unverified) and scores a little
+higher to a domain controller. Hosts sharing the same default credential (default SNMP community, or the same
+vendor default) form a `possible` CREDENTIAL_REUSE cluster. The analyzer traverses RELAY like credential reuse
+(it grants control of the target even with no exploit of its own) but ranks it below an observed hop.
+
+**P4b — crown-jewel suggestion** (`app/detection/crown_jewels.py`, `routers/attack_paths._resolve_targets`).
+Operator-marked critical assets always win. When none is marked, high-value hosts are suggested as targets —
+domain controllers, hypervisors and datastores, most-important-first — and the stored analysis records
+`target_selection.basis = "suggested"` with the reason per host, which the engagement page surfaces so an
+auto-pick never reads as a deliberate scope (FM-04). `diagnose` reports `compromising_findings` alongside
+`exploitable_findings`.
+
+**D7/D8.** The dashboard overview demotes `completed`/`paused` engagements below active ones (shown, not
+hidden). `min_fix_set` now returns `exposed_targets` — crown jewels exposed to the internet outright, whose own
+exposure must be removed — which the fix-first card and analysis name.
 
 Each phase ships with unit tests (pure functions, fixture graphs) and keeps the
 backend detection suite green; no probe changes (detection stays on the manager).

@@ -70,26 +70,30 @@ def suggest_crown_jewels(assets: Iterable[Any],
     Empty when nothing high-value is identifiable (the caller then keeps `no_targets`)."""
     assets = list(assets)
     datastores = _datastore_asset_ids(services)
+    # reason -> its importance rank (lower = more important). The result is ordered by this
+    # rank first, then by id, so the most valuable crown jewel leads regardless of host id.
+    _RANK = {"domain controller": 0, "virtualization host": 1, "datastore": 2}
     picked: dict[str, str] = {}
 
     def consider(aid: str, reason: str) -> None:
         picked.setdefault(aid, reason)       # first (most important) reason wins
 
     # Pass 1: domain controllers.
-    for a in sorted(assets, key=lambda x: str(_attr(x, "id"))):
+    for a in assets:
         aid = str(_attr(a, "id"))
         if _enum(_attr(a, "role_detail")) in _DC_DETAILS and _role_is_high_confidence(a):
             consider(aid, "domain controller")
     # Pass 2: virtualization hosts.
-    for a in sorted(assets, key=lambda x: str(_attr(x, "id"))):
+    for a in assets:
         aid = str(_attr(a, "id"))
         if (_enum(_attr(a, "asset_type")) == "hypervisor"
                 or _enum(_attr(a, "device_role")) == "hypervisor") and _role_is_high_confidence(a):
             consider(aid, "virtualization host")
     # Pass 3: datastores (by an observed datastore service).
-    for a in sorted(assets, key=lambda x: str(_attr(x, "id"))):
+    for a in assets:
         aid = str(_attr(a, "id"))
         if aid in datastores:
             consider(aid, "datastore")
 
-    return [{"asset_id": aid, "reason": picked[aid]} for aid in sorted(picked)]
+    return [{"asset_id": aid, "reason": picked[aid]}
+            for aid in sorted(picked, key=lambda i: (_RANK.get(picked[i], 9), i))]

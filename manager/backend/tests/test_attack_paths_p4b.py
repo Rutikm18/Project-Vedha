@@ -55,12 +55,20 @@ def test_nothing_high_value_suggests_nothing():
     assert suggest_crown_jewels(assets, [_svc("a1", 80)]) == []
 
 
-def test_ordering_is_dc_then_hypervisor_then_datastore_then_by_id():
+def test_ordering_is_dc_then_hypervisor_then_datastore_regardless_of_id():
+    # ids are chosen so that a plain id sort would give the WRONG order (db, dc, hv):
+    # importance must win over id.
     assets = [
-        _asset("z-db"),
-        _asset("m-hv", asset_type="hypervisor", role_confidence=0.9),
-        _asset("a-dc", role_detail="domain_controller", role_confidence=0.9),
+        _asset("a-db"),
+        _asset("b-hv", asset_type="hypervisor", role_confidence=0.9),
+        _asset("c-dc", role_detail="domain_controller", role_confidence=0.9),
     ]
-    out = suggest_crown_jewels(assets, [_svc("z-db", 27017)])
-    reasons = [o["reason"] for o in out]
-    assert reasons == ["domain controller", "virtualization host", "datastore"]
+    out = suggest_crown_jewels(assets, [_svc("a-db", 27017)])
+    assert [o["reason"] for o in out] == ["domain controller", "virtualization host", "datastore"]
+    assert [o["asset_id"] for o in out] == ["c-dc", "b-hv", "a-db"]
+
+
+def test_two_datastores_keep_a_stable_id_order_within_their_tier():
+    assets = [_asset("z"), _asset("a")]
+    out = suggest_crown_jewels(assets, [_svc("z", 3306), _svc("a", 5432)])
+    assert [o["asset_id"] for o in out] == ["a", "z"]      # same tier → by id

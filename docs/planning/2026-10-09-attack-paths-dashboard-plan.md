@@ -226,7 +226,7 @@ clients working.
 **Known limitations that remain after v2** (said on screen, not hidden):
 - "Reachable" includes routes that rest on **assumed** links between subnets. The route card shows the basis of
   each hop; the tiles say "in the model".
-- Only findings already marked exploitable create attacker steps; P2, P3 and P4b are not built. A scan-only
+- As of 10 Oct, misconfiguration/posture findings also create attacker steps (P2), so this is less stark than it was; a scan-only
   engagement can show few routes without being safe.
 - No history yet (Phase 3), so no "is it getting better?".
 
@@ -505,9 +505,11 @@ in separate sentences. A machine with a second address is **not** assumed to sha
 - ~~`GET /engagements/{id}/attack-paths` recomputes and writes when no routes are stored (R8)~~ **Fixed (10 Oct audit).** It now
   computes on a read only when no analysis row exists ("never computed"); a computed engagement with zero routes, or only an
   exposed jewel, is read without a write. `refresh=true` still recomputes. Tests: `test_attack_paths_list_readonly.py`.
-- **Not built, and not agent work, but a scope decision for you rather than a gap:** P2, P3 and P4b (see
-  [ATTACK_PATH_PLAN.md](../../manager/docs/ATTACK_PATH_PLAN.md) §7.1), D7 (demote `completed`/`paused` rows; status is shown on
-  every row today but does not change the order) and D8 (`min_fix_set` including exposed jewels).
+- **Built (10 Oct):** P2 (finding→capability map — misconfiguration findings now create steps), P3 (NTLM-relay and
+  shared-default-credential edges with precondition checks), P4b (crown-jewel suggestion when nothing is marked critical),
+  D7 (completed/paused engagements demoted, not hidden) and D8 (`min_fix_set` names exposed jewels). See
+  [ATTACK_PATH_PLAN.md](../../manager/docs/ATTACK_PATH_PLAN.md) §7.2. Remaining honest gaps: shared-local-admin and
+  reused-SSH-key edges (the probe collects neither fact) and cross-subnet relay.
 
 ---
 
