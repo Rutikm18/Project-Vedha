@@ -154,3 +154,25 @@ def test_shared_default_credentials_create_no_graph_edge(monkeypatch=None):
     # … but there is no CREDENTIAL_REUSE edge and no route
     assert not any(d.get("type") == "CREDENTIAL_REUSE" for _, _, d in g.edges(data=True))
     assert PathAnalyzer(g).find_paths_to_target("a2") == []
+
+
+def test_relay_is_a_hub_not_a_mesh_on_a_flat_windows_subnet():
+    # H3: on a subnet where every host is both an SMB host and a signing-off target,
+    # the graph must stay O(n), not O(n^2).
+    import uuid as _uuid
+    n = 40
+    assets = [_asset(f"h{i}", f"10.0.0.{i + 1}") for i in range(n)]
+    assets[0].tags = {"internet_exposed": True}
+    assets[-1] = _asset(f"h{n - 1}", f"10.0.0.{n}", crit="critical")
+    services = [_svc(f"s{i}", f"h{i}", 445) for i in range(n)]
+    findings = [_finding("g0", "h0", "POSTURE-DB-UNAUTHENTICATED-ACCESS", "T1213")] + \
+               [_finding(f"f{i}", f"h{i}", "POSTURE-SMB-SIGNING-OFF") for i in range(n)]
+    g = GraphBuilder().assemble(_uuid.uuid4(), assets, services, findings, scope_cidrs=["10.0.0.0/24"])
+    hubs = [x for x, d in g.nodes(data=True) if d.get("type") == "RelayHub"]
+    relay_edges = sum(1 for _, _, d in g.edges(data=True)
+                      if d.get("type") in ("RELAY_FROM", "RELAY_TO"))
+    assert len(hubs) == 1
+    assert relay_edges <= 2 * n + 2          # O(n), far below n*n = 1600
+    # and a relay route to the signing-off crown jewel still exists
+    paths = PathAnalyzer(g).find_paths_to_target(f"h{n - 1}")
+    assert paths and any(e["technique"] == "RELAY" for e in paths[0]["edges"])

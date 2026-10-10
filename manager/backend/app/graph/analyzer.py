@@ -107,6 +107,7 @@ P_STALE_FACTOR = 0.5
 # member's exploit likelihood scaled by the same-subnet adjacency confidence.
 CONF_SAME_SUBNET = 0.9
 _HUB_RELS = frozenset({"IN_SEGMENT", "SEGMENT_LINK", "ROUTES"})
+_RELAY_HUB_RELS = frozenset({"RELAY_FROM", "RELAY_TO"})
 
 # Business impact of reaching the target, by criticality.
 _IMPACT = {"critical": 1.0, "high": 0.8, "medium": 0.6, "low": 0.4, "info": 0.2}
@@ -226,6 +227,7 @@ class PathAnalyzer:
                 cur["basis"] = _better_basis(basis, cur["basis"])
 
         self._add_hub_edges(mv)
+        self._add_relay_hub_edges(mv)
 
         for (u, v), info in best.items():
             dest_exploit = self._exploit_info(v)
@@ -305,6 +307,31 @@ class PathAnalyzer:
                 _hub_edge(mv, u, v, _clamp_reach(d.get("reachability_confidence", 1.0)),
                           "ROUTES", d.get("basis") or "assumed")
 
+    def _add_relay_hub_edges(self, mv: nx.DiGraph) -> None:
+        """Project NTLM relay hubs (P3, H3) into the movement graph.
+
+          source → relayhub   controlling a coercion source reaches the relay vantage
+                              at no extra cost (p = 1)
+          relayhub → target   grants control of the signing-off target through the
+                              relayed authentication: p = P_RELAY × the hub's assumed
+                              confidence, so a relay hop ranks below an observed one.
+
+        O(sources + targets) per subnet, not O(sources × targets)."""
+        g = self.graph
+        for n, d in g.nodes(data=True):
+            if d.get("type") == "RelayHub":
+                mv.add_node(n, **d)
+        for u, v, d in g.edges(data=True):
+            rel = d.get("type")
+            if rel == "RELAY_FROM" and mv.has_node(v) and _is_asset(mv, u):
+                _hub_edge(mv, u, v, 1.0, "RELAY_FROM", "assumed")
+            elif rel == "RELAY_TO" and mv.has_node(u) and _is_asset(mv, v):
+                conf = _clamp_reach(d.get("reachability_confidence", 0.4))
+                stale = bool(mv.nodes[v].get("stale"))
+                p = _clamp_p(P_RELAY * conf * (P_STALE_FACTOR if stale else 1.0))
+                _hub_edge(mv, u, v, p, "RELAY", d.get("basis") or "assumed", stale=stale,
+                          dest_compromisable=True, dest_capability="lateral")
+
     def _source_assets(self, source_type: str) -> list[str]:
         mv = self.movement_graph()
         assets = [(n, d) for n, d in mv.nodes(data=True) if d.get("type") == "Asset"]
@@ -376,13 +403,18 @@ class PathAnalyzer:
         for i, j in zip(asset_idx, asset_idx[1:]):
             seg = node_path[i:j + 1]
             parts = [mv.edges[a, b] for a, b in zip(seg, seg[1:])]
-            via = [mv.nodes[n].get("entity_id") for n in seg[1:-1]]
+            # `via` is the SUBNETS crossed; a relay hub is not a subnet, so it is excluded.
+            via = [mv.nodes[n].get("entity_id") for n in seg[1:-1]
+                   if mv.nodes[n].get("type") == "NetworkSegment"]
+            relayed = any(mv.nodes[n].get("type") == "RelayHub" for n in seg[1:-1])
             p = 1.0
             for ed in parts:
                 p *= ed.get("likelihood", 1.0)
             last = parts[-1]
             first_rel = parts[0].get("rel")
-            if first_rel == "SAME_HOST" and not via:
+            if relayed:
+                technique = "RELAY"
+            elif first_rel == "SAME_HOST" and not via:
                 technique = "SAME_HOST"
             elif not via:
                 technique = first_rel
@@ -713,7 +745,7 @@ class PathAnalyzer:
                            if d.get("exploitable") or d.get("exploit_validated")
                            or grants_control(d.get("capability"), d.get("capability_source")))
         movement_rels = sum(1 for _, _, d in g.edges(data=True)
-                            if d.get("type") in _MOVEMENT_RELS | _HUB_RELS)
+                            if d.get("type") in _MOVEMENT_RELS | _HUB_RELS | _RELAY_HUB_RELS)
         sources = len(self._source_assets(source_type))
         exposed = sum(1 for _, d in g.nodes(data=True)
                       if d.get("type") == "Asset" and d.get("internet_exposed"))

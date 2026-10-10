@@ -499,21 +499,52 @@ class GraphBuilder:
         return added
 
     def add_relay_edges(self, relay_edges: Iterable[dict[str, Any]]) -> int:
-        """NTLM-relay movement edges src→dst from credentials.derive_credential_edges
-        (P3). A relay grants CONTROL of the target (an attacker on the source relays
-        coerced authentication to it), so it is a one-directional movement edge the
-        analyzer treats like credential reuse. ``basis``/``confidence`` carry the
-        preconditions it rests on. Returns edges added."""
-        added = 0
+        """NTLM-relay movement through one RELAY HUB per subnet (P3, H3). An attacker
+        who controls ANY coercion source on a subnet can relay to ANY signing-off
+        target on it, so instead of an edge per (source, target) pair — O(n²), which
+        on a flat Windows /24 where almost every host is both is ~40,000 edges and the
+        explosion FM-21 removed — each subnet gets a hub:
+
+            source  -RELAY_FROM->  relayhub        (controlling a source reaches the hub)
+            relayhub -RELAY_TO->   target          (grants control of the signing-off host)
+
+        O(sources + targets) edges, same reachability. The incoming pairwise
+        ``relay_edges`` (one per src→dst, each already same-subnet) are grouped by the
+        target's graph segment. Returns edges added."""
+        from collections import defaultdict
+
+        groups: dict[str, dict[str, Any]] = defaultdict(
+            lambda: {"sources": set(), "targets": {}})
         for e in relay_edges:
             src, dst = asset_node_id(e.get("src")), asset_node_id(e.get("dst"))
             if not (self.graph.has_node(src) and self.graph.has_node(dst)) or src == dst:
                 continue
-            self.graph.add_edge(
-                src, dst, type="RELAY", basis=e.get("basis", "assumed"),
-                reachability_confidence=e.get("confidence", 0.4),
-                technique=e.get("technique"), preconditions=e.get("preconditions"))
-            added += 1
+            # Group by the target's subnet so each subnet gets one hub. An unplaced
+            # host (no segment) falls back to a per-host group, degrading to the old
+            # pairwise behaviour for that one host rather than merging subnets.
+            seg = self.graph.nodes[dst].get("segment") or f"_unplaced:{dst}"
+            grp = groups[seg]
+            grp["sources"].add(src)
+            tgt = grp["targets"].setdefault(
+                dst, {"confidence": 0.0, "basis": e.get("basis", "assumed"),
+                      "preconditions": e.get("preconditions")})
+            tgt["confidence"] = max(tgt["confidence"], float(e.get("confidence") or 0.4))
+
+        added = 0
+        for seg, grp in groups.items():
+            if not grp["sources"] or not grp["targets"]:
+                continue
+            hub = f"relayhub:{seg}"
+            self.graph.add_node(hub, type="RelayHub", entity_id=hub,
+                                label=f"NTLM relay within {seg}")
+            for src in sorted(grp["sources"]):
+                self.graph.add_edge(src, hub, type="RELAY_FROM")
+                added += 1
+            for dst, tgt in grp["targets"].items():
+                self.graph.add_edge(hub, dst, type="RELAY_TO", basis=tgt["basis"],
+                                    reachability_confidence=tgt["confidence"],
+                                    technique="T1557.001", preconditions=tgt["preconditions"])
+                added += 1
         return added
 
     # ── assembly: the engagement graph from plain objects (no DB) ───────────────
