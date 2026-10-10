@@ -276,6 +276,7 @@ export function techniqueLabel(technique: string | null | undefined): string {
 export function capabilityLabel(capability: string | null | undefined): string | null {
   switch (capability) {
     case "foothold": return "Foothold";
+    case "exploit_precondition": return "Exploit precondition (unverified)";
     case "lateral": return "Lateral move";
     case "priv_esc": return "Privilege escalation";
     case "credential_access": return "Credential access";

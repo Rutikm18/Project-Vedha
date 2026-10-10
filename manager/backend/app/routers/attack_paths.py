@@ -760,6 +760,24 @@ def _path_summary(r: AttackPath, labels: dict[str, str] | None = None) -> dict:
     }
 
 
+def _hop_gain(edge: dict) -> str:
+    """How the attacker gains control at the end of a hop, in words that match the
+    evidence: a CVSS is quoted only when there is one, and an unproven exploit
+    precondition is never described as an exploitation."""
+    if not edge.get("exploited"):
+        return ""
+    capability = edge.get("capability")
+    cvss = edge.get("cvss") or 0
+    if capability == "exploit_precondition":
+        return (" — a known exploit class applies if that host is unpatched "
+                "(the precondition is observed; the vulnerability is not verified)")
+    if capability == "foothold":
+        return " and takes control of it through a weakness that needs no credential"
+    if cvss:
+        return f" and exploits it (CVSS {cvss})"
+    return " and gains control of it"
+
+
 def _explain_hop(edge: dict, labels: dict[str, str]) -> str:
     src = labels.get(str(edge.get("source")), edge.get("source"))
     dst = labels.get(str(edge.get("target")), edge.get("target"))
@@ -777,7 +795,7 @@ def _explain_hop(edge: dict, labels: dict[str, str]) -> str:
         "GATEWAY_ROUTE": f"routes through the compromised gateway into "
                          f"{via[-1] if via else 'another subnet'} to reach",
     }.get(technique, "reaches")
-    suffix = f" and exploits it (CVSS {edge.get('cvss')})" if edge.get("exploited") else ""
+    suffix = _hop_gain(edge)
     basis = edge.get("basis")
     caveats = []
     if technique == "RELAY":

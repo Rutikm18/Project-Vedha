@@ -165,16 +165,17 @@ def _finding_evidence(finding: Any) -> dict[str, Any]:
     return ev if isinstance(ev, dict) else {}
 
 
-def _finding_capability(finding: Any) -> str | None:
-    """The attacker capability this finding grants (P2), from its rule_id /
-    category / ATT&CK technique. None when it is not an attack step."""
-    from app.detection.capability_map import capability_for
+def _finding_capability(finding: Any) -> tuple[str | None, str | None]:
+    """(capability, source) this finding is classified as (P2), from its rule_id /
+    category / ATT&CK technique. Only a curated-rule source may grant control."""
+    from app.detection.capability_map import classify
 
     ev = _finding_evidence(finding)
-    return capability_for(
+    return classify(
         ev.get("rule_id"),
         ev.get("category"),
         getattr(finding, "mitre_techniques", None) or ev.get("mitre"),
+        ev,
     )
 
 
@@ -303,7 +304,7 @@ class GraphBuilder:
         for f in findings:
             fid = finding_node_id(f.id)
             cvss = _to_float(getattr(f, "cvss_score", None))
-            cap = _finding_capability(f)
+            cap, cap_source = _finding_capability(f)
             g.add_node(
                 fid,
                 type="Finding",
@@ -324,6 +325,7 @@ class GraphBuilder:
                 # analyzer turns a control-granting capability into a compromise
                 # step just as it does for an exploitable finding (FM-03/12/19).
                 capability=cap,
+                capability_source=cap_source,
                 state=_finding_state(f),
                 kev=_finding_kev(f),
                 exploitability=_finding_exploitability(f),

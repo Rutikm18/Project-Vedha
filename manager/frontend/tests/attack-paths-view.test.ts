@@ -749,6 +749,7 @@ test("techniqueLabel names an NTLM relay", () => {
 
 test("capabilityLabel maps control capabilities and ignores unknowns", () => {
   assert.equal(capabilityLabel("foothold"), "Foothold");
+  assert.equal(capabilityLabel("exploit_precondition"), "Exploit precondition (unverified)");
   assert.equal(capabilityLabel("lateral"), "Lateral move");
   assert.equal(capabilityLabel("priv_esc"), "Privilege escalation");
   assert.equal(capabilityLabel("recon"), "Reconnaissance");

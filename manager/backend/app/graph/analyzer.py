@@ -179,7 +179,7 @@ class PathAnalyzer:
             if flagged:
                 p = step_likelihood(fdata)
                 via = "exploit"
-            elif grants_control(cap):
+            elif grants_control(cap, fdata.get("capability_source")):
                 p = step_likelihood_for_capability(fdata)
                 via = cap
             else:
@@ -711,7 +711,7 @@ class PathAnalyzer:
         # latter, so "no exploitable finding" is no longer the same as "no step".
         compromising = sum(1 for d in findings
                            if d.get("exploitable") or d.get("exploit_validated")
-                           or grants_control(d.get("capability")))
+                           or grants_control(d.get("capability"), d.get("capability_source")))
         movement_rels = sum(1 for _, _, d in g.edges(data=True)
                             if d.get("type") in _MOVEMENT_RELS | _HUB_RELS)
         sources = len(self._source_assets(source_type))
@@ -741,7 +741,7 @@ class PathAnalyzer:
         if compromising == 0:
             reasons.append({"code": "no_exploitable_steps",
                             "detail": "no finding can compromise a host: none is marked exploitable "
-                                      "and none is a foothold/lateral/priv-esc weakness"})
+                                      "and none is a curated foothold or exploit-precondition weakness"})
         control_edges = sum(1 for _, v in mv.edges() if _is_asset(mv, v))
         if compromising and control_edges == 0 and movement_rels:
             reasons.append({"code": "no_control_edges",
