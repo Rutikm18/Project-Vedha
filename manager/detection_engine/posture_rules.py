@@ -426,6 +426,54 @@ def _udp_amplifier(f: Fact) -> Optional[dict]:
     return None
 
 
+def _udp_service_answered(f: Fact, service: str) -> Optional[dict]:
+    d = _d(f)
+    if d.get("responded") is True and f.status == "open" \
+            and str(d.get("service") or "").lower() == service:
+        return d
+    return None
+
+
+def _sip_exposed(f: Fact) -> Optional[dict]:
+    """A SIP service that answered an OPTIONS probe with a real SIP status line. The status
+    line is the protocol observation; a bare UDP reply on 5060 that is not SIP is not this."""
+    d = _udp_service_answered(f, "sip")
+    line = str((d or {}).get("sip_response") or "")
+    if d is not None and line.upper().startswith("SIP/2.0"):
+        return {"sip_response": line[:120], "server": d.get("server") or None}
+    return None
+
+
+def _netbios_exposed(f: Fact) -> Optional[dict]:
+    """A NetBIOS name service that answered a node-status query: it discloses host, domain
+    and MAC details to whoever can reach UDP/137."""
+    return {"service": "netbios-ns"} if _udp_service_answered(f, "netbios-ns") else None
+
+
+def _mdns_exposed(f: Fact) -> Optional[dict]:
+    """An mDNS responder that answered a unicast query with a response (QR bit set), i.e.
+    reachable beyond the local link where multicast DNS is meant to stay."""
+    d = _udp_service_answered(f, "mdns")
+    if d is not None and d.get("mdns_response") is True:
+        return {"answer_count": d.get("answer_count")}
+    return None
+
+
+def _ike_aggressive(f: Fact) -> Optional[dict]:
+    """An IKEv1 responder whose reply used the AGGRESSIVE exchange (type 4). With a pre-shared
+    key, aggressive mode sends the identity and an authentication hash in the clear, which can be
+    cracked offline. Fires only on that observed exchange type — the presence of IKE is not it."""
+    d = _d(f)
+    if str(d.get("service") or "").lower() not in {"ike", "ike-nat"} or f.status != "open":
+        return None
+    version = str(d.get("version") or "")
+    exchange = d.get("exchange_type")
+    if version.startswith("IKEv1") and isinstance(exchange, int) \
+            and not isinstance(exchange, bool) and exchange == 4:
+        return {"version": version, "exchange_type": exchange}
+    return None
+
+
 def _snmp_default(f: Fact) -> Optional[dict]:
     c = _d(f).get("community")
     return {"community": c} if c in _DEFAULT_COMMUNITIES else None
@@ -1009,6 +1057,43 @@ RULES: list[PostureRule] = [
                  "the TA14-017A threshold. A service that merely answered a normal query "
                  "(e.g. DNS with recursion off) is exposure, not an amplifier.",
         requires=()),   # OR-alternative signals (monlist/open_recursion/service) — no single required path
+    PostureRule(
+        "POSTURE-SIP-EXPOSED", "SIP service exposed", "low", "CWE-200", "T1595.002",
+        "exposure", ("udp_scan",), _sip_exposed,
+        "Restrict UDP/TCP 5060 (and 5061) to the SIP trunks and phones that need it, disable "
+        "unauthenticated OPTIONS/REGISTER responses to unknown sources, and rate-limit "
+        "registration attempts. Exposed SIP is a routine target for extension enumeration, "
+        "credential brute force and toll fraud.",
+        fp_notes="Fires only when the service returned a real SIP status line. An expected "
+                 "PBX/SBC is normal; the finding is about who can reach it.",
+        requires=()),
+    PostureRule(
+        "POSTURE-NETBIOS-EXPOSED", "NetBIOS name service exposed", "low", "CWE-200", "T1046",
+        "exposure", ("udp_scan",), _netbios_exposed,
+        "Block UDP/137 (and 138/139) from untrusted networks and disable NetBIOS over TCP/IP on "
+        "hosts that do not need it. The name service discloses host, domain and MAC details and "
+        "is a poisoning (NBT-NS/LLMNR) target.",
+        fp_notes="Fires only when the node-status query was answered. Common on internal "
+                 "Windows networks; a finding at trust boundaries.",
+        requires=()),
+    PostureRule(
+        "POSTURE-MDNS-EXPOSED", "mDNS responder exposed beyond the local link", "low", "CWE-200",
+        "T1046", "exposure", ("udp_scan",), _mdns_exposed,
+        "Keep multicast DNS on the local link: block UDP/5353 from routed networks and disable "
+        "the responder (Avahi/Bonjour) on servers that do not need service discovery. It "
+        "discloses hostnames and services and can be used as a reflection source.",
+        fp_notes="Fires only when a unicast query got an mDNS response (QR bit set).",
+        requires=()),
+    PostureRule(
+        "POSTURE-IKE-AGGRESSIVE-MODE", "IKE aggressive mode offered", "medium", "CWE-522",
+        "T1110.002", "weak_crypto", ("udp_scan",), _ike_aggressive,
+        "Disable IKEv1 aggressive mode and use main mode or IKEv2 with certificates or a "
+        "long random pre-shared key. In aggressive mode the identity and a PSK-derived hash "
+        "cross the wire unprotected and can be attacked offline.",
+        fp_notes="Fires only when the responder's reply used exchange type 4 (aggressive). "
+                 "The current probe sends an IKEv2 request, so this stays silent until a "
+                 "responder is shown answering in aggressive mode.",
+        requires=()),
     PostureRule(
         "POSTURE-SNMP-DEFAULT-COMMUNITY", "SNMP default community string",
         "high", "CWE-1392", "T1078", "default_credentials", ("snmp_scan",), _snmp_default,

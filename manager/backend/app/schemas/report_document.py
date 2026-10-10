@@ -505,11 +505,48 @@ class ReportReadiness(BaseModel):
     report_gaps: list[str] = Field(default_factory=list)
 
 
+class ReportCoverageRule(BaseModel):
+    rule_id: str
+    title: str | None = None
+    # finding_exists | evaluated_clean | no_evidence_collected | schema_drift | rule_error
+    verdict: str
+    reasons: list[str] = Field(default_factory=list)
+
+
+class ReportCoverageSheet(BaseModel):
+    """What was checked, so "not detected" can be told from "not checked".
+
+    Taken from the engagement's latest completed detection run (its recorded per-rule
+    verdicts) and the scan job that fed it. Nothing here is inferred: a rule with no recorded
+    verdict is shown as `no_evidence_collected` (its scanner never produced facts)."""
+    run_id: uuid.UUID
+    run_finished_at: datetime | None = None
+    vuln_db_version: str | None = None
+    scan_reference: str | None = None
+    scan_use_case: str | None = None
+    scan_intensity: str | None = None
+    ports_scanned: list[int] | str | None = None
+    ports_scanned_note: str | None = None
+    rules_total: int
+    rules_evaluated_clean: int
+    rules_with_finding: int
+    rules_not_checked: int
+    rules_could_not_assess: int
+    rules: list[ReportCoverageRule] = Field(default_factory=list)
+    interpretation: str = (
+        "evaluated_clean means the check ran and found nothing; no_evidence_collected means the "
+        "check did not run (its scanner produced no facts) and says nothing about the asset; "
+        "schema_drift and rule_error mean the check could not be assessed."
+    )
+
+
 class ReportDocument(BaseModel):
     document: ReportDocumentControl
     engagement: ReportEngagement
     summary: ReportSummary
     findings: list[ReportFinding]
+    # The latest detection run's per-rule outcomes (None when no run has been recorded).
+    coverage_sheet: ReportCoverageSheet | None = None
     compliance_rollup: ReportComplianceRollup
     derived_regional_compliance: ReportDerivedRegionalCompliance
     readiness: ReportReadiness

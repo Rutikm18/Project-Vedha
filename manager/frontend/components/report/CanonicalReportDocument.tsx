@@ -42,6 +42,7 @@ import {
   type ReportRecommendation,
   type ReportRemediationPlan,
   type ReportFixPlan,
+  type ReportCoverageSheet,
   type ReportRetestRecord,
 } from "../../lib/report/report-document";
 import { SEV_COLOR, toSeverity } from "../../lib/severity";
@@ -481,6 +482,35 @@ function RecommendationRecord({ recommendation, index }: {
         <div><dt>Reviewed at</dt><dd><RecordedTime value={recommendation.reviewed_at} /></dd></div>
       </dl>
     </article>
+  );
+}
+
+function CoverageSheet({ sheet }: { sheet: ReportCoverageSheet }) {
+  const notChecked = sheet.rules.filter((rule) => rule.verdict === "no_evidence_collected");
+  const unassessed = sheet.rules.filter((rule) => rule.verdict === "schema_drift" || rule.verdict === "rule_error");
+  return (
+    <div className="rr-sec" aria-label="Assessment coverage">
+      <h4>Assessment coverage</h4>
+      <p>
+        {sheet.rules_total} checks: {sheet.rules_with_finding} raised a finding, {sheet.rules_evaluated_clean} ran and
+        found nothing, {sheet.rules_not_checked} were not checked, {sheet.rules_could_not_assess} could not be assessed.
+        {" "}{sheet.scan_use_case ? `Scan: ${sheet.scan_use_case}${sheet.scan_intensity ? ` (${sheet.scan_intensity})` : ""}. ` : ""}
+        {Array.isArray(sheet.ports_scanned) ? `Ports scanned: ${sheet.ports_scanned.join(", ")}.` : (sheet.ports_scanned_note ?? "")}
+      </p>
+      <p className="cr-caution">{sheet.interpretation}</p>
+      {notChecked.length > 0 && (
+        <details>
+          <summary>{notChecked.length} checks did not run — absence of a finding says nothing about them</summary>
+          <ul className="cr-list">{notChecked.map((rule) => <li key={rule.rule_id}><code>{rule.rule_id}</code> {rule.title ?? ""}</li>)}</ul>
+        </details>
+      )}
+      {unassessed.length > 0 && (
+        <details>
+          <summary>{unassessed.length} checks could not be assessed</summary>
+          <ul className="cr-list">{unassessed.map((rule) => <li key={rule.rule_id}><code>{rule.rule_id}</code> — {rule.reasons.join("; ") || rule.verdict}</li>)}</ul>
+        </details>
+      )}
+    </div>
   );
 }
 
@@ -1242,6 +1272,12 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
           <details className="rr-more">
             <summary>Detailed counts by severity and status</summary>
             <p className="cr-executive-copy">{executiveSummaryText(report.summary)}</p>
+            {report.summary.issue_count != null && report.summary.issue_count < report.summary.total_findings && (
+              <p className="cr-executive-copy">
+                {report.summary.total_findings} findings describe {report.summary.issue_count} distinct issues
+                (one per asset and service); findings on the same service are grouped under one issue.
+              </p>
+            )}
             <div className="cr-two-up">
               <div className="cr-table-wrap">
                 <table className="cr-table">
@@ -1311,6 +1347,7 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
             ? <p className="rr-missing">The methodology, tools and limitations are not recorded for this engagement.</p>
             : missingMethod.length > 0 && <p className="rr-missing">Not recorded: {missingMethod.join(", ")}.</p>}
           <p className="cr-caution"><AlertTriangle size={13} />Absence of a recorded limitation does not establish that the assessment had no limitations.</p>
+          {report.coverage_sheet && <CoverageSheet sheet={report.coverage_sheet} />}
         </section>
 
         <section className="cr-report-section cr-findings-section rr-section" aria-labelledby="finding-register">

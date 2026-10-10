@@ -188,3 +188,59 @@ def test_recorded_reason_beats_the_derived_one():
         "cvss_not_applicable_reason": "Scored as a policy violation per client SOP-12."})
     item = _doc(finding, asset).findings[0]
     assert item.not_applicable_reasons["cvss"] == "Scored as a policy violation per client SOP-12."
+
+
+# ── M11: coverage sheet — "not detected" vs "not checked" ────────────────────
+
+def _run_with_verdicts(verdicts):
+    from types import SimpleNamespace
+    import uuid as _uuid
+    return SimpleNamespace(id=_uuid.uuid4(), finished_at=NOW, vuln_db_version="sha256:db",
+                           stats={"posture_verdicts": verdicts})
+
+
+def test_coverage_sheet_tells_clean_from_not_checked():
+    from types import SimpleNamespace
+    run = _run_with_verdicts({
+        "POSTURE-SMB-SIGNING-OFF": {"verdict": "finding_exists", "reasons": []},
+        "POSTURE-RDP-NO-NLA": {"verdict": "evaluated_clean", "reasons": []},
+        "POSTURE-TLS-WEAK-CIPHER": {"verdict": "schema_drift",
+                                    "reasons": ["required fact path absent: data.cipher_analysis"]},
+    })
+    job = SimpleNamespace(reference="SCAN-7", use_case_id="internal_vuln", intensity="normal",
+                          result={"ports_scanned": [443, 22, 22]})
+    titles = {"POSTURE-SMB-SIGNING-OFF": "SMB signing off", "POSTURE-RDP-NO-NLA": "RDP without NLA",
+              "POSTURE-TLS-WEAK-CIPHER": "Weak cipher", "POSTURE-VNC-NO-AUTH": "VNC no auth"}
+    sheet = enrich.coverage_sheet(run, job, titles)
+    by_rule = {r["rule_id"]: r["verdict"] for r in sheet["rules"]}
+    assert by_rule["POSTURE-VNC-NO-AUTH"] == "no_evidence_collected"      # never ran ≠ clean
+    assert by_rule["POSTURE-RDP-NO-NLA"] == "evaluated_clean"
+    assert (sheet["rules_total"], sheet["rules_with_finding"], sheet["rules_evaluated_clean"],
+            sheet["rules_not_checked"], sheet["rules_could_not_assess"]) == (4, 1, 1, 1, 1)
+    assert sheet["ports_scanned"] == [22, 443] and sheet["scan_use_case"] == "internal_vuln"
+
+
+def test_coverage_sheet_is_honest_when_ports_or_job_are_unrecorded():
+    sheet = enrich.coverage_sheet(_run_with_verdicts({"POSTURE-X": {"verdict": "evaluated_clean"}}),
+                                  None, {})
+    assert sheet["ports_scanned"] is None and "No scan job" in sheet["ports_scanned_note"]
+
+
+def test_no_recorded_verdicts_means_no_sheet():
+    from types import SimpleNamespace
+    assert enrich.coverage_sheet(SimpleNamespace(stats={}), None, {}) is None
+    assert enrich.coverage_sheet(SimpleNamespace(stats=None), None, {}) is None
+
+
+def test_report_carries_the_coverage_sheet():
+    eng = _engagement()
+    asset = _asset(eng.id)
+    run = _run_with_verdicts({"POSTURE-RDP-NO-NLA": {"verdict": "evaluated_clean", "reasons": []}})
+    doc = build_report_document(
+        engagement=eng, finding_rows=[(_posture(eng, asset), asset)], event_rows=[],
+        remediation_plan_rows=[], resolution_runs={}, generated_at=NOW, sla_windows=_WINDOWS,
+        coverage_run=run)
+    assert doc.coverage_sheet is not None and doc.coverage_sheet.rules_evaluated_clean >= 1
+    assert build_report_document(
+        engagement=eng, finding_rows=[], event_rows=[], remediation_plan_rows=[],
+        resolution_runs={}, generated_at=NOW, sla_windows=_WINDOWS).coverage_sheet is None

@@ -1375,7 +1375,97 @@ GENERIC = Recipe(
     (), effort="medium")
 
 
-RECIPES: dict[str, Recipe] = {r.recipe_id: r for r in (*_P, *_P_V2, *_E, CVE_PATCH, GENERIC)}
+# ── Rules for UDP facts the agent already collected (M6) ──────────────────────
+
+_P_UDP: list[Recipe] = [
+    Recipe(
+        "POSTURE-SIP-EXPOSED", 1, "Restrict the SIP service on {host}:{port}", "mitigation",
+        "mitigate", "SIP reachable only from the trunks and phones that need it",
+        (
+            S("containment", "Limit SIP to known peers",
+              "Allow UDP/TCP 5060 and TLS 5061 on {host} ({ip}) only from your SIP trunk providers "
+              "and internal phone networks.",
+              lin=("sudo ufw allow from <trusted-subnet> to any port 5060 proto udp",
+                   "sudo ufw deny 5060/udp"),
+              net=("Add an ACL on the upstream firewall permitting 5060/5061 to {ip} only from <trusted-subnet>",),
+              gen=("Restrict 5060/5061 on {ip} to <trusted-subnet> at the nearest firewall",),
+              rollback="Remove the rule to restore the previous reachability."),
+            S("fix", "Harden registration and calling",
+              "Require authentication on REGISTER/INVITE, rate-limit failed registrations, and block "
+              "international or premium-rate dial plans that are not needed.",
+              gen=("Enable SIP digest authentication, fail2ban-style lockout and call-barring on the PBX/SBC",)),
+        ),
+        "Place the PBX behind an SBC and allow SIP only from provider address ranges.",
+        V("udp_scan", "SIP OPTIONS to {ip}:{port}/udp from an untrusted network gets no SIP reply",
+          "No response / filtered"),
+        ("CWE-200", "MITRE T1595.002"), effort="low"),
+
+    Recipe(
+        "POSTURE-NETBIOS-EXPOSED", 1, "Close the NetBIOS name service on {host}", "mitigation",
+        "mitigate", "NetBIOS name service not reachable from untrusted networks",
+        (
+            S("containment", "Block NetBIOS at the boundary",
+              "Drop UDP/137 and 138 and TCP/139 to {host} ({ip}) from networks that do not need "
+              "Windows name resolution.",
+              net=("Deny udp/137, udp/138 and tcp/139 to {ip} from <untrusted-subnet>",),
+              gen=("Block UDP 137/138 and TCP 139 to {ip} from untrusted networks",)),
+            S("fix", "Disable NetBIOS over TCP/IP where it is not needed",
+              "Disable NetBIOS over TCP/IP on the interface of {host}; keep DNS for name resolution.",
+              win=("Get-NetAdapter | ForEach-Object {{ (Get-WmiObject Win32_NetworkAdapterConfiguration "
+                   "-Filter \"Index=$($_.InterfaceIndex)\").SetTcpipNetbios(2) }}",),
+              lin=("# Samba: in [global] of /etc/samba/smb.conf set:  disable netbios = yes",
+                   "sudo testparm -s && sudo systemctl restart smbd"),
+              gen=("Disable NetBIOS over TCP/IP in the host's network settings",),
+              downtime="legacy name lookups stop working", rollback="Re-enable NetBIOS over TCP/IP"),
+        ),
+        "Use DNS only for name resolution and disable LLMNR/NBT-NS by policy.",
+        V("udp_scan", "NetBIOS node-status query to {ip}:{port}/udp from an untrusted network gets no reply",
+          "No response / filtered"),
+        ("CWE-200", "MITRE T1046"), effort="low"),
+
+    Recipe(
+        "POSTURE-MDNS-EXPOSED", 1, "Keep mDNS on the local link for {host}", "mitigation",
+        "mitigate", "Multicast DNS not answering queries from routed networks",
+        (
+            S("containment", "Block mDNS from routed networks",
+              "Drop UDP/5353 to {host} ({ip}) from anything other than the local segment.",
+              net=("Deny udp/5353 to {ip} from routed (non-local) networks",),
+              gen=("Block UDP 5353 to {ip} from routed networks",)),
+            S("fix", "Disable the responder where discovery is not needed",
+              "Stop the Avahi/Bonjour responder on {host} if no service discovery is required.",
+              lin=("sudo systemctl disable --now avahi-daemon.socket avahi-daemon.service",),
+              win=("Set-Service -Name 'Bonjour Service' -StartupType Disabled -ErrorAction SilentlyContinue",),
+              gen=("Disable the mDNS/Bonjour/Avahi responder",),
+              downtime="local service discovery stops", rollback="Re-enable the responder"),
+        ),
+        "Restrict service discovery to the segments that need it.",
+        V("udp_scan", "A unicast mDNS query to {ip}:{port}/udp gets no response", "No response"),
+        ("CWE-200", "MITRE T1046"), effort="low"),
+
+    Recipe(
+        "POSTURE-IKE-AGGRESSIVE-MODE", 1, "Disable IKE aggressive mode on {host}", "mitigation",
+        "mitigate", "IKEv1 aggressive mode disabled; IKEv2 or main mode with strong authentication",
+        (
+            S("fix", "Turn off aggressive mode",
+              "Disable IKEv1 aggressive mode on the VPN gateway {host} and move peers to main mode "
+              "or IKEv2.",
+              net=("Disable IKE aggressive mode in the gateway's IKE/ISAKMP policy",),
+              lin=("# strongSwan: in ipsec.conf set  aggressive=no  and  keyexchange=ikev2",
+                   "sudo ipsec reload"),
+              gen=("Disable IKEv1 aggressive mode in the VPN gateway configuration",),
+              downtime="peers using aggressive mode must be reconfigured", rollback="Restore the previous IKE policy"),
+            S("hardening", "Replace weak pre-shared keys",
+              "Rotate any pre-shared key that was used with aggressive mode to a long random value, "
+              "or move to certificate authentication.",
+              gen=("Rotate the pre-shared key (>= 20 random characters) or use certificates",)),
+        ),
+        "Prefer certificate-based IKEv2 and monitor for repeated aggressive-mode requests.",
+        V("udp_scan", "An IKE probe to {ip}:{port}/udp is not answered in aggressive mode",
+          "Exchange type is not 4 (aggressive)"),
+        ("CWE-522", "MITRE T1110.002"), effort="medium"),
+]
+
+RECIPES: dict[str, Recipe] = {r.recipe_id: r for r in (*_P, *_P_V2, *_P_UDP, *_E, CVE_PATCH, GENERIC)}
 
 # Legacy keyword categories (remediation_kb.classify_finding) → recipe ids, for
 # findings that carry no structured rule id (imports, older probe paths).

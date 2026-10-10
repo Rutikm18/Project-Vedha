@@ -355,6 +355,49 @@ _CONTENT: dict[str, dict[str, str]] = {
             "eavesdropped."
         ),
     },
+    "netbios_exposure": {
+        "technical": (
+            "The NetBIOS name service (UDP/137) answered a node-status query, disclosing the "
+            "host's NetBIOS names, workgroup or domain and hardware address to any client that "
+            "can reach it."
+        ),
+        "impact": (
+            "An attacker learns host and domain names for targeting, and NetBIOS/LLMNR name "
+            "resolution can be poisoned to capture credentials."
+        ),
+        "business": (
+            "internal naming and domain details leak beyond the network that needs them, "
+            "easing reconnaissance and credential-relay attacks."
+        ),
+    },
+    "mdns_exposure": {
+        "technical": (
+            "The multicast-DNS responder answered a unicast query from outside its local link, "
+            "disclosing hostnames and advertised services."
+        ),
+        "impact": (
+            "An attacker can enumerate hosts and services from a distance, and an open mDNS "
+            "responder can be used as a reflection source in denial-of-service attacks."
+        ),
+        "business": (
+            "service and device inventory is exposed, and the host can be abused against third "
+            "parties."
+        ),
+    },
+    "ike_aggressive": {
+        "technical": (
+            "The VPN gateway answered in IKEv1 aggressive mode. With a pre-shared key, "
+            "aggressive mode sends the peer identity and a key-derived hash before the channel "
+            "is protected."
+        ),
+        "impact": (
+            "An attacker can capture the hash and crack the pre-shared key offline, then "
+            "authenticate to the VPN."
+        ),
+        "business": (
+            "a cracked VPN key gives a remote attacker a foothold inside the network perimeter."
+        ),
+    },
     "generic": {
         "technical": (
             "The service exhibits a security weakness in its exposure or configuration. Review "
@@ -452,6 +495,9 @@ _RULE_CATEGORY: dict[str, str] = {
     "POSTURE-DB-CLEARTEXT-TRANSPORT": "cleartext_protocol",
     "POSTURE-EXPOSED-BACKDOOR": "suspicious_listener",
     "POSTURE-SIP-EXPOSED": "sip_exposure",
+    "POSTURE-NETBIOS-EXPOSED": "netbios_exposure",
+    "POSTURE-MDNS-EXPOSED": "mdns_exposure",
+    "POSTURE-IKE-AGGRESSIVE-MODE": "ike_aggressive",
 }
 
 

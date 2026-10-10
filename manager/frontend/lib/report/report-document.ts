@@ -509,11 +509,39 @@ export interface ReportReadiness {
   report_gaps: string[];
 }
 
+export interface ReportCoverageRule {
+  rule_id: string;
+  title: string | null;
+  /** finding_exists | evaluated_clean | no_evidence_collected | schema_drift | rule_error */
+  verdict: string;
+  reasons: string[];
+}
+
+/** What was checked, so "not detected" can be told from "not checked". */
+export interface ReportCoverageSheet {
+  run_id: string;
+  run_finished_at: string | null;
+  vuln_db_version: string | null;
+  scan_reference: string | null;
+  scan_use_case: string | null;
+  scan_intensity: string | null;
+  ports_scanned: number[] | string | null;
+  ports_scanned_note: string | null;
+  rules_total: number;
+  rules_evaluated_clean: number;
+  rules_with_finding: number;
+  rules_not_checked: number;
+  rules_could_not_assess: number;
+  rules: ReportCoverageRule[];
+  interpretation: string;
+}
+
 export interface ReportDocument {
   document: ReportDocumentControl;
   engagement: ReportEngagement;
   summary: ReportSummary;
   findings: ReportFinding[];
+  coverage_sheet?: ReportCoverageSheet | null;
   compliance_rollup: ReportComplianceRollup;
   derived_regional_compliance: ReportDerivedRegionalCompliance;
   readiness: ReportReadiness;

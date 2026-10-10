@@ -82,6 +82,32 @@ describe("canonical report exports", () => {
     assert.match(text, /\"'=WEBSERVICE\(\"\"https:\/\/example\.invalid\"\"\)\"/);
   });
 
+  it("adds a Coverage sheet that separates evaluated-clean from not-checked rules", async () => {
+    const report = {
+      ...canonicalReport,
+      coverage_sheet: {
+        run_id: "run-1", run_finished_at: "2026-09-26T08:00:00Z", vuln_db_version: "db-1",
+        scan_reference: "SCAN-1", scan_use_case: "internal_vuln", scan_intensity: "normal",
+        ports_scanned: [22, 443], ports_scanned_note: null,
+        rules_total: 2, rules_evaluated_clean: 1, rules_with_finding: 0, rules_not_checked: 1, rules_could_not_assess: 0,
+        rules: [
+          { rule_id: "POSTURE-A", title: "A", verdict: "evaluated_clean", reasons: [] },
+          { rule_id: "POSTURE-B", title: "B", verdict: "no_evidence_collected", reasons: [] },
+        ],
+        interpretation: "evaluated_clean means the check ran.",
+      },
+    } as typeof canonicalReport;
+    const file = await buildReportExport("xlsx", report);
+    const workbook = zipEntry(file.bytes, "xl/workbook.xml").toString("utf8");
+    assert.match(workbook, /name="Coverage"/);
+    const sheet = zipEntry(file.bytes, "xl/worksheets/sheet11.xml").toString("utf8");
+    assert.match(sheet, /no_evidence_collected/);
+    assert.match(sheet, /ports scanned: 22, 443/);
+    assert.doesNotMatch(
+      zipEntry((await buildReportExport("xlsx", canonicalReport)).bytes, "xl/workbook.xml").toString("utf8"),
+      /name="Coverage"/);
+  });
+
   it("creates a multi-sheet workbook with canonical metadata and detailed registers", async () => {
     const file = await buildReportExport("xlsx", canonicalReport);
     const workbook = zipEntry(file.bytes, "xl/workbook.xml").toString("utf8");

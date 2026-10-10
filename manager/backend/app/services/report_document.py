@@ -36,11 +36,12 @@ from app.compliance.registry import (
 )
 from app.intel.tagging import tag_strings
 from app.models.asset import Asset
-from app.models.detection_run import DetectionRun
+from app.models.detection_run import RUN_COMPLETED, DetectionRun
 from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.finding_event import FindingEvent
 from app.models.remediation_plan import RemediationPlan
+from app.models.scan_job import ScanJob
 from app.models.scan_result import ScanResult
 from app.models.sla_policy import SlaPolicy
 from app.models.user import User
@@ -74,6 +75,7 @@ from app.schemas.report_document import (
     ReportRemediationPlan,
     ReportRetestRecord,
     ReportSlaProjection,
+    ReportCoverageSheet,
     ReportIssueGroup,
     ReportSummary,
     ReportVerification,
@@ -1821,6 +1823,13 @@ def _issue_groups(findings: list[ReportFinding]) -> list[ReportIssueGroup]:
     return groups
 
 
+def _coverage_sheet(run: DetectionRun | None, job: Any | None) -> ReportCoverageSheet | None:
+    if run is None:
+        return None
+    sheet = enrich.coverage_sheet(run, job)
+    return ReportCoverageSheet(**sheet) if sheet else None
+
+
 def _summary(findings: list[ReportFinding]) -> ReportSummary:
     severities = Counter(item.severity for item in findings)
     statuses = Counter(item.status for item in findings)
@@ -1983,6 +1992,8 @@ def build_report_document(
     sla_windows: dict[str, int],
     assignee_emails: dict[uuid.UUID, str] | None = None,
     engagement_asset_tags: set[str] | None = None,
+    coverage_run: DetectionRun | None = None,
+    coverage_job: Any | None = None,
     snapshot_kind: Literal[
         "postgresql_repeatable_read_read_only",
         "sqlite_read_transaction",
@@ -2056,6 +2067,7 @@ def build_report_document(
         engagement=engagement_out,
         summary=_summary(findings),
         findings=findings,
+        coverage_sheet=_coverage_sheet(coverage_run, coverage_job),
         compliance_rollup=compliance,
         derived_regional_compliance=_derived_regional_compliance(
             engagement,
@@ -2297,6 +2309,34 @@ async def load_report_document(
         if policy is not None
         else sla.default_windows()
     )
+    # The engagement's latest completed detection run (+ the scan job that fed it) for the
+    # coverage sheet. Tenant-scoped like every other report query.
+    coverage_run = (
+        await db.execute(
+            select(DetectionRun)
+            .join(Engagement, Engagement.id == DetectionRun.engagement_id)
+            .where(
+                DetectionRun.engagement_id == engagement_id,
+                Engagement.tenant_id == tenant_id,
+                DetectionRun.status == RUN_COMPLETED,
+            )
+            .order_by(DetectionRun.started_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    coverage_job = None
+    if coverage_run is not None and coverage_run.job_id is not None:
+        coverage_job = (
+            await db.execute(
+                select(ScanJob)
+                .join(Engagement, Engagement.id == ScanJob.engagement_id)
+                .where(
+                    ScanJob.id == coverage_run.job_id,
+                    ScanJob.engagement_id == engagement_id,
+                    Engagement.tenant_id == tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
     return build_report_document(
         engagement=engagement,
         finding_rows=list(finding_rows),
@@ -2308,6 +2348,8 @@ async def load_report_document(
         sla_windows=windows,
         assignee_emails=assignee_emails,
         engagement_asset_tags=engagement_asset_tags,
+        coverage_run=coverage_run,
+        coverage_job=coverage_job,
         snapshot_kind=snapshot_kind,
         snapshot_guarantee=snapshot_guarantee,
     )

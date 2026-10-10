@@ -12,8 +12,8 @@ from models import Asset, Fact, SourceConfidence
 import posture_rules as P
 
 
-def _fact(scanner, port, data, status="open", target="192.168.1.77"):
-    return Fact(scanner=scanner, target=target, timestamp="", port=port, proto="tcp",
+def _fact(scanner, port, data, status="open", target="192.168.1.77", proto="tcp"):
+    return Fact(scanner=scanner, target=target, timestamp="", port=port, proto=proto,
                 status=status, data=data, evidence="e", error=None,
                 source_confidence=SourceConfidence.inferred,
                 source_file="s.jsonl", source_line=1)
@@ -234,3 +234,51 @@ def test_engine_stamps_dedup_key_on_findings():
     a = _asset(_fact("smb_scan", 445, {"smb2_supported": True, "signing_required": False}))
     f = P.detect_posture(a)[0]
     assert f.evidence["dedup_key"] == "smb-signing-off:445"
+
+
+# ── M6: rules for facts the agent already collects ────────────────────────────
+class TestUdpServiceRules:
+    @staticmethod
+    def _rules(*facts):
+        return {f.rule_id for f in P.detect_posture(_asset(*facts))}
+
+    def test_sip_needs_a_real_sip_status_line(self):
+        sip = _fact("udp_scan", 5060, {"service": "sip", "responded": True,
+                                       "sip_response": "SIP/2.0 200 OK", "server": "x"})
+        junk = _fact("udp_scan", 5060, {"service": "sip", "responded": True, "sip_response": "garbage"})
+        assert "POSTURE-SIP-EXPOSED" in self._rules(sip)
+        assert "POSTURE-SIP-EXPOSED" not in self._rules(junk)
+
+    def test_netbios_and_mdns(self):
+        nb = _fact("udp_scan", 137, {"service": "netbios-ns", "responded": True})
+        md = _fact("udp_scan", 5353, {"service": "mdns", "responded": True, "mdns_response": True})
+        md_query = _fact("udp_scan", 5353, {"service": "mdns", "responded": True, "mdns_response": False})
+        assert "POSTURE-NETBIOS-EXPOSED" in self._rules(nb)
+        assert "POSTURE-MDNS-EXPOSED" in self._rules(md)
+        assert "POSTURE-MDNS-EXPOSED" not in self._rules(md_query)
+
+    def test_silence_never_raises_them(self):
+        silent = _fact("udp_scan", 137, {"service": "netbios-ns", "responded": False},
+                       status="open|filtered")
+        assert not (self._rules(silent) & {"POSTURE-NETBIOS-EXPOSED", "POSTURE-SIP-EXPOSED",
+                                            "POSTURE-MDNS-EXPOSED"})
+
+    def test_ike_aggressive_only_on_the_observed_exchange(self):
+        agg = _fact("udp_scan", 500, {"service": "ike", "responded": True,
+                                      "version": "IKEv1.0", "exchange_type": 4})
+        main = _fact("udp_scan", 500, {"service": "ike", "responded": True,
+                                       "version": "IKEv1.0", "exchange_type": 2})
+        v2 = _fact("udp_scan", 500, {"service": "ike", "responded": True,
+                                     "version": "IKEv2.0", "exchange_type": 34})
+        assert "POSTURE-IKE-AGGRESSIVE-MODE" in self._rules(agg)
+        assert "POSTURE-IKE-AGGRESSIVE-MODE" not in self._rules(main)
+        assert "POSTURE-IKE-AGGRESSIVE-MODE" not in self._rules(v2)
+
+    def test_exposure_rules_share_the_exposed_class_with_port_intel(self):
+        assert P.weakness_class_for("POSTURE-SIP-EXPOSED", "exposure") == "exposed"
+        assert P.weakness_class_for("POSTURE-IKE-AGGRESSIVE-MODE", "weak_crypto") == "ike-aggressive-mode"
+
+    def test_new_findings_are_confirmed_protocol_observations(self):
+        nb = _fact("udp_scan", 137, {"service": "netbios-ns", "responded": True}, proto="udp")
+        f = next(f for f in P.detect_posture(_asset(nb)) if f.rule_id == "POSTURE-NETBIOS-EXPOSED")
+        assert f.state == "confirmed" and f.evidence["dedup_key"] == "exposed:137/udp"

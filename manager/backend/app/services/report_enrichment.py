@@ -81,6 +81,72 @@ def not_applicable_reasons(finding: Any) -> dict[str, str]:
     return out
 
 
+def _rule_titles() -> dict[str, str]:
+    """rule_id → title from the detection engine, when it is importable (best effort)."""
+    try:
+        from app.detection import engine_bridge
+        if not engine_bridge._ensure_importable():
+            return {}
+        import posture_rules  # type: ignore
+        return {r.rule_id: r.title for r in posture_rules.RULES}
+    except Exception:  # noqa: BLE001 — titles are decoration, never required
+        return {}
+
+
+def _ports_scanned(job: Any) -> tuple[Any, str | None]:
+    result = getattr(job, "result", None)
+    result = result if isinstance(result, dict) else {}
+    for key in ("ports_scanned", "ports"):
+        value = result.get(key)
+        if isinstance(value, list) and value and all(isinstance(p, int) for p in value):
+            return sorted(set(value)), None
+        if isinstance(value, str) and value.strip():
+            return value.strip(), None
+    return None, "The scan did not record which ports it covered."
+
+
+def coverage_sheet(run: Any, job: Any | None = None,
+                   titles: dict[str, str] | None = None) -> dict[str, Any] | None:
+    """The per-rule outcome sheet for one detection run, or None if it recorded none.
+
+    Every rule the engine knows appears exactly once: a recorded verdict as recorded, any
+    rule without one as `no_evidence_collected`."""
+    stats = getattr(run, "stats", None)
+    stats = stats if isinstance(stats, dict) else {}
+    verdicts = stats.get("posture_verdicts")
+    if not isinstance(verdicts, dict) or not verdicts:
+        return None
+    titles = titles if titles is not None else _rule_titles()
+    rows: list[dict[str, Any]] = []
+    for rule_id in sorted(set(verdicts) | set(titles)):
+        recorded = verdicts.get(rule_id) if isinstance(verdicts.get(rule_id), dict) else {}
+        reasons = recorded.get("reasons") or []
+        rows.append({
+            "rule_id": rule_id,
+            "title": titles.get(rule_id),
+            "verdict": str(recorded.get("verdict") or "no_evidence_collected"),
+            "reasons": [str(r) for r in reasons][:5] if isinstance(reasons, list) else [],
+        })
+    count = lambda *vs: sum(1 for r in rows if r["verdict"] in vs)  # noqa: E731
+    ports, ports_note = _ports_scanned(job) if job is not None else (None, "No scan job is linked to this run.")
+    return {
+        "run_id": run.id,
+        "run_finished_at": getattr(run, "finished_at", None),
+        "vuln_db_version": getattr(run, "vuln_db_version", None),
+        "scan_reference": getattr(job, "reference", None),
+        "scan_use_case": getattr(job, "use_case_id", None),
+        "scan_intensity": getattr(job, "intensity", None),
+        "ports_scanned": ports,
+        "ports_scanned_note": ports_note,
+        "rules_total": len(rows),
+        "rules_evaluated_clean": count("evaluated_clean"),
+        "rules_with_finding": count("finding_exists"),
+        "rules_not_checked": count("no_evidence_collected"),
+        "rules_could_not_assess": count("schema_drift", "rule_error"),
+        "rules": rows,
+    }
+
+
 def kb_narrative(finding: Any, asset: Any | None = None) -> dict[str, Any]:
     """The KB's technical details / impact / business impact / exploitation context.
 
@@ -170,6 +236,6 @@ def plan_text(plan: dict[str, Any] | None) -> str:
     return "\n".join(l for l in lines if l)
 
 
-__all__ = ["not_applicable_reasons", "service_port", "SOURCE_RECORDED", "SOURCE_KB", "kb_narrative", "first_sentence",
+__all__ = ["coverage_sheet", "not_applicable_reasons", "service_port", "SOURCE_RECORDED", "SOURCE_KB", "kb_narrative", "first_sentence",
            "description_is_rule_metadata", "detection_rationale", "fix_plan", "plan_text",
            "content_category"]

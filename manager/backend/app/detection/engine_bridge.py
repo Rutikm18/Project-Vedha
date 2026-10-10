@@ -636,17 +636,20 @@ async def _stamp_verification(findings, llm=None) -> None:
 
 
 async def _engagement_device_roles(db: AsyncSession, engagement_id: uuid.UUID) -> dict[str, dict]:
-    """ip → {device_role, role_detail} from already-promoted assets, so a prior
-    device_inventory scan amplifies today's correlation (Track B2)."""
+    """ip → {device_role, role_detail, role_confidence, os} from already-promoted assets, so a
+    prior device_inventory scan amplifies today's correlation (Track B2). The confidence and OS
+    let the correlator ignore a role that is not trustworthy (see intel.device_role)."""
     rows = (await db.execute(
-        select(Asset.ip_address, Asset.device_role, Asset.role_detail).where(
+        select(Asset.ip_address, Asset.device_role, Asset.role_detail,
+               Asset.role_confidence, Asset.os).where(
             Asset.engagement_id == engagement_id,
             Asset.device_role.isnot(None),
         )
     )).all()
     return {
-        ip: {"device_role": role, "role_detail": detail}
-        for ip, role, detail in rows if ip
+        ip: {"device_role": role, "role_detail": detail,
+             "role_confidence": confidence, "os": os_name}
+        for ip, role, detail, confidence, os_name in rows if ip
     }
 
 

@@ -24,6 +24,8 @@ import re
 from dataclasses import asdict, dataclass, field
 from typing import Callable, Iterable
 
+from app.intel.device_role import resolve_role
+
 TAGS_VERSION = 1
 
 
@@ -93,10 +95,15 @@ _ROLE_TO_HOST_TYPE = {
 
 @rule
 def _host_type(f: AssetFacts) -> Iterable[Tag]:
+    """The host's dominant type. The classifier's claim is checked against the OS fingerprint
+    (intel.device_role); only a high-confidence verdict becomes ``host_type``. A weaker one is
+    kept as ``host_type_candidate`` so it stays visible without driving anything."""
     if f.device_role and f.device_role in _ROLE_TO_HOST_TYPE:
-        conf = f.role_confidence if f.role_confidence else 0.6
-        yield Tag("host_type", _ROLE_TO_HOST_TYPE[f.device_role], "host.classifier",
-                  _clamp(conf), f"device classifier: {f.device_role}")
+        verdict = resolve_role(f.device_role, f.role_confidence, f.os)
+        role = verdict.role if verdict.role in _ROLE_TO_HOST_TYPE else f.device_role
+        key = "host_type" if verdict.high_confidence else "host_type_candidate"
+        yield Tag(key, _ROLE_TO_HOST_TYPE[role], "host.classifier",
+                  _clamp(verdict.confidence or 0.6), f"device classifier: {verdict.describe()}")
     elif f.asset_type and f.asset_type != "server" and f.asset_type in _ROLE_TO_HOST_TYPE:
         # `server` is the promote default when nothing classified the host, so it
         # is not evidence; any other asset_type was set deliberately.

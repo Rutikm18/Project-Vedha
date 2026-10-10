@@ -576,6 +576,25 @@ function buildXlsx(report: ReportDocument): Buffer {
     ]);
   }
 
+  const coverageRows: Cell[][] = [["Rule", "Title", "Outcome", "Why / reasons"]];
+  const coverage = report.coverage_sheet;
+  if (coverage) {
+    coverageRows.push(
+      ["(run)", `Detection run ${coverage.run_id}`, `finished ${coverage.run_finished_at ?? "not recorded"}`,
+        `vuln DB ${coverage.vuln_db_version ?? "not recorded"}`],
+      ["(scan)", `${coverage.scan_use_case ?? "use case not recorded"} / ${coverage.scan_intensity ?? "intensity not recorded"}`,
+        coverage.scan_reference ?? "reference not recorded",
+        Array.isArray(coverage.ports_scanned) ? `ports scanned: ${coverage.ports_scanned.join(", ")}`
+          : (coverage.ports_scanned ?? coverage.ports_scanned_note ?? "ports scanned: not recorded")],
+      ["(summary)", `${coverage.rules_total} checks`,
+        `${coverage.rules_with_finding} with a finding, ${coverage.rules_evaluated_clean} evaluated clean, ${coverage.rules_not_checked} not checked, ${coverage.rules_could_not_assess} could not be assessed`,
+        coverage.interpretation],
+    );
+    for (const rule of coverage.rules) {
+      coverageRows.push([rule.rule_id, rule.title ?? "", rule.verdict, rule.reasons.join("; ")]);
+    }
+  }
+
   const sheets: Array<{ name: string; rows: Cell[][] }> = [
     { name: "Overview", rows: overviewRows },
     // The workbook leads with what a reader filters on; the four per-document
@@ -589,6 +608,8 @@ function buildXlsx(report: ReportDocument): Buffer {
     { name: "Gaps", rows: gapRows },
     { name: "Derived Context", rows: derivedContextRows },
     { name: "Regional Context", rows: regionalContextRows },
+    // Last, so the numbered sheets above keep their positions.
+    ...(coverageRows.length > 1 ? [{ name: "Coverage", rows: coverageRows }] : []),
   ];
   const overrides = sheets.map((_, index) =>
     `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
