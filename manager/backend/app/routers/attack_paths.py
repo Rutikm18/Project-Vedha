@@ -229,18 +229,21 @@ async def list_attack_paths(
     # "Never computed" is the absence of the stored analysis row, not of route rows: a
     # computed engagement with zero routes (or only an exposed jewel) has an analysis
     # and no routes, and reading it must not recompute and write on every open.
-    never_computed = await db.get(AttackPathAnalysis, engagement_id) is None
+    stored = await db.get(AttackPathAnalysis, engagement_id)
     diagnostics = None
-    if refresh or never_computed:
-        # First read of a never-computed engagement still produces a result.
+    if refresh or stored is None:
+        # First read of a never-computed engagement still produces a result;
+        # otherwise a read never recomputes (a computed engagement with zero
+        # routes has an analysis row and no routes — NF3).
         diagnostics = await _recompute_and_store(db, engagement_id, target_asset_id)
 
     q = select(AttackPath).where(AttackPath.engagement_id == engagement_id)
     q = q.order_by(AttackPath.risk_score.desc().nullslast(), AttackPath.id)
     rows = (await db.execute(q.offset((page - 1) * page_size).limit(page_size))).scalars().all()
-    total = len((await db.execute(
-        select(AttackPath.id).where(AttackPath.engagement_id == engagement_id)
-    )).all())
+    total = (await db.execute(
+        select(func.count()).select_from(AttackPath)
+        .where(AttackPath.engagement_id == engagement_id)
+    )).scalar_one()
 
     labels = await _asset_labels(db, engagement_id) if rows else {}
     body = {
@@ -251,7 +254,12 @@ async def list_attack_paths(
     }
     if total == 0:
         # An empty list must say WHY (FM-30): "no paths" and "nothing to compute
-        # from" look identical otherwise.
+        # from" look identical otherwise. Serve the diagnostics the last recompute
+        # already stored (NF3: a zero-route read must not rebuild the analyzer);
+        # only rebuild if nothing was stored (pre-NF3 rows, defensive).
+        if diagnostics is None:
+            stored = stored or await db.get(AttackPathAnalysis, engagement_id)
+            diagnostics = (stored.analysis or {}).get("diagnostics") if stored else None
         if diagnostics is None:
             analyzer, _graph = await _build_analyzer(db, engagement_id)
             diagnostics = analyzer.diagnose(await _target_ids(db, engagement_id, target_asset_id))
