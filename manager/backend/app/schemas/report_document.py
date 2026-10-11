@@ -86,6 +86,14 @@ class ReportAsset(BaseModel):
     environment: str | None = None
     tags: dict[str, Any] = Field(default_factory=dict)
     last_seen: datetime | None = None
+    # The one role this asset is treated as, and how far that can be trusted. `device_role` is
+    # what the probe's classifier said; `resolved_role` is that claim checked against the OS
+    # fingerprint (a Linux server answering on router ports resolves to "server").
+    device_role: str | None = None
+    role_confidence: float | None = None
+    resolved_role: str | None = None
+    role_basis: str | None = None
+    role_trusted: bool | None = None
 
 
 class ReportEvidenceArtifact(BaseModel):
@@ -257,7 +265,7 @@ class ReportRemediationPlan(BaseModel):
 
 class ReportRecommendation(BaseModel):
     text: str
-    source_type: Literal["finding_evidence", "reviewed_remediation_plan"]
+    source_type: Literal["finding_evidence", "reviewed_remediation_plan", "knowledge_base_recipe"]
     source_id: str | None = None
     author: str | None = None
     reviewer: str | None = None
@@ -265,7 +273,8 @@ class ReportRecommendation(BaseModel):
     generated_at: datetime | None = None
     reviewed_at: str | None = None
     review_state: Literal[
-        "unreviewed_recorded", "recorded_as_reviewed", "human_reviewed_plan"
+        "unreviewed_recorded", "recorded_as_reviewed", "human_reviewed_plan",
+        "unreviewed_knowledge_base",
     ]
 
 
@@ -277,6 +286,10 @@ class ReportRemediation(BaseModel):
     reviewed_plans: list[ReportRemediationPlan] = Field(default_factory=list)
     recommendations: list[ReportRecommendation] = Field(default_factory=list)
     recorded_recommendations: list[str] = Field(default_factory=list)
+    # The rule-keyed recipe rendered for this finding (ordered steps, per-OS commands,
+    # verification, effort, risk, rollback). Standard knowledge-base content, not a
+    # reviewed plan: `source` says so.
+    fix_plan: dict[str, Any] | None = None
     gaps: list[str] = Field(default_factory=list)
 
 
@@ -394,6 +407,17 @@ class ReportFinding(BaseModel):
     reproduction_steps: Any = None
     root_cause: Any = None
     preconditions: Any = None
+    # Why the platform flagged this (rule, evidence basis, the rule's false-positive
+    # caveat) — kept apart from the description, which explains the weakness itself.
+    detection_rationale: str | None = None
+    service_port: int | None = None
+    # Producers that collapsed into this one finding (same asset, service and weakness class).
+    merged_signals: list[dict[str, Any]] = Field(default_factory=list)
+    # Why CVE / CVSS / EPSS / CWE are legitimately empty (recorded, or derived for
+    # configuration findings): an empty score with a reason is "not applicable", not a gap.
+    not_applicable_reasons: dict[str, str] = Field(default_factory=dict)
+    # Per narrative field: "recorded" (analyst/AI/evidence) or "knowledge_base" (standard text).
+    narrative_sources: dict[str, str] = Field(default_factory=dict)
     severity: str
     status: str
     asset: ReportAsset | None = None
@@ -428,7 +452,25 @@ class ReportFinding(BaseModel):
     readiness_gaps: list[str] = Field(default_factory=list)
 
 
+class ReportIssueGroup(BaseModel):
+    """One row for the client: every finding about the same service on the same asset,
+    nested. The findings stay the audit records; this is how many *issues* they are."""
+    key: str
+    asset_id: uuid.UUID | None = None
+    asset_label: str | None = None
+    port: int | None = None
+    title: str
+    severity: str
+    open: bool
+    finding_count: int
+    finding_ids: list[uuid.UUID]
+    signals: list[str] = Field(default_factory=list)
+
+
 class ReportSummary(BaseModel):
+    # Findings roll up to issues (asset + service port); see `issue_groups`.
+    issue_count: int = 0
+    issue_groups: list[ReportIssueGroup] = Field(default_factory=list)
     total_findings: int
     by_severity: dict[str, int]
     by_status: dict[str, int]
@@ -473,11 +515,48 @@ class ReportReadiness(BaseModel):
     report_gaps: list[str] = Field(default_factory=list)
 
 
+class ReportCoverageRule(BaseModel):
+    rule_id: str
+    title: str | None = None
+    # finding_exists | evaluated_clean | no_evidence_collected | schema_drift | rule_error
+    verdict: str
+    reasons: list[str] = Field(default_factory=list)
+
+
+class ReportCoverageSheet(BaseModel):
+    """What was checked, so "not detected" can be told from "not checked".
+
+    Taken from the engagement's latest completed detection run (its recorded per-rule
+    verdicts) and the scan job that fed it. Nothing here is inferred: a rule with no recorded
+    verdict is shown as `no_evidence_collected` (its scanner never produced facts)."""
+    run_id: uuid.UUID
+    run_finished_at: datetime | None = None
+    vuln_db_version: str | None = None
+    scan_reference: str | None = None
+    scan_use_case: str | None = None
+    scan_intensity: str | None = None
+    ports_scanned: list[int] | str | None = None
+    ports_scanned_note: str | None = None
+    rules_total: int
+    rules_evaluated_clean: int
+    rules_with_finding: int
+    rules_not_checked: int
+    rules_could_not_assess: int
+    rules: list[ReportCoverageRule] = Field(default_factory=list)
+    interpretation: str = (
+        "evaluated_clean means the check ran and found nothing; no_evidence_collected means the "
+        "check did not run (its scanner produced no facts) and says nothing about the asset; "
+        "schema_drift and rule_error mean the check could not be assessed."
+    )
+
+
 class ReportDocument(BaseModel):
     document: ReportDocumentControl
     engagement: ReportEngagement
     summary: ReportSummary
     findings: list[ReportFinding]
+    # The latest detection run's per-rule outcomes (None when no run has been recorded).
+    coverage_sheet: ReportCoverageSheet | None = None
     compliance_rollup: ReportComplianceRollup
     derived_regional_compliance: ReportDerivedRegionalCompliance
     readiness: ReportReadiness

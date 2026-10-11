@@ -12,6 +12,7 @@ on:
       - 'scripts/agent_client_kit.py'
       - 'scripts/onprem_bundle.py'
       - 'probe/install.sh'
+      - 'deploy/aws/**'
       - '.github/workflows/backend-ci.yml'
   pull_request:
     paths:
@@ -21,6 +22,7 @@ on:
       - 'scripts/agent_client_kit.py'
       - 'scripts/onprem_bundle.py'
       - 'probe/install.sh'
+      - 'deploy/aws/**'
       - '.github/workflows/backend-ci.yml'
   workflow_dispatch: {}
 
@@ -90,3 +92,20 @@ jobs:
           alembic downgrade -1
           alembic upgrade head
           alembic downgrade base
+
+  # The detection engine's own suite (518 tests). The paths above already
+  # trigger on it, but the backend job only runs manager/backend's tests.
+  detection-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: manager/detection_engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Standard library only at runtime.
+      - run: python -m pip install pytest==9.1.1 pytest-asyncio==1.4.0
+      - run: python -m pytest -q -p no:cacheprovider

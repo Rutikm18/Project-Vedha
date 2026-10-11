@@ -167,6 +167,29 @@ class FindingActionTrackingPatch(BaseModel):
         return value
 
 
+class FindingRiskAcceptance(BaseModel):
+    """What accepting a risk requires: who answers for it, until when, and what limits the
+    exposure meanwhile. Without all three an "accepted" finding is just a hidden one."""
+    risk_owner: str = Field(min_length=1, max_length=200)
+    expires_at: datetime
+    compensating_controls: str = Field(min_length=3, max_length=2_000)
+
+    @field_validator("risk_owner", "compensating_controls")
+    @classmethod
+    def strip_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be blank")
+        return value
+
+    @field_validator("expires_at")
+    @classmethod
+    def expiry_is_timezone_aware(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("expires_at must include a timezone")
+        return value
+
+
 class FindingPatch(BaseModel):
     """All fields optional — PATCH semantics."""
     status: FindingStatus | None = None
@@ -184,6 +207,8 @@ class FindingPatch(BaseModel):
     action_reason: str | None = Field(default=None, max_length=1000)
     closure: FindingClosurePacket | None = None
     action_tracking: FindingActionTrackingPatch | None = None
+    # Required when moving a finding to `accepted` (owner + expiry + compensating control).
+    risk_acceptance: FindingRiskAcceptance | None = None
 
     @field_validator("action_reason")
     @classmethod
@@ -191,6 +216,12 @@ class FindingPatch(BaseModel):
         if value is None:
             return None
         return value.strip() or None
+
+    @model_validator(mode="after")
+    def validate_risk_acceptance_scope(self) -> "FindingPatch":
+        if self.risk_acceptance is not None and self.status != FindingStatus.accepted:
+            raise ValueError("risk_acceptance requires status=accepted")
+        return self
 
     @model_validator(mode="after")
     def validate_closure_packet(self) -> "FindingPatch":
@@ -248,6 +279,9 @@ class FindingAssetContext(BaseModel):
     criticality: str
     owner: str | None = None
     environment: str | None = None
+    # Who to propose as the accountable owner when a risk on this asset is accepted: the asset's
+    # owner, else an owner/team tag. A suggestion the analyst confirms, never applied silently.
+    suggested_risk_owner: str | None = None
 
 
 class FindingEventOut(BaseModel):
@@ -371,6 +405,9 @@ class FindingOut(BaseModel):
     scan_outcome: str | None = None
     # P4 unified priority (computed; see services/risk_rank.py).
     risk_rank: int | None = None
+    # Why CVE / CVSS / EPSS / CWE are legitimately empty (recorded, or derived for configuration
+    # findings) — so a list can say "not applicable" instead of "not recorded".
+    scoring_not_applicable: dict[str, str] = Field(default_factory=dict)
     # Populated on the detail endpoint. List responses intentionally leave this
     # null to keep portfolio reads bounded and avoid an asset N+1 query.
     asset_context: FindingAssetContext | None = None
@@ -412,6 +449,13 @@ class FindingOut(BaseModel):
         # Persisted rows are non-null, but legacy/transient ORM objects may
         # expose SQLAlchemy's pre-flush ``None`` instead of the server default.
         return 0 if value is None else value
+
+    @model_validator(mode="after")
+    def _populate_scoring_not_applicable(self) -> "FindingOut":
+        if not self.scoring_not_applicable:
+            from app.services.report_enrichment import not_applicable_reasons
+            self.scoring_not_applicable = not_applicable_reasons(self)
+        return self
 
     @model_validator(mode="after")
     def _populate_risk_rank(self) -> "FindingOut":

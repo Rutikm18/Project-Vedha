@@ -5,7 +5,7 @@
  * content-type / content-disposition intact (so XLSX/CSV downloads work).
  */
 import { NextResponse } from "next/server";
-import { backendResponse, bearerFrom } from "./backend";
+import { BackendError, backendResponse, bearerFrom } from "./backend";
 
 const REQUEST_HEADERS = ["accept", "content-type", "idempotency-key", "x-correlation-id"] as const;
 const RESPONSE_HEADERS = ["content-type", "content-disposition", "retry-after", "x-correlation-id"] as const;
@@ -32,13 +32,19 @@ export async function forward(req: Request, backendPath: string): Promise<Respon
       token,
       headers: pick(req.headers, REQUEST_HEADERS),
       rawBody: hasBody ? req.body : undefined,
+      // Exports (XLSX/CSV) are generated before the first byte; no BFF bound here.
+      timeoutMs: 0,
     });
     return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: pick(upstream.headers, RESPONSE_HEADERS),
     });
-  } catch {
+  } catch (e) {
+    if (e instanceof BackendError) {
+      const headers = e.retryAfter !== undefined ? { "Retry-After": String(e.retryAfter) } : undefined;
+      return NextResponse.json({ error: e.message }, { status: e.status, headers });
+    }
     return NextResponse.json({ error: "The backend is temporarily unavailable" }, { status: 502 });
   }
 }

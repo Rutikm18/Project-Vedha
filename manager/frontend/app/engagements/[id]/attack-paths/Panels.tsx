@@ -3,9 +3,9 @@
 import { AlertTriangle, ArrowRight, CheckCircle2, Info, ShieldAlert, Target } from "lucide-react";
 import { SkeletonRows } from "../../../../components/states/DataState";
 import {
-  basisInfo, caveatSummary, emptyReasons, fixFirstSummary, freshnessInfo, percent, riskLabel, riskShare,
-  techniqueLabel,
-  type Analysis, type ChokeAnalysis, type Diagnostics, type PathDetail, type PathSummary,
+  basisInfo, caveatSummary, capabilityLabel, emptyReasons, fixFirstSummary, freshnessInfo, percent, riskLabel, riskShare,
+  suggestedTargetsNote, techniqueLabel,
+  type Analysis, type ChokeAnalysis, type ChokeTarget, type Diagnostics, type PathDetail, type PathSummary,
 } from "../../../../lib/attack-paths";
 
 // ── Beta ─────────────────────────────────────────────────────────────────────
@@ -60,7 +60,40 @@ export function CoveragePanel({ analysis }: { analysis: Analysis | undefined }) 
   );
 }
 
+/** P4b: when no asset was marked critical, the targets were SUGGESTED (domain controllers,
+ *  hypervisors, datastores). Say so, so an auto-picked target never reads as a chosen scope. */
+export function SuggestedTargetsNote({ analysis }: { analysis: Analysis | undefined }) {
+  if (!analysis || !analysis.computed) return null;
+  const note = suggestedTargetsNote(analysis.target_selection);
+  if (!note) return null;
+  return (
+    <p className="ap-note" data-tone="neutral">
+      <Target size={14} />
+      <span>{note}</span>
+    </p>
+  );
+}
+
 // ── An empty list, explained ─────────────────────────────────────────────────
+
+/** A crown jewel that is itself exposed has no route to list, so an empty list is the WORST case here,
+ *  not "the model had nothing to go on". Said first, before any coverage or fix advice. */
+export function ExposedCallout({ targets }: { targets: Pick<ChokeTarget, "asset_id" | "label">[] }) {
+  const one = targets.length === 1;
+  const who = one ? targets[0].label : `${targets.length} crown jewels`;
+  return (
+    <div className="ap-callout" data-tone="critical" role="status">
+      <h3>{who} {one ? "is" : "are"} exposed to the internet</h3>
+      <p className="ap-fine" style={{ color: "var(--text-secondary)" }}>
+        No route is needed: {one ? "it is" : "they are"} reachable from outside and can be exploited directly.
+        Fixing other hosts does not protect {one ? "it" : "them"}; remove that exposure first.
+      </p>
+      <p className="ap-fine">
+        That is why there are no routes to list. It is not evidence that the network is safe.
+      </p>
+    </div>
+  );
+}
 
 export function EmptyExplainer({ diagnostics }: { diagnostics: Diagnostics | null | undefined }) {
   const reasons = emptyReasons(diagnostics);
@@ -217,6 +250,7 @@ export function PathDetailPanel({ detail }: { detail: PathDetail }) {
               </div>
               <div className="ap-hop-chips">
                 <span className="ap-chip">{techniqueLabel(h.technique)}</span>
+                {capabilityLabel(h.capability) && <span className="ap-chip" data-tone="neutral">{capabilityLabel(h.capability)}</span>}
                 <span className="ap-chip" data-tone={basis.tone} title={basis.caveat ?? undefined}>{basis.label}</span>
                 <span className="ap-chip" title="Ranks steps against each other. Not a prediction.">Likelihood {percent(h.likelihood)}</span>
                 {h.exploited && <span className="ap-chip" data-priority="high"><ShieldAlert size={11} aria-hidden="true" /> Exploits a finding{h.cvss != null ? ` · CVSS ${h.cvss}` : ""}</span>}

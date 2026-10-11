@@ -35,12 +35,15 @@ import {
   type ReportDerivedRegionalObligationPointer,
   type ReportDocument,
   type ReportEvidence,
+  roleSummary,
   type ReportEvidenceArtifact,
   type ReportFinding,
   type ReportFindingEvent,
   type ReportRegulatoryProfile,
   type ReportRecommendation,
   type ReportRemediationPlan,
+  type ReportFixPlan,
+  type ReportCoverageSheet,
   type ReportRetestRecord,
 } from "../../lib/report/report-document";
 import { SEV_COLOR, toSeverity } from "../../lib/severity";
@@ -483,6 +486,71 @@ function RecommendationRecord({ recommendation, index }: {
   );
 }
 
+function CoverageSheet({ sheet }: { sheet: ReportCoverageSheet }) {
+  const notChecked = sheet.rules.filter((rule) => rule.verdict === "no_evidence_collected");
+  const unassessed = sheet.rules.filter((rule) => rule.verdict === "schema_drift" || rule.verdict === "rule_error");
+  return (
+    <div className="rr-sec" aria-label="Assessment coverage">
+      <h4>Assessment coverage</h4>
+      <p>
+        {sheet.rules_total} checks: {sheet.rules_with_finding} raised a finding, {sheet.rules_evaluated_clean} ran and
+        found nothing, {sheet.rules_not_checked} were not checked, {sheet.rules_could_not_assess} could not be assessed.
+        {" "}{sheet.scan_use_case ? `Scan: ${sheet.scan_use_case}${sheet.scan_intensity ? ` (${sheet.scan_intensity})` : ""}. ` : ""}
+        {Array.isArray(sheet.ports_scanned) ? `Ports scanned: ${sheet.ports_scanned.join(", ")}.` : (sheet.ports_scanned_note ?? "")}
+      </p>
+      <p className="cr-caution">{sheet.interpretation}</p>
+      {notChecked.length > 0 && (
+        <details>
+          <summary>{notChecked.length} {notChecked.length === 1 ? "check did" : "checks did"} not run — absence of a finding says nothing about {notChecked.length === 1 ? "it" : "them"}</summary>
+          <ul className="cr-list">{notChecked.map((rule) => <li key={rule.rule_id}><code>{rule.rule_id}</code> {rule.title ?? ""}</li>)}</ul>
+        </details>
+      )}
+      {unassessed.length > 0 && (
+        <details>
+          <summary>{unassessed.length} {unassessed.length === 1 ? "check" : "checks"} could not be assessed</summary>
+          <ul className="cr-list">{unassessed.map((rule) => <li key={rule.rule_id}><code>{rule.rule_id}</code> — {rule.reasons.join("; ") || rule.verdict}</li>)}</ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function StandardTextChip({ finding, field }: { finding: ReportFinding; field: string }) {
+  if (finding.narrative_sources?.[field] !== "knowledge_base") return null;
+  return (
+    <span className="cr-chip" title="Standard text for this class of weakness from the knowledge base; not written for this specific finding.">
+      Standard text
+    </span>
+  );
+}
+
+function FixPlan({ plan }: { plan: ReportFixPlan }) {
+  return (
+    <article className="cr-plan">
+      <div className="cr-plan-head">
+        <div><strong>{plan.title || plan.summary || "Fix plan"}</strong></div>
+        <span className="cr-chip">Standard fix plan — not reviewed</span>
+      </div>
+      <dl className="cr-inline-meta">
+        <div><dt>Effort</dt><dd>{plan.effort ?? "Not recorded"}</dd></div>
+        <div><dt>Remediation risk</dt><dd>{plan.remediation_risk ?? "Not recorded"}</dd></div>
+      </dl>
+      <ol className="cr-plan-steps">
+        {plan.steps.map((step) => (
+          <li key={step.step}>
+            <strong>{step.tier ? `[${step.tier}] ` : ""}{step.title}</strong>
+            {step.description && <p>{step.description}</p>}
+            {step.commands_for_os?.length ? <pre>{step.commands_for_os.join("\n")}</pre> : null}
+          </li>
+        ))}
+      </ol>
+      {plan.verification_check?.check && (
+        <p><strong>Verify:</strong> {plan.verification_check.check}{plan.verification_check.expected ? ` — expected: ${plan.verification_check.expected}` : ""}</p>
+      )}
+    </article>
+  );
+}
+
 function RemediationPlan({ plan }: { plan: ReportRemediationPlan }) {
   return (
     <article className="cr-plan">
@@ -790,11 +858,24 @@ export function FindingReport({ finding, ordinal, anchor = true }: { finding: Re
       <section className="cr-finding-section">
         <h4><ListChecks size={14} />Description, technical detail, and recorded impact</h4>
         <div className="cr-two-up">
-          <div><h5>Description</h5><RecordedBlock value={finding.description} empty="No description recorded." /></div>
-          <div><h5>Technical details</h5><RecordedBlock value={finding.technical_details} empty="No technical details recorded." /></div>
-          <div><h5>Technical impact</h5><RecordedBlock value={finding.impact} empty="No technical impact recorded." /></div>
-          <div><h5>Business impact</h5><RecordedBlock value={finding.business_impact} empty="No business impact recorded." /></div>
-          <div><h5>Exploitation and attack context</h5><RecordedBlock value={finding.exploitation} empty="No exploitation context recorded." /></div>
+          <div><h5>Description<StandardTextChip finding={finding} field="description" /></h5><RecordedBlock value={finding.description} empty="No description recorded." /></div>
+          <div><h5>Technical details<StandardTextChip finding={finding} field="technical_details" /></h5><RecordedBlock value={finding.technical_details} empty="No technical details recorded." /></div>
+          <div><h5>Technical impact<StandardTextChip finding={finding} field="impact" /></h5><RecordedBlock value={finding.impact} empty="No technical impact recorded." /></div>
+          <div><h5>Business impact<StandardTextChip finding={finding} field="business_impact" /></h5><RecordedBlock value={finding.business_impact} empty="No business impact recorded." /></div>
+          <div><h5>Exploitation and attack context<StandardTextChip finding={finding} field="exploitation" /></h5><RecordedBlock value={finding.exploitation} empty="No exploitation context recorded." /></div>
+          {finding.not_applicable_reasons && Object.keys(finding.not_applicable_reasons).length > 0 && (
+            <div>
+              <h5>Scoring not applicable</h5>
+              <ul className="cr-list">
+                {Object.entries(finding.not_applicable_reasons).map(([key, reason]) => (
+                  <li key={key}><strong>{key.toUpperCase()}</strong> — {reason}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {finding.detection_rationale && (
+            <div><h5>Why this was flagged</h5><RecordedBlock value={finding.detection_rationale} /></div>
+          )}
           <div><h5>Reproduction or validation steps</h5><RecordedBlock value={finding.reproduction_steps} empty="No reproduction or validation steps recorded." /></div>
           <div><h5>Root cause</h5><RecordedBlock value={finding.root_cause} empty="No root cause recorded." /></div>
           <div><h5>Preconditions</h5><RecordedBlock value={finding.preconditions} empty="No preconditions recorded." /></div>
@@ -847,6 +928,7 @@ export function FindingReport({ finding, ordinal, anchor = true }: { finding: Re
             <div><dt>FQDN</dt><dd>{finding.asset.fqdn ?? "Not recorded"}</dd></div>
             <div><dt>Type</dt><dd>{finding.asset.asset_type}</dd></div>
             <div><dt>Criticality</dt><dd>{finding.asset.criticality}</dd></div>
+            {roleSummary(finding.asset) && <div><dt>Role</dt><dd>{roleSummary(finding.asset)}</dd></div>}
             <div><dt>Operating system</dt><dd>{[finding.asset.os, finding.asset.os_version].filter(Boolean).join(" ") || "Not recorded"}</dd></div>
             <div><dt>Environment</dt><dd>{finding.asset.environment ?? "Not recorded"}</dd></div>
             <div><dt>Owner</dt><dd>{finding.asset.owner ?? "Not recorded"}</dd></div>
@@ -936,6 +1018,7 @@ export function FindingReport({ finding, ordinal, anchor = true }: { finding: Re
         </div>
         <div className="cr-stack">
           {finding.remediation.reviewed_plans.map((plan) => <RemediationPlan key={plan.id} plan={plan} />)}
+          {finding.remediation.fix_plan && <FixPlan plan={finding.remediation.fix_plan} />}
         </div>
         <GapList gaps={finding.remediation.gaps} />
       </section>
@@ -1191,6 +1274,12 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
           <details className="rr-more">
             <summary>Detailed counts by severity and status</summary>
             <p className="cr-executive-copy">{executiveSummaryText(report.summary)}</p>
+            {report.summary.issue_count != null && report.summary.issue_count < report.summary.total_findings && (
+              <p className="cr-executive-copy">
+                {report.summary.total_findings} findings describe {report.summary.issue_count} distinct issues
+                (one per asset and service); findings on the same service are grouped under one issue.
+              </p>
+            )}
             <div className="cr-two-up">
               <div className="cr-table-wrap">
                 <table className="cr-table">
@@ -1260,6 +1349,7 @@ export function CanonicalReportDocument({ report }: { report: ReportDocument }) 
             ? <p className="rr-missing">The methodology, tools and limitations are not recorded for this engagement.</p>
             : missingMethod.length > 0 && <p className="rr-missing">Not recorded: {missingMethod.join(", ")}.</p>}
           <p className="cr-caution"><AlertTriangle size={13} />Absence of a recorded limitation does not establish that the assessment had no limitations.</p>
+          {report.coverage_sheet && <CoverageSheet sheet={report.coverage_sheet} />}
         </section>
 
         <section className="cr-report-section cr-findings-section rr-section" aria-labelledby="finding-register">

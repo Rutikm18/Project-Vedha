@@ -74,3 +74,35 @@ def test_severity_remains_an_impact_signal_without_cvss():
     medium = _rank(severity="medium", cvss_score=None)
 
     assert critical > medium
+
+
+_SEVERITIES = ("info", "low", "medium", "high", "critical")
+
+
+def test_severity_is_a_hard_band_best_case_lower_never_beats_worst_case_higher():
+    """M3: a Medium with every amplifier maxed must not outrank a Critical with none."""
+    best = dict(cvss_score=None, epss_score=1.0, kev=True, exploit_validated=True,
+                verification_state="confirmed", confidence=100, asset_criticality="critical",
+                internet_facing=True, auth_enforced=False)
+    worst = dict(cvss_score=None, epss_score=0.0, kev=False, exploit_validated=False,
+                 verification_state="contradicted", confidence=0, asset_criticality="low",
+                 internet_facing=False, auth_enforced=True)
+    for lower, higher in zip(_SEVERITIES, _SEVERITIES[1:]):
+        assert compute_risk_rank(severity=lower, **best) < compute_risk_rank(severity=higher, **worst)
+
+
+def test_band_ordering_holds_with_cvss_present():
+    medium_hot = _rank(severity="medium", cvss_score=10.0, epss_score=1.0, kev=True,
+                       verification_state="confirmed", internet_facing=True)
+    critical_cold = _rank(severity="critical", cvss_score=0.0, epss_score=0.0,
+                          verification_state="contradicted", internet_facing=False,
+                          auth_enforced=True, asset_criticality="low", confidence=0)
+    assert medium_hot < critical_cold
+
+
+def test_within_a_band_context_still_orders():
+    assert _rank(severity="high", internet_facing=True) > _rank(severity="high", internet_facing=False)
+
+
+def test_unknown_severity_is_treated_as_info():
+    assert _rank(severity="bogus", cvss_score=None) <= 99

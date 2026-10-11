@@ -100,11 +100,14 @@ export const KILL_CHAIN_PHASE_COLOR: Record<string, string> = {
   "Collection": BLUE, "Exfiltration": RED, "Impact": RED,
 };
 
-/** Manager finding risk (0–1000) → semantic response color. */
+/** Manager finding risk (0–1000) → semantic response color.
+ *  The cut-offs ARE the severity bands of the backend score (risk_rank.py): critical 750–1000,
+ *  high 500–749, medium 250–499, below that low/info. A colour must never contradict the
+ *  severity the score was banded into. */
 export function riskScoreColor(score: number): string {
-  if (score >= 800) return RED;
-  if (score >= 600) return ORANGE;
-  if (score >= 400) return AMBER;
+  if (score >= 750) return RED;
+  if (score >= 500) return ORANGE;
+  if (score >= 250) return AMBER;
   return STONE;
 }
 

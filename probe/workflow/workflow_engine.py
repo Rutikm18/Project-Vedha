@@ -66,6 +66,8 @@ from scanner.smtp_scanner import SMTPScanner as SMTPScanner
 from scanner.msrpc_scanner import MSRPCScanner as MSRPCScanner
 from scanner.rdp_scanner import RDPScanner as RDPScanner
 from scanner.printer_scanner import PrinterScanner as PrinterScanner
+from scanner.iot_scanner import IoTScanner as IoTScanner
+from scanner.mobile_scanner import MobileScanner as MobileScanner
 from scanner.ssh_collector import SSHCollector
 from scanner.windows_collector import WindowsCollector
 
@@ -74,8 +76,8 @@ from .branches import BRANCHES, BranchSpec
 from .cache import WorkflowCache
 from .host_health import HostHealthMonitor
 from .gates import (
-    PROFILE_PORTS, PROFILE_DEEP_BRANCHES, SMB_PORTS, UDP_PORTS,
-    gate_0_is_passive_profile, gate_2_host_discovery, gate_3_port_scan,
+    PROFILE_PORTS, PROFILE_DEEP_BRANCHES, UDP_PORTS,
+    branch_trigger_ports, gate_0_is_passive_profile, gate_2_host_discovery, gate_3_port_scan,
     gate_4_service_banner, gate_4b_os_fingerprint,
     gate_5_branch_eligible, gate_6_credentialed_collection,
 )
@@ -222,9 +224,11 @@ def _port_candidates(profile: str, service_filter: set[str] | None,
     for spec in BRANCHES:
         if spec.branch not in requested or spec.datagram:
             continue          # datagram branches need no TCP port in the sweep
-        # smb is host-level for the deep scan, but its ports still belong in the
-        # TCP sweep so the SMB stage has an open 445 to gate on.
-        ports.update(SMB_PORTS if spec.host_level else spec.ports)
+        # A host-level branch (smb, iot, mobile) scans the host rather than a port
+        # list, but its TRIGGER ports still belong in the TCP sweep: the gate only
+        # passes when one of them is open. This used to add SMB_PORTS for every
+        # host-level branch, which was right only while smb was the only one.
+        ports.update(branch_trigger_ports(spec.branch) if spec.host_level else spec.ports)
     return sorted(ports)
 
 

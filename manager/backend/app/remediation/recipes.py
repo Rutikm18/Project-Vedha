@@ -465,6 +465,26 @@ _P: list[Recipe] = [
         ("CWE-327", "MITRE T1040", "CIS Benchmark — SSH Server Configuration (ciphers/MACs/KEX)"), effort="low"),
 
     Recipe(
+        "POSTURE-SSH-LEGACY-ALGORITHMS", 1, "Retire legacy SSH algorithms on {host}", "mitigation", "mitigate",
+        "Only current KEX/cipher/MAC/host-key algorithms offered",
+        (
+            S("fix", "Trim deprecated algorithms from sshd",
+              "{product} {version} on {host}:{port} still offers deprecated (not broken) algorithms such "
+              "as SHA-1 MACs or CBC ciphers. Remove them once your clients no longer need them.",
+              lin=("# /etc/ssh/sshd_config:",
+                   "#   MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com",
+                   "#   Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes128-ctr",
+                   "sudo sshd -t && sudo systemctl reload sshd"),
+              net=("Set the appliance's SSH profile to modern algorithms only",),
+              pre=("Check that no automation still depends on the deprecated algorithms.",),
+              downtime="none (reload)", rollback="Restore the previous sshd_config and reload", risk="low"),
+        ),
+        "Review the SSH algorithm policy at each OpenSSH upgrade.",
+        V("ssh_scan", "SSH algorithm negotiation on {ip}:{port} offers no SHA-1 or CBC algorithms",
+          "Legacy algorithms absent", linux="ssh -Q mac; nmap --script ssh2-enum-algos -p {port} {ip}"),
+        ("CWE-327", "MITRE T1040", "CIS Benchmark — SSH Server Configuration (ciphers/MACs/KEX)"), effort="low"),
+
+    Recipe(
         "POSTURE-FTP-ANONYMOUS-LOGIN", 1, "Disable anonymous FTP on {host}", "mitigation", "mitigate",
         "Anonymous FTP login refused",
         (
@@ -1375,7 +1395,165 @@ GENERIC = Recipe(
     (), effort="medium")
 
 
-RECIPES: dict[str, Recipe] = {r.recipe_id: r for r in (*_P, *_P_V2, *_E, CVE_PATCH, GENERIC)}
+# ── Rules for UDP facts the agent already collected (M6) ──────────────────────
+
+_P_UDP: list[Recipe] = [
+    Recipe(
+        "POSTURE-SIP-EXPOSED", 1, "Restrict the SIP service on {host}:{port}", "mitigation",
+        "mitigate", "SIP reachable only from the trunks and phones that need it",
+        (
+            S("containment", "Limit SIP to known peers",
+              "Allow UDP/TCP 5060 and TLS 5061 on {host} ({ip}) only from your SIP trunk providers "
+              "and internal phone networks.",
+              lin=("sudo ufw allow from <trusted-subnet> to any port 5060 proto udp",
+                   "sudo ufw deny 5060/udp"),
+              net=("Add an ACL on the upstream firewall permitting 5060/5061 to {ip} only from <trusted-subnet>",),
+              gen=("Restrict 5060/5061 on {ip} to <trusted-subnet> at the nearest firewall",),
+              rollback="Remove the rule to restore the previous reachability."),
+            S("fix", "Harden registration and calling",
+              "Require authentication on REGISTER/INVITE, rate-limit failed registrations, and block "
+              "international or premium-rate dial plans that are not needed.",
+              gen=("Enable SIP digest authentication, fail2ban-style lockout and call-barring on the PBX/SBC",)),
+        ),
+        "Place the PBX behind an SBC and allow SIP only from provider address ranges.",
+        V("udp_scan", "SIP OPTIONS to {ip}:{port}/udp from an untrusted network gets no SIP reply",
+          "No response / filtered"),
+        ("CWE-200", "MITRE T1595.002"), effort="low"),
+
+    Recipe(
+        "POSTURE-NETBIOS-EXPOSED", 1, "Close the NetBIOS name service on {host}", "mitigation",
+        "mitigate", "NetBIOS name service not reachable from untrusted networks",
+        (
+            S("containment", "Block NetBIOS at the boundary",
+              "Drop UDP/137 and 138 and TCP/139 to {host} ({ip}) from networks that do not need "
+              "Windows name resolution.",
+              net=("Deny udp/137, udp/138 and tcp/139 to {ip} from <untrusted-subnet>",),
+              gen=("Block UDP 137/138 and TCP 139 to {ip} from untrusted networks",)),
+            S("fix", "Disable NetBIOS over TCP/IP where it is not needed",
+              "Disable NetBIOS over TCP/IP on the interface of {host}; keep DNS for name resolution.",
+              win=("Get-NetAdapter | ForEach-Object {{ (Get-WmiObject Win32_NetworkAdapterConfiguration "
+                   "-Filter \"Index=$($_.InterfaceIndex)\").SetTcpipNetbios(2) }}",),
+              lin=("# Samba: in [global] of /etc/samba/smb.conf set:  disable netbios = yes",
+                   "sudo testparm -s && sudo systemctl restart smbd"),
+              gen=("Disable NetBIOS over TCP/IP in the host's network settings",),
+              downtime="legacy name lookups stop working", rollback="Re-enable NetBIOS over TCP/IP"),
+        ),
+        "Use DNS only for name resolution and disable LLMNR/NBT-NS by policy.",
+        V("udp_scan", "NetBIOS node-status query to {ip}:{port}/udp from an untrusted network gets no reply",
+          "No response / filtered"),
+        ("CWE-200", "MITRE T1046"), effort="low"),
+
+    Recipe(
+        "POSTURE-MDNS-EXPOSED", 1, "Keep mDNS on the local link for {host}", "mitigation",
+        "mitigate", "Multicast DNS not answering queries from routed networks",
+        (
+            S("containment", "Block mDNS from routed networks",
+              "Drop UDP/5353 to {host} ({ip}) from anything other than the local segment.",
+              net=("Deny udp/5353 to {ip} from routed (non-local) networks",),
+              gen=("Block UDP 5353 to {ip} from routed networks",)),
+            S("fix", "Disable the responder where discovery is not needed",
+              "Stop the Avahi/Bonjour responder on {host} if no service discovery is required.",
+              lin=("sudo systemctl disable --now avahi-daemon.socket avahi-daemon.service",),
+              win=("Set-Service -Name 'Bonjour Service' -StartupType Disabled -ErrorAction SilentlyContinue",),
+              gen=("Disable the mDNS/Bonjour/Avahi responder",),
+              downtime="local service discovery stops", rollback="Re-enable the responder"),
+        ),
+        "Restrict service discovery to the segments that need it.",
+        V("udp_scan", "A unicast mDNS query to {ip}:{port}/udp gets no response", "No response"),
+        ("CWE-200", "MITRE T1046"), effort="low"),
+
+    Recipe(
+        "POSTURE-IKE-AGGRESSIVE-MODE", 1, "Disable IKE aggressive mode on {host}", "mitigation",
+        "mitigate", "IKEv1 aggressive mode disabled; IKEv2 or main mode with strong authentication",
+        (
+            S("fix", "Turn off aggressive mode",
+              "Disable IKEv1 aggressive mode on the VPN gateway {host} and move peers to main mode "
+              "or IKEv2.",
+              net=("Disable IKE aggressive mode in the gateway's IKE/ISAKMP policy",),
+              lin=("# strongSwan: in ipsec.conf set  aggressive=no  and  keyexchange=ikev2",
+                   "sudo ipsec reload"),
+              gen=("Disable IKEv1 aggressive mode in the VPN gateway configuration",),
+              downtime="peers using aggressive mode must be reconfigured", rollback="Restore the previous IKE policy"),
+            S("hardening", "Replace weak pre-shared keys",
+              "Rotate any pre-shared key that was used with aggressive mode to a long random value, "
+              "or move to certificate authentication.",
+              gen=("Rotate the pre-shared key (>= 20 random characters) or use certificates",)),
+        ),
+        "Prefer certificate-based IKEv2 and monitor for repeated aggressive-mode requests.",
+        V("udp_scan", "An IKE probe to {ip}:{port}/udp is not answered in aggressive mode",
+          "Exchange type is not 4 (aggressive)"),
+        ("CWE-522", "MITRE T1110.002"), effort="medium"),
+
+    Recipe(
+        "POSTURE-SNMPV3-NOAUTH-USER", 1, "Require authentication for SNMPv3 on {host}", "mitigation",
+        "mitigate", "Every SNMPv3 user is authPriv (SHA-2 + AES); no noAuthNoPriv users",
+        (
+            _FIREWALL_CONTAIN,
+            S("fix", "Delete noAuthNoPriv users and require authPriv",
+              "An SNMPv3 user on {host} answers reads with no authentication or encryption. Remove it "
+              "and configure users with SHA-2 authentication and AES privacy.",
+              lin=("# net-snmp: remove the user from /var/lib/snmp/snmpd.conf and snmpd.conf, then:",
+                   "sudo net-snmp-create-v3-user -ro -A '<auth-passphrase>' -a SHA -X '<priv-passphrase>' -x AES <user>",
+                   "sudo systemctl restart snmpd"),
+              net=("Delete SNMPv3 users at noAuthNoPriv and require authPriv in the SNMP group settings",),
+              downtime="brief SNMP agent restart", rollback="Restore the previous SNMP configuration"),
+        ),
+        "Restrict SNMP to the management network and monitor for unauthenticated reads.",
+        V("snmp_scan", "An SNMPv3 noAuthNoPriv read to {ip}:{port}/udp returns a Report, not a GetResponse",
+          "No noAuthNoPriv user answers"),
+        ("CWE-306", "MITRE T1078"), effort="low"),
+
+    Recipe(
+        "POSTURE-FTP-ANONYMOUS-WRITE", 1, "Remove anonymous upload on {host}", "mitigation", "mitigate",
+        "Anonymous FTP cannot create, modify or delete files",
+        (
+            _FIREWALL_CONTAIN,
+            S("fix", "Revoke write permission from the anonymous account",
+              "{product} on {host}:{port} accepted an anonymous upload. Remove write access, or "
+              "disable anonymous access altogether.",
+              lin=("# vsftpd: in /etc/vsftpd.conf set",
+                   "#   anonymous_enable=NO   (or: anon_upload_enable=NO, anon_mkdir_write_enable=NO, anon_other_write_enable=NO)",
+                   "sudo systemctl restart vsftpd"),
+              win=("Set-WebConfigurationProperty -Filter /system.ftpServer/security/authentication/"
+                   "anonymousAuthentication -Name enabled -Value False -PSPath IIS:\\",),
+              gen=("Disable anonymous FTP or make its directories read-only",),
+              pre=("Check the FTP root for unexpected files an attacker may already have uploaded.",),
+              downtime="brief FTP service restart", rollback="Restore the previous FTP configuration",
+              risk="low"),
+        ),
+        "Replace FTP with SFTP and authenticated access.",
+        V("ftp_scan", "An anonymous upload to {ip}:{port}/tcp is refused (550/553)", "Write refused"),
+        ("CWE-732", "MITRE T1105"), effort="low"),
+
+    Recipe(
+        "POSTURE-UNIDENTIFIED-SERVICE", 1, "Identify and review the service on {host}:{port}",
+        "mitigation", "mitigate", "The listener is identified, approved and restricted, or closed",
+        (
+            S("containment", "Restrict the unknown listener",
+              "Until it is identified, allow port {port} on {host} ({ip}) only from the networks "
+              "that must reach it.",
+              lin=("sudo ufw allow from <trusted-subnet> to any port {port} proto tcp",
+                   "sudo ufw deny {port}/tcp"),
+              win=("New-NetFirewallRule -DisplayName 'Restrict {port}' -Direction Inbound -Protocol TCP "
+                   "-LocalPort {port} -RemoteAddress <trusted-subnet> -Action Allow",),
+              net=("Add an ACL on the upstream firewall permitting {port}/tcp to {ip} only from <trusted-subnet>",),
+              gen=("Restrict {port}/tcp on {ip} to <trusted-subnet> at the nearest firewall",),
+              rollback="Remove the rule to restore the previous reachability."),
+            S("fix", "Identify the owner of the listener",
+              "Find the process behind port {port} on {host}, confirm it is approved, then close it "
+              "or document it.",
+              lin=("sudo ss -ltnp | grep ':{port} '",),
+              win=("Get-NetTCPConnection -LocalPort {port} | Select-Object OwningProcess; "
+                   "Get-Process -Id (Get-NetTCPConnection -LocalPort {port}).OwningProcess",),
+              gen=("Identify the application listening on {port}/tcp and confirm it is approved",)),
+        ),
+        "Keep a register of approved listening services per host and alert on new ones.",
+        V("service_banner", "A banner probe of {ip}:{port}/tcp identifies the service or the port is closed",
+          "identified is true, or the port is closed"),
+        ("CWE-1188", "MITRE T1046"), effort="low"),
+]
+
+RECIPES: dict[str, Recipe] = {r.recipe_id: r for r in (*_P, *_P_V2, *_P_UDP, *_E, CVE_PATCH, GENERIC)}
 
 # Legacy keyword categories (remediation_kb.classify_finding) → recipe ids, for
 # findings that carry no structured rule id (imports, older probe paths).
@@ -1391,10 +1569,39 @@ LEGACY_CATEGORY: dict[str, str] = {
 }
 
 
+# A composite attack-path finding (CORR-*) is fixed by fixing the weakness it is built from, so it
+# borrows that weakness's recipe instead of falling to the generic one.
+CORRELATION_RECIPE: dict[str, str] = {
+    "CORR-NTLM-RELAY-PATH": "POSTURE-SMB-SIGNING-OFF",
+    "CORR-LEGACY-WINDOWS-SURFACE": "POSTURE-SMB-V1-ENABLED",
+    "CORR-CLEARTEXT-CLUSTER": "POSTURE-EXPOSED-CLEARTEXT",
+    "CORR-DB-UNAUTH-EXPOSED": "POSTURE-DB-UNAUTHENTICATED-ACCESS",
+    "CORR-SNMP-PUBLIC-LATERAL": "POSTURE-SNMP-DEFAULT-COMMUNITY",
+    "CORR-AD-EXPOSURE": "POSTURE-LDAP-ANONYMOUS-BIND",
+    "CORR-MGMT-PLANE-EXPOSED": "POSTURE-RDP-EXPOSED",       # IPMI variant chosen below
+}
+
+
+def _correlation_recipe_id(rule_id: str, finding: Any) -> str | None:
+    target = CORRELATION_RECIPE.get(rule_id)
+    if target is None:
+        return None
+    if rule_id == "CORR-MGMT-PLANE-EXPOSED":
+        ev = getattr(finding, "evidence", None)
+        blob = str((ev or {}).get("correlated") if isinstance(ev, dict) else "")
+        text = f"{getattr(finding, 'title', '')} {getattr(finding, 'description', '')} {blob}".lower()
+        if "ipmi" in text or "bmc" in text:
+            return "POSTURE-IPMI-CIPHER-ZERO"
+    return target
+
+
 def resolve_recipe(ctx: Any, finding: Any) -> Recipe:
-    """rule id → exposed-service category → CVE → legacy keyword class → generic."""
+    """rule id → composite's component → exposed-service category → CVE → legacy keyword class → generic."""
     if ctx.rule_id and ctx.rule_id in RECIPES:
         return RECIPES[ctx.rule_id]
+    corr = _correlation_recipe_id(ctx.rule_id or "", finding) if ctx.rule_id else None
+    if corr and corr in RECIPES:
+        return RECIPES[corr]
     if ctx.category:
         key = f"POSTURE-EXPOSED-{ctx.category.upper()}"
         if key in RECIPES:

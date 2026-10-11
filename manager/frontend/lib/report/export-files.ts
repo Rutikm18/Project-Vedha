@@ -12,7 +12,7 @@ import {
   severityKey,
   severityRows,
 } from "./presentation";
-import type { ReportDocument } from "./report-document";
+import { roleSummary, type ReportDocument } from "./report-document";
 import { redact } from "./finding-model";
 
 export type ReportExportFormat = "csv" | "xlsx" | "pdf" | "docx";
@@ -104,6 +104,23 @@ function remediationText(finding: ReportDocument["findings"][number]): string {
   ].filter(Boolean).join(" | ");
 }
 
+function fixPlanText(finding: ReportDocument["findings"][number]): string {
+  const plan = finding.remediation.fix_plan;
+  if (!plan) return "";
+  const lines = [plan.title || plan.summary || ""];
+  for (const step of plan.steps) lines.push(`${step.step}. ${step.tier ? `[${step.tier}] ` : ""}${step.title}`);
+  const check = plan.verification_check;
+  if (check?.check) lines.push(`Verify: ${check.check}${check.expected ? ` — expected: ${check.expected}` : ""}`);
+  return lines.filter(Boolean).join("\n");
+}
+
+function standardTextFields(finding: ReportDocument["findings"][number]): string {
+  return Object.entries(finding.narrative_sources ?? {})
+    .filter(([, source]) => source === "knowledge_base")
+    .map(([field]) => field)
+    .join("; ");
+}
+
 function recommendationText(finding: ReportDocument["findings"][number]): string {
   return [
     ...finding.remediation.recommendations.map((recommendation) => recommendation.text),
@@ -135,6 +152,8 @@ const FINDING_HEADERS = [
   "Regional profile source", "Regional sector", "Regional jurisdictions",
   "Applicable regional frameworks", "Regional reporting clocks", "Regional context disclaimer",
   "Readiness gaps",
+  "Detection rationale", "Fix plan (ordered steps)", "Standard-text fields", "Score not-applicable reasons",
+  "Device role (confidence)",
 ];
 
 function findingRows(report: ReportDocument): Cell[][] {
@@ -227,6 +246,11 @@ function findingRows(report: ReportDocument): Cell[][] {
     recordedText(report.derived_regional_compliance.reporting_clocks),
     report.derived_regional_compliance.disclaimer,
     finding.readiness_gaps.join("; "),
+    finding.detection_rationale ?? "",
+    fixPlanText(finding),
+    standardTextFields(finding),
+    Object.entries(finding.not_applicable_reasons ?? {}).map(([key, reason]) => `${key.toUpperCase()}: ${reason}`).join(" | "),
+    finding.asset ? (roleSummary(finding.asset) ?? "") : "",
   ]);
 }
 
@@ -328,7 +352,7 @@ function buildXlsx(report: ReportDocument): Buffer {
   const remediationRows: Cell[][] = [[
     "Finding ID", "Recorded remediation", "Recorded at", "Updated by", "Timestamp gap",
     "Reviewed plans", "Structured recommendation records", "Compatibility recommendations",
-    "Combined recommendation text", "Remediation gaps",
+    "Combined recommendation text", "Remediation gaps", "Fix plan (ordered steps)",
   ]];
   const closureRows: Cell[][] = [[
     "Finding ID", "Disposition", "Terminal", "Resolved at", "Resolution method", "Resolution run",
@@ -382,7 +406,7 @@ function buildXlsx(report: ReportDocument): Buffer {
       finding.remediation.timestamp_gap ?? "", recordedText(finding.remediation.reviewed_plans),
       recordedText(finding.remediation.recommendations),
       finding.remediation.recorded_recommendations.join(" | "), recommendationText(finding),
-      finding.remediation.gaps.join("; "),
+      finding.remediation.gaps.join("; "), fixPlanText(finding),
     ]);
     const retest = finding.closure.retest;
     closureRows.push([
@@ -554,6 +578,25 @@ function buildXlsx(report: ReportDocument): Buffer {
     ]);
   }
 
+  const coverageRows: Cell[][] = [["Rule", "Title", "Outcome", "Why / reasons"]];
+  const coverage = report.coverage_sheet;
+  if (coverage) {
+    coverageRows.push(
+      ["(run)", `Detection run ${coverage.run_id}`, `finished ${coverage.run_finished_at ?? "not recorded"}`,
+        `vuln DB ${coverage.vuln_db_version ?? "not recorded"}`],
+      ["(scan)", `${coverage.scan_use_case ?? "use case not recorded"} / ${coverage.scan_intensity ?? "intensity not recorded"}`,
+        coverage.scan_reference ?? "reference not recorded",
+        Array.isArray(coverage.ports_scanned) ? `ports scanned: ${coverage.ports_scanned.join(", ")}`
+          : (coverage.ports_scanned ?? coverage.ports_scanned_note ?? "ports scanned: not recorded")],
+      ["(summary)", `${coverage.rules_total} checks`,
+        `${coverage.rules_with_finding} with a finding, ${coverage.rules_evaluated_clean} evaluated clean, ${coverage.rules_not_checked} not checked, ${coverage.rules_could_not_assess} could not be assessed`,
+        coverage.interpretation],
+    );
+    for (const rule of coverage.rules) {
+      coverageRows.push([rule.rule_id, rule.title ?? "", rule.verdict, rule.reasons.join("; ")]);
+    }
+  }
+
   const sheets: Array<{ name: string; rows: Cell[][] }> = [
     { name: "Overview", rows: overviewRows },
     // The workbook leads with what a reader filters on; the four per-document
@@ -567,6 +610,8 @@ function buildXlsx(report: ReportDocument): Buffer {
     { name: "Gaps", rows: gapRows },
     { name: "Derived Context", rows: derivedContextRows },
     { name: "Regional Context", rows: regionalContextRows },
+    // Last, so the numbered sheets above keep their positions.
+    ...(coverageRows.length > 1 ? [{ name: "Coverage", rows: coverageRows }] : []),
   ];
   const overrides = sheets.map((_, index) =>
     `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`

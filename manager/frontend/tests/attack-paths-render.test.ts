@@ -6,11 +6,12 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { PathMap } from "../app/engagements/[id]/attack-paths/PathMap";
+import { ZoneMap } from "../app/engagements/[id]/attack-paths/ZoneMap";
 import {
-  BetaNotice, CoveragePanel, EmptyExplainer, FixFirstPanel, PathDetailPanel, PathTable,
+  BetaNotice, CoveragePanel, EmptyExplainer, ExposedCallout, FixFirstPanel, PathDetailPanel, PathTable,
 } from "../app/engagements/[id]/attack-paths/Panels";
 import type {
-  Analysis, ChokeAnalysis, Diagnostics, PathDetail, PathSummary,
+  Analysis, ChokeAnalysis, Diagnostics, PathDetail, PathSummary, ZoneView,
 } from "../lib/attack-paths";
 
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
@@ -244,5 +245,92 @@ describe("attack paths is labelled Beta", () => {
     assert.match(page, /<BetaNotice \/>/);
     const toolbar = read("app/engagements/[id]/workspace.tsx");
     assert.match(toolbar, /Attack paths <span className="badge badge-info">Beta<\/span>/);
+  });
+});
+
+describe("a crown jewel exposed outright is not an empty result", () => {
+  test("the callout says it is exposed, that no route is needed, and that this is not 'safe'", () => {
+    const out = html(createElement(ExposedCallout, { targets: [{ asset_id: "j", label: "fin-db-01" }] }));
+    assert.match(out, /data-tone="critical"/);
+    assert.match(out, /fin-db-01 is exposed to the internet/);
+    assert.match(out, /No route is needed/);
+    assert.match(out, /Fixing other hosts does not protect it; remove that exposure first\./);
+    assert.match(out, /That is why there are no routes to list\. It is not evidence that the network is safe\./);
+    assert.doesNotMatch(out, /did not have what it needs/);
+  });
+
+  test("several exposed jewels are counted and the sentence agrees in number", () => {
+    const out = html(createElement(ExposedCallout, { targets: [{ asset_id: "a", label: "a" }, { asset_id: "b", label: "b" }] }));
+    assert.match(out, /2 crown jewels are exposed to the internet/);
+    assert.match(out, /does not protect them/);
+  });
+
+  test("the page shows it instead of the 'nothing modelled' explainer, and does not call the count exposure", () => {
+    const src = readFileSync(join(process.cwd(), "app/engagements/[id]/attack-paths/AttackPathsWorkspace.tsx"), "utf8");
+    assert.match(src, /exposed\.length > 0 \? <ExposedCallout targets=\{exposed\} \/> :/);
+    assert.match(src, /<EmptyExplainer diagnostics=\{whyEmpty\} \/>/);
+    assert.match(src, /crown jewel\$\{exposed\.length === 1 \? "" : "s"\} directly exposed/);
+    assert.match(src, /At most 5 routes are listed per entry point per\s+crown jewel/);
+  });
+});
+
+describe("the subnet map", () => {
+  const view = (over: Partial<ZoneView> = {}): ZoneView => ({
+    engagement_id: "e", computed: true, computed_at: "2026-10-09T09:00:00Z", routes_considered: 6, other_zones: 1, unplaced_assets: 0,
+    zones_hidden: 0, links_hidden: 0, routes_unplaced: 0, entry_unplaced: 0, jewel_unplaced: 0,
+    zones: [
+      { key: "10.1.0.0/24", label: "10.1.0.0/24", hosts: 2, stale_hosts: 1, inferred: false, in_scope: true, entry: true, jewel: false, fix: true, routes: 4 },
+      { key: "10.3.0.0/24", label: "10.3.0.0/24 @ HQ", hosts: 1, stale_hosts: 0, inferred: false, in_scope: true, entry: false, jewel: true, fix: false, routes: 3 },
+    ],
+    links: [{ from: "10.1.0.0/24", to: "10.3.0.0/24", routes: 4, basis: "assumed", weak: true }], ...over,
+  });
+
+  test("a subnet is a box with its range, hosts and roles in words; an assumed step is dashed and says so", () => {
+    const out = html(createElement(ZoneMap, { view: view() }));
+    assert.match(out, /role="img" aria-label="Subnet map: 2 subnets and 1 step between them\./);
+    assert.match(out, />10\.1\.0\.0\/24</);
+    assert.match(out, />2 hosts · 1 not seen recently</);
+    assert.match(out, />ENTRY · FIX HERE</);
+    assert.match(out, />CROWN JEWEL</);
+    assert.match(out, /data-weak="true"/);
+    assert.doesNotMatch(out, /ap-zone-pill/, "no labels on the arrows: crossing steps share a midpoint and would sit on each other");
+    assert.match(out, /Step on an assumed link/);
+    assert.match(out, /Thicker line = more listed routes/);
+    assert.match(out, /10\.3\.0\.0\/24 @ HQ/);
+  });
+
+  test("the same information is in two tables a keyboard and a screen reader can read", () => {
+    const out = html(createElement(ZoneMap, { view: view() }));
+    assert.match(out, /aria-label="Subnets \(table\)" tabindex="0"/);
+    assert.match(out, /aria-label="Steps between subnets \(table\)" tabindex="0"/);
+    assert.match(out, /<th scope="col">Hosts seen<\/th>/);
+    assert.match(out, /Entry, Fix here/);
+    assert.match(out, /<span class="ap-chip" data-tone="weak">Assumed route<\/span>/);
+  });
+
+  test("hosts not recorded are said to be, never shown as 0; a subnet with no role is 'on a route'", () => {
+    const out = html(createElement(ZoneMap, { view: view({ zones: [
+      { key: "x", label: "x", hosts: null, stale_hosts: null, inferred: false, in_scope: true, entry: false, jewel: false, fix: false, routes: 1 },
+    ], links: [] }) }));
+    assert.match(out, />hosts not recorded</);
+    assert.match(out, />ON A ROUTE</);
+    assert.doesNotMatch(out, />0 hosts</);
+  });
+
+  test("names are escaped, and nothing is drawn when there are no subnets", () => {
+    const out = html(createElement(ZoneMap, { view: view({ zones: [
+      { key: "k", label: "<script>alert(1)</script>", hosts: 1, stale_hosts: 0, inferred: true, in_scope: true, entry: true, jewel: true, fix: false, routes: 1 },
+    ], links: [] }) }));
+    assert.doesNotMatch(out, /<script>alert/);
+    assert.match(out, /&lt;script&gt;/);
+    assert.match(out, /INFERRED SUBNET/);
+    assert.equal(html(createElement(ZoneMap, { view: view({ zones: [], links: [] }) })), "");
+  });
+
+  test("the page reads it after the list, never before it, and a failure does not touch the routes", () => {
+    const src = readFileSync(join(process.cwd(), "app/engagements/[id]/attack-paths/AttackPathsWorkspace.tsx"), "utf8");
+    assert.match(src, /queryKey: \["attack-path-zones", engagementId\],\s*queryFn: \(\) => attackPathsApi\.zones\(engagementId\),\s*enabled: list\.isSuccess,/);
+    assert.match(src, /The subnet map could not be loaded\. The routes below are unaffected\./);
+    assert.match(src, /A step marked assumed has not been observed\./);
   });
 });

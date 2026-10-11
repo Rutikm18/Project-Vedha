@@ -41,6 +41,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable
 
 from app.detection.asset_identity import MODE_GLOBAL, MODE_PER_SITE, is_partitionable
+from app.intel.device_role import drives_amplifier
 
 POSTURE_FLAT = "flat"
 POSTURE_SEGMENTED = "segmented"
@@ -164,7 +165,11 @@ def derive_topology(assets: Iterable[Any], scope_cidrs: Iterable[str] | None = N
             seg = segments[key] = Segment(key=key, cidr=str(net), inferred=inferred, scoped=scoped, site=site)
         seg.members.append(aid)
         role = str(_attr(a, "device_role") or "").lower()
-        if role in _GATEWAY_ROLES:
+        # A gateway is a routing claim: only a trustworthy network-device role counts (a Linux
+        # server answering on router ports is not one). Roles recorded before confidences
+        # existed keep counting.
+        if role in _GATEWAY_ROLES and drives_amplifier(
+                role, _attr(a, "role_confidence"), _attr(a, "os")):
             seg.gateways.append(aid)
 
     keys = sorted(segments)

@@ -36,5 +36,108 @@
    "responded": true,
    "monlist_enabled": true
   }
+ },
+ {
+  "scanner": "udp_scan",
+  "target": "10.0.0.16",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 5060,
+  "proto": "udp",
+  "status": "open",
+  "data": {
+   "service": "sip",
+   "responded": true,
+   "reply_bytes": 412,
+   "sip_response": "SIP/2.0 200 OK",
+   "server": "redacted"
+  }
+ },
+ {
+  "scanner": "udp_scan",
+  "target": "10.0.0.17",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 137,
+  "proto": "udp",
+  "status": "open",
+  "data": {
+   "service": "netbios-ns",
+   "responded": true,
+   "reply_bytes": 193
+  }
+ },
+ {
+  "scanner": "udp_scan",
+  "target": "10.0.0.18",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 5353,
+  "proto": "udp",
+  "status": "open",
+  "data": {
+   "service": "mdns",
+   "responded": true,
+   "reply_bytes": 96,
+   "mdns_response": true,
+   "answer_count": 2
+  }
+ },
+ {
+  "scanner": "udp_scan",
+  "target": "10.0.0.19",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 500,
+  "proto": "udp",
+  "status": "open",
+  "data": {
+   "service": "ike",
+   "responded": true,
+   "reply_bytes": 156,
+   "version": "IKEv1.0",
+   "exchange_type": 4,
+   "vendor_fingerprint": "ikev1"
+  }
+ },
+ {
+  "scanner": "service_banner",
+  "target": "10.0.0.20",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 6100,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "banner": null,
+   "tls_probed": true,
+   "identified": false,
+   "raw_hex": ""
+  }
+ },
+ {
+  "scanner": "snmp_scan",
+  "target": "10.0.0.21",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 161,
+  "proto": "udp",
+  "status": "open",
+  "data": {
+   "snmpv3_present": true,
+   "v1v2c_community": null,
+   "snmpv3_noauth_user": "initial"
+  }
+ },
+ {
+  "scanner": "ftp_scan",
+  "target": "10.0.0.22",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 21,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "ftp": true,
+   "banner": "220 redacted",
+   "software": "vsftpd",
+   "anonymous_login": true,
+   "anon_read": true,
+   "file_sample": [],
+   "anon_write": true
+  }
  }
 ]

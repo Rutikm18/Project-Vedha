@@ -160,6 +160,56 @@ def freshness_days_from_roe(rules_of_engagement: dict | None) -> int | None:
     return val or None
 
 
+def _finding_evidence(finding: Any) -> dict[str, Any]:
+    ev = getattr(finding, "evidence", None)
+    return ev if isinstance(ev, dict) else {}
+
+
+def _finding_capability(finding: Any) -> tuple[str | None, str | None]:
+    """(capability, source) this finding is classified as (P2), from its rule_id /
+    category / ATT&CK technique. Only a curated-rule source may grant control."""
+    from app.detection.capability_map import classify
+
+    ev = _finding_evidence(finding)
+    return classify(
+        ev.get("rule_id"),
+        ev.get("category"),
+        getattr(finding, "mitre_techniques", None) or ev.get("mitre"),
+        ev,
+    )
+
+
+def _finding_state(finding: Any) -> str | None:
+    """The finding's own state for step likelihood: the posture state when present
+    (confirmed/suspected/potential), else the verification verdict."""
+    ev = _finding_evidence(finding)
+    return ev.get("state") or getattr(finding, "verification_state", None)
+
+
+def _finding_confidence(finding: Any) -> Any:
+    """Verification confidence, or the posture rule's own confidence when the
+    finding was never verification-stamped (posture findings carry 0–100)."""
+    vc = getattr(finding, "verification_confidence", None)
+    if vc is not None:
+        return vc
+    return _finding_evidence(finding).get("confidence")
+
+
+def _finding_kev(finding: Any) -> bool:
+    """True when the finding is linked to a CISA KEV-listed CVE (exploitability.py
+    records this on posture evidence; the CVE track sets evidence.kev)."""
+    ev = _finding_evidence(finding)
+    if ev.get("kev"):
+        return True
+    return any(r.get("kev_listed") for r in (ev.get("kev_refs") or []) if isinstance(r, dict))
+
+
+def _finding_exploitability(finding: Any) -> str | None:
+    """The exploitability tier exploitability.py stamped on a posture finding
+    (actively_exploited / likely / elevated / unknown), when present."""
+    return _finding_evidence(finding).get("exploitability")
+
+
 def is_internet_exposed(asset: Any) -> bool:
     tags = getattr(asset, "tags", None) or {}
     if isinstance(tags, dict) and tags.get("internet_exposed"):
@@ -254,6 +304,7 @@ class GraphBuilder:
         for f in findings:
             fid = finding_node_id(f.id)
             cvss = _to_float(getattr(f, "cvss_score", None))
+            cap, cap_source = _finding_capability(f)
             g.add_node(
                 fid,
                 type="Finding",
@@ -268,7 +319,16 @@ class GraphBuilder:
                 # exploitation probability; AC and confidence refine the estimate).
                 epss=_to_float(getattr(f, "epss_score", None)),
                 attack_complexity=_attack_complexity(f),
-                confidence=getattr(f, "verification_confidence", None),
+                confidence=_finding_confidence(f),
+                # P2: what the weakness lets an attacker DO, independent of the
+                # `exploitable` flag (which only the AD modules ever set). The
+                # analyzer turns a control-granting capability into a compromise
+                # step just as it does for an exploitable finding (FM-03/12/19).
+                capability=cap,
+                capability_source=cap_source,
+                state=_finding_state(f),
+                kev=_finding_kev(f),
+                exploitability=_finding_exploitability(f),
             )
             aid = asset_node_id(getattr(f, "asset_id", None))
             if getattr(f, "asset_id", None) is not None and g.has_node(aid):
@@ -418,72 +478,74 @@ class GraphBuilder:
     def _add_credential_edges(self, credentials: Iterable[dict[str, Any]]) -> int:
         """
         CREDENTIAL_REUSE edges between assets sharing a credential.
-        ``credentials`` items: {"id": ..., "label": ..., "reused_on": [asset_ids]}.
+        ``credentials`` items: {"id", "label", "reused_on": [asset_ids], "basis"?}.
+        ``basis`` (P3, e.g. "possible" for a shared default credential) rides on the
+        edge so the analyzer and the UI can say how sure the reuse is.
         """
         added = 0
         for cred in credentials:
             cid = f"credential:{cred.get('id')}"
-            self.graph.add_node(cid, type="Credential", label=cred.get("label", str(cred.get("id"))))
+            basis = cred.get("basis", "observed")
+            self.graph.add_node(cid, type="Credential", label=cred.get("label", str(cred.get("id"))),
+                                basis=basis)
             hosts = [asset_node_id(h) for h in cred.get("reused_on", []) if self.graph.has_node(asset_node_id(h))]
             for h in hosts:
                 self.graph.add_edge(h, cid, type="HAS_CREDENTIAL")
             for i, a in enumerate(hosts):
                 for b in hosts[i + 1:]:
-                    self.graph.add_edge(a, b, type="CREDENTIAL_REUSE", weight=0.5, credential=cid)
-                    self.graph.add_edge(b, a, type="CREDENTIAL_REUSE", weight=0.5, credential=cid)
+                    self.graph.add_edge(a, b, type="CREDENTIAL_REUSE", weight=0.5, credential=cid, basis=basis)
+                    self.graph.add_edge(b, a, type="CREDENTIAL_REUSE", weight=0.5, credential=cid, basis=basis)
                     added += 2
         return added
 
-    def add_relay_links(
-        self,
-        relay_links: list[Any],
-        cred_links: list[Any],
-    ) -> tuple[int, int]:
-        """P3: add NTLM relay CONNECTS_TO edges and shared-admin CREDENTIAL_REUSE edges.
+    def add_relay_edges(self, relay_edges: Iterable[dict[str, Any]]) -> int:
+        """NTLM-relay movement through one RELAY HUB per subnet (P3, H3). An attacker
+        who controls ANY coercion source on a subnet can relay to ANY signing-off
+        target on it, so instead of an edge per (source, target) pair — O(n²), which
+        on a flat Windows /24 where almost every host is both is ~40,000 edges and the
+        explosion FM-21 removed — each subnet gets a hub:
 
-        relay_links — list of relay.RelayLink (coercion_source → relay_target).
-        cred_links  — list of relay.CredentialLink (bidirectional shared admin).
+            source  -RELAY_FROM->  relayhub        (controlling a source reaches the hub)
+            relayhub -RELAY_TO->   target          (grants control of the signing-off host)
 
-        Returns (relay_edges_added, credential_edges_added).
-        """
-        g = self.graph
-        relay_added = 0
-        cred_added = 0
+        O(sources + targets) edges, same reachability. The incoming pairwise
+        ``relay_edges`` (one per src→dst, each already same-subnet) are grouped by the
+        target's graph segment. Returns edges added."""
+        from collections import defaultdict
 
-        for link in relay_links:
-            src = asset_node_id(link.source_asset_id)
-            dst = asset_node_id(link.target_asset_id)
-            if not g.has_node(src) or not g.has_node(dst) or src == dst:
+        groups: dict[str, dict[str, Any]] = defaultdict(
+            lambda: {"sources": set(), "targets": {}})
+        for e in relay_edges:
+            src, dst = asset_node_id(e.get("src")), asset_node_id(e.get("dst"))
+            if not (self.graph.has_node(src) and self.graph.has_node(dst)) or src == dst:
                 continue
-            g.add_edge(
-                src, dst,
-                type="CONNECTS_TO",
-                basis=link.basis,
-                technique=link.technique,
-                weight=link.confidence,
-                label=link.label,
-                is_dc_target=link.is_dc_target,
-            )
-            relay_added += 1
+            # Group by the target's subnet so each subnet gets one hub. An unplaced
+            # host (no segment) falls back to a per-host group, degrading to the old
+            # pairwise behaviour for that one host rather than merging subnets.
+            seg = self.graph.nodes[dst].get("segment") or f"_unplaced:{dst}"
+            grp = groups[seg]
+            grp["sources"].add(src)
+            tgt = grp["targets"].setdefault(
+                dst, {"confidence": 0.0, "basis": e.get("basis", "assumed"),
+                      "preconditions": e.get("preconditions")})
+            tgt["confidence"] = max(tgt["confidence"], float(e.get("confidence") or 0.4))
 
-        for link in cred_links:
-            a = asset_node_id(link.asset_id_a)
-            b = asset_node_id(link.asset_id_b)
-            if not g.has_node(a) or not g.has_node(b) or a == b:
+        added = 0
+        for seg, grp in groups.items():
+            if not grp["sources"] or not grp["targets"]:
                 continue
-            attrs = {
-                "type": "CREDENTIAL_REUSE",
-                "basis": link.basis,
-                "technique": link.technique,
-                "weight": link.confidence,
-                "label": link.label,
-                "laps_confirmed_absent": link.laps_confirmed_absent,
-            }
-            g.add_edge(a, b, **attrs)
-            g.add_edge(b, a, **attrs)
-            cred_added += 2
-
-        return relay_added, cred_added
+            hub = f"relayhub:{seg}"
+            self.graph.add_node(hub, type="RelayHub", entity_id=hub,
+                                label=f"NTLM relay within {seg}")
+            for src in sorted(grp["sources"]):
+                self.graph.add_edge(src, hub, type="RELAY_FROM")
+                added += 1
+            for dst, tgt in grp["targets"].items():
+                self.graph.add_edge(hub, dst, type="RELAY_TO", basis=tgt["basis"],
+                                    reachability_confidence=tgt["confidence"],
+                                    technique="T1557.001", preconditions=tgt["preconditions"])
+                added += 1
+        return added
 
     # ── assembly: the engagement graph from plain objects (no DB) ───────────────
 
@@ -501,36 +563,16 @@ class GraphBuilder:
         """Everything build_from_db does after loading rows, from plain objects: assets,
         services and findings, then subnet topology (per-site aware), same-machine
         links and the freshness window. The validation harness (app/graph/validation.py)
-        calls this too, so it measures the code that really runs.
-
-        P2 (capability_map): persisted findings are extended with SyntheticFinding
-        objects that carry exploitable=True for posture/IOA/misconfig findings. This
-        makes the ~80% of real exposures that are not CVEs visible as attack steps
-        (ATTACK_PATH_PLAN.md §3.3 / FM-12).
-        """
+        calls this too, so it measures the code that really runs."""
         from app.detection.asset_identity import link_machines, mode_from_roe
         from app.detection.reachability import derive_topology, posture_from_roe
 
         assets = list(assets)
-        services_list = list(services)
         scope = list(scope_cidrs or [])
         identity_mode = mode_from_roe(rules_of_engagement)
         freshness_days = freshness_days_from_roe(rules_of_engagement)
 
-        # P2: derive capability-based synthetic findings from posture/misconfig findings.
-        # derive_capabilities is pure and fast; failures must not sink the graph build.
-        findings_list = list(findings)
-        try:
-            from app.detection.capability_map import derive_capabilities
-            cap_findings = derive_capabilities(findings_list, assets)
-            if cap_findings:
-                logger.info("graph.capability_map.applied", count=len(cap_findings))
-            all_findings = findings_list + cap_findings
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("graph.capability_map.failed", error=str(exc))
-            all_findings = findings_list
-
-        graph = self.build_asset_graph(engagement_id, assets, services_list, all_findings,
+        graph = self.build_asset_graph(engagement_id, assets, services, findings,
                                        freshness_days=freshness_days, now=now)
         graph.graph["freshness_days"] = freshness_days
         graph.graph["scope_cidrs"] = scope
@@ -544,18 +586,19 @@ class GraphBuilder:
         # P1b-4: one machine seen at several addresses (the dual-homed pivot).
         self.add_machine_links(link_machines(assets, identity_mode, now=now, freshness_days=freshness_days))
 
-        # P3: cross-asset NTLM relay edges (FM-09) and LAPS-aware shared-admin
-        # CREDENTIAL_REUSE edges (FM-08). Pure + isolated; failures never sink the build.
-        try:
-            from app.detection.relay import derive_credential_links, derive_relay_links
-            relay_links = derive_relay_links(all_findings, assets)
-            cred_links = derive_credential_links(all_findings, assets)
-            if relay_links or cred_links:
-                r_added, c_added = self.add_relay_links(relay_links, cred_links)
-                logger.info("graph.relay.applied", relay=r_added, credential=c_added)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("graph.relay.failed", error=str(exc))
+        # P3: credential-reuse and NTLM-relay edges, derived from facts with their
+        # preconditions checked and labelled. Before this, GraphBuilder was never
+        # given a `credentials` structure, so no reuse/relay movement existed (FM-08/09).
+        from app.detection.credentials import derive_credential_edges
 
+        cred = derive_credential_edges(assets, [f for f in findings if is_live_finding(f)], services)
+        self.add_relay_edges(cred["relay_edges"])
+        # H2: shared default credentials are INFORMATION for the report, not graph edges.
+        # A read-only community grants no control, a vendor default is already each host's
+        # own foothold finding, and the default is public (nothing is captured on one host to
+        # reuse on another) — emitting CREDENTIAL_REUSE edges was the FM-08 fallacy and
+        # exploded the graph O(k²) on an estate of identical devices.
+        graph.graph["shared_default_credentials"] = cred["shared_default_credentials"]
         return graph
 
     # ── PostgreSQL loader ───────────────────────────────────────────────────────

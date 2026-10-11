@@ -8,6 +8,9 @@
  *   1. Ledger      — full bleed. What is open, right now.
  *   2. Posture     — posture and scan change left, clock right. Are we winning,
  *                    what changed, and what is late.
+ *   2b. Attack paths (Beta, operator console only) — how an attacker could reach the
+ *                    crown jewels and what to fix first, per engagement. Absent on the
+ *                    customer console.
  *   3. Exposure    — two equal panels. Where the risk sits.
  *   4. Fleet       — live probe/agent state (kept from the previous dashboard;
  *                    it's real-time operational data the ledger doesn't cover).
@@ -28,6 +31,7 @@ import {
   Cpu,
   Gauge,
   GitCompareArrows,
+  Route,
   Shield,
   Timer,
   WifiOff,
@@ -35,12 +39,14 @@ import {
 import { Panel } from "../console/Primitives";
 import { Freshness } from "../console/Freshness";
 import { DataState, SkeletonRows, EmptyState } from "../states/DataState";
-import { useConsolePath, useConsoleQuery, useConsoleQueryKey, type ConsoleKey } from "../../lib/console-source";
+import { useConsoleCapability, useConsolePath, useConsoleQuery, useConsoleQueryKey, type ConsoleKey } from "../../lib/console-source";
 import { LiveOverview } from "./LiveOverview";
 import { PostureScorecard, usePostureScope } from "./PostureScorecard";
 import { SlaStatus } from "./SlaStatus";
 import { PatchComparisonMatrix } from "./PatchComparisonMatrix";
 import { ProtocolRiskCard, ZoneHealthCard } from "./ExposureCards";
+import { AttackPathsPanel } from "./AttackPathsPanel";
+import { attackPathAttention, type Overview } from "../../lib/attack-paths";
 
 /* ------------------------------------------------------------ Agent monitor
    Ported from the previous dashboard so live probe/agent state is preserved.
@@ -61,6 +67,12 @@ interface AttentionSlaSummary { summary?: { breached?: number; atRisk?: number }
 function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
   const findingsPath = useConsolePath("findings");
   const fleetPath = useConsolePath("fleet");
+  // Operator console only (the customer console has no such dataset). The same cached query the Attack paths
+  // section reads, so this adds no request. Its failure is NOT counted below: the section says so itself, and
+  // "urgent work cannot be assessed" is about measured signals.
+  const canSeeAttackPaths = useConsoleCapability("viewAttackPaths");
+  const attackPaths = useConsoleQuery<Overview>("attackPaths", { refetchInterval: 120_000, enabled: canSeeAttackPaths });
+  const attackPathItem = canSeeAttackPaths ? attackPathAttention(attackPaths.data?.summary) : null;
   const findings = useConsoleQuery<AttentionFindingSummary>("findingsSummary", { refetchInterval: 60_000 });
   const sla = useConsoleQuery<AttentionSlaSummary>("sla", { refetchInterval: 60_000 });
   const agents = useConsoleQuery<Array<{ status?: string }>>("agents", { refetchInterval: 15_000 });
@@ -92,6 +104,14 @@ function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
       icon: WifiOff,
       href: fleetPath,
     } : null,
+    // Last: a Beta model's reading never outranks something measured.
+    attackPathItem ? {
+      label: attackPathItem.label,
+      detail: attackPathItem.detail,
+      tone: attackPathItem.tone === "high" ? "var(--sev-high-color)" : "var(--sev-medium-color)",
+      icon: Route,
+      href: attackPathItem.href,
+    } : null,
   ].filter(Boolean) as Array<{
     label: string; detail: string; tone: string; icon: React.ElementType; href: string;
   }>;
@@ -118,7 +138,7 @@ function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
           <h2 id="attention-title">Needs attention now</h2>
           <p>
             {items.length > 0
-              ? "Evidence-backed work ordered by immediate operational impact."
+              ? `Evidence-backed work ordered by immediate operational impact.${attackPathItem ? " Items marked Beta are modelled, not measured." : ""}`
               : failed > 0 ? "Urgent work cannot be fully assessed while signals are unavailable." : "No critical findings, SLA breaches, or offline probes are recorded."}
           </p>
         </div>
@@ -127,7 +147,7 @@ function NeedsAttention({ onOpen }: { onOpen: (href: string) => void }) {
       {items.length > 0 && (
         <div className="attention-strip__items">
           {items.map(({ label, detail, tone, icon: Icon, href }) => (
-            <button key={href} type="button" onClick={() => onOpen(href)} style={{ "--attention-tone": tone } as React.CSSProperties}>
+            <button key={href} type="button" title={`${label}. ${detail}`} onClick={() => onOpen(href)} style={{ "--attention-tone": tone } as React.CSSProperties}>
               <Icon size={15} aria-hidden />
               <span><strong>{label}</strong><small>{detail}</small></span>
             </button>
@@ -238,6 +258,8 @@ function FreshNote({ dataset, staleAfterMs }: { dataset: ConsoleKey; staleAfterM
 export function DashboardGrid() {
   const router = useRouter();
   const findingsPath = useConsolePath("findings");
+  // Operator-only (Beta): the customer console has no attack-path view, so it gets no panel at all.
+  const showAttackPaths = useConsoleCapability("viewAttackPaths");
   // Posture + patch comparison are the only per-engagement panels here; on a
   // multi-engagement console they must say which engagement, or an unlabelled
   // grade reads as the tenant's. Null on the customer console (one engagement,
@@ -304,6 +326,20 @@ export function DashboardGrid() {
           </React.Suspense>
         </Panel>
       </div>
+
+      {showAttackPaths && (
+        <div className="console-band band-4">
+          <Panel
+            title="Attack paths"
+            eyebrow="How an attacker could reach your crown jewels"
+            icon={<Route size={13} />}
+            headingLevel={3}
+            note={<><span className="badge badge-info" title="Attack paths is in beta">Beta</span> <FreshNote dataset="attackPaths" staleAfterMs={300_000} /></>}
+          >
+            <AttackPathsPanel />
+          </Panel>
+        </div>
+      )}
 
       <div className="console-band band-3">
         <Panel title="Protocol risk" eyebrow="Worst finding on each exposed service" icon={<Activity size={13} />} headingLevel={3} note={<FreshNote dataset="exposure" />}>

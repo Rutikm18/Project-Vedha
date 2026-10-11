@@ -10,6 +10,8 @@ export const ATTACK_PATH_STYLES = `
 .ap-card-title svg { color: var(--accent); }
 .ap-card-meta { font-size: 11.5px; color: var(--text-muted); }
 .ap-card-body { padding: var(--space-4); display: grid; gap: var(--space-3); }
+/* A table or map inside scrolls in its own wrapper; without this a grid track grows to its min-content and the text beside it overflows the card. */
+.ap-card-body > * { min-width: 0; }
 
 .ap-status { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
 .ap-status-text { display: grid; gap: 2px; font-size: 12px; color: var(--text-secondary); }
@@ -34,6 +36,7 @@ export const ATTACK_PATH_STYLES = `
 .ap-confidence { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
 
 .ap-callout { display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border: 0.5px solid var(--sev-medium-color); background: var(--sev-medium-bg); }
+.ap-callout[data-tone="critical"] { border-color: var(--sev-critical-color); background: var(--sev-critical-bg); }
 .ap-callout h3 { margin: 0; font-size: 13.5px; font-weight: 650; color: var(--text-primary); }
 .ap-reasons { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
 .ap-reason { display: grid; gap: 2px; padding-left: var(--space-3); border-left: 2px solid var(--border-default); }
@@ -78,10 +81,22 @@ export const ATTACK_PATH_STYLES = `
 .ap-map .ap-node[data-target="true"] .ap-tag { fill: var(--sev-critical-color); }
 .ap-map .ap-node[data-entry="true"] .ap-tag { fill: var(--accent); }
 .ap-map .ap-node[data-dim="true"] { opacity: 0.35; }
-.ap-map .ap-edge { fill: none; stroke: var(--border-strong); stroke-width: 1.25; }
+/* Edges say which host connects to which, so they are content, not decoration: 3:1 against the panel (WCAG 1.4.11). The border tokens are 1.5 to 2.7:1. */
+.ap-map .ap-edge { fill: none; stroke: var(--text-muted); stroke-width: 1.25; }
 .ap-map .ap-edge[data-backward="true"] { stroke-dasharray: 3 3; }
 .ap-map .ap-edge[data-selected="true"] { stroke: var(--accent); stroke-width: 2.5; }
 .ap-map .ap-edge[data-dim="true"] { opacity: 0.3; }
+/* Zone map: a subnet is a box, a step between subnets an arrow. Role is words; marks use --text-muted (3:1). */
+.ap-zones .ap-zone-node rect { fill: var(--bg-surface); stroke: var(--text-muted); stroke-width: 1.25; }
+.ap-zones .ap-zone-node[data-inferred="true"] rect { stroke-dasharray: 2 3; }
+.ap-zones .ap-zone-node[data-entry="true"] rect { stroke: var(--accent); stroke-width: 2; }
+.ap-zones .ap-zone-node[data-jewel="true"] rect { stroke: var(--sev-critical-color); stroke-width: 2; }
+.ap-zones .ap-zone-node[data-entry="true"] .ap-tag { fill: var(--accent); }
+.ap-zones .ap-zone-node[data-jewel="true"] .ap-tag { fill: var(--sev-critical-color); }
+.ap-zones .ap-zone-node[data-fix="true"] .ap-tag { fill: var(--sev-high-color); }
+.ap-zones .ap-zone-sub { fill: var(--text-secondary); }
+.ap-zones .ap-zone-edge path { fill: none; stroke: var(--text-muted); }
+.ap-zones .ap-zone-edge[data-weak="true"] path { stroke-dasharray: 6 4; }
 .ap-legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); font-size: 11.5px; color: var(--text-secondary); }
 .ap-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .ap-swatch { width: 14px; height: 10px; border-radius: 2px; border: 1.5px solid var(--border-default); background: var(--bg-surface); }

@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "probe/agent/**"
+      # The unit tests below also cover the stage engine and scanners
+      # (fan-out, tail budget, SYN pacing); a change there alone must run them.
+      - "probe/workflow/**"
+      - "probe/scanner/**"
       - "probe/tests/**"
       - "probe/install.*"
       - "probe/windows/**"
@@ -56,6 +60,9 @@ jobs:
           tests/test_diagnostics.py
           tests/test_runtime_gate.py
           tests/test_hosting.py
+          tests/test_win_fast_connect.py tests/test_port_scanner_fast_fail.py
+          tests/test_filtered_unverified.py tests/test_quiet_peer_resets.py
+          tests/test_full_coverage_ceiling.py
       - name: Installer contract (POSIX sh; the curl | sh path customers run)
         if: runner.os != 'Windows'
         run: |

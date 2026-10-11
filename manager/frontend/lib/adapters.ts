@@ -218,6 +218,7 @@ export function toUiFinding(api: any): any {
     epssScore: epss,
     epssPercentile: api.epss_percentile ?? 0,
     epssRecorded: api.epss_score != null,
+    notApplicable: (api.scoring_not_applicable ?? {}) as Record<string, string>,
     kevListed: api.kev_listed ?? false,
     kevStatusRecorded: api.kev_listed != null,
     kevDateAdded: api.kev_added_at ?? api.kev_date_added ?? undefined,
@@ -275,6 +276,7 @@ export function toUiFinding(api: any): any {
       criticality: api.asset_context.criticality ?? "unknown",
       owner: api.asset_context.owner ?? null,
       environment: api.asset_context.environment ?? null,
+      suggestedRiskOwner: api.asset_context.suggested_risk_owner ?? null,
     } : null,
     // The scan that most recently produced/confirmed this finding (per-scan-findings).
     // Lets the UI label each finding with its SCN reference / intensity / use-case.
@@ -385,6 +387,14 @@ export function toApiFindingPatch(ui: any): any {
   const out: any = {};
   if (ui.status) out.status = FIND_STATUS_TO_API[String(ui.status).toUpperCase()] ?? "open";
   if (ui.actionReason != null) out.action_reason = String(ui.actionReason);
+  if (ui.riskAcceptance) {
+    // Accepting a risk needs an owner, an expiry and a compensating control (the API refuses otherwise).
+    out.risk_acceptance = {
+      risk_owner: String(ui.riskAcceptance.riskOwner ?? ""),
+      expires_at: String(ui.riskAcceptance.expiresAt ?? ""),
+      compensating_controls: String(ui.riskAcceptance.compensatingControls ?? ""),
+    };
+  }
   if (ui.notes != null) out.notes = ui.notes;
   if (ui.remediation != null) out.remediation = ui.remediation;
   if (typeof ui.exploitable === "boolean") out.exploitable = ui.exploitable;

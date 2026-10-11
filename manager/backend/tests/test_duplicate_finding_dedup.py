@@ -174,3 +174,85 @@ async def test_service_vuln_still_emits_ssh_weak_crypto():
           patch("app.discovery.service_vuln._find_open_duplicate", AsyncMock(return_value=None))):
         created = await create_service_vuln_findings(db, ENGAGEMENT, ssh)
     assert created == 1
+
+
+# ── M1: canonical condition key from the rule definition ─────────────────────
+
+def _nfs_dedicated(asset_ip="10.0.0.9"):
+    return {
+        "rule_id": "POSTURE-NFS-WORLD-READABLE-EXPORT", "title": "NFS export world-readable",
+        "asset_ip": asset_ip, "severity": "high", "state": "confirmed",
+        "category": "misconfiguration", "port": 2049, "remediation": "Restrict the export.",
+        "evidence": {"dedup_key": "exposed:2049"},
+    }
+
+
+def test_probe_udp_exposed_condition_is_distinct_from_tcp():
+    assert exposed_service_condition(161, "udp") == "exposed:161/udp"
+    assert probe_finding_condition({"category": "amplification", "port": 161, "proto": "udp"}) == "exposed:161/udp"
+
+
+@pytest.mark.asyncio
+async def test_dedicated_scanner_merges_with_port_intel_row_and_keeps_strongest_severity():
+    from app.models.enums import FindingSeverity
+    db = _FakeSession()
+    asset = Asset(engagement_id=ENGAGEMENT, ip_address="10.0.0.9")
+    asset.id = uuid.uuid4()
+    port_intel = Finding(
+        engagement_id=ENGAGEMENT, asset_id=asset.id,
+        title="Network file service exposed on 2049 (NFS) (port 2049)",
+        severity=FindingSeverity.medium, status=FindingStatus.open,
+        evidence={"dedup_key": "exposed:2049", "rule_id": "POSTURE-EXPOSED-FILESHARE"})
+    index = {(asset.id, port_intel.title): port_intel,
+             condition_index_key(asset.id, "exposed:2049"): port_intel}
+
+    created, reaffirmed = await _persist(db, [_nfs_dedicated()], open_index=index,
+                                         cache={"10.0.0.9": asset})
+
+    assert (created, reaffirmed) == (0, 1)
+    assert port_intel.severity == FindingSeverity.high            # strongest signal wins
+    rules = {s["rule_id"] for s in port_intel.evidence["signals"]}
+    assert rules == {"POSTURE-EXPOSED-FILESHARE", "POSTURE-NFS-WORLD-READABLE-EXPORT"}
+
+
+@pytest.mark.asyncio
+async def test_different_weakness_on_one_port_stays_a_separate_finding():
+    db = _FakeSession()
+    asset = Asset(engagement_id=ENGAGEMENT, ip_address="10.0.0.7")
+    asset.id = uuid.uuid4()
+    base = {"asset_ip": "10.0.0.7", "state": "confirmed", "category": "weak_crypto",
+            "port": 443, "remediation": "x", "severity": "medium"}
+    cipher = {**base, "rule_id": "POSTURE-TLS-WEAK-CIPHER", "title": "Weak TLS cipher",
+              "evidence": {"dedup_key": "tls-weak-cipher:443"}}
+    version = {**base, "rule_id": "POSTURE-TLS-DEPRECATED-VERSION", "title": "Deprecated TLS",
+               "evidence": {"dedup_key": "tls-deprecated-version:443"}}
+    created, reaffirmed = await _persist(db, [cipher, version], cache={"10.0.0.7": asset})
+    assert (created, reaffirmed) == (2, 0)
+
+
+@pytest.mark.asyncio
+async def test_probe_path_merge_keeps_the_strongest_severity_and_records_the_other_producer():
+    """A probe finding for the same exposed service as an existing engine finding merges onto it;
+    a higher severity from the probe must not be lost."""
+    from app.discovery import finding_translator as T
+    from app.models.enums import FindingSeverity
+    db = _FakeSession()
+    asset = Asset(engagement_id=ENGAGEMENT, ip_address="10.0.0.5")
+    asset.id = uuid.uuid4()
+    existing = Finding(engagement_id=ENGAGEMENT, asset_id=asset.id, title="Telnet exposed",
+                       severity=FindingSeverity.medium, status=FindingStatus.open,
+                       evidence={"dedup_key": "exposed:23", "rule_id": "POSTURE-EXPOSED-CLEARTEXT"})
+    index = {(asset.id, existing.title): existing, condition_index_key(asset.id, "exposed:23"): existing}
+
+    async def fake_resolve(*a, **k):
+        return asset
+
+    async def fake_find(db_, eid, aid, title, *, condition=None, index=None):
+        return existing if condition == "exposed:23" else None
+    with patch.object(T, "_resolve_asset", fake_resolve), patch.object(T, "_find_open_duplicate", fake_find):
+        await T.create_findings_from_probe_result(
+            db, ENGAGEMENT, {"scan_type": "tls_scan", "findings": [
+                {"title": "Cleartext Telnet service reachable", "severity": "high", "target": "10.0.0.5",
+                 "port": 23, "category": "cleartext_protocol", "rule_id": "PROBE-TELNET"}]})
+    assert existing.severity == FindingSeverity.high
+    assert {s["title"] for s in existing.evidence["signals"]} == {"Telnet exposed", "Cleartext Telnet service reachable"}

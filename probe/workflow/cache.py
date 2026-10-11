@@ -54,6 +54,11 @@ FACT_CERTAINTY = {
     "msrpc_scan": "deterministic",
     "rdp_scan": "deterministic",
     "printer_scan": "deterministic",
+    # Host-level IoT / mobile collectors: their TCP handshakes (RTSP, MQTT, CWMP,
+    # ADB, lockdownd) are stable within an engagement. Their UDP answers (SSDP,
+    # mDNS, CoAP) are not — see _UDP_AMBIGUOUS below.
+    "iot_scan": "deterministic",
+    "mobile_scan": "deterministic",
     # Datagram probes: silence is ambiguous (lost packet vs filtered vs absent),
     # so an unanswered probe must stay re-checkable — same call as udp_scan.
     "ipmi_scan": "uncertain",
@@ -64,10 +69,15 @@ FACT_CERTAINTY = {
 }
 
 
+# Scanners that emit BOTH TCP and UDP results: their UDP answers stay re-checkable
+# (no-reply is closed | filtered | dropped), whatever the scanner's TCP certainty.
+_UDP_AMBIGUOUS = frozenset({"port_scan", "iot_scan", "mobile_scan"})
+
+
 def classify_certainty(result: ScanResult) -> str:
     if result.status == "error" or result.error:
         return "uncertain"
-    if result.scanner == "port_scan" and result.proto == "udp":
+    if result.scanner in _UDP_AMBIGUOUS and result.proto == "udp":
         return "uncertain"
     return FACT_CERTAINTY.get(result.scanner, "uncertain")  # unknown scanner: fail conservative
 

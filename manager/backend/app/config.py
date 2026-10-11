@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     # offloading the dashboard's aggregate reads from the primary. Unset →
     # reads fall back to the primary, so this is a no-op until a replica exists.
     database_read_url: str | None = None
+    # F1: Postgres row-level security as defense-in-depth for tenant isolation.
+    # OFF by default — RLS policies ship dormant (permissive when the per-request
+    # app.tenant_id GUC is unset). Turning this on makes get_db set that GUC so
+    # Postgres restricts every protected table to the request's tenant, catching
+    # a forgotten hand-written tenant filter. Requires the app to connect as a
+    # NON-superuser role (superusers bypass RLS). See app/db_rls.py.
+    db_rls_enabled: bool = False
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
@@ -52,6 +59,8 @@ class Settings(BaseSettings):
     # How often the worker checks open findings for SLA transitions to announce
     # (0 disables the watcher).
     sla_watch_interval_seconds: int = 900
+    # How often accepted findings whose acceptance expired are reopened (0 disables it).
+    acceptance_watch_interval_seconds: int = 3600
 
     # Neo4j (attack-path graph store — optional; engine falls back to in-memory NetworkX)
     neo4j_uri: str = "bolt://localhost:7687"

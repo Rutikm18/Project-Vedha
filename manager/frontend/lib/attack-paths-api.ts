@@ -1,5 +1,5 @@
 import { fetchJson } from "./fetcher";
-import type { Analysis, PathDetail, PathList } from "./attack-paths";
+import type { Analysis, PathDetail, PathList, ZoneView } from "./attack-paths";
 
 const base = (engagementId: string) => `/api/engagements/${encodeURIComponent(engagementId)}`;
 
@@ -17,4 +17,6 @@ export const attackPathsApi = {
     fetchJson<PathDetail>(`${base(engagementId)}/attack-paths/${encodeURIComponent(pathId)}`),
   /** Choke points, coverage, freshness and why-empty as of the last computation. Read-only. */
   analysis: (engagementId: string) => fetchJson<Analysis>(`${base(engagementId)}/attack-path-analysis`),
+  /** The stored routes grouped into the subnets they cross. Read-only. */
+  zones: (engagementId: string) => fetchJson<ZoneView>(`${base(engagementId)}/attack-path-zones`),
 };

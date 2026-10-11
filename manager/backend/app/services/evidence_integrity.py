@@ -30,6 +30,7 @@ _CUSTODY_KEYS = frozenset(
         "source_host",
         "scan_provenance",
         "dedup_key",
+        "signals",          # manager roll-up of merged producers; rebuilt every detection run
     }
 )
 _CONTENT_KEYS = ("content", "output", "value")

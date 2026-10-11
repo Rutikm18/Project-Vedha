@@ -21,6 +21,7 @@ Design:
 """
 from __future__ import annotations
 
+from app.intel.device_role import drives_amplifier
 from app.models.enums import FindingSeverity
 
 # ── signal port tables (mirrors probe gates.py / findings.py) ────────────────
@@ -152,7 +153,14 @@ def _group(facts: list[dict], roles: dict[str, dict]) -> dict[str, _HostSignals]
         hosts.setdefault(target, _HostSignals()).observe(fact)
     for ip, sig in hosts.items():
         role = roles.get(ip) or {}
-        sig.finalize(role.get("device_role"), role.get("role_detail"))
+        device_role, role_detail = role.get("device_role"), role.get("role_detail")
+        # A role may only amplify severity when it is trustworthy: a low-confidence or
+        # OS-contradicted classification (a Linux server answering on router ports) is
+        # still stored on the asset but does not turn a finding into a "network device"
+        # or "domain controller" one.
+        if not drives_amplifier(device_role, role.get("role_confidence"), role.get("os")):
+            device_role, role_detail = None, None
+        sig.finalize(device_role, role_detail)
     return hosts
 
 

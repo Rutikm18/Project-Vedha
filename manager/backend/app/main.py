@@ -7,6 +7,8 @@ import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from app.auth.middleware import TenantIsolationMiddleware
 from app.auth.router import router as auth_router
@@ -22,9 +24,11 @@ from app.routers.agent_distribution import router as agent_distribution_router
 from app.routers.agent_ws import router as agent_ws_router  # WebSocket probe push
 from app.routers.ai_report import router as ai_report_router
 from app.routers.ai import router as ai_router
+from app.routers.attack_paths import overview_router as attack_paths_overview_router
 from app.routers.attack_paths import router as attack_paths_router
 from app.routers.detection import router as detection_router
 from app.routers.detection_runs import router as detection_runs_router
+from app.routers.changes import router as changes_router
 from app.routers.agent_advisor import router as agent_advisor_router
 from app.routers.customer_access import (
     router as customer_access_router,
@@ -235,6 +239,21 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
+@app.exception_handler(RedisConnectionError)
+@app.exception_handler(RedisTimeoutError)
+async def redis_unavailable_handler(request: Request, exc: Exception):
+    """Login throttling, refresh tokens and the agent backplane need Redis. Those
+    routes stay failed closed while it is down, but as a 503 the caller can retry
+    and on-call reads "dependency down", not the 500 of a defect in our code. A
+    rejected command (ResponseError) is our defect and still falls through."""
+    logger.error("redis_unavailable", path=request.url.path, exc=str(exc))
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": "A required service is temporarily unavailable. Retry shortly."},
+        headers={"Retry-After": "5"},
+    )
+
+
 # ── Routers ───────────────────────────────────────────────────────────────────
 
 app.include_router(health_router)
@@ -267,8 +286,10 @@ app.include_router(exploits_router)
 app.include_router(validation_router)
 app.include_router(ad_router)
 app.include_router(attack_paths_router)
+app.include_router(attack_paths_overview_router)
 app.include_router(detection_router)
 app.include_router(detection_runs_router)
+app.include_router(changes_router)
 app.include_router(agent_advisor_router)
 app.include_router(ai_report_router)
 app.include_router(ai_router)

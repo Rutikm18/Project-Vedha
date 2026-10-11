@@ -28,7 +28,7 @@ Each use case is dispatched by a stable numeric code; the probe maps it to exact
 | `80` | **Full-Port Audit (all 65,535)** | Every TCP port on a host, with a completeness self-check so a clean result is genuinely clean — catches services hiding on non-standard ports. | ✅ | 20–90 min /host |
 | `81` | **Internet-Exposure Mapping (multi-vantage)** | With two or more probes, separates *truly internet-exposed* services from internal-only ones — answers "what can an outside attacker actually reach?" | ✅ | 5–15 min /24 |
 | `82` | **Deep Port Sweep (few hosts)** | Full 65,535-port stealth sweep budgeted for a small, high-value host set (crown-jewel deep dive). | ✅ | 20–90 min/host (≤3 hosts) |
-| `11` | **Re-scan & Change Detection** | Re-runs an assessment and highlights *what changed* — new hosts, newly opened ports, config drift. | 🟡 | 15–60 min /24 |
+| `11` | **Re-scan & Change Detection** | Re-runs an assessment and highlights *what changed* — new hosts, newly opened ports, config drift. | ✅ | 15–60 min /24 |
 | `20` | **Web & TLS/SSL Security Check** | Grades TLS/SSL config (protocol versions, cipher strength, cert health) on web servers. | 🟡 | 5–15 min |
 | `21` | **Web Application Security Check** | Fingerprints web apps — methods, security headers, server tech — a pre-flight before a full web-app pentest. | 🟡 | 5–15 min |
 | `40` | **Database Exposure Check** | Checks whether MySQL/Postgres/MSSQL/Redis/Mongo are reachable and accept unauthenticated connections. | 🟡 | 3–10 min |
@@ -184,7 +184,6 @@ ATT&CK tactic/technique matrix for the report.
 | Database exposure check (`uc 40`) | DB reachability + unauth as a standalone use case | 🟡 coming_soon |
 | AI & MCP endpoint discovery (`uc 61`) | Exposed inference / MCP server surface | 🟡 collection coming_soon; **manager detection rule shipped** |
 | OT / ICS passive discovery (`uc 70`) | Listen-only industrial inventory | 🟡 coming_soon |
-| Re-scan & change detection (`uc 11`) | Delta reporting between runs | 🟡 coming_soon |
 | EDR/SIEM detection-coverage grader | Matches attack actions vs SIEM/EDR alerts → ATT&CK coverage % + Sigma-rule gap recommendations | 🟡 built, integrating |
 | NVD companion snapshot | Optional NVD/CPE data beside OSV | 🟡 optional |
 | Regional compliance packs + sector/BFSI AI gateway | Jurisdiction-aware guidance (IN/EU/UK/US/ME/APAC), cloud/hybrid/sovereign deployment profiles | 🟡 branch, unmerged |

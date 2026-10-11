@@ -77,7 +77,21 @@ class TestDetect:
         a = _asset(_fact("syn_scan", 4444, {}))
         f = _by_port(P.detect_exposed_services(a))[4444]
         assert f.severity == "high" and f.category == "exposure"
-        assert "backdoor" in f.title.lower() and f.state == "confirmed"
+        # a bare open port is an inference, not a protocol observation (M2)
+        assert "backdoor" in f.title.lower() and f.state == "suspected"
+        assert f.evidence["evidence_basis"] == "port_inference"
+
+    def test_observed_protocol_label_confirms(self):
+        a = _asset(_fact("syn_scan", 23, {}),
+                   _fact("service_banner", 23, {"service": "telnet", "banner": "login:"}))
+        f = _by_port(P.detect_exposed_services(a))[23]
+        assert f.evidence["evidence_basis"] == "protocol_observed" and f.state == "confirmed"
+
+    def test_banner_text_alone_is_an_inference(self):
+        a = _asset(_fact("syn_scan", 4444, {}),
+                   _fact("service_banner", 4444, {"banner": "VEDHA-LAB-CRITICAL-TCP-4444"}))
+        f = _by_port(P.detect_exposed_services(a))[4444]
+        assert f.evidence["evidence_basis"] == "banner_inference" and f.state == "suspected"
 
     def test_internet_facing_escalates_severity(self):
         a = _asset(_fact("syn_scan", 4444, {}), _fact("syn_scan", 3306, {}),
@@ -287,3 +301,31 @@ class TestExposedServiceTraces:
         a = _asset(_fact("port_scan", 4444, {}, status="open"))
         findings = P.detect_exposed_services(a)
         assert [f.port for f in findings] == [4444]
+
+
+# ── dangerous unidentified management ports get an accurate base severity ─────
+# The first lab scan rated Cisco Smart Install (a KEV-listed pre-auth RCE) as a
+# routine "medium remote access". These lock the per-port severity so a takeover
+# port never silently drops back to medium.
+
+def test_cisco_smart_install_is_high_not_medium():
+    r = PI.classify_port(4786, None)
+    assert r is not None and r.category == "remote_access"
+    assert r.severity == "high"            # KEV CVE-2018-0171, unauthenticated
+
+
+def test_unauthenticated_takeover_ports_are_high():
+    for port in (6000, 177, 4899):         # X11, XDMCP, Radmin
+        r = PI.classify_port(port, None)
+        assert r is not None and r.severity == "high", f"port {port} should be high"
+
+
+def test_plain_reachability_ports_stay_medium():
+    for port in (5985, 5900, 179, 427):    # WinRM, VNC (dedicated rule elsewhere), BGP, SLP
+        r = PI.classify_port(port, None)
+        assert r is not None and r.severity == "medium", f"port {port} should stay medium"
+
+
+def test_xdmcp_is_catalogued():
+    # was missing entirely, so an open display manager fell to the generic rule
+    assert 177 in PI.catalog_categories()

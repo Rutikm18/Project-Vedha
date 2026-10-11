@@ -42,6 +42,7 @@ from app.models.detection_run_finding import (
 from app.discovery.finding_translator import (
     AssetCache, _resolve_asset, _find_open_duplicate, prime_asset_cache,
     exposed_service_condition, condition_index_key, DEDUP_KEY,
+    merge_signals, prune_stale_signals, stronger_severity,
 )
 from app.detection.attack_paths import attack_path_findings
 from app.detection.prioritization import _posture_risk_on_manager_scale
@@ -457,6 +458,21 @@ async def _find_remediated_match(db, engagement_id, asset_id, title, *,
 
 
 def _posture_description(p: dict) -> str | None:
+    """What a reader sees as the finding's description: a plain-language sentence about the
+    weakness from the knowledge base. The rule's own metadata (CWE, ATT&CK, scanner, false-
+    positive note) lives in the evidence and in the report's `detection_rationale`, not here.
+    Falls back to that metadata line only when the KB has nothing for the rule."""
+    try:
+        from types import SimpleNamespace
+        from app.services import report_enrichment as enrich
+        probe = SimpleNamespace(evidence=p, title=p.get("title"), description="",
+                                remediation=p.get("remediation"), cve_ids=None,
+                                severity=p.get("severity"))
+        sentence = enrich.first_sentence(enrich.kb_narrative(probe)["technical_details"])
+        if sentence:
+            return sentence
+    except Exception:  # noqa: BLE001 — a description is decoration, never a reason to drop a finding
+        pass
     bits: list[str] = []
     if p.get("cwe"):
         bits.append(p["cwe"])
@@ -495,15 +511,36 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             # producer's exposed-service finding on that port, merging instead of
             # adding a second, differently-titled row. Dedicated-scanner findings
             # (SMB/RDP/TLS) are not keyed by port — two real issues can share one.
-            condition = (exposed_service_condition(p.get("port"))
-                         if str(p.get("rule_id") or "").startswith("POSTURE-EXPOSED-")
-                         else None)
+            # Every rule carries its canonical condition key (posture_rules.condition_key),
+            # so dedicated-scanner findings merge with port-intel rows of the SAME
+            # (service, weakness-class) while a different weakness on the same port stays
+            # its own finding. Older engine output without the key keeps the legacy rule.
+            ev_in = p.get("evidence") if isinstance(p.get("evidence"), dict) else {}
+            condition = ev_in.get(DEDUP_KEY) or (
+                exposed_service_condition(p.get("port"), p.get("proto"))
+                if str(p.get("rule_id") or "").startswith("POSTURE-EXPOSED-") else None)
             if condition:
                 p[DEDUP_KEY] = condition
 
             dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
                                              condition=condition, index=open_index)
             if dup is not None:
+                new_sev = _POSTURE_SEV.get(p.get("severity"), FindingSeverity.info)
+                prev_ev = dup.evidence if isinstance(dup.evidence, dict) else {}
+                different_producer = bool(condition) and (
+                    dup.title != title or prev_ev.get("rule_id") != p.get("rule_id"))
+                if different_producer or prev_ev.get("signals"):
+                    # Another producer/rule describing the SAME condition: keep the strongest
+                    # severity and remember every signal (stamped with this run) for the
+                    # report roll-up. A finding already carrying signals refreshes its own.
+                    p["signals"] = merge_signals(
+                        prev_ev, existing_rule_id=prev_ev.get("rule_id"),
+                        existing_title=dup.title, existing_severity=dup.severity,
+                        existing_run_id=dup.detection_run_id, run_id=run_id,
+                        incoming={"rule_id": p.get("rule_id"), "title": title,
+                                  "severity": p.get("severity")})
+                    if different_producer:
+                        dup.severity = stronger_severity(dup.severity, new_sev)
                 dup.evidence = preserve_trusted_scan_provenance(
                     p,
                     previous_evidence=dup.evidence,
@@ -617,17 +654,20 @@ async def _stamp_verification(findings, llm=None) -> None:
 
 
 async def _engagement_device_roles(db: AsyncSession, engagement_id: uuid.UUID) -> dict[str, dict]:
-    """ip → {device_role, role_detail} from already-promoted assets, so a prior
-    device_inventory scan amplifies today's correlation (Track B2)."""
+    """ip → {device_role, role_detail, role_confidence, os} from already-promoted assets, so a
+    prior device_inventory scan amplifies today's correlation (Track B2). The confidence and OS
+    let the correlator ignore a role that is not trustworthy (see intel.device_role)."""
     rows = (await db.execute(
-        select(Asset.ip_address, Asset.device_role, Asset.role_detail).where(
+        select(Asset.ip_address, Asset.device_role, Asset.role_detail,
+               Asset.role_confidence, Asset.os).where(
             Asset.engagement_id == engagement_id,
             Asset.device_role.isnot(None),
         )
     )).all()
     return {
-        ip: {"device_role": role, "role_detail": detail}
-        for ip, role, detail in rows if ip
+        ip: {"device_role": role, "role_detail": detail,
+             "role_confidence": confidence, "os": os_name}
+        for ip, role, detail, confidence, os_name in rows if ip
     }
 
 
@@ -1073,6 +1113,7 @@ async def create_findings_from_facts(
         # touched BEFORE resolution reads them, so the engagement report can prove
         # the recorded evidence is unchanged. Unconditional (unlike verification)
         # and best-effort; the final flush persists it.
+        prune_stale_signals(touched, run.id)
         _stamp_chain_of_custody(touched, now)
 
         # Coverage ledger + coverage-gated auto-resolution (Phase 0/1). Best-effort:

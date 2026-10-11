@@ -9,6 +9,7 @@ raised, so one broken integration can't block the others.
 """
 from __future__ import annotations
 
+import asyncio
 import smtplib
 from email.mime.text import MIMEText
 from typing import Any, Callable
@@ -124,14 +125,18 @@ async def notify_tenant(db: Any, tenant_id: Any, subject: str, body: str, *,
         select(Integration).where(Integration.tenant_id == tenant_id,
                                   Integration.enabled.is_(True))
     )).scalars().all()
-    sent = 0
-    for row in rows:
-        if channels is not None and row.kind not in channels:
-            continue
-        if deliver(row.kind, dict(row.config or {}), decrypt_credential(row.secret_enc),
-                   subject, body, senders=senders):
-            sent += 1
-    return sent
+    # deliver() is blocking network I/O (smtplib, sync httpx, 15 s timeouts), so
+    # it runs in worker threads, all channels at once. The outbox worker shares
+    # its event loop with the reaper and the SLA watcher: one unreachable SMTP
+    # host used to freeze all three for the full timeout, per channel.
+    deliveries = [
+        asyncio.to_thread(deliver, row.kind, dict(row.config or {}),
+                          decrypt_credential(row.secret_enc), subject, body,
+                          senders=senders)
+        for row in rows
+        if channels is None or row.kind in channels
+    ]
+    return sum(await asyncio.gather(*deliveries))
 
 
 def enqueue_notification(db: Any, tenant_id: Any, subject: str, body: str, *,
