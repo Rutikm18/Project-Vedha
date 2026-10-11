@@ -148,6 +148,12 @@ approve. The agent connects on its own within seconds. A name is optional.
 
 ## 3. Is it running? Three checks, in this order
 
+**Which window are you in?** If the prompt looks like `C:\Users\you>` you are in **Command Prompt**
+(cmd.exe), where PowerShell commands such as `Select-String` or `Stop-ScheduledTask` fail with *"is not
+recognized as an internal or external command"*. Either type `powershell` first (the prompt then starts
+with `PS`), or use the cmd forms in the table in section 4. Open it as Administrator: right-click → *Run as
+administrator*.
+
 **On the machine** (Administrator prompt). The program is
 `"C:\Program Files\Vedha Agent\vedha-agent.exe"`; below it is written `vedha-agent`.
 
@@ -200,6 +206,21 @@ All from an **Administrator** prompt, because the task runs as SYSTEM.
 | Send a problem to support | `vedha-agent support-bundle --mask-ips` writes a zip with the diagnosis, redacted settings and the log tail. It never holds the identity file, keys, tokens or queued results. Nothing is sent automatically |
 | Change the manager, name, scope, proxy or CA | `install.cmd -Repair -Scope 10.0.5.0/24` (any of `-Manager -Name -Scope -Proxy -CaBundle`). Needs no token and **keeps the agent's identity** |
 | Change one setting by hand | edit `C:\ProgramData\vedha-agent\agent.env` as Administrator, then restart. Settings you can add are in the [reference](../probe/WINDOWS_AGENT_REFERENCE.md#3-agentenv---settings) |
+
+**In Command Prompt (cmd.exe) instead of PowerShell** (run as Administrator):
+
+| I want to | cmd.exe form |
+|---|---|
+| Stop / start the agent | `schtasks /End /TN VedhaAgent` / `schtasks /Run /TN VedhaAgent` |
+| Task state and last result | `schtasks /Query /TN VedhaAgent /V /FO LIST` (look at *Status* and *Last Result*) |
+| Last 60 log lines | `powershell -NoProfile -Command "Get-Content 'C:\ProgramData\vedha-agent\logs\agent.log' -Tail 60"` |
+| Log lines about the live connection | `findstr /i "websocket websockets" "C:\ProgramData\vedha-agent\logs\agent.log"` |
+| Is the process running | `tasklist /FI "IMAGENAME eq vedha-agent.exe"` |
+| Disable / enable start at boot | `schtasks /Change /TN VedhaAgent /DISABLE` / `schtasks /Change /TN VedhaAgent /ENABLE` |
+
+> **`-Repair` re-installs the package you run it from.** Running it from the same 2.2.0 folder re-installs
+> 2.2.0 and fixes nothing. To get a newer agent, run it from a folder unzipped from a **newer** package
+> (section 5); check the result with `vedha-agent version`.
 
 > **Gotcha: `-Repair` (and an update) rewrites `agent.env` from a fixed list of keys.** The installer keeps
 > `PLATFORM_URL`, `PROBE_NAME`, `PROBE_NETWORK_SEGMENTS`, `HTTPS_PROXY` and `PROBE_CA_BUNDLE`, but **drops any
@@ -372,7 +393,8 @@ with the build's hash) to the customer's security team; do not try to evade thei
 | `INSTALLED, BUT NOT CONNECTED YET` | the agent keeps retrying; fix what `doctor` lists and it connects without reinstalling |
 | Online here, absent in Fleet | `status` → compare the manager address; read the log; ask the manager (`GET /agents`) |
 | `irm : The remote name could not be resolved: 'manager'` | you pasted the example command with the placeholder `MANAGER` still in it (it appears twice: in the URL and in `-Manager`). Copy the command from Fleet → Add agent → Windows; do not retype it. The URL must be your real manager, e.g. `https://api.example.com/agent/install.ps1` |
-| `status` says ONLINE but the agent is not in Fleet, and `vedha-agent version` says **2.2.0** | the known 2.2.0 bug: the compiled build lacked part of the `websockets` library, so it registered but never connected, and `status` kept saying ONLINE. Read the log (`Select-String -Path C:\ProgramData\vedha-agent\logs\agent.log -Pattern 'websockets' -Context 0,0 \| Select-Object -Last 5`); `No module named 'websockets.asyncio'` confirms it. Install a package built from 2.2.1 or later with `install.cmd -Repair` |
+| `is not recognized as an internal or external command` for `Select-String`, `Stop-ScheduledTask`, `Get-...` | you are in Command Prompt, not PowerShell: type `powershell` first, or use the cmd forms in section 4 |
+| `status` says ONLINE but the agent is not in Fleet, and `vedha-agent version` says **2.2.0** | the known 2.2.0 bug: the compiled build lacked part of the `websockets` library, so it registered but never connected, and `status` kept saying ONLINE. Read the log (cmd: `findstr /i websockets "C:\ProgramData\vedha-agent\logs\agent.log"`); `No module named 'websockets.asyncio'` confirms it. Install a package built from 2.2.1 or later with `install.cmd -Repair` |
 | `vedha-agent stop` / `restart` says `Unknown command` | the program has no such commands; use `Stop-ScheduledTask` / `Start-ScheduledTask -TaskName VedhaAgent` (section 4) |
 | Lots of `WinError 10054` lines | normal peer resets from scanned hosts; 2.2.6 hides them below DEBUG |
 
