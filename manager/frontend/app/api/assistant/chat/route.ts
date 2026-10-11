@@ -16,13 +16,18 @@ interface ManagerAiResponse {
 const MAX_MESSAGES = 16;
 const MAX_MESSAGE_CHARS = 4_000;
 const MAX_TOTAL_CHARS = 16_000;
+// The explanation the user already read (see advisorToText); trusted only as far as any
+// other model output — it rides inside the manager's fenced <security_context> data block.
+const MAX_PREVIOUS_CHARS = 6_000;
+// A follow-up answers one question. 600 tokens cut longer answers off mid-sentence.
+const FOLLOWUP_MAX_TOKENS = 1_000;
 
 export async function POST(req: Request) {
   const token = bearerFrom(req);
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const body = (await req.json().catch(() => null)) as
-    | { findingId?: string; messages?: { role: string; content: string }[] }
+    | { findingId?: string; messages?: { role: string; content: string }[]; previousExplanation?: unknown }
     | null;
   if (!body?.findingId || !Array.isArray(body.messages) || body.messages.length === 0) {
     return NextResponse.json({ error: "findingId and messages[] required" }, { status: 400 });
@@ -39,6 +44,10 @@ export async function POST(req: Request) {
   ) {
     return NextResponse.json({ error: "Conversation exceeds the safe context limit" }, { status: 400 });
   }
+
+  const previousExplanation = typeof body.previousExplanation === "string"
+    ? body.previousExplanation.trim().slice(0, MAX_PREVIOUS_CHARS)
+    : "";
 
   let factCard;
   let engagementId: string | null = null;
@@ -61,8 +70,11 @@ export async function POST(req: Request) {
           role: message.role === "user" ? "user" : "assistant",
           content: message.content,
         })),
-        context: { securityBrief: factCard },
-        max_tokens: 600,
+        context: {
+          securityBrief: factCard,
+          ...(previousExplanation ? { previousExplanation } : {}),
+        },
+        max_tokens: FOLLOWUP_MAX_TOKENS,
         // The Manager loads this engagement's sector profile itself (tenant-scoped).
         ...(engagementId ? { engagement_id: engagementId } : {}),
       },
