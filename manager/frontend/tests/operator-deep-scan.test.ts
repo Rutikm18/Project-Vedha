@@ -73,3 +73,13 @@ test("the operator Scanner renders the Deep scan card and launches through the s
   assert.match(page, /buildDeepScanLaunch\(/);
   assert.doesNotMatch(page, /params: \{ scan_mode: "deep" \}/);   // no hand-built body left
 });
+
+test("the Scanner exposes full-port (all 65,535) scans even with the extended catalog hidden", () => {
+  const page = readFileSync(join(process.cwd(), "app/scan/workspace.tsx"), "utf8");
+  // the full-port use cases are surfaced outside the SHOW_EXTENDED_USE_CASES grid
+  assert.match(page, /FULL_PORT_UC_IDS\s*=\s*\[/);
+  assert.match(page, /uc_full_port_audit/);
+  assert.match(page, /!SHOW_EXTENDED_USE_CASES && \(\(\) => \{/);  // always-visible selector block
+  // and it drives the same launcher as every other scan
+  assert.match(page, /setSelectedUc\(uc\.use_case_id\)/);
+});
