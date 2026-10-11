@@ -279,3 +279,28 @@ export function trimThread<T extends { role: "user" | "assistant"; content: stri
   while (out.length > 1 && out[0].role !== "user") out = out.slice(1);
   return out;
 }
+
+/** The explanation the user has already read, as plain text for the model.
+ *
+ * Follow-ups ("explain more", "is that exploitable?") refer to the Explain answer on
+ * screen, but the chat route only ever received the fact card and the typed turns, so the
+ * model had nothing to expand and started over. Sending this alongside the thread is what
+ * lets it build on the earlier answer. Capped well under the manager's 32,000-character
+ * context limit. */
+export const PREVIOUS_EXPLANATION_MAX_CHARS = 6_000;
+
+export function advisorToText(vm: AdvisorVM): string {
+  const plain = (s: string) => s.replace(/\*\*/g, "").trim();
+  const lines: string[] = [`What is the vulnerability: ${plain(vm.whatIs)}`];
+  if (vm.impact.length) lines.push("Impact:", ...vm.impact.map((p) => `- ${plain(p)}`));
+  const verify = [vm.verify.command ? `command: ${vm.verify.command}` : "", plain(vm.verify.statement), vm.verify.caveat ? `caveat: ${plain(vm.verify.caveat)}` : ""]
+    .filter(Boolean).join(" | ");
+  if (verify) lines.push(`How to verify: ${verify}`);
+  lines.push(`Patch available: ${vm.patch.available}${vm.patch.summary ? ` — ${plain(vm.patch.summary)}` : ""}`);
+  if (vm.patchSteps.length) {
+    lines.push("How to patch:", ...vm.patchSteps.map((s, i) =>
+      `${i + 1}. ${plain(s.description)}${s.command ? ` [${s.command}]` : ""}${s.grounded ? "" : " (general guidance, adapt to the environment)"}`));
+  }
+  if (vm.improvements.length) lines.push("Further hardening:", ...vm.improvements.map((p) => `- ${plain(p)}`));
+  return lines.join("\n").slice(0, PREVIOUS_EXPLANATION_MAX_CHARS);
+}

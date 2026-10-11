@@ -9,7 +9,11 @@ import { useAssistant } from "./AssistantProvider";
 import { FactCard } from "./FactCard";
 import { AdvisorFlow } from "./AdvisorFlow";
 import { ModelSwitcher, type ModelSelection } from "./ModelSwitcher";
-import { detectFindingId, trimThread, CHAT_LIMITS, type FactCardVM, type AdvisorVM } from "../../lib/assistant";
+import { advisorToText, detectFindingId, trimThread, CHAT_LIMITS, type FactCardVM, type AdvisorVM } from "../../lib/assistant";
+import {
+  EMPTY_STORE, forgetConversation, pickConversation, saveConversation, type ConversationStore,
+} from "../../lib/assistant-history";
+import { useSessionState } from "../../lib/session-state";
 import { fetchJson, errorMessage } from "../../lib/fetcher";
 import { scrollChildToTop, scrollToEnd } from "../../lib/scroll";
 import { AssistantText, CopyAnswerButton } from "./AssistantText";
@@ -53,16 +57,23 @@ export function AssistantDrawer() {
   const seq = useRef(0);
   useModalFocus(dialogRef, open, close, ".assistant-orb");
 
+  // Remembered conversations (this tab only). The drawer opens on the one for the finding
+  // being explained, or on the most recent one, so closing it loses nothing.
+  const [history, setHistory] = useSessionState<ConversationStore>("assistant.drawer.v1", EMPTY_STORE);
+  const [restored] = useState(() => pickConversation(history, findingId));
+  // The finding this mount has already loaded (or restored), so reopening never refetches it.
+  const loadedFor = useRef<string | null>(restored?.card ? findingId : null);
+
   const [input, setInput] = useState("");
-  const [activeId, setActiveId] = useState<string | null>(findingId);
-  const [card, setCard] = useState<FactCardVM | null>(null);
-  const [advisor, setAdvisor] = useState<AdvisorVM | null>(null);
-  const [narration, setNarration] = useState<string | null>(null);
-  const [thread, setThread] = useState<Msg[]>([]);
-  const [loading, setLoading] = useState(Boolean(findingId));
+  const [activeId, setActiveId] = useState<string | null>(restored ? restored.activeId : findingId);
+  const [card, setCard] = useState<FactCardVM | null>(restored?.card ?? null);
+  const [advisor, setAdvisor] = useState<AdvisorVM | null>(restored?.advisor ?? null);
+  const [narration, setNarration] = useState<string | null>(restored?.narration ?? null);
+  const [thread, setThread] = useState<Msg[]>(restored?.thread ?? []);
+  const [loading, setLoading] = useState(Boolean(findingId) && !restored);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelSelection | null>(null);
-  const [served, setServed] = useState<Served | null>(null);
+  const [served, setServed] = useState<Served | null>(restored?.served ?? null);
   // Only mounted after the client-side session check, so reading storage here is safe.
   const [wide, setWide] = useState(() => {
     try { return typeof window !== "undefined" && localStorage.getItem(WIDE_KEY) === "1"; } catch { return false; }
@@ -95,6 +106,7 @@ export function AssistantDrawer() {
       setServed(d.served ?? null);
     } catch (e) {
       if (mine !== seq.current) return;
+      loadedFor.current = null;                              // let the next open try again
       setFailure({ message: errorMessage(e), kind: "explain", id });
     } finally {
       if (mine === seq.current) setLoading(false);
@@ -107,8 +119,11 @@ export function AssistantDrawer() {
   // Deferred one tick: React Strict Mode mounts effects twice in development, and this way
   // the first mount is cancelled instead of sending the same request twice.
   useEffect(() => {
-    if (!open || !findingId) return;
-    const timer = window.setTimeout(() => void explainId(findingId), 0);
+    if (!open || !findingId || loadedFor.current === findingId) return;
+    const timer = window.setTimeout(() => {
+      loadedFor.current = findingId;
+      void explainId(findingId);
+    }, 0);
     return () => window.clearTimeout(timer);
   }, [open, findingId, explainId]);
 
@@ -124,7 +139,12 @@ export function AssistantDrawer() {
       const reply = activeId
         ? await fetchJson<{ content?: string; error?: string }>("/api/assistant/chat", {
             method: "POST",
-            body: JSON.stringify({ findingId: activeId, messages: sent }),
+            body: JSON.stringify({
+              findingId: activeId,
+              messages: sent,
+              // What the user has already read, so "explain more" has something to expand.
+              previousExplanation: advisor ? advisorToText(advisor) : narration ?? undefined,
+            }),
           })
         : await fetchJson<{ content?: string; error?: string }>("/api/brain", {
             method: "POST",
@@ -138,7 +158,7 @@ export function AssistantDrawer() {
     } finally {
       if (mine === seq.current) setLoading(false);
     }
-  }, [activeId, selectedModel]);
+  }, [activeId, advisor, narration, selectedModel]);
 
   const retryFailure = () => {
     if (!failure) return;
@@ -160,11 +180,21 @@ export function AssistantDrawer() {
 
   const reset = () => {
     seq.current++;
+    loadedFor.current = null;
+    setHistory((current) => forgetConversation(current, activeId));
     setActiveId(null);
     setCard(null); setAdvisor(null); setNarration(null); setServed(null);
     setThread([]); setFailure(null); setLoading(false); setInput("");
     inputRef.current?.focus();
   };
+
+  // Remember the conversation once an answer has settled.
+  useEffect(() => {
+    if (loading || failure || (!card && thread.length === 0)) return;
+    // A question still waiting for its answer is not worth restoring.
+    if (thread.length > 0 && thread[thread.length - 1].role === "user") return;
+    setHistory((current) => saveConversation(current, { activeId, card, advisor, narration, served, thread }));
+  }, [loading, failure, activeId, card, advisor, narration, served, thread, setHistory]);
 
   // Scrolling: show the thinking indicator while waiting, and start a new answer at
   // its first line (landing on the end of a long answer is what made them unreadable).
@@ -215,7 +245,7 @@ export function AssistantDrawer() {
           <div className="assistant-drawer-tools">
             <ModelSwitcher value={selectedModel} onChange={setSelectedModel} />
             {started && (
-              <button type="button" className="assistant-icon-btn" onClick={reset} aria-label="Start a new chat" title="New chat">
+              <button type="button" className="assistant-icon-btn" onClick={reset} aria-label="Start a new chat" title="New chat — clears this conversation">
                 <RotateCcw size={15} />
               </button>
             )}
