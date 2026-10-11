@@ -95,7 +95,7 @@ def check_connect_fast_fail(result: dict | None) -> Check | None:
     return Check("connect_fast_fail", "warn", seen,
                  "port scans from this agent will be slow and may report closed "
                  "ports as filtered; use Windows 10 1709 or later, or run full-port "
-                 "sweeps from a Linux agent")
+                 "sweeps from a native Linux agent run as root")
 
 
 def exit_code(checks: list[Check]) -> int:

@@ -486,6 +486,7 @@ def run_doctor(environ: Mapping[str, str] | None = None, *, preinstall: bool = F
     environ = os.environ if environ is None else environ
     status = collect_status(environ)
     checks = [doctor.check_python(sys.version_info), doctor.check_privilege(_is_admin())]
+    checks.extend(_fast_fail_checks())
     paths = resolve_paths(environ)
     try:
         checks.append(doctor.check_disk(shutil.disk_usage(paths.state_file.parent if paths.state_file.parent.exists() else Path(".")).free))
@@ -503,6 +504,18 @@ def run_doctor(environ: Mapping[str, str] | None = None, *, preinstall: bool = F
     if not preinstall:
         checks.extend(local_checks(environ, status))
     return checks
+
+
+def _fast_fail_checks() -> list[Check]:
+    """Windows only: does a closed port report at network speed? The agent logs the
+    answer at startup and tells the operator to run `doctor` when it is "no"; this is
+    what `doctor` then shows. Nothing off Windows, and never an error."""
+    try:
+        from scanner import win_fast_connect
+        check = doctor.check_connect_fast_fail(win_fast_connect.self_check(include_default=True))
+    except Exception:  # noqa: BLE001 - a diagnostic must never break doctor
+        return []
+    return [check] if check is not None else []
 
 
 def _is_admin() -> bool:

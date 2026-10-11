@@ -63,6 +63,15 @@ export interface FleetEngagementOption {
   scopeCidrs: string[];
 }
 
+export interface AgentRevokeResult {
+  id: string;
+  lifecycle_status: string;
+  already_revoked: boolean;
+  /** True when its live connection was closed on the worker that handled the request. */
+  disconnected: boolean;
+  released_engagements: string[];
+}
+
 export interface AgentExpiryResult {
   id: string;
   access_expires_at: string | null;
@@ -114,6 +123,12 @@ export function createFleetWorkspaceApi(surface: FleetWorkspaceSurface) {
         { method: "PATCH", body: JSON.stringify({ access_expires_at: accessExpiresAt }) },
       ),
       canSetExpiry: true,
+      // Cut an agent off for good (operator only). Nothing is deleted.
+      revokeAgent: (agentId: string, reason?: string) => fetchJson<AgentRevokeResult>(
+        `/api/fleet/agents/${encodeURIComponent(agentId)}/revoke`,
+        { method: "POST", body: JSON.stringify({ reason: reason ?? null }) },
+      ),
+      canRevokeAgent: true,
     };
   }
   return {
@@ -153,5 +168,11 @@ export function createFleetWorkspaceApi(surface: FleetWorkspaceSurface) {
       return Promise.reject(new Error("Agent access expiry is managed by your Vedha operator"));
     },
     canSetExpiry: false,
+    // Customers can't revoke agents — only the operator does.
+    revokeAgent: (_agentId: string, _reason?: string): Promise<AgentRevokeResult> => {
+      void _agentId; void _reason;
+      return Promise.reject(new Error("Agents are revoked by your Vedha operator"));
+    },
+    canRevokeAgent: false,
   };
 }

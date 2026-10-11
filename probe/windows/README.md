@@ -1,5 +1,7 @@
 # Vedha Agent — Windows (simple, git-based)
 
+> Starting, running, updating and troubleshooting an installed agent: [docs/operations/WINDOWS_AGENT_MANAGEMENT.md](../../docs/operations/WINDOWS_AGENT_MANAGEMENT.md).
+
 Run the probe on a **Windows** machine straight from the repo — no Docker, no exe
 build, no zip. The customer clones/pulls from GitHub and runs one script that
 sets up a venv, installs dependencies, and starts the agent.

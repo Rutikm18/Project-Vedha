@@ -22,6 +22,12 @@
   install.cmd -Repair        # re-apply the installation and re-check it (keeps the agent's identity)
   install.cmd -Uninstall     # remove the agent (add -Purge to also delete its identity and logs)
 
+.EXAMPLE
+  install.cmd -Repair        # run from a NEWER package: updates the installed agent in place
+  An installed agent is updated in place: its identity, settings and scan results are kept and the old
+  program files are removed. A package OLDER than the installed agent is refused unless you add
+  -AllowDowngrade.
+
 .NOTES
   This installer never changes your firewall, proxy, antivirus or certificate settings.
 #>
@@ -37,6 +43,7 @@ param(
   [switch]$Repair,
   [switch]$Uninstall,
   [switch]$Purge,
+  [switch]$AllowDowngrade,    # install even if the installed agent is newer than this package
   [switch]$NoWait,            # register and start, but do not wait to see it connect
   [switch]$SkipPreflight,     # skip the pre-install network check (not recommended)
   [switch]$NoPause,
@@ -172,6 +179,97 @@ function Remove-VedhaTokenLine {
   $kept = @()
   foreach ($line in ($Text -split "`r?`n")) { if ($line -notmatch '^\s*PROBE_ENROLL_TOKEN\s*=') { $kept += $line } }
   return (($kept -join "`r`n").TrimEnd() + "`r`n")
+}
+
+# Settings the installer writes itself. Anything else found in an existing agent.env was added by hand
+# and is kept across an update or repair.
+$script:VedhaManagedKeys = @(
+  'PLATFORM_URL', 'VERIFY_TLS', 'LICENSE_ENFORCED', 'PROBE_KEEP_RETRYING', 'PROBE_NAME',
+  'PROBE_NETWORK_SEGMENTS', 'STATE_FILE', 'RESULT_SPOOL_DIR', 'PROBE_RESULT_DIR', 'PROBE_LOG_FILE',
+  'PROBE_STATUS_FILE', 'PROBE_INSTALLER_VERSION', 'PROBE_BUILD_DIGEST', 'HTTPS_PROXY', 'PROBE_CA_BUNDLE',
+  'PROBE_ENROLL_TOKEN'
+)
+
+function Get-VedhaExtraSettingLines {
+  # The KEY=VALUE lines of an existing agent.env that the installer does not manage (PROBE_DEBUG,
+  # HEARTBEAT_INTERVAL, ...). Returned as they were written.
+  param([string]$ExistingText)
+  $kept = @()
+  foreach ($line in ($ExistingText.TrimStart([char]0xFEFF) -split "`r?`n")) {
+    $l = $line.Trim()
+    if (-not $l -or $l.StartsWith('#') -or -not $l.Contains('=')) { continue }
+    $key = $l.Substring(0, $l.IndexOf('=')).Trim()
+    if (-not $key -or ($script:VedhaManagedKeys -contains $key)) { continue }
+    $kept += $l
+  }
+  return @($kept)
+}
+
+function Add-VedhaExtraSettings {
+  # Appends the kept lines to freshly generated settings text. Safe to repeat: the heading is a comment,
+  # so it is never read back as a setting.
+  param([string]$ConfigText, [string[]]$ExtraLines = @())
+  if (-not $ExtraLines -or $ExtraLines.Count -eq 0) { return $ConfigText }
+  return ($ConfigText.TrimEnd() + "`r`n# Kept from the previous settings file (the installer does not manage these):`r`n" +
+          ($ExtraLines -join "`r`n") + "`r`n")
+}
+
+function Get-VedhaVersionNumber {
+  # The version in agent output such as 'Vedha Probe 2.2.0'; $null when there is none.
+  param([string]$Text)
+  if ($Text -match '(\d+)\.(\d+)\.(\d+)') {
+    return [version]('{0}.{1}.{2}' -f [int]$Matches[1], [int]$Matches[2], [int]$Matches[3])
+  }
+  return $null
+}
+
+function Get-VedhaUpdatePlan {
+  # What installing this package would do to what is already on the computer.
+  # Kind: fresh | upgrade | same | downgrade | unknown. Allowed is false only for a downgrade that was not
+  # asked for: replacing a newer agent with an older one is almost always a mistake (an old download
+  # folder run by habit) and the older one may be missing fixes the newer one has.
+  param([bool]$InstalledPresent, $Installed, $Package, [switch]$AllowDowngrade)
+  if (-not $InstalledPresent) {
+    return [pscustomobject]@{ Kind = 'fresh'; Allowed = $true; Message = 'No previous installation found: installing fresh.' }
+  }
+  if ($null -eq $Installed -or $null -eq $Package) {
+    return [pscustomobject]@{ Kind = 'unknown'; Allowed = $true
+      Message = 'An agent is installed but its version could not be read (or this package''s could not); it will be replaced.' }
+  }
+  if ($Package -gt $Installed) {
+    return [pscustomobject]@{ Kind = 'upgrade'; Allowed = $true
+      Message = "Updating the installed agent $Installed -> $Package. Its identity, settings and scan results are kept; the old program files are removed." }
+  }
+  if ($Package -eq $Installed) {
+    return [pscustomobject]@{ Kind = 'same'; Allowed = $true
+      Message = "This package is the same version as the installed agent ($Installed); re-applying it." }
+  }
+  if ($AllowDowngrade) {
+    return [pscustomobject]@{ Kind = 'downgrade'; Allowed = $true
+      Message = "Replacing the installed agent $Installed with the OLDER $Package, because -AllowDowngrade was given." }
+  }
+  return [pscustomobject]@{ Kind = 'downgrade'; Allowed = $false
+    Message = "This package ($Package) is OLDER than the installed agent ($Installed). Installing it would replace a newer agent with an older one." }
+}
+
+function Copy-VedhaLegacyResults {
+  # Agent 2.2.0 and 2.2.1 kept their archive of submitted scans inside the program folder
+  # (Program Files\Vedha Agent\result). Replacing or removing that folder would delete the only copy, so it
+  # is copied into the locked data folder first. Returns how many files were saved (0 = nothing to save).
+  # Throws, having removed its partial copy, unless every file arrived; the caller then keeps the old folder.
+  param([string]$LegacyDir, [string]$DataDir)
+  if (-not (Test-Path -LiteralPath $LegacyDir)) { return 0 }
+  $files = @(Get-ChildItem -LiteralPath $LegacyDir -Recurse -File -Force -ErrorAction SilentlyContinue)
+  if ($files.Count -eq 0) { return 0 }
+  $dest = Join-Path (Join-Path $DataDir 'results') ('from-program-files-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+  New-Item -ItemType Directory -Force -Path $dest | Out-Null
+  Copy-Item -Path (Join-Path $LegacyDir '*') -Destination $dest -Recurse -Force
+  $copied = @(Get-ChildItem -LiteralPath $dest -Recurse -File -Force -ErrorAction SilentlyContinue).Count
+  if ($copied -ne $files.Count) {
+    Remove-Item -LiteralPath $dest -Recurse -Force -ErrorAction SilentlyContinue
+    throw "Only $copied of $($files.Count) saved scan results could be copied out of the old program folder, so nothing was changed."
+  }
+  return $files.Count
 }
 
 function Hide-VedhaSecrets {
@@ -367,7 +465,16 @@ function Invoke-VedhaUninstall {
   } else {
     Write-Good 'No scheduled task was installed.'
   }
-  if (Test-Path -LiteralPath $AppDir) { Remove-Item -LiteralPath $AppDir -Recurse -Force; Write-Good "Removed $AppDir" }
+  if (Test-Path -LiteralPath $AppDir) {
+    if (-not $Purge) {
+      # Agent 2.2.0 / 2.2.1 archived scan results inside the program folder; keep them with the identity and logs.
+      if (-not (Test-Path -LiteralPath $DataDir)) { New-Item -ItemType Directory -Force -Path $DataDir | Out-Null; Set-VedhaAcl -Path $DataDir }
+      $savedResults = Copy-VedhaLegacyResults -LegacyDir (Join-Path $AppDir 'result') -DataDir $DataDir
+      if ($savedResults -gt 0) { Write-Good "Saved $savedResults scan result file(s) from the program folder into $DataDir\results" }
+    }
+    Remove-Item -LiteralPath $AppDir -Recurse -Force
+    Write-Good "Removed $AppDir"
+  }
   Write-Step '2/2' 'Identity and logs'
   if ($Purge) {
     # This run's own log is still open, so the folder itself is deleted as the script finishes.
@@ -423,6 +530,47 @@ function Invoke-VedhaInstall {
     throw 'The agent program does not run on this computer.'
   }
   Write-Good $run.Output.Trim()
+
+  # What is already on this computer? Look before changing anything.
+  $packageVersion   = Get-VedhaVersionNumber -Text $run.Output
+  $installedExe     = Join-Path $AppDir 'vedha-agent.exe'
+  $installedPresent = Test-Path -LiteralPath $installedExe
+  $installedVersion = $null
+  if ($installedPresent) {
+    $installedRun = Invoke-AgentCommand -Exe $installedExe -Arguments @('version')
+    if ($installedRun.ExitCode -eq 0) { $installedVersion = Get-VedhaVersionNumber -Text $installedRun.Output }
+  }
+  $plan = Get-VedhaUpdatePlan -InstalledPresent $installedPresent -Installed $installedVersion -Package $packageVersion -AllowDowngrade:$AllowDowngrade
+  switch ($plan.Kind) {
+    'fresh'     { Write-Good $plan.Message }
+    'upgrade'   { Write-Good $plan.Message }
+    'same'      { Write-Good $plan.Message }
+    'unknown'   { Write-Warn $plan.Message }
+    'downgrade' {
+      if ($plan.Allowed) { Write-Warn $plan.Message }
+      else {
+        Write-Bad $plan.Message
+        Write-Fix 'Use the newer package (for example the one you installed from last time), or add -AllowDowngrade if you really want the older agent.'
+        throw 'Refusing to replace a newer agent with an older one.'
+      }
+    }
+  }
+  $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+  if ($existingTask) {
+    $runs = (@($existingTask.Actions) | ForEach-Object { ("$($_.Execute) $($_.Arguments)").Trim() }) -join '; '
+    if ($runs -and $runs -notlike "*$installedExe*") {
+      Write-Warn "The existing scheduled task '$TaskName' runs: $runs"
+      Write-Host '         That is not the installed agent program (a source-mode lab install?). The task will be replaced; the agent''s identity is kept.'
+    }
+  }
+  foreach ($other in @(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object {
+        $_.TaskName -ne $TaskName -and (@($_.Actions) | Where-Object { ("$($_.Execute) $($_.Arguments)") -match 'vedha-agent|Vedha Agent' }) })) {
+    Write-Warn "Another scheduled task, '$($other.TaskName)', also starts a Vedha agent. If it is an old install, remove it: Unregister-ScheduledTask -TaskName '$($other.TaskName)'"
+  }
+  foreach ($stray in @(Get-Process -Name 'vedha-agent' -ErrorAction SilentlyContinue | Where-Object { $_.Path -and ($_.Path -notlike "$AppDir*") })) {
+    Write-Warn "A Vedha agent is already running from another folder: $($stray.Path) (process $($stray.Id))."
+    Write-Fix 'Close it (for example a run.cmd window). Only one agent process can use an identity, so it would stop the installed agent from starting.'
+  }
 
   # --- 2. Decide the settings -----------------------------------------------
   Write-Step '2/6' 'Working out the settings'
@@ -509,16 +657,34 @@ function Invoke-VedhaInstall {
     Set-VedhaAcl -Path $DataDir
     if ($CaBundle) { Copy-Item -LiteralPath $CaBundle -Destination $caPath -Force }
 
+    # Agent 2.2.0 / 2.2.1 archived scan results inside the program folder, which is about to be deleted.
+    $savedResults = Copy-VedhaLegacyResults -LegacyDir (Join-Path $backup 'result') -DataDir $DataDir
+    if ($savedResults -gt 0) { Write-Good "Saved $savedResults scan result file(s) from the old program folder into $DataDir\results" }
+
     $digest = Get-VedhaSha256 -Path $exe
     $version = $PackageVersion
     if ($version -like '__*') { $version = '' }
     $config = New-VedhaAgentConfig -ManagerUrl $managerUrl -DataDir $DataDir -AgentName $agentName -ScopeValue $scopeValue `
       -ProxyUrl $proxyUrl -CaBundlePath $caPath -InstallToken $Token -InstallerVersion $version -BuildDigest $digest
+    if (Test-Path -LiteralPath $configPath) {
+      $extra = @(Get-VedhaExtraSettingLines -ExistingText ([System.IO.File]::ReadAllText($configPath)))
+      if ($extra.Count -gt 0) {
+        $config = Add-VedhaExtraSettings -ConfigText $config -ExtraLines $extra
+        $extraNames = ($extra | ForEach-Object { $_.Substring(0, $_.IndexOf('=')).Trim() }) -join ', '
+        Write-Good "Kept $($extra.Count) setting(s) you had added: $extraNames"
+      }
+    }
     Write-Utf8NoBom -Path $configPath -Text $config
     Write-Good "Settings saved in $configPath (readable only by administrators)"
 
     Register-VedhaTask -AppDir $AppDir
     Write-Good "Registered the scheduled task '$TaskName' (starts at boot, restarts itself if it stops)"
+    # setup.cmd (the source-mode lab install) wrote a launcher that the old task ran; the task now runs the program.
+    $labLauncher = Join-Path $DataDir 'agent-service.cmd'
+    if (Test-Path -LiteralPath $labLauncher) {
+      Remove-Item -LiteralPath $labLauncher -Force -ErrorAction SilentlyContinue
+      if (-not (Test-Path -LiteralPath $labLauncher)) { Write-Good 'Removed the old source-mode launcher (agent-service.cmd).' }
+    }
     $installed = $true
   } catch {
     Write-Bad "$($_.Exception.Message)"
@@ -563,6 +729,9 @@ function Invoke-VedhaInstall {
     Write-Host ''
     Write-Host 'SUCCESS: the Vedha agent is installed and connected.' -ForegroundColor Green
     Write-Host "  Manager : $managerUrl"
+    $was = ''
+    if ($installedVersion -and $packageVersion -and $installedVersion -ne $packageVersion) { $was = " (was $installedVersion)" }
+    Write-Host "  Agent   : $packageVersion$was"
     Write-Host "  Scope   : $(if ($scopeValue) { $scopeValue } else { '(none set - no jobs will be sent)' })"
     Write-Host "  It starts automatically when this computer starts."
     Write-Host "  To check it any time, from an Administrator prompt:  `"$exe`" status"

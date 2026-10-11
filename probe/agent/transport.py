@@ -90,6 +90,12 @@ class TransportError(Exception):
     """Raised when a transport operation fails permanently (not retryable)."""
 
 
+class TransportUnavailableError(TransportError):
+    """The manager could not be reached to complete a step (network error or a 5xx), so no verdict was
+    reached. Unlike a plain TransportError this is TRANSIENT: callers must retry later, never treat it as a
+    revoked credential and never give up push mode for good."""
+
+
 class AccessExpiredError(TransportError):
     """The manager refused because this agent's ACCESS EXPIRY (set in Fleet) has
     passed. Not a stale or revoked credential: the identity is intact and works
@@ -1131,6 +1137,9 @@ class Transport:
         import websockets
 
         if not self.ensure_device_access():
+            if self._last_refresh_outcome == DEVICE_REFRESH_UNAVAILABLE:
+                raise TransportUnavailableError(
+                    "Cannot connect WebSocket: the manager could not be reached to refresh the device credential")
             raise TransportError("Cannot connect WebSocket: device credential refresh failed")
         if not self._agent_token:
             raise TransportError("Cannot connect WebSocket: no agent token")

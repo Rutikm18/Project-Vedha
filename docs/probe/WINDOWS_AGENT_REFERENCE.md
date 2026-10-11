@@ -4,6 +4,7 @@ What is installed where, every setting, every command, every state and exit code
 how-to see the [operator guide](WINDOWS_AGENT_INSTALL.md); for why it is built this way see
 [ADR-0005](../adr/0005-windows-agent-delivery.md). Source of truth is the code; the files
 named below are the ones to read when this page and the code disagree.
+For day-to-day use see the [management handbook](../operations/WINDOWS_AGENT_MANAGEMENT.md).
 
 ## 1. What is in the package
 
@@ -53,7 +54,7 @@ Built by `probe/windows/package-zip.ps1`, which also writes two files beside the
 
 One `KEY=VALUE` per line. The agent loads it on every start; **an environment variable that is
 already set wins over the file**. Written by the installer (do not edit while the agent runs;
-`install.cmd -Repair` rewrites it from the existing values plus any options you pass).
+`install.cmd -Repair` rewrites it from the existing values plus any options you pass). In packages built after 11 Oct 2026 the installer's `-Repair` and updates keep every line they do not manage (the second table, `PROBE_DEBUG`, ...) under a `# Kept from the previous settings file` heading; older installers keep only the keys in the first table.
 
 | Key | Default written | Meaning |
 |---|---|---|
@@ -79,6 +80,7 @@ Other settings the agent honours (not written by the installer; add a line to us
 | Key | Effect |
 |---|---|
 | `PROBE_WS_ENABLED=false` | skip the live (WebSocket) connection and use HTTPS polling only |
+| `PROBE_PUSH_RETRY_SECS` | while the agent polls over HTTP instead of using the live connection, how often it tries the live connection again (60-3600, default 300) |
 | `PROBE_UPDATE_CHECK=off` | do not ask the manager whether a newer agent exists |
 | `PROBE_UPDATE_CHECK_INTERVAL_HOURS` | how often (1-168, default 6) |
 | `HEARTBEAT_INTERVAL`, `POLL_INTERVAL` | seconds (5-300 and 1-300; defaults 30 and 10) |
@@ -152,6 +154,7 @@ means a heartbeat in the last 90 seconds).
 | `-CaBundle <file.pem>` | company root certificate for HTTPS inspection |
 | `-Name <text>` | name shown in Fleet |
 | `-Repair` | re-apply the installation from this package and re-check it; keeps the agent's identity; needs no token |
+| `-AllowDowngrade` | install even though the installed agent is newer than this package (without it the installer stops and changes nothing) |
 | `-Uninstall [-Purge]` | remove the agent; `-Purge` also deletes `C:\ProgramData\vedha-agent` (identity, settings, logs) |
 | `-NoWait` | register and start, but do not wait to see it connect |
 | `-SkipPreflight` | skip the pre-install connection check (not recommended) |

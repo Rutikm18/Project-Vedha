@@ -259,6 +259,53 @@ class AgentConnectionManager:
                            agent_id=agent_id, error=str(exc))
         return False
 
+    async def disconnect_agent(self, agent_id: str, *, reason: str, code: int = 4003) -> bool:
+        """Close this agent's socket if THIS worker holds it. True if a socket was closed.
+
+        Used when an agent is revoked: its token is refused from then on, but a connection that is
+        already open does not pass through the HTTP authentication, so it must be closed explicitly."""
+        async with self._lock:
+            websocket = self._agents.get(agent_id)
+        if websocket is None:
+            return False
+        try:
+            await websocket.send_json({"type": "revoked", "message": reason})
+            # A WebSocket close reason may be at most 123 bytes.
+            await websocket.close(code=code, reason=reason.encode("utf-8")[:120].decode("utf-8", "ignore"))
+        except Exception:  # noqa: BLE001 - already closing; the registration is removed below either way
+            pass
+        await self.unregister(agent_id, websocket)
+        return True
+
+    async def revoke_connection(self, redis, agent_id: str, reason: str) -> bool:
+        """Close the agent's socket wherever it is connected: here if possible, else through the Redis
+        backplane so the worker that holds it closes it. Returns True if it was closed on THIS worker.
+        Best-effort across workers: the heartbeat handler also refuses a revoked agent, so a lost
+        message only delays the disconnect by one heartbeat."""
+        if await self.disconnect_agent(agent_id, reason=reason):
+            return True
+        try:
+            await redis.publish(self._BACKPLANE_CHANNEL, json.dumps({
+                "action": "disconnect", "agent_id": agent_id, "reason": reason,
+            }))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("agent.ws.backplane_publish_failed", agent_id=agent_id, error=str(exc))
+        return False
+
+    async def _handle_backplane_message(self, data: dict) -> None:
+        """Act on one backplane message if this worker holds the target agent's socket."""
+        agent_id = data.get("agent_id")
+        if not agent_id or not self.is_connected(agent_id):
+            return                      # only the worker actually holding the socket acts
+        if data.get("action") == "disconnect":
+            await self.disconnect_agent(agent_id, reason=str(data.get("reason") or "Revoked"))
+            return
+        await self.push_job(
+            agent_id,
+            data.get("job") or {},
+            required_feature=data.get("required_feature"),
+        )
+
     async def run_backplane(self, redis) -> None:
         """Subscribe to the push backplane and forward any job whose target agent
         is connected to THIS worker. Runs for the app's lifetime; self-healing."""
@@ -274,14 +321,7 @@ class AgentConnectionManager:
                         data = json.loads(message["data"])
                     except (ValueError, TypeError):
                         continue
-                    agent_id = data.get("agent_id")
-                    # Only the worker actually holding this agent's socket forwards it.
-                    if agent_id and self.is_connected(agent_id):
-                        await self.push_job(
-                            agent_id,
-                            data.get("job") or {},
-                            required_feature=data.get("required_feature"),
-                        )
+                    await self._handle_backplane_message(data)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:  # noqa: BLE001 — the backplane must never die

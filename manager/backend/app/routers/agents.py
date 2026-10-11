@@ -931,6 +931,85 @@ async def set_agent_access_expiry(
     }
 
 
+class AgentRevoke(BaseModel):
+    """Why the agent is being revoked. Kept in the audit log; the agent is told only that it was revoked."""
+    reason: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/{agent_id}/revoke", summary="Revoke an agent: it can never connect or refresh again (Fleet)")
+async def revoke_agent(
+    agent_id: uuid.UUID,
+    body: AgentRevoke,
+    db: DB,
+    redis: RedisConn,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
+):
+    """Cut an agent off for good: a lost laptop, a decommissioned host, a compromised machine.
+
+    Nothing is deleted. The agent's row, its jobs, results and findings stay, so history and reports are
+    unchanged; the agent simply stops being accepted. What changes:
+      * lifecycle_status becomes `revoked` (the HTTP middleware and the WebSocket endpoint already refuse
+        any agent that is not `active`) and the credential generation moves on, so tokens it holds are stale;
+      * its stored credentials are revoked, so it cannot mint a new access token;
+      * it is shown offline and its live WebSocket, if any, is closed;
+      * engagements assigned to it are released so a replacement agent can be enrolled.
+    A job it was running is NOT touched here: it stops renewing its lease, and the manager's reaper puts the
+    job back in the queue (or fails it once its attempts are used) exactly as for any dead agent.
+    Not reversible: to use that machine again, install the agent afresh (a new identity).
+    Repeating the call is harmless."""
+    from app.models.probe_enrollment import AgentCredential
+    from app.services.audit import record_audit
+    from app.websocket.manager import agent_ws_manager
+    from sqlalchemy import update
+
+    agent = (await db.execute(
+        select(Agent).where(Agent.id == agent_id, Agent.tenant_id == current_user.tenant_id)
+        .with_for_update()
+    )).scalar_one_or_none()
+    if agent is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Agent not found")
+    if agent.lifecycle_status == "revoked":
+        return {"id": str(agent.id), "lifecycle_status": "revoked", "already_revoked": True,
+                "disconnected": False, "released_engagements": []}
+
+    now = datetime.now(timezone.utc)
+    previous = {"lifecycle_status": agent.lifecycle_status,
+                "status": agent.status.value if hasattr(agent.status, "value") else str(agent.status),
+                "current_job_id": str(agent.current_job_id) if agent.current_job_id else None}
+    agent.lifecycle_status = "revoked"
+    agent.credential_generation = int(agent.credential_generation or 0) + 1
+    agent.status = AgentStatus.offline
+    agent.current_job_id = None
+    await db.execute(
+        update(AgentCredential)
+        .where(AgentCredential.agent_id == agent.id, AgentCredential.revoked_at.is_(None))
+        .values(revoked_at=now)
+    )
+    released = (await db.execute(
+        select(Engagement.id).where(Engagement.tenant_id == current_user.tenant_id,
+                                    Engagement.assigned_agent_id == agent.id)
+    )).scalars().all()
+    if released:
+        await db.execute(
+            update(Engagement).where(Engagement.id.in_(released)).values(assigned_agent_id=None)
+        )
+    record_audit(
+        db, actor_id=current_user.user_id, action="agent.revoked",
+        resource_type="agent", resource_id=agent.id,
+        detail={"reason": (body.reason or "").strip() or None, "previous": previous,
+                "released_engagements": [str(e) for e in released]},
+    )
+    await db.flush()
+    await db.commit()
+    logger.warning("agent.revoked", agent_id=str(agent.id), by=str(current_user.user_id),
+                   released_engagements=len(released))
+
+    disconnected = await agent_ws_manager.revoke_connection(
+        redis, str(agent.id), "This agent was revoked in Fleet.")
+    return {"id": str(agent.id), "lifecycle_status": "revoked", "already_revoked": False,
+            "disconnected": disconnected, "released_engagements": [str(e) for e in released]}
+
+
 @router.post("/heartbeat", summary="Agent sends health ping every 30s")
 async def heartbeat(body: HeartbeatRequest, db: DB, request: Request):
     # Verify the agent sending the heartbeat owns this agent_id (auth gap fix)

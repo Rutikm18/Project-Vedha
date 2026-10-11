@@ -188,21 +188,25 @@ def check_syn_capability(syn_capable: bool, port_count: int,
             f"Windows has no SYN scan — a {port_count}-port sweep uses connect()",
             "one connect() per port: with Windows' SYN retry turned off (see "
             "doctor: connect_fast_fail) a few hosts' full sweep fits the job "
-            "budget; for full-port sweeps of a whole subnet use a Linux agent",
+            "budget; for full-port sweeps of a whole subnet use a NATIVE Linux agent run as "
+            "root (SYN scan). The Docker agent from install.sh drops all capabilities and "
+            "scans by connect() too",
         )
     if not platform.startswith("linux"):
         return Check(
             "raw_socket", "warn",
             f"no SYN scan on {platform} — a {port_count}-port sweep uses connect()",
             "raw sockets here cannot receive TCP replies; for full-port sweeps of "
-            "a whole subnet use a Linux agent",
+            "a whole subnet use a NATIVE Linux agent run as root (the Docker agent "
+            "from install.sh has no raw-socket permission either)",
         )
     return Check(
         "raw_socket", "warn",
         f"no CAP_NET_RAW — a {port_count}-port sweep falls back to connect scan",
         "a wide sweep over connect() is bounded by the ephemeral-port ceiling "
-        "and cannot complete in a useful time; grant NET_RAW and run "
-        "network_mode: host, or narrow the port profile",
+        "and cannot complete in a useful time; run the agent natively as root (or "
+        "grant NET_RAW and use network_mode: host), or narrow the port profile. The "
+        "container install.sh creates drops every capability, so it cannot do this",
     )
 
 

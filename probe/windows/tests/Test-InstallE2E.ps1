@@ -264,6 +264,23 @@ try {
   }
 
   Write-Host "`n== Repair, then uninstall =="
+  Check 'an update keeps hand-added settings and saves scan results an old agent left in Program Files' {
+    # Agent 2.2.0/2.2.1 archived scans in "<Program Files>\Vedha Agent\result", which an update replaces.
+    [System.IO.File]::AppendAllText((Join-Path $DataDir 'agent.env'), "PROBE_DEBUG=1`r`n")
+    $legacy = Join-Path $AppDir 'result'
+    New-Item -ItemType Directory -Force -Path (Join-Path $legacy 'job1') | Out-Null
+    Set-Content -LiteralPath (Join-Path $legacy 'job1\old-scan.json') -Value '{"kept":true}' -NoNewline
+    $r = Invoke-Package $Pkg @('-Repair', '-SkipPreflight', '-NoWait', '-NoPause')
+    Expect ($r.Code -eq 0) "exit code $($r.Code):`n$($r.Output)"
+    Expect ($r.Output -match 'same version as the installed agent') "the installer did not compare versions:`n$($r.Output)"
+    $cfg = ConvertFrom-EnvText -Text ([System.IO.File]::ReadAllText((Join-Path $DataDir 'agent.env')))
+    Expect ($cfg['PROBE_DEBUG'] -eq '1') 'a setting added by hand was dropped by the update'
+    Expect (-not (Test-Path (Join-Path $AppDir 'result'))) 'the old result folder is still inside Program Files'
+    $saved = @(Get-ChildItem -Path (Join-Path $DataDir 'results') -Recurse -Filter 'old-scan.json' -File -ErrorAction SilentlyContinue)
+    Expect ($saved.Count -eq 1) 'the old scan result was not saved into the data folder'
+    Expect ((Get-Content -LiteralPath $saved[0].FullName -Raw) -eq '{"kept":true}') 'the saved scan result differs from the original'
+    Expect (Test-AclLocked (icacls $saved[0].FullName)) 'the saved scan result is readable by non-administrators'
+  }
   Check '-Repair re-applies the install, keeps the settings and removes the leftover token' {
     $r = Invoke-Package $Pkg @('-Repair', '-SkipPreflight', '-NoWait', '-NoPause')
     Expect ($r.Code -eq 0) "exit code $($r.Code):`n$($r.Output)"

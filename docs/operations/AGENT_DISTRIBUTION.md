@@ -4,6 +4,9 @@ How the Vedha agent reaches a customer's network, and how platform images reach
 an on-prem customer. Design and reasoning:
 [`planning/2026-10-01-agent-install-approach.md`](../planning/2026-10-01-agent-install-approach.md) §10.
 
+> **Windows only, or a first release?** See [ONE_COMMAND_INSTALL](ONE_COMMAND_INSTALL.md): which operating systems are
+> supported and a step-by-step route that publishes a signed **Windows-only** release (no Docker) so users run one command.
+
 ## The model in one paragraph
 
 Vedha is centrally hosted at `api.vedhasec.com`. Customers get **only the
