@@ -41,6 +41,10 @@ So "run it on Linux" does not by itself mean SYN scanning: the shipped Docker ag
 | Windows, Command Prompt (it asks for admin itself) | `curl.exe --proto =https --tlsv1.2 -fsSL "https://api.vedhasec.com/agent/install.cmd" -o "%TEMP%\vedha-install.cmd" && "%TEMP%\vedha-install.cmd" "https://api.vedhasec.com" "vet_…"` |
 | Linux | `curl --proto '=https' --tlsv1.2 -fsSL https://api.vedhasec.com/agent/install.sh \| sudo sh -s -- --manager https://api.vedhasec.com --token vet_…` |
 
+**The customer needs nothing else: no Git, no clone of the repository, no download by hand.** The one command downloads
+one small `install.ps1` (or `install.cmd` / `install.sh`) from your manager, and that script fetches the agent package itself.
+You (the vendor) build and publish the release once; the repository is only ever needed on your build machine.
+
 Copy it from Fleet; do not retype it. **The address in it must be the API's** (`api.…`), not the dashboard's
 (`app.…`): only the API serves `/agent/…`. A leftover placeholder such as `MANAGER` is a common mistake.
 

@@ -8,6 +8,7 @@ MODULES = (
     'agent._closure',
     'agent._sealed',
     'agent.agent',
+    'agent.auto_update',
     'agent.connect',
     'agent.device_identity',
     'agent.diagnostics',

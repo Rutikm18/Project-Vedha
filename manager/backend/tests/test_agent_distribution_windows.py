@@ -280,6 +280,38 @@ class TestRoutes:
         assert len(resp.headers["x-vedha-sha256"]) == 64
         assert resp.media_type == "application/zip"
 
+    def test_an_enrolled_agent_downloads_its_update_with_a_ticket_exactly_once(self, world, monkeypatch):
+        """The same /agent/package/windows route, authorised by an update ticket instead of an
+        enrolment token: the whole chain (real signed release, real route, real ticket)."""
+        import uuid
+        from app.services import agent_update_ticket as tk
+        d = world.build()
+        monkeypatch.setattr(dist, "get_settings", lambda: _settings(world))
+        agent_id, tenant_id = uuid.uuid4(), uuid.uuid4()
+        row = SimpleNamespace(id=agent_id, tenant_id=tenant_id, agent_version="1.0.0", lifecycle_status="active")
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: row))
+        seen: set[str] = set()
+
+        class R:
+            incr = AsyncMock(return_value=1)
+            expire = AsyncMock()
+
+            async def set(self, key, value, nx=False, ex=None):
+                if nx and key in seen:
+                    return None
+                seen.add(key)
+                return True
+
+        ticket = tk.issue(str(agent_id), str(tenant_id), "9.9.9")
+        headers = {"Authorization": f"Bearer {ticket}"}
+        resp = asyncio.run(dist.agent_package("windows", _request(headers), db, R()))
+        assert Path(resp.path) == (d / "vedha-agent-3.0.0-windows-amd64.zip").resolve()
+        assert len(resp.headers["x-vedha-sha256"]) == 64
+        with pytest.raises(HTTPException) as exc:                       # a replay is refused
+            asyncio.run(dist.agent_package("windows", _request(headers), db, R()))
+        assert exc.value.status_code == 401
+
     def test_package_unknown_target_404(self, world, monkeypatch):
         world.build()
         monkeypatch.setattr(dist, "get_settings", lambda: _settings(world))

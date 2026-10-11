@@ -1,7 +1,8 @@
 # Agent version management
 
-Status: **built** (version management only) on `claude/fervent-brahmagupta-o0g44u`, not merged.
-**Not built:** the automatic download and apply. Date: 2026-10-07.
+Status: version management **built and on `main`**. **Update 11 Oct 2026 (agent 2.2.8): a first step of the automatic
+download and apply is built, off by default** (section 7a). Not built: rollback, staged rollout, key pinning.
+Date: 2026-10-07.
 Related: [ADR-0005](../adr/0005-windows-agent-delivery.md) (D10) · runbook section
 [Agent versions and the update check](../operations/AGENT_DISTRIBUTION.md#agent-versions-and-the-update-check) ·
 [pipeline](../planning/2026-10-07-windows-agent-pipeline.md).
@@ -123,9 +124,43 @@ breaks the agent. Lessons from other agents are in the
    release manifest) and is Authenticode-signed.
 5. **Fleet shows it**: the version per agent, an "update available" badge, and the rollout state.
 
+## 7a. First step built (11 Oct 2026, agent 2.2.8) - off by default, Windows only
+
+Chosen to reuse the installer rather than write a second updater, so every installer rule still applies.
+
+```
+agent (idle, PROBE_AUTO_UPDATE=on)            manager
+ POST /agents/update-ticket  -------------->  decides: release.agent_version strictly newer AND a Windows package
+      (agent credential)      <--------------  ticket  vet_upd-<payload>-<hmac>   (15 min, single use)
+ GET /agent/install.ps1 (public) ------------>  installer, release key embedded
+ writes update\install.ps1, ticket.txt, run-update.cmd
+ schtasks /Create + /Run  VedhaAgentUpdate (SYSTEM, one-shot)
+   -> install.ps1 -Manager <url> -Token <ticket, read from ticket.txt by run-update.cmd>
+      (the manager-served installer: verifies the signed manifest, downloads the package, runs the packaged
+       installer, which stops VedhaAgent, replaces, starts, waits for online; the agent's scope is kept)
+      GET /agent/package/windows  Authorization: Bearer <ticket>   <- accepted like an enrolment token
+```
+
+* **The ticket** (`manager/backend/app/services/agent_update_ticket.py`): HMAC-SHA256 under a key derived from the
+  manager secret, carrying agent id, tenant, offered version, expiry and a random id; spent in Redis on first
+  download (a replay is 401, Redis down is 503). It looks like `vet_...` so the existing installer accepts it as
+  `-Token`. The download route also re-checks that the agent still exists, is active, belongs to the ticket's
+  tenant, and that the release is still newer than the agent's recorded version (409 otherwise), so a ticket
+  cannot reinstall the same version or roll back. A failed check does not spend the ticket.
+* **Why a one-shot task:** the installer stops the agent's own Scheduled Task; a child process of the agent would be
+  killed with it.
+* **Gates in the agent** (`probe/agent/auto_update.py`): switch on, Windows, no scan running (a counter around each
+  job), not attempted for this version in the last 24 h, data path without spaces, and the reply re-validated as
+  strictly newer. The ticket sits in its own file in the locked data folder (the launcher reads it); it still appears
+  on the installer's command line for the minutes the update runs, which is why it is single-use and short-lived.
+* **Still to build** (section 7 items 3 to 5): rollback if the new agent does not report online in time; a pinned
+  release key on the machine instead of trusting the installer fetched from the manager; per-agent or per-group
+  targets, a pause switch and staged rollout; Authenticode; Fleet's "update available" badge; Linux and macOS.
+
 ## 8. Tests
 
 `probe/tests/test_update_check.py` (version parsing, strictly-newer, re-validation, prompt rules,
 periodic checker), `probe/tests/test_check_agent_version.py` (the CI gate),
 `manager/backend/tests/test_agent_update_check.py` (route, offers, auth, storing the version),
-`manager/backend/tests/test_agent_release_tool.py` (the manifest field).
+`manager/backend/tests/test_agent_release_tool.py` (the manifest field), and for section 7a
+`manager/backend/tests/test_agent_update_ticket.py` (ticket, route, download), `probe/tests/test_auto_update.py` (gates, files, commands with a fake runner).

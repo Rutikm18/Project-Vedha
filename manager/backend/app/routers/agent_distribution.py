@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 import shlex
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
@@ -34,6 +35,7 @@ from app.config import get_settings
 from app.dependencies import AuthUser, DB, RedisConn
 from app.models.probe_enrollment import ProbeEnrollmentToken
 from app.ratelimit import client_ip
+from app.services import agent_update_ticket
 from app.routers.probe_enrollment import ENROLL_TOKEN_PREFIX, _secret_hash, enroll_token_is_usable
 
 router = APIRouter(prefix="/agent", tags=["agent-distribution"])
@@ -250,6 +252,46 @@ async def _rate_limit_download(redis, request: Request) -> None:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many agent downloads; wait a minute")
 
 
+async def _authorize_update_ticket(raw: str, request: Request, db, redis):
+    """An enrolled agent fetching its own update with the ticket the manager gave it.
+
+    The ticket must be genuine and unexpired, belong to an agent that still exists and is
+    active, and be spent now (single use). The manager also re-checks that the release it
+    serves is STILL newer than what that agent runs, so a ticket cannot be used to install
+    the same version again or to roll an agent back."""
+    from types import SimpleNamespace
+
+    from app.models.agent import Agent  # local: keep the router's import graph unchanged
+
+    ticket = agent_update_ticket.verify(raw)
+    if ticket is None:
+        logger.warning("agent_distribution.update_ticket_rejected", ip=client_ip(request))
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            "This update ticket is invalid or has expired; the agent will ask for a new one")
+    try:
+        agent_uuid = uuid.UUID(ticket.agent_id)
+    except ValueError:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This update ticket is invalid")
+    agent = (await db.execute(select(Agent).where(Agent.id == agent_uuid))).scalar_one_or_none()
+    if (agent is None or str(agent.tenant_id) != ticket.tenant_id
+            or getattr(agent, "lifecycle_status", "active") != "active"):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This update ticket is no longer valid")
+    release = _release_or_503()
+    if not agent_release.agent_version_is_newer(release.agent_version, agent.agent_version):
+        raise HTTPException(status.HTTP_409_CONFLICT, "This agent is already up to date")
+    try:
+        first_use = await redis.set(agent_update_ticket.spend_key(ticket), "1",
+                                    nx=True, ex=agent_update_ticket.TTL_SECONDS + 60)
+    except Exception as exc:
+        logger.error("agent_distribution.update_ticket_unavailable", error=str(exc))
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Update ticket check unavailable") from exc
+    if not first_use:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This update ticket was already used")
+    logger.info("agent_distribution.update_ticket_spent", agent_id=ticket.agent_id,
+                from_version=agent.agent_version, to_version=release.agent_version, ip=client_ip(request))
+    return SimpleNamespace(id=f"update:{ticket.agent_id}", tenant_id=agent.tenant_id)
+
+
 async def _authorize_download(request: Request, db, redis) -> ProbeEnrollmentToken:
     """Rate-limit, then require a live enrolment token. Shared by every route that
     hands out an agent binary, so the Linux image and the Windows package can
@@ -260,6 +302,8 @@ async def _authorize_download(request: Request, db, redis) -> ProbeEnrollmentTok
     raw = auth.removeprefix("Bearer ").strip() if auth.startswith("Bearer ") else ""
     if not raw.startswith(ENROLL_TOKEN_PREFIX):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "An enrolment token is required to download the agent")
+    if agent_update_ticket.is_ticket(raw):
+        return await _authorize_update_ticket(raw, request, db, redis)
     token = (await db.execute(
         select(ProbeEnrollmentToken).where(ProbeEnrollmentToken.token_hash == _secret_hash(raw))
     )).scalar_one_or_none()
