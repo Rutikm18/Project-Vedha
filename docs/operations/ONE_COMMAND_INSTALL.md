@@ -9,6 +9,34 @@ distribution router and the real installer script. What was and was not run is i
 
 ---
 
+## 0. The shortest path: one command for you, one command per machine
+
+**You (once per release), on a Windows PC with this repository, Python 3.10 to 3.12 and OpenSSH Client:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File probe\windows\publish-release.ps1 `
+    -Server ubuntu@YOUR_SERVER -ManagerUrl https://api.vedhasec.com -ConfigureManager
+```
+
+It creates the signing keys the first time (and tells you to back them up), builds the Windows agent, packages it,
+builds and signs the release, verifies it, uploads it to the manager, puts the two public keys in the manager's
+`.env` (a dated backup is kept) and restarts the api, then asks the manager for its manifest and confirms it serves
+the Windows package. `-DryRun` shows the plan without doing anything; `-SkipBuild` reuses the agent already built;
+without `-Server` it stops after signing. A release version can be published once: change `VERSION` or pass
+`-Version 1.0.404` for the next one. Steps 1 to 7 in section 3 below are what this script does, in case you want to
+do them by hand or something fails.
+
+**Each Windows machine:** in the console, **Fleet -> Add agent -> Windows -> Generate install command**, then run that
+one line in an Administrator PowerShell on the machine. Nothing else.
+
+What this does not remove: choosing the engagement and clicking Generate (that is what creates the one-time token),
+the first-time server access (SSH), and backing up the keys. Doing the whole thing from a git push, with no PC of
+yours involved, is the `agent-release` workflow, which is blocked until GitHub Actions billing is fixed. The script
+was unit-tested (55 checks, plus `-DryRun`) and its Python half rehearsed on Linux; **it has not been run on Windows
+or against a real server**.
+
+---
+
 ## 1. Which operating systems the agent is built for
 
 | OS | What you ship | How it runs | Status |
@@ -129,7 +157,7 @@ make agent-release AGENT_ARCH= WINDOWS_ZIP=/path/to/vedha-agent-win.zip
   checkout.
 * A release version is **immutable**: building the same `VERSION` twice fails with "already exists". For a second
   release either bump the `VERSION` file or pass `--version`, for example:
-  `python3 scripts/agent_release.py build --key ~/.vedha/agent-release-key.pem --arch "" --p256-key ~/.vedha/agent-release-p256-key.pem --windows-zip /path/vedha-agent-win.zip --version 1.0.404`
+  `python3 scripts/agent_release.py build --key ~/.vedha/agent-release-key.pem --arch= --p256-key ~/.vedha/agent-release-p256-key.pem --windows-zip /path/vedha-agent-win.zip --version 1.0.404`
 * For Linux as well, leave `AGENT_ARCH` at its default (`amd64,arm64`); that builds Docker images, so it needs
   Docker and takes much longer.
 
@@ -187,7 +215,7 @@ $k = "$env:USERPROFILE\.vedha"
 python scripts\agent_release.py keygen --out "$k\agent-release-key.pem" --p256-out "$k\agent-release-p256-key.pem"
 
 # Steps 3-4: package built by probe\windows\package-zip.ps1 -Release (keep the .release.json beside the zip)
-python scripts\agent_release.py build --key "$k\agent-release-key.pem" --arch "" `
+python scripts\agent_release.py build --key "$k\agent-release-key.pem" --arch= `
   --p256-key "$k\agent-release-p256-key.pem" --windows-zip "C:\path\vedha-agent-win.zip"
 
 # Step 5
@@ -260,7 +288,7 @@ above is the recommended one.
 ## 8. What was and was not run
 
 **Run on 11 Oct 2026 (a rehearsal on Linux, with throw-away keys and a stand-in zip):**
-a Windows-only release built with the real tool (`--arch ""`), verified by the real verifier, loaded by the real
+a Windows-only release built with the real tool (`--arch=`), verified by the real verifier, loaded by the real
 manager code, and served by the real `agent_distribution` router over a socket. Results: `install.ps1`,
 `install.cmd`, `manifest.json`, `manifest.json.sig`, `manifest.json.p256.sig` and `install.sh` answered 200 without a
 login; the package answered 401 without a token and 200 with one, byte-identical to the file that was signed (SHA-256

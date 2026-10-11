@@ -6,6 +6,7 @@ registry: the manager serves it (manager/backend/app/routers/agent_distribution.
 from a signed release built here.
 
     keygen  --out FILE [--p256-out FILE]   new Ed25519 release key (+ P-256 key for Windows)
+    pubkey  --key FILE [--p256-key FILE]   print the public key(s) of existing keys as .env lines
     build   --key FILE [--arch amd64,arm64] [--out DIR] [--from-image TAG]
             [--p256-key FILE --windows-zip ZIP [--authenticode-thumbprint HEX]] [--sbom FILE]
     verify  DIR --public-key B64 [--p256-public-key B64]
@@ -826,6 +827,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="SHA-1 thumbprint of the cert the Windows exe is Authenticode-signed with")
     bd.add_argument("--sbom", type=Path, help="CycloneDX SBOM to include")
 
+    pk = sub.add_parser("pubkey", help="print the public key(s) of existing signing keys, as .env lines")
+    pk.add_argument("--key", type=Path, help="Ed25519 private key file")
+    pk.add_argument("--p256-key", type=Path, help="P-256 private key file")
+
     vf = sub.add_parser("verify", help="verify a release directory")
     vf.add_argument("path", type=Path)
     vf.add_argument("--public-key", required=True)
@@ -864,6 +869,13 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"\nP-256 key (Windows) written to {args.p256_out} (mode 600).")
                 print(f"AGENT_RELEASE_P256_PUBLIC_KEY={spki}")
                 print(f"(key id {p256_key_id(spki)})")
+        elif args.cmd == "pubkey":
+            if not args.key and not args.p256_key:
+                raise ReleaseError("pubkey needs --key and/or --p256-key")
+            if args.key:
+                print(f"AGENT_RELEASE_PUBLIC_KEY={public_raw_b64(load_private_key(args.key))}")
+            if args.p256_key:
+                print(f"AGENT_RELEASE_P256_PUBLIC_KEY={p256_spki_b64(load_p256_private_key(args.p256_key))}")
         elif args.cmd == "build":
             arches = [a.strip() for a in args.arch.split(",") if a.strip()]
             from_images = {}

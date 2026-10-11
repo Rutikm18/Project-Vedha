@@ -267,3 +267,21 @@ def test_publish_with_rsync_is_unchanged(tmp_path, key, monkeypatch):
     tool.publish(tmp_path / "out", "ubuntu@10.0.0.5:/opt/vedha/agent-releases")
     assert [c[0] for c in calls] == ["rsync", "rsync"]
     assert calls[1][-1].endswith("/agent-releases/CURRENT")
+
+
+# ── pubkey: the public values of keys that already exist ─────────────────────
+
+def test_pubkey_prints_the_same_values_keygen_printed(tmp_path, capsys):
+    ed, p256 = tmp_path / "ed.pem", tmp_path / "p256.pem"
+    ed_pub, p256_pub = tool.keygen(ed), tool.keygen_p256(p256)
+    assert tool.main(["pubkey", "--key", str(ed), "--p256-key", str(p256)]) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out == [f"AGENT_RELEASE_PUBLIC_KEY={ed_pub}", f"AGENT_RELEASE_P256_PUBLIC_KEY={p256_pub}"]
+
+
+def test_pubkey_needs_a_key_and_refuses_the_wrong_kind(tmp_path, capsys):
+    assert tool.main(["pubkey"]) != 0
+    ed, p256 = tmp_path / "ed.pem", tmp_path / "p256.pem"
+    tool.keygen(ed), tool.keygen_p256(p256)
+    assert tool.main(["pubkey", "--key", str(p256)]) != 0       # a P-256 file is not an Ed25519 key
+    assert tool.main(["pubkey", "--p256-key", str(ed)]) != 0
