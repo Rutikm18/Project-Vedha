@@ -255,6 +255,13 @@ asks the manager whether a newer one exists; the manager answers and sends nothi
    `-Repair` copies the new program in (the old one is kept as `Vedha Agent.old` while the new files are
    copied and the task is registered, and put back if either step fails), keeps the identity and settings, and re-checks the connection.
 3. Check: `vedha-agent version`, and `agent_version` in Fleet.
+
+> **`-Repair` and `install.cmd -Token` install the package they are run from, even an OLDER one.** Nothing
+> compares versions. Running them from a forgotten download folder replaces a working agent with an old one
+> (seen in the field: a working agent was replaced by a 2.2.0 package that cannot open its live
+> connection). Before installing, run `<that folder>\vedha-agent\vedha-agent.exe version`; to find every
+> copy on the PC: `dir /s /b C:\Users\*vedha-agent.exe`. The log keeps the history of what ran:
+> `findstr /i "starting (log level" "C:\ProgramData\vedha-agent\logs\agent.log"`.
 4. Re-add any hand-added settings (the gotcha in section 4).
 
 **Which version should you be on?** `main` is at **2.2.7**. 2.2.6 added the Windows closed-port fix and the
