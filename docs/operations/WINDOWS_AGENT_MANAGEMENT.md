@@ -222,10 +222,12 @@ All from an **Administrator** prompt, because the task runs as SYSTEM.
 > 2.2.0 and fixes nothing. To get a newer agent, run it from a folder unzipped from a **newer** package
 > (section 5); check the result with `vedha-agent version`.
 
-> **Gotcha: `-Repair` (and an update) rewrites `agent.env` from a fixed list of keys.** The installer keeps
-> `PLATFORM_URL`, `PROBE_NAME`, `PROBE_NETWORK_SEGMENTS`, `HTTPS_PROXY` and `PROBE_CA_BUNDLE`, but **drops any
-> setting you added by hand** (for example `PROBE_DEBUG`, `PROBE_MAX_FULL_SCAN_SECONDS`, `HEARTBEAT_INTERVAL`).
-> Write your extra settings down and re-add them after every repair or update, then restart.
+> **Settings you add by hand now survive an update.** With a package built after 11 Oct 2026 (the installer
+> inside the package does the work; it has no version number of its own), `-Repair` and an update rewrite the settings the installer manages (manager, name, scope, proxy, CA bundle, paths) and
+> **keep every other line** (`PROBE_DEBUG`, `PROBE_MAX_FULL_SCAN_SECONDS`, `HEARTBEAT_INTERVAL`, ...) under a
+> `# Kept from the previous settings file` heading, and say which ones. The installer that does the work is the
+> one inside the package you run, so a package built before this change still drops them: write your extra
+> settings down before updating with an older package, and re-add them afterwards.
 
 > **Stopping while a scan runs abandons it.** The manager notices when the agent stops renewing the job's
 > 300-second lease, then puts the job back to `pending` for another attempt; once its attempt limit is used
@@ -256,18 +258,90 @@ asks the manager whether a newer one exists; the manager answers and sends nothi
    copied and the task is registered, and put back if either step fails), keeps the identity and settings, and re-checks the connection.
 3. Check: `vedha-agent version`, and `agent_version` in Fleet.
 
-> **`-Repair` and `install.cmd -Token` install the package they are run from, even an OLDER one.** Nothing
-> compares versions. Running them from a forgotten download folder replaces a working agent with an old one
-> (seen in the field: a working agent was replaced by a 2.2.0 package that cannot open its live
-> connection). Before installing, run `<that folder>\vedha-agent\vedha-agent.exe version`; to find every
-> copy on the PC: `dir /s /b C:\Users\*vedha-agent.exe`. The log keeps the history of what ran:
+> **The installer now compares versions.** Before changing anything it reads the installed agent's version and
+> the package's, and says which case it is: *no previous installation*, *updating 2.2.0 -> 2.2.3*, *same
+> version, re-applying*, or *this package is OLDER than the installed agent*. In the last case it **stops and
+> changes nothing**, unless you add `-AllowDowngrade`. (Seen in the field: a forgotten 2.2.0 download folder was
+> run over a working newer agent and left it unable to open its live connection.) Packages built before this
+> change do not have the check: before running one, look at its version with
+> `<that folder>\vedha-agent\vedha-agent.exe version`. To find every copy on the PC:
+> `dir /s /b C:\Users\*vedha-agent.exe`. The log keeps the history of what ran:
 > `findstr /i "starting (log level" "C:\ProgramData\vedha-agent\logs\agent.log"`.
-4. Re-add any hand-added settings (the gotcha in section 4).
 
-**Which version should you be on?** `main` is at **2.2.7**. 2.2.6 added the Windows closed-port fix and the
-removal of the Deep Port Sweep host cap. 2.2.7 makes `vedha-agent doctor` show the closed-port check that
-the 2.2.6 startup message tells you to run. Build a new package for either; an agent still on 2.2.5 has none
-of these changes.
+> **Before updating with a package built before 11 Oct 2026** (for example the stored 2.2.3 build), save the old
+> scan archive yourself: that installer deletes `C:\Program Files\Vedha Agent\result` along with the old
+> program. In an Administrator prompt: `if exist "C:\Program Files\Vedha Agent\result" xcopy /E /I /H /Y
+> "C:\Program Files\Vedha Agent\result" "C:\vedha-results-backup"`. Newer packages do this for you.
+
+**What an update does to what is already installed** (all printed as it happens):
+
+| On the computer | Update behaviour |
+|---|---|
+| Old program files in `C:\Program Files\Vedha Agent` | replaced as a whole; the previous folder is kept as `Vedha Agent.old` until the new one is registered, and put back if anything fails |
+| The agent's identity (`state.json`), logs, spool, `ca-bundle.pem` | kept, so it stays the same agent in Fleet |
+| `agent.env` | managed settings rewritten, **your own extra lines kept** |
+| Scan results that agent 2.2.0 / 2.2.1 kept in `Program Files\Vedha Agent\result` | **copied into `C:\ProgramData\vedha-agent\results\from-program-files-<date>`** (locked folder) before the old folder is deleted; if any file fails to copy, nothing is changed |
+| A scheduled task `VedhaAgent` that runs something else (for example the source-mode lab install) | replaced; the installer says what the old one ran, and deletes the lab launcher `agent-service.cmd` |
+| Another scheduled task that also starts a Vedha agent | **not touched**; the installer warns and prints the command to remove it |
+| A `vedha-agent.exe` running from another folder (a `run.cmd` window) | **not stopped**; the installer warns, because only one process may use an identity and it would block the installed agent |
+
+The uninstall (without `-Purge`) saves those old scan results the same way before it deletes the program folder.
+4. Hand-added settings are kept by a package built after 11 Oct 2026 (the note above); with an older package, re-add them.
+
+### Which version is the latest?
+
+There are three different numbers; do not mix them up.
+
+| Number | Where | Meaning |
+|---|---|---|
+| **Agent version** (`2.2.x`) | `probe/agent/version.py`; `vedha-agent version`; `agent_version` in Fleet and in `GET /agents` | the agent's own code. This is the one that matters for "is this agent current?" |
+| **Platform version** (`1.0.403`) | the `VERSION` file | names a release (`agent-v<VERSION>` tags) and is baked into the package as its installer version. Not the same as the agent version |
+| **Package** | `vedha-agent-win.release.json` beside the zip | one build of one agent version; the zip's SHA-256 identifies it |
+
+What exists is three separate facts, and only the first is in the code:
+
+1. **Newest agent code:** read `AGENT_VERSION` on the branch you build from. On 11 Oct 2026: `main` 2.2.6; the open
+   branch `claude/serene-bardeen-1uqxzq` 2.2.7 (adds the closed-port check to the installed `doctor`).
+2. **Newest package that has been built:** the artifact of a successful *vedha-agent-windows-build* run. On 11 Oct
+   2026 the only one still stored is **2.2.3** (run 26, 8 Oct; later runs failed because GitHub Actions is blocked by
+   billing). It has the live-connection fix (2.2.1) but none of the 2.2.4 to 2.2.7 changes.
+3. **Newest published signed release:** none. The `agent-release` workflow has never run and there is no GitHub
+   release or tag, so Fleet → Add agent has no Windows package to offer.
+
+To see what a package holds before you install it: unzip it and run `vedha-agent\vedha-agent.exe version`.
+To see what every enrolled agent runs: Fleet, or `GET /agents` (`agent_version`).
+
+**Which version should you be on?** The newest one that has been built and tried. 2.2.6 added the Windows
+closed-port fix and removed the Deep Port Sweep host cap; 2.2.7 makes `vedha-agent doctor` show the closed-port
+check that the 2.2.6 startup message tells you to run. An agent below 2.2.1 cannot open its live connection at
+all (section 11).
+
+### Putting the agent on other computers
+
+**What you send** (the same agent whichever way it travels):
+
+| Way | You send | They run |
+|---|---|---|
+| The zip | `vedha-agent-win.zip`; its SHA-256 and the install token **by a different channel** (phone, chat) | check the hash, unzip, `install.cmd -Token vet_...` (or `-TokenFile C:\path\token.txt` to keep the token off the command line) |
+| S3 / CloudFront | nothing but the command `publish-to-s3.sh` prints, plus the token | paste it in an Administrator PowerShell ([hosting guide](WINDOWS_AGENT_HOSTING.md)) |
+| Manager-served | nothing; Fleet → Add agent → Windows shows the command | paste it. Needs a published signed release (none yet, see above) |
+
+**Each computer must enrol itself; never copy `state.json`** (it is the agent's identity; two machines with one
+identity impersonate each other). The ways to enrol, in the order I would use them:
+
+1. **Pairing code, no token.** Run `install.cmd` and press Enter at the token prompt. The agent shows a URL and a
+   code; approve it in Fleet → Pending requests. Each computer is approved on its own, and there is no token to
+   create, send or lose. (Not yet tried here with many computers in a row.)
+2. **One install token per computer.** The Fleet token is bound to an engagement and installs **exactly one** agent;
+   an engagement that already has an assigned agent cannot make another token. So N computers need N engagements,
+   or use the pairing code.
+3. **A Site token** (API only; I found no Fleet button for it): `POST /probe-enrollment/enroll-tokens` with a
+   `site_id` of an existing active Site and `max_uses` up to 1000, valid for at most 24 hours. One token can then
+   enrol several computers into that Site.
+
+**Updating many computers.** Nothing updates itself. Send the new package and run `install.cmd -Repair` from it on
+each one; the installer compares versions, keeps the identity and settings, and refuses an older package. Remote
+push tools (Group Policy, Intune, PsExec) are not provided and have not been tried.
 
 **Building the package.** Normally GitHub → Actions → *vedha-agent-windows-build*. While Actions is blocked
 by the account's billing, build on any Windows machine with Python 3.10-3.12 and internet:
@@ -395,6 +469,8 @@ with the build's hash) to the customer's security team; do not try to evade thei
 | `The manager is not reachable from this computer` | the doctor output says which of DNS / proxy / TCP / TLS; fix it, run the same command again |
 | `TLS certificate is not trusted ... signed by: <name>` | HTTPS inspection: exempt the manager, or `-CaBundle <root.pem>` |
 | `WARN clock` | fix time sync (TLS and tokens depend on it) |
+| `This package (2.2.0) is OLDER than the installed agent (2.2.3)` / `Refusing to replace a newer agent with an older one` | you ran an old download folder. Use the newer package; add `-AllowDowngrade` only if you really want the older agent |
+| `A Vedha agent is already running from another folder` | close that window (for example `run.cmd`); only one process can use the agent's identity |
 | `That does not look like an install token` | it must start with `vet_`; copy it again from Fleet |
 | `another Vedha probe is already using this state file` | a second copy is running; stop the task or the other window |
 | `INSTALLED, BUT NOT CONNECTED YET` | the agent keeps retrying; fix what `doctor` lists and it connects without reinstalling |

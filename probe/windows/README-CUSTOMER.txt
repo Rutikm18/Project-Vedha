@@ -41,6 +41,12 @@ Installing from your Vedha portal instead?
   To remove an agent installed that way, from an Administrator prompt:
       C:\ProgramData\vedha-agent\tools\uninstall.cmd   (add -Purge to also delete its identity and logs)
 
+Updating an agent that is already installed
+  Unzip the NEW package into a new folder and run   install.cmd -Repair   from it. The installer compares the
+  versions, says what it will do, keeps the agent's identity, settings and saved scan results, and removes the
+  old program files. It refuses to replace a newer agent with an older package (add -AllowDowngrade only if
+  you really want that).
+
 Other commands
   install.cmd -Repair            re-apply the installation and re-check it (keeps the agent's identity)
   install.cmd -Uninstall         remove the agent  (add -Purge to also delete its identity and logs)

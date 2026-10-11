@@ -173,6 +173,82 @@ Assert-Equal (Get-StatusLine ([pscustomobject]@{ state = 'online' })) 'connected
 Assert-True  ((Get-StatusLine ([pscustomobject]@{ state = 'retrying'; reason = 'no route' })) -match 'no route') 'status text: retrying shows the reason'
 Assert-True  ((Get-StatusLine ([pscustomobject]@{ state = 'failed'; reason = 'gave up' })) -match 'gave up') 'status text: failed shows the reason'
 
+# --- updating an agent that is already installed ------------------------------------------------
+# Seen in the field: a download folder holding agent 2.2.0 was run over a working newer agent and
+# replaced it with a build that cannot open its live connection. Nothing compared versions.
+Assert-Equal (Get-VedhaVersionNumber 'Vedha Probe 2.2.0') '2.2.0' 'version: read from the agent''s own output'
+Assert-Equal (Get-VedhaVersionNumber "Vedha Probe 2.10.3`r`n") '2.10.3' 'version: two digits compare as numbers, not text'
+Assert-Equal (Get-VedhaVersionNumber 'Vedha agent 2.2.7-rc1 on win32') '2.2.7' 'version: a suffix is ignored'
+Assert-True  ($null -eq (Get-VedhaVersionNumber 'Unknown command: version')) 'version: no number is $null'
+Assert-True  ($null -eq (Get-VedhaVersionNumber '')) 'version: empty text is $null'
+Assert-True  ([version]'2.10.0' -gt [version]'2.9.0') 'version: 2.10.0 is newer than 2.9.0'
+
+$v220 = [version]'2.2.0'; $v223 = [version]'2.2.3'
+$p = Get-VedhaUpdatePlan -InstalledPresent $false -Installed $null -Package $v223
+Assert-Equal $p.Kind 'fresh' 'plan: nothing installed is a fresh install'
+Assert-True  $p.Allowed 'plan: a fresh install is allowed'
+$p = Get-VedhaUpdatePlan -InstalledPresent $true -Installed $v220 -Package $v223
+Assert-Equal $p.Kind 'upgrade' 'plan: a newer package is an update'
+Assert-True  ($p.Allowed -and $p.Message -match '2\.2\.0 -> 2\.2\.3') 'plan: an update says from which version to which'
+$p = Get-VedhaUpdatePlan -InstalledPresent $true -Installed $v223 -Package $v223
+Assert-Equal $p.Kind 'same' 'plan: the same version is a re-apply'
+Assert-True  $p.Allowed 'plan: re-applying the same version is allowed'
+$p = Get-VedhaUpdatePlan -InstalledPresent $true -Installed $v223 -Package $v220
+Assert-Equal $p.Kind 'downgrade' 'plan: an older package is a downgrade'
+Assert-False $p.Allowed 'plan: a downgrade is refused by default'
+Assert-True  ($p.Message -match 'OLDER than the installed agent') 'plan: the refusal explains itself'
+$p = Get-VedhaUpdatePlan -InstalledPresent $true -Installed $v223 -Package $v220 -AllowDowngrade
+Assert-Equal $p.Kind 'downgrade' 'plan: -AllowDowngrade is still reported as a downgrade'
+Assert-True  ($p.Allowed -and $p.Message -match 'AllowDowngrade') 'plan: -AllowDowngrade permits it and says why'
+$p = Get-VedhaUpdatePlan -InstalledPresent $true -Installed ([version]'2.2.10') -Package ([version]'2.2.9')
+Assert-False $p.Allowed 'plan: 2.2.10 is newer than 2.2.9, so installing 2.2.9 is a downgrade'
+$p = Get-VedhaUpdatePlan -InstalledPresent $true -Installed $null -Package $v223
+Assert-Equal $p.Kind 'unknown' 'plan: an installed agent whose version cannot be read'
+Assert-True  $p.Allowed 'plan: a broken installed program may be replaced'
+$p = Get-VedhaUpdatePlan -InstalledPresent $true -Installed $v223 -Package $null
+Assert-True  ($p.Kind -eq 'unknown' -and $p.Allowed) 'plan: an unreadable package version does not block'
+
+# --- settings the operator added by hand survive an update --------------------------------------
+$oldCfg = (New-VedhaAgentConfig -ManagerUrl 'https://old.example.com' -DataDir 'C:\ProgramData\vedha-agent' -AgentName 'PC1-probe' `
+  -ScopeValue '192.168.1.0/24' -InstallToken 'vet_AbCdEf123456') + "PROBE_DEBUG=1`r`n# my note`r`nPROBE_MAX_FULL_SCAN_SECONDS=86400`r`nNO_PROXY=a.example.com,b.example.com`r`nWEIRD=x=y`r`n"
+$extra = @(Get-VedhaExtraSettingLines -ExistingText $oldCfg)
+Assert-Equal $extra.Count 4 'extras: only the hand-added settings are picked'
+Assert-True  ($extra -contains 'PROBE_DEBUG=1') 'extras: PROBE_DEBUG kept'
+Assert-True  ($extra -contains 'PROBE_MAX_FULL_SCAN_SECONDS=86400') 'extras: the deep-scan ceiling kept'
+Assert-True  ($extra -contains 'WEIRD=x=y') 'extras: a value containing = is kept whole'
+Assert-False ($extra -match 'PLATFORM_URL|PROBE_NAME|PROBE_ENROLL_TOKEN|vet_') 'extras: managed settings and the used token are not carried over'
+$fresh = New-VedhaAgentConfig -ManagerUrl 'https://new.example.com' -DataDir 'C:\ProgramData\vedha-agent' -AgentName 'PC1-probe' -ScopeValue '10.0.0.0/24'
+$merged = Add-VedhaExtraSettings -ConfigText $fresh -ExtraLines $extra
+$mc = Read-VedhaConfig -Text $merged
+Assert-Equal $mc['PLATFORM_URL'] 'https://new.example.com' 'merge: a managed setting takes the NEW value'
+Assert-Equal $mc['PROBE_NETWORK_SEGMENTS'] '10.0.0.0/24' 'merge: scope takes the new value'
+Assert-Equal $mc['PROBE_DEBUG'] '1' 'merge: the hand-added setting is still there'
+Assert-Equal $mc['NO_PROXY'] 'a.example.com,b.example.com' 'merge: a list value is intact'
+Assert-False ($mc.ContainsKey('PROBE_ENROLL_TOKEN')) 'merge: no install token is resurrected'
+$again = Add-VedhaExtraSettings -ConfigText $fresh -ExtraLines @(Get-VedhaExtraSettingLines -ExistingText $merged)
+Assert-Equal $again $merged 'merge: repeating the update changes nothing (no duplicates)'
+Assert-Equal (Add-VedhaExtraSettings -ConfigText $fresh -ExtraLines @()) $fresh 'merge: nothing to keep leaves the text untouched'
+Assert-Equal @(Get-VedhaExtraSettingLines -ExistingText '').Count 0 'extras: an empty file has none'
+
+# --- scan results kept inside the old program folder are saved, not deleted ----------------------
+$root = Join-Path ([System.IO.Path]::GetTempPath()) ("vedha-legacy-" + [guid]::NewGuid().ToString('N'))
+try {
+  $old = Join-Path $root 'Vedha Agent.old\result'
+  $data = Join-Path $root 'data'
+  New-Item -ItemType Directory -Force -Path (Join-Path $old 'job1'), $data | Out-Null
+  Set-Content -LiteralPath (Join-Path $old 'job1\a.json') -Value '{"a":1}'
+  Set-Content -LiteralPath (Join-Path $old 'b.json') -Value '{"b":2}'
+  Assert-Equal (Copy-VedhaLegacyResults -LegacyDir (Join-Path $root 'nowhere') -DataDir $data) 0 'results: no old folder means nothing to save'
+  $saved = Copy-VedhaLegacyResults -LegacyDir $old -DataDir $data
+  Assert-Equal $saved 2 'results: every file is counted, including those in sub-folders'
+  $copies = @(Get-ChildItem -LiteralPath (Join-Path $data 'results') -Recurse -File)
+  Assert-Equal $copies.Count 2 'results: both files arrived in the data folder'
+  Assert-True  ($copies | Where-Object { $_.Name -eq 'a.json' -and $_.FullName -match 'from-program-files-' }) 'results: kept in a dated folder, sub-folders preserved'
+  Assert-Equal (@(Get-ChildItem -LiteralPath $old -Recurse -File).Count) 2 'results: the source is untouched until the caller removes it'
+  $empty = Join-Path $root 'empty'; New-Item -ItemType Directory -Path $empty | Out-Null
+  Assert-Equal (Copy-VedhaLegacyResults -LegacyDir $empty -DataDir $data) 0 'results: an empty folder means nothing to save'
+} finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+
 # --- what ships to customers must be safe for Windows PowerShell 5.1 ---------------------------
 foreach ($name in 'install.ps1', 'uninstall.ps1') {
   $bytes = [System.IO.File]::ReadAllBytes((Join-Path $PSScriptRoot "..\$name"))

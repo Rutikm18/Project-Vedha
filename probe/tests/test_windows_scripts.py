@@ -148,7 +148,15 @@ def test_the_scheduled_task_runs_the_agent_directly_as_system_and_restarts_it():
     text = _text("install.ps1")
     assert "New-ScheduledTaskAction -Execute $exe -Argument 'run'" in text
     assert "-UserId 'SYSTEM'" in text and "-AtStartup" in text and "-RestartCount 999" in text
-    assert "agent-service.cmd" not in text                   # the old cmd wrapper (and its unrotated redirect) is gone
+    # The old cmd wrapper (and its unrotated log redirect) must never be created or run again. The installer
+    # may only DELETE a leftover one written by the source-mode lab install (setup.cmd).
+    assert "-Execute 'cmd.exe'" not in text and 'cmd.exe /c' not in text
+    for line in text.splitlines():
+        if "agent-service.cmd" in line:
+            assert "Join-Path $DataDir 'agent-service.cmd'" in line or "Removed the old source-mode launcher" in line \
+                or line.lstrip().startswith("#"), f"agent-service.cmd may only be removed, never used: {line!r}"
+    assert "Remove-Item -LiteralPath $labLauncher" in text
+    assert not any(w in text for w in ("Set-Content $labLauncher", "Set-Content -LiteralPath $labLauncher", "Out-File $labLauncher"))
 
 
 def test_scripts_for_customers_are_plain_ascii_and_batch_files_use_crlf():

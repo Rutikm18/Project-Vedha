@@ -54,7 +54,7 @@ Built by `probe/windows/package-zip.ps1`, which also writes two files beside the
 
 One `KEY=VALUE` per line. The agent loads it on every start; **an environment variable that is
 already set wins over the file**. Written by the installer (do not edit while the agent runs;
-`install.cmd -Repair` rewrites it from the existing values plus any options you pass). **`-Repair` keeps only the keys in the table above: any setting you added by hand (the second table) is dropped and must be added again.**
+`install.cmd -Repair` rewrites it from the existing values plus any options you pass). In packages built after 11 Oct 2026 the installer's `-Repair` and updates keep every line they do not manage (the second table, `PROBE_DEBUG`, ...) under a `# Kept from the previous settings file` heading; older installers keep only the keys in the first table.
 
 | Key | Default written | Meaning |
 |---|---|---|
@@ -153,6 +153,7 @@ means a heartbeat in the last 90 seconds).
 | `-CaBundle <file.pem>` | company root certificate for HTTPS inspection |
 | `-Name <text>` | name shown in Fleet |
 | `-Repair` | re-apply the installation from this package and re-check it; keeps the agent's identity; needs no token |
+| `-AllowDowngrade` | install even though the installed agent is newer than this package (without it the installer stops and changes nothing) |
 | `-Uninstall [-Purge]` | remove the agent; `-Purge` also deletes `C:\ProgramData\vedha-agent` (identity, settings, logs) |
 | `-NoWait` | register and start, but do not wait to see it connect |
 | `-SkipPreflight` | skip the pre-install connection check (not recommended) |
