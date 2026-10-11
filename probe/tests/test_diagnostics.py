@@ -489,6 +489,43 @@ class TestDoctorChecks:
         manager = [c for c in dg.run_doctor(env) if c.name == "manager"]
         assert manager and manager[0].status == "fail" and "-Manager" in manager[0].remediation
 
+    # The installed `vedha-agent.exe doctor` is run_doctor, not doctor.run. The startup log
+    # tells the operator to "run doctor" when Windows still retries refused connections, so
+    # run_doctor must be where that answer is shown.
+    def _no_manager(self, agent_env):
+        env, _ = agent_env
+        return {k: v for k, v in env.items() if k != "PLATFORM_URL"}
+
+    def test_run_doctor_reports_fast_fail_on_windows(self, agent_env, monkeypatch):
+        from scanner import win_fast_connect
+        monkeypatch.setattr(win_fast_connect, "self_check", lambda **kw: {
+            "fast_fail_s": 0.004, "default_s": 2.2, "effective": True, "mode": "initial-rto"})
+        checks = {c.name: c for c in dg.run_doctor(self._no_manager(agent_env))}
+        assert checks["connect_fast_fail"].status == "pass"
+        assert "0.004" in checks["connect_fast_fail"].detail
+
+    def test_run_doctor_warns_when_windows_still_retries(self, agent_env, monkeypatch):
+        from scanner import win_fast_connect
+        monkeypatch.setattr(win_fast_connect, "self_check", lambda **kw: {
+            "fast_fail_s": 2.2, "default_s": 2.2, "effective": False, "mode": "off"})
+        checks = {c.name: c for c in dg.run_doctor(self._no_manager(agent_env))}
+        assert checks["connect_fast_fail"].status == "warn"
+        assert "Linux agent" in checks["connect_fast_fail"].remediation
+
+    def test_run_doctor_has_no_fast_fail_check_off_windows(self, agent_env, monkeypatch):
+        from scanner import win_fast_connect
+        monkeypatch.setattr(win_fast_connect, "self_check", lambda **kw: None)
+        assert "connect_fast_fail" not in {c.name for c in dg.run_doctor(self._no_manager(agent_env))}
+
+    def test_a_broken_self_check_never_breaks_doctor(self, agent_env, monkeypatch):
+        from scanner import win_fast_connect
+
+        def boom(**kw):
+            raise OSError("no sockets")
+        monkeypatch.setattr(win_fast_connect, "self_check", boom)
+        checks = {c.name for c in dg.run_doctor(self._no_manager(agent_env))}
+        assert "manager" in checks and "connect_fast_fail" not in checks
+
 
 # ── support bundle ───────────────────────────────────────────────────────────
 
