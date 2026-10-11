@@ -324,7 +324,7 @@ all (section 11).
 |---|---|---|
 | The zip | `vedha-agent-win.zip`; its SHA-256 and the install token **by a different channel** (phone, chat) | check the hash, unzip, `install.cmd -Token vet_...` (or `-TokenFile C:\path\token.txt` to keep the token off the command line) |
 | S3 / CloudFront | nothing but the command `publish-to-s3.sh` prints, plus the token | paste it in an Administrator PowerShell ([hosting guide](WINDOWS_AGENT_HOSTING.md)) |
-| Manager-served | nothing; Fleet → Add agent → Windows shows the command | paste it. Needs a published signed release (none yet, see above) |
+| Manager-served | nothing; Fleet → Add agent → Windows shows the command | paste it. Needs a published signed release (none yet, see above). A Windows-only release needs no Docker: [step by step](ONE_COMMAND_INSTALL.md#3-hosting-it-step-by-step-windows-first-it-works-today-without-docker) |
 
 **Each computer must enrol itself; never copy `state.json`** (it is the agent's identity; two machines with one
 identity impersonate each other). The ways to enrol, in the order I would use them:
@@ -421,8 +421,11 @@ network that does not cover the targets.) The common causes, in order:
   `vedha-agent doctor` shows `connect_fast_fail` as `pass` or `warn`. **This has been proven on a Linux
   loopback in tests but not yet on a real Windows machine; the first Windows run is the real test.**
   After it, the scan's `cleanup pass resolved ...` line should no longer re-check every port.
-* **Advice.** Run full-port sweeps from a **Linux** agent where you can: it uses SYN scanning, which takes
-  minutes per host. A Windows agent is the fallback.
+* **Advice.** Prefer a **Linux** agent for full-port sweeps: Linux does not have Windows's SYN retry. But note
+  what each Linux agent can do. A **native** agent run as root (or with `CAP_NET_RAW`) does real SYN scanning,
+  which is the fastest. The **Docker** agent that `install.sh` installs runs with `--cap-drop ALL`, so it cannot
+  open raw sockets (its log says `SYN scan: no`) and also scans by TCP connect. How fast that is on a real
+  network has not been measured here. A Windows agent is the fallback.
 
 ---
 

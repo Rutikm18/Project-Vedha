@@ -177,6 +177,51 @@ def test_windows_release_is_schema_2_with_both_signatures(tmp_path, keys, source
     tool.verify_release_dir(final, keys[1], p256_public_key_b64=keys[3])
 
 
+def _package_record(zip_, version, sha=None):
+    """What package-zip.ps1 writes beside the zip."""
+    import hashlib
+    digest = sha or hashlib.sha256(zip_.read_bytes()).hexdigest()
+    (zip_.parent / (zip_.stem + ".release.json")).write_text(
+        json.dumps({"schema": 1, "version": version, "sha256": digest}), encoding="utf-8")
+
+
+def test_the_manifest_names_the_agent_that_is_in_the_zip_not_the_checkout(tmp_path, keys, sources):
+    # A 2.2.3 package released from a checkout that is a later agent must not be labelled with the checkout's number.
+    _package_record(sources[2], "2.2.3")
+    final = _build(tmp_path, keys, sources)
+    assert json.loads((final / "manifest.json").read_text())["agent_version"] == "2.2.3"
+    assert tool.read_agent_version() != "2.2.3"
+
+
+def test_a_zip_that_differs_from_its_own_record_is_refused(tmp_path, keys, sources):
+    _package_record(sources[2], "2.2.3", sha="0" * 64)
+    with pytest.raises(tool.ReleaseError, match="does not match its"):
+        _build(tmp_path, keys, sources)
+    assert not (tmp_path / "out" / "2.0.1").exists()          # nothing half-built is left behind
+
+
+def test_an_explicit_agent_version_cannot_contradict_the_package(tmp_path, keys, sources):
+    _package_record(sources[2], "2.2.3")
+    ed, _, p256, _ = keys
+    ps, cmd, zip_, _ = sources
+    with pytest.raises(tool.ReleaseError, match="contradicts the package"):
+        tool.build_release(key_path=ed, out=tmp_path / "o2", arches=["amd64"], version="2.0.2",
+                           builder=_fake_builder, saver=_fake_saver, p256_key_path=p256, windows_zip=zip_,
+                           windows_installer_source=ps, windows_launcher_source=cmd, agent_version="9.9.9")
+
+
+def test_without_a_record_the_checkout_version_is_used_and_the_operator_is_told(tmp_path, keys, sources, capsys):
+    final = _build(tmp_path, keys, sources)
+    assert json.loads((final / "manifest.json").read_text())["agent_version"] == tool.read_agent_version()
+    assert "release.json beside" in capsys.readouterr().out
+
+
+def test_an_unusable_record_does_not_block_a_release(tmp_path, keys, sources):
+    (sources[2].parent / (sources[2].stem + ".release.json")).write_text("{not json", encoding="utf-8")
+    final = _build(tmp_path, keys, sources)
+    assert json.loads((final / "manifest.json").read_text())["agent_version"] == tool.read_agent_version()
+
+
 def test_windows_installer_has_key_and_version_embedded(tmp_path, keys, sources):
     final = _build(tmp_path, keys, sources)
     raw = (final / "install.ps1").read_bytes()          # bytes: read_text() would hide CRLF

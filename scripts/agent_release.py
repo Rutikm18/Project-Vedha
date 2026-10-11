@@ -116,6 +116,17 @@ def read_agent_version(path: Path = AGENT_VERSION_FILE) -> str:
     return match.group(1)
 
 
+def windows_package_info(zip_path: Path) -> dict | None:
+    """What package-zip.ps1 wrote about this build, from `<zip name>.release.json` beside the zip
+    (agent version, SHA-256, size). None when the file is absent or unreadable."""
+    info_path = zip_path.with_name(zip_path.stem + ".release.json")
+    try:
+        info = json.loads(info_path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    return info if isinstance(info, dict) else None
+
+
 # ── keys ─────────────────────────────────────────────────────────────────────
 
 def load_private_key(path: Path):
@@ -342,6 +353,30 @@ def build_release(
             raise ReleaseError(f"unsupported architecture {arch!r} (supported: {', '.join(ARCHES)})")
     if not re.fullmatch(r"[0-9A-Za-z][0-9A-Za-z._-]{0,63}", version):
         raise ReleaseError(f"invalid version {version!r}")
+    # The manifest tells every agent what "the latest agent" is, so it must name the agent that is actually in
+    # the zip. The zip's own record (written when it was built) is the truth, not whatever checkout this
+    # tool happens to run from: a 2.2.3 package released from a 2.2.7 checkout would be labelled 2.2.7.
+    if windows_zip is not None:
+        info = windows_package_info(windows_zip)
+        if info is None:
+            print(f"warning: no {windows_zip.stem}.release.json beside {windows_zip.name}, so the manifest records "
+                  f"this checkout's agent version ({read_agent_version()}). Make sure the zip was built from "
+                  "this checkout.", flush=True)
+        else:
+            recorded_hash = str(info.get("sha256") or "").lower()
+            if recorded_hash and recorded_hash != sha256_file(windows_zip):
+                raise ReleaseError(f"{windows_zip.name} does not match its {windows_zip.stem}.release.json "
+                                   "(different SHA-256): the zip was changed, or this is another build")
+            recorded = str(info.get("version") or "")
+            if re.fullmatch(r"[0-9][0-9A-Za-z.+-]{0,63}", recorded):
+                if agent_version is not None and agent_version != recorded:
+                    raise ReleaseError(f"--agent-version {agent_version} contradicts the package's own record "
+                                       f"({recorded}, from {windows_zip.stem}.release.json)")
+                agent_version = recorded
+                tree = read_agent_version()
+                if tree != recorded:
+                    print(f"note: this checkout is agent {tree}, the package is agent {recorded}; the manifest "
+                          f"records {recorded} (from the package).", flush=True)
     agent_version = agent_version if agent_version is not None else read_agent_version()
     if not re.fullmatch(r"[0-9][0-9A-Za-z.+-]{0,63}", agent_version):
         raise ReleaseError(f"invalid agent version {agent_version!r}")
