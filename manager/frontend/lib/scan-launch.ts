@@ -33,6 +33,21 @@ const JOB_TYPE_MAP: Record<string, string> = {
 /** The capability a Deep scan runs: every TCP port plus the full assessment. */
 export const DEEP_SCAN_UC = "uc_deep_port_sweep";
 
+/** Every-port capabilities. They cover exactly ONE host — the manager enforces the
+ *  same rule (422) — so the client refuses to even build a request for several. */
+export const FULL_PORT_USE_CASES: readonly string[] = ["uc_full_port_audit", "uc_deep_port_sweep"];
+
+export const ONE_HOST_MESSAGE = "A deep scan covers exactly one host — enter a single IP address.";
+
+/** True when `value` is one IP (a /32 or /128 suffix is allowed), not a list or range. */
+export function isSingleHost(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  const v = value.trim();
+  if (!v || /[\s,;-]/.test(v)) return false;
+  if (v.includes("/") && !/\/(32|128)$/.test(v)) return false;
+  return true;
+}
+
 /** The launcher body for a single-asset Deep scan, from either Scanner.
  *  Portal: the manager pins the use case, preset and target and charges the
  *  customer's plan, so the body only names the deep intent (`scan_mode`).
@@ -44,6 +59,7 @@ export function buildDeepScanLaunch(opts: {
   probeId?: string;
   audience: "portal" | "operator";
 }): ScanLaunchBody {
+  if (!isSingleHost(opts.ip)) throw new Error(ONE_HOST_MESSAGE);
   const body: ScanLaunchBody = {
     engagement_id: opts.engagementId, use_case_id: DEEP_SCAN_UC, targets: [opts.ip],
     intensity: "aggressive",
@@ -56,6 +72,10 @@ export function buildDeepScanLaunch(opts: {
 /** Convert the UI launcher contract into the manager's canonical enqueue
  * contract. Both operator and portal transports call this exact function. */
 export function buildScanLaunchRequest(body: ScanLaunchBody) {
+  if (FULL_PORT_USE_CASES.includes(body.use_case_id)
+      && !(body.targets?.length === 1 && isSingleHost(body.targets[0]))) {
+    throw new Error(ONE_HOST_MESSAGE);
+  }
   const job_type = JOB_TYPE_MAP[body.use_case_id] ?? "discovery";
   const params: Record<string, unknown> = { ...(body.params ?? {}) };
   if (body.targets?.length) {

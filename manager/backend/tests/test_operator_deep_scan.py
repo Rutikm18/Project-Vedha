@@ -89,3 +89,63 @@ async def test_operator_deep_scan_never_touches_the_customer_allowance(no_fragil
     # Cancelling or failing that job later must not "refund" a plan it never used.
     await entitlements.refund_for_job(db, job)
     assert entitlement_spy == []
+
+
+# ── One host only: the rule the portal has, enforced for operators and raw API callers ──
+
+def _full_port_body(use_case_id: str, **params) -> ag.EnqueueJobRequest:
+    return ag.EnqueueJobRequest(
+        engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery,
+        use_case_id=use_case_id, params={"intensity": "aggressive", **params})
+
+
+_OPERATOR = SimpleNamespace(tenant_id=uuid.uuid4(), user_id=uuid.uuid4(), role="tester")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("use_case_id", ["uc_deep_port_sweep", "uc_full_port_audit"])
+@pytest.mark.parametrize("params, says", [
+    ({"targets": ["10.0.0.5", "10.0.0.6"]}, "exactly one asset"),      # a list
+    ({"targets": ["10.0.0.0/24"]}, "exactly one asset"),               # a range
+    ({"targets": ["10.0.0.4-10.0.0.9"]}, "isn't an IP address"),       # an address range
+    ({"targets": []}, "targets must be non-empty"),   # nothing = the whole engagement scope
+    ({}, "exactly one asset"),                        # no target at all
+])
+async def test_full_port_scan_over_more_than_one_host_is_refused(no_fragile, use_case_id, params, says):
+    from fastapi import HTTPException
+    db = _db()
+    with pytest.raises(HTTPException) as exc:
+        await ag.enqueue_agent_job(_full_port_body(use_case_id, **params), db, AsyncMock(), _OPERATOR)
+    assert exc.value.status_code == 422
+    assert says in exc.value.detail
+    db.add.assert_not_called()                                    # nothing was queued
+
+
+@pytest.mark.asyncio
+async def test_full_port_scan_outside_the_engagement_scope_is_refused(no_fragile):
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc:
+        await ag.enqueue_agent_job(_full_port_body("uc_deep_port_sweep", targets=["192.168.1.5"]),
+                                   _db(), AsyncMock(), _OPERATOR)
+    assert exc.value.status_code == 422
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("params", [{"targets": ["10.0.0.5/32"]}, {"target": "10.0.0.5"}, {"targets": "10.0.0.5"}])
+async def test_a_single_host_is_normalised_to_one_target(no_fragile, params):
+    db = _db()
+    await ag.enqueue_agent_job(_full_port_body("uc_full_port_audit", **params), db, AsyncMock(), _OPERATOR)
+    job_params = _job(db).result
+    assert len(job_params["targets"]) == 1
+    assert job_params["targets"][0].split("/")[0] == "10.0.0.5"
+    assert "target" not in job_params
+
+
+@pytest.mark.asyncio
+async def test_other_scans_still_accept_a_range(no_fragile):
+    db = _db()
+    body = ag.EnqueueJobRequest(
+        engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery, use_case_id="uc_network_va",
+        params={"targets": ["10.0.0.0/24"]})
+    await ag.enqueue_agent_job(body, db, AsyncMock(), _OPERATOR)
+    assert _job(db).result["targets"] == ["10.0.0.0/24"]
