@@ -27,6 +27,7 @@ from app.models.scan_job_attempt import ScanJobAttempt
 from app.models.service import Service as Service  # re-exported for tests (ag.Service)
 from app.services.job_result_service import _promote_assets as _promote_assets
 from app.services.scope_targets import validate_targets_in_scope
+from app.services import portal_scan_policy
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 logger = structlog.get_logger()
@@ -1630,6 +1631,21 @@ async def enqueue_agent_job(
 
     scan_profile = (eng.rules_of_engagement or {}).get("scan_profile", "it")
 
+    # A full-port (all 65,535) scan covers exactly ONE host. The portal already
+    # enforces this for customers; the same rule holds for operators and raw API
+    # callers, so a range, a list or an empty target (= the whole scope) is
+    # refused here rather than silently turning into thousands of full sweeps.
+    deep_host: str | None = None
+    if resolved_use_case_id in portal_scan_policy.FULL_PORT_USE_CASES:
+        requested = body.params.get("targets")
+        if requested is None:
+            requested = body.params.get("target")
+        if isinstance(requested, str):
+            requested = [requested]
+        deep_host = portal_scan_policy.validate_deep_target(
+            requested, getattr(eng, "scope_cidrs", None) or [],
+            getattr(eng, "excluded_cidrs", None) or [])
+
     # When a use-case is given, resolve the scan_type from the library so
     # OT-profile enforcement can check it.
     if resolved_use_case_id:
@@ -1686,6 +1702,12 @@ async def enqueue_agent_job(
         raise HTTPException(400, str(exc))
 
     job_params = {**body.params}
+    if deep_host is not None and not (
+            isinstance(job_params.get("targets"), list) and len(job_params["targets"]) == 1):
+        # Validated to one host, but sent as `target` or a bare string: hand the
+        # probe the one-element list it reads.
+        job_params["targets"] = [deep_host]
+        job_params.pop("target", None)
     # Wire the compact numeric protocol to the probe: uc + intensity as NUMBERS.
     # use_case_id (string) rides along for provenance/allowlisting — the probe
     # resolves either and gets the same pipeline.

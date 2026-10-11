@@ -257,3 +257,25 @@ export function cveRecordToFactCard(record: any, requestedId: string): FactCardV
     evidenceStatus: "Public vulnerability metadata only. This is not evidence that the organization is affected.",
   };
 }
+
+
+/** The follow-up chat route accepts at most this many messages / characters per call
+ *  (app/api/assistant/chat/route.ts). Long conversations used to hit that wall and
+ *  end in "Conversation exceeds the safe context limit"; the client now sends only
+ *  the most recent turns that fit, always starting on a user message. */
+export const CHAT_LIMITS = { messages: 14, perMessage: 4_000, total: 15_000 } as const;
+
+export function trimThread<T extends { role: "user" | "assistant"; content: string }>(
+  thread: T[],
+  limits: { messages: number; perMessage: number; total: number } = CHAT_LIMITS,
+): T[] {
+  const clipped = thread.map((m) => (
+    m.content.length > limits.perMessage ? { ...m, content: m.content.slice(0, limits.perMessage) } : m
+  ));
+  let out = clipped.slice(-limits.messages);
+  const size = (list: T[]) => list.reduce((n, m) => n + m.content.length, 0);
+  // Always keep the newest message; drop the oldest until the whole thing fits.
+  while (out.length > 1 && size(out) > limits.total) out = out.slice(1);
+  while (out.length > 1 && out[0].role !== "user") out = out.slice(1);
+  return out;
+}

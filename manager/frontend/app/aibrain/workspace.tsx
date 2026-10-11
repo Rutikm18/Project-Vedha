@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Brain, CheckCircle2, ChevronRight, Cloud, Database, Eraser,
-  LockKeyhole, Send, Server, ShieldCheck, Sparkles, TriangleAlert,
+  LockKeyhole, RotateCcw, Send, Server, ShieldCheck, Sparkles, TriangleAlert,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { PortalShell } from "../../components/portal/PortalShell";
@@ -16,9 +16,10 @@ import { FactCard } from "../../components/assistant/FactCard";
 import { PlanLockPanel } from "../../components/portal/PlanLock";
 import { isFeatureLocked } from "../../lib/entitlements";
 import { usePortalEntitlement } from "../../lib/portal-client";
-import { AssistantText } from "../../components/assistant/AssistantText";
+import { AssistantText, CopyAnswerButton } from "../../components/assistant/AssistantText";
 import type { FactCardVM } from "../../lib/assistant";
 import { newId } from "../../lib/uuid";
+import { scrollChildToTop, scrollToEnd } from "../../lib/scroll";
 import { useSessionState } from "../../lib/session-state";
 
 interface Message {
@@ -140,8 +141,10 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
   const [engagementId, setEngagementId] = useSessionState(`aibrain.${surface}.engagement`, "");
   const [sending, setSending] = useSessionState(`aibrain.${surface}.sending`, false, { persist: false });
   const [error, setError] = useSessionState<string | null>(`aibrain.${surface}.error`, null, { persist: false });
+  const [failedPrompt, setFailedPrompt] = React.useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
   const api = React.useMemo(() => createAIBrainWorkspaceApi(surface), [surface]);
 
   const statusQuery = useQuery({
@@ -161,9 +164,22 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
   // cooling down is what will most likely answer next.
   const nextUp = chain.find((entry) => entry.state === "healthy" || entry.state === "probing") ?? chain[0];
 
+  // Start a new answer at its first line. (Scrolling to the end of the thread landed the
+  // reader at the bottom of a long reply.) While waiting, show the thinking indicator.
+  const lastMessageId = messages[messages.length - 1]?.id;
+  const lastRole = messages[messages.length - 1]?.role;
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [messages, sending]);
+    const box = conversationRef.current;
+    if (!box) return;
+    const behavior: ScrollBehavior = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    if (sending || error || lastRole === "user") {
+      scrollToEnd(box, behavior);
+      return;
+    }
+    const reply = lastRole === "assistant" && lastMessageId && lastMessageId !== "welcome"
+      ? document.getElementById(`brain-msg-${lastMessageId}`) : null;
+    if (reply) scrollChildToTop(box, reply, behavior);
+  }, [lastMessageId, lastRole, sending, error]);
 
   useEffect(() => {
     if (!textareaRef.current) return;
@@ -171,15 +187,19 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
     textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
   }, [input]);
 
-  async function send(prompt?: string) {
+  async function send(prompt?: string, retrying = false) {
     const content = (prompt ?? input).trim();
     if (!content || sending) return;
     const user: Message = { id: newId(), role: "user", content };
-    const conversation = [...messages.filter((message) => message.id !== "welcome"), user];
-    setMessages((current) => [...current, user].slice(-MAX_STORED_MESSAGES));
+    // A retry re-sends the question that failed; its earlier copy is already in the thread.
+    const base = retrying && messages[messages.length - 1]?.role === "user" && messages[messages.length - 1].content === content
+      ? messages.slice(0, -1) : messages;
+    const conversation = [...base.filter((message) => message.id !== "welcome"), user];
+    setMessages([...base, user].slice(-MAX_STORED_MESSAGES));
     setInput("");
     setSending(true);
     setError(null);
+    setFailedPrompt(null);
     try {
       const response = await api.send<{
         content?: string; error?: string; provider?: string; model?: string; factCard?: FactCardVM;
@@ -205,6 +225,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
       }].slice(-MAX_STORED_MESSAGES));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "The AI runtime could not complete this request.");
+      setFailedPrompt(content);
     } finally {
       setSending(false);
       textareaRef.current?.focus();
@@ -256,14 +277,14 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
             <button
               type="button"
               className="brain-clear"
-              onClick={() => { setMessages(INITIAL_MESSAGES); setError(null); }}
+              onClick={() => { setMessages(INITIAL_MESSAGES); setError(null); setFailedPrompt(null); }}
               title="Clear this conversation"
             >
               <Eraser size={14} /> Clear
             </button>
           </header>
 
-          <div className="brain-conversation" aria-live="polite">
+          <div className="brain-conversation" ref={conversationRef}>
             {messages.length === 1 && (
               <div className="brain-starters">
                 <div><Sparkles size={16} /><span>Start with a decision-focused question</span></div>
@@ -280,29 +301,32 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
             )}
 
             {messages.map((message) => (
-              <article className="brain-message" data-role={message.role} key={message.id}>
+              <article className="brain-message" data-role={message.role} key={message.id} id={`brain-msg-${message.id}`}>
                 <span className="brain-avatar">
-                  {message.role === "assistant" ? <Brain size={16} /> : <ShieldCheck size={16} />}
+                  {message.role === "assistant" ? <Brain size={17} /> : <ShieldCheck size={17} />}
                 </span>
                 <div>
                   <header>
                     <strong>{message.role === "assistant" ? "Vedha AI" : "You"}</strong>
-                    {message.skillLabel && (
-                      <span className="intel-skill" title="Answer framed by this sector's domain-expert skill">
-                        {message.skillLabel}{message.jurisdictions?.length ? ` · ${message.jurisdictions.join(", ")}` : ""}
-                      </span>
-                    )}
-                    {message.model && <span>{providerLabel(message.provider)} · {message.model}</span>}
-                    {message.fallback && (
-                      <span className="brain-fallback-badge" title="The first provider in the chain was unavailable, so the next one answered">
-                        fallback
-                      </span>
-                    )}
+                    <span className="brain-message-meta">
+                      {message.skillLabel && (
+                        <span className="intel-skill" title="Answer framed by this sector's domain-expert skill">
+                          {message.skillLabel}{message.jurisdictions?.length ? ` · ${message.jurisdictions.join(", ")}` : ""}
+                        </span>
+                      )}
+                      {message.model && <span>{providerLabel(message.provider)} · {message.model}</span>}
+                      {message.fallback && (
+                        <span className="brain-fallback-badge" title="The first provider in the chain was unavailable, so the next one answered">
+                          fallback
+                        </span>
+                      )}
+                      {message.role === "assistant" && message.id !== "welcome" && <CopyAnswerButton content={message.content} />}
+                    </span>
                   </header>
                   {message.factCard && <FactCard vm={message.factCard} />}
                   {message.role === "assistant"
                     ? <AssistantText content={message.content} />
-                    : <p>{message.content}</p>}
+                    : <p className="brain-user-text">{message.content}</p>}
                   {message.unverifiedCitations && message.unverifiedCitations.length > 0 && (
                     <p className="intel-citation-warning" role="note">
                       Not found in Vedha&apos;s compliance library — verify before relying on:{" "}
@@ -316,13 +340,18 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
             {sending && (
               <article className="brain-message" data-role="assistant">
                 <span className="brain-avatar"><Brain size={16} /></span>
-                <div><header><strong>Vedha AI</strong></header><div className="brain-thinking"><span /><span /><span /> Analyzing recorded evidence…</div></div>
+                <div><header><strong>Vedha AI</strong></header><div className="brain-thinking" role="status"><span /><span /><span /> Analyzing recorded evidence…</div></div>
               </article>
             )}
             {error && (
               <div className="brain-error" role="alert">
                 <TriangleAlert size={16} />
                 <div><strong>AI request could not be completed</strong><span>{error}</span></div>
+                {failedPrompt && (
+                  <button type="button" onClick={() => void send(failedPrompt, true)} disabled={sending}>
+                    <RotateCcw size={13} /> Try again
+                  </button>
+                )}
               </div>
             )}
             <div ref={endRef} />
@@ -341,7 +370,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
               }}
               placeholder={ready ? "Paste CVE-YYYY-NNNN or ask about risk, impact, evidence, and remediation…" : "Configure the AI runtime in Settings to begin"}
               aria-label="Message AI Brain"
-              disabled={!ready || sending}
+              disabled={!ready}
               rows={1}
             />
             <button type="button" onClick={() => void send()} disabled={!ready || sending || !input.trim()} aria-label="Send message">

@@ -105,12 +105,6 @@ const NETWORK_VA_ID = "uc_network_va";
 // Network VA workflow. The catalog and Manager capabilities remain intact so
 // specialized use cases can be enabled later without a backend migration.
 const SHOW_EXTENDED_USE_CASES = false;
-// Full-port (all 65,535 TCP ports) scans. These stay reachable on the Scanner even
-// while the wider extended catalog is hidden: Network VA's deepest intensity is the
-// ~2,500-port enterprise set, so without these an operator could never launch a true
-// all-ports scan from the UI. Only the ones the Manager actually returns (available,
-// not coming_soon) are shown, so this never resurfaces the hidden catalog.
-const FULL_PORT_UC_IDS = ["uc_full_port_audit", "uc_deep_port_sweep"];
 const NETWORK_VA_FALLBACK: UseCase = {
   use_case_id: NETWORK_VA_ID,
   display_name: "Network Vulnerability Assessment",
@@ -1000,50 +994,17 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
           campaignHref={surface === "portal" ? "/portal/scans#campaign" : "/campaign"}
         />
 
-        {/* Full-port (all 65,535) scans — always reachable, even with the extended catalog hidden. */}
-        {!SHOW_EXTENDED_USE_CASES && (() => {
-          const fullPort = useCases.filter((u) => FULL_PORT_UC_IDS.includes(u.use_case_id));
-          if (!fullPort.length) return null;
-          return (
-            <section aria-label="Full-port scans" style={{ marginTop: 4, marginBottom: 4 }}>
-              <SectionLabel>Deep &amp; full-port scans</SectionLabel>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
-                {fullPort.map((uc) => {
-                  const on = selectedUc === uc.use_case_id;
-                  return (
-                    <button
-                      key={uc.use_case_id}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => setSelectedUc(uc.use_case_id)}
-                      className="scn-depth-chip focusable"
-                      data-on={on}
-                      title={uc.description}
-                      style={{
-                        display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3,
-                        minWidth: 240, padding: "11px 14px", textAlign: "left", cursor: "pointer",
-                        borderRadius: 12, background: on ? "var(--accent-ghost)" : "var(--bg-panel)",
-                        border: `0.5px solid ${on ? "var(--border-accent)" : "var(--border-subtle)"}`,
-                        boxShadow: on ? "var(--shadow-sm)" : "none",
-                      }}
-                    >
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontWeight: 700, fontSize: 13, color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>
-                        <Crosshair size={14} /> {uc.display_name}
-                      </span>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-muted)" }}>
-                        {uc.scan_type} · {uc.expected_runtime_hint}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p style={{ margin: "8px 0 0", fontSize: 10.5, color: "var(--text-faint)", lineHeight: 1.5 }}>
-                Every one of the 65,535 TCP ports, with a completeness self-check. Full-Port Audit runs one host;
-                Deep Port Sweep adds the full assessment on up to a few hosts. Pick one, then configure and launch below.
-              </p>
-            </section>
-          );
-        })()}
+        {/* ── Deep scan: ONE host, every port. The only all-ports scan on this page —
+             there is no multi-host full-port option. Portal: only when the plan
+             includes it. Operator: always — unlimited, never charged to the customer. ── */}
+        {isPortal && plan?.modes?.deep?.enabled && (
+          <DeepScanCard plan={plan} scope={selectedEngagement?.scopeCidrs ?? []}
+            probeReady={deepProbes.length > 0} launching={launching} onLaunch={(ip) => void launchDeep(ip)} />
+        )}
+        {!isPortal && (
+          <DeepScanCard plan={null} scope={selectedEngagement?.scopeCidrs ?? []}
+            probeReady={deepProbes.length > 0} launching={launching} onLaunch={(ip) => void launchDeep(ip)} />
+        )}
 
         <div
           className="scn-main-grid"
@@ -1310,17 +1271,6 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
             </HudFrame>
           </div>
         </div>
-
-        {/* ── Deep scan: one asset, every port. Portal: only when the plan includes
-             it. Operator: always — unlimited, never charged to the customer. ── */}
-        {isPortal && plan?.modes?.deep?.enabled && (
-          <DeepScanCard plan={plan} scope={selectedEngagement?.scopeCidrs ?? []}
-            probeReady={deepProbes.length > 0} launching={launching} onLaunch={(ip) => void launchDeep(ip)} />
-        )}
-        {!isPortal && (
-          <DeepScanCard plan={null} scope={selectedEngagement?.scopeCidrs ?? []}
-            probeReady={deepProbes.length > 0} launching={launching} onLaunch={(ip) => void launchDeep(ip)} />
-        )}
 
         {/* ── Active job + dispatch receipt ── */}
         {job && (

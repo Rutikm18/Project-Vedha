@@ -69,7 +69,7 @@ export function ModelSwitcher({
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* private mode */ }
   };
 
-  if (!status) return null;
+  if (!status || status.providers.length === 0) return null;
 
   const current = value
     ? `${value.provider}::${value.model}`
