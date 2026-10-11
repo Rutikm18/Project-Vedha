@@ -1,14 +1,18 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Brain, Loader2, Search, Send, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
+import {
+  AlertTriangle, Brain, Loader2, Maximize2, Minimize2, RotateCcw, Send, ShieldCheck,
+  Sparkles, X, Zap,
+} from "lucide-react";
 import { useModalFocus } from "../../hooks/useModalFocus";
 import { useAssistant } from "./AssistantProvider";
 import { FactCard } from "./FactCard";
 import { AdvisorFlow } from "./AdvisorFlow";
 import { ModelSwitcher, type ModelSelection } from "./ModelSwitcher";
-import { detectFindingId, type FactCardVM, type AdvisorVM } from "../../lib/assistant";
+import { detectFindingId, trimThread, CHAT_LIMITS, type FactCardVM, type AdvisorVM } from "../../lib/assistant";
 import { fetchJson, errorMessage } from "../../lib/fetcher";
-import { AssistantText } from "./AssistantText";
+import { scrollChildToTop, scrollToEnd } from "../../lib/scroll";
+import { AssistantText, CopyAnswerButton } from "./AssistantText";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Served = { provider: string; model: string; fallback: boolean };
@@ -18,11 +22,37 @@ type ExplainResponse = {
   narration: string | null;
   served?: Served | null;
 };
+type Failure =
+  | { message: string; kind: "explain"; id: string }
+  | { message: string; kind: "ask"; text: string; history: Msg[] };
+
+const WIDE_KEY = "vedha.assistant.wide";
+const GENERAL_STARTERS = [
+  "Explain CVE-2021-44228",
+  "What should I remediate first?",
+  "How do I validate a critical finding?",
+];
+const FINDING_FOLLOWUPS = [
+  "Is this exploitable in my environment?",
+  "How do I verify the fix worked?",
+  "What is the business impact?",
+  "Give me the shortest safe fix",
+];
+
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+}
 
 export function AssistantDrawer() {
   const { open, findingId, close } = useAssistant();
   const dialogRef = useRef<HTMLElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Bumped whenever the conversation is replaced, so an answer that arrives after
+  // "New chat" (or after switching finding) is dropped instead of landing in the wrong thread.
+  const seq = useRef(0);
   useModalFocus(dialogRef, open, close, ".assistant-orb");
+
   const [input, setInput] = useState("");
   const [activeId, setActiveId] = useState<string | null>(findingId);
   const [card, setCard] = useState<FactCardVM | null>(null);
@@ -30,13 +60,23 @@ export function AssistantDrawer() {
   const [narration, setNarration] = useState<string | null>(null);
   const [thread, setThread] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(Boolean(findingId));
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<Failure | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelSelection | null>(null);
   const [served, setServed] = useState<Served | null>(null);
+  // Only mounted after the client-side session check, so reading storage here is safe.
+  const [wide, setWide] = useState(() => {
+    try { return typeof window !== "undefined" && localStorage.getItem(WIDE_KEY) === "1"; } catch { return false; }
+  });
+  const toggleWide = () => setWide((current) => {
+    const next = !current;
+    try { localStorage.setItem(WIDE_KEY, next ? "1" : "0"); } catch { /* storage unavailable */ }
+    return next;
+  });
 
   const explainId = useCallback(async (id: string) => {
+    const mine = ++seq.current;
     setLoading(true);
-    setError(null);
+    setFailure(null);
     setActiveId(id);
     setThread([]);
     setCard(null);
@@ -44,194 +84,253 @@ export function AssistantDrawer() {
     setNarration(null);
     setServed(null);
     try {
-      const d = await fetchJson<ExplainResponse>(
-        "/api/assistant/explain",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            findingId: id,
-            provider: selectedModel?.provider,
-            model: selectedModel?.model,
-          }),
-        },
-      );
+      const d = await fetchJson<ExplainResponse>("/api/assistant/explain", {
+        method: "POST",
+        body: JSON.stringify({ findingId: id, provider: selectedModel?.provider, model: selectedModel?.model }),
+      });
+      if (mine !== seq.current) return;
       setCard(d.factCard);
       setAdvisor(d.advisor ?? null);
       setNarration(d.narration);
       setServed(d.served ?? null);
     } catch (e) {
-      setError(errorMessage(e));
+      if (mine !== seq.current) return;
+      setFailure({ message: errorMessage(e), kind: "explain", id });
     } finally {
-      setLoading(false);
+      if (mine === seq.current) setLoading(false);
     }
-  }, [selectedModel]);
+    // The model is read as a live snapshot: changing it applies to the next question.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Opening the drawer on a finding (the "Explain" button) loads its brief.
+  // Deferred one tick: React Strict Mode mounts effects twice in development, and this way
+  // the first mount is cancelled instead of sending the same request twice.
   useEffect(() => {
     if (!open || !findingId) return;
-    let cancelled = false;
+    const timer = window.setTimeout(() => void explainId(findingId), 0);
+    return () => window.clearTimeout(timer);
+  }, [open, findingId, explainId]);
 
-    fetchJson<ExplainResponse>(
-      "/api/assistant/explain",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          findingId,
-          provider: selectedModel?.provider,
-          model: selectedModel?.model,
-        }),
-      },
-    )
-      .then((data) => {
-        if (cancelled) return;
-        setCard(data.factCard);
-        setAdvisor(data.advisor ?? null);
-        setNarration(data.narration);
-        setServed(data.served ?? null);
-      })
-      .catch((cause) => {
-        if (!cancelled) setError(errorMessage(cause));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // Re-fetch only when the drawer opens for a finding; the model is read as a
-    // live snapshot (changing it re-queries via the input, not this effect).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, findingId]);
-
-  const sendFollowup = useCallback(
-    async (text: string) => {
-      if (!activeId) return;
-      const next = [...thread, { role: "user" as const, content: text }];
-      setThread(next);
-      setInput("");
-      setLoading(true);
-      try {
-        const d = await fetchJson<{ content?: string; error?: string }>("/api/assistant/chat", {
-          method: "POST",
-          body: JSON.stringify({ findingId: activeId, messages: next }),
-        });
-        setThread([...next, { role: "assistant", content: d.content ?? `[${d.error ?? "no reply"}]` }]);
-      } catch (e) {
-        setThread([...next, { role: "assistant", content: `[${errorMessage(e)}]` }]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [activeId, thread],
-  );
-
-  const sendGeneral = useCallback(async (text: string) => {
-    const next = [...thread, { role: "user" as const, content: text }];
+  const ask = useCallback(async (text: string, history: Msg[]) => {
+    const mine = ++seq.current;
+    const next = [...history, { role: "user" as const, content: text }];
     setThread(next);
     setInput("");
     setLoading(true);
-    setError(null);
+    setFailure(null);
     try {
-      const response = await fetchJson<{ content?: string }>("/api/brain", {
-        method: "POST",
-        body: JSON.stringify({ messages: next }),
-      });
-      setThread([...next, { role: "assistant", content: response.content ?? "The model returned no response." }]);
-    } catch (cause) {
-      setError(errorMessage(cause));
+      const sent = trimThread(next);
+      const reply = activeId
+        ? await fetchJson<{ content?: string; error?: string }>("/api/assistant/chat", {
+            method: "POST",
+            body: JSON.stringify({ findingId: activeId, messages: sent }),
+          })
+        : await fetchJson<{ content?: string; error?: string }>("/api/brain", {
+            method: "POST",
+            body: JSON.stringify({ messages: sent, provider: selectedModel?.provider, model: selectedModel?.model }),
+          });
+      if (mine !== seq.current) return;
+      setThread([...next, { role: "assistant", content: reply.content || "The model returned no response." }]);
+    } catch (e) {
+      if (mine !== seq.current) return;
+      setFailure({ message: errorMessage(e), kind: "ask", text, history });
     } finally {
-      setLoading(false);
+      if (mine === seq.current) setLoading(false);
     }
-  }, [thread]);
+  }, [activeId, selectedModel]);
 
-  const submit = () => {
-    const text = input.trim();
-    if (!text) return;
-    const id = detectFindingId(text);
-    if (id) {
-      explainId(id);
-      setInput("");
-      return;
-    }
-    if (activeId) void sendFollowup(text);
-    else void sendGeneral(text);
+  const retryFailure = () => {
+    if (!failure) return;
+    if (failure.kind === "explain") void explainId(failure.id);
+    else void ask(failure.text, failure.history);
   };
 
+  const submit = (override?: string) => {
+    const text = (override ?? input).trim();
+    if (!text || loading) return;
+    const id = detectFindingId(text);
+    if (id && id !== activeId) {
+      setInput("");
+      void explainId(id);
+      return;
+    }
+    void ask(text, thread);
+  };
+
+  const reset = () => {
+    seq.current++;
+    setActiveId(null);
+    setCard(null); setAdvisor(null); setNarration(null); setServed(null);
+    setThread([]); setFailure(null); setLoading(false); setInput("");
+    inputRef.current?.focus();
+  };
+
+  // Scrolling: show the thinking indicator while waiting, and start a new answer at
+  // its first line (landing on the end of a long answer is what made them unreadable).
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
+    if (loading || failure) {
+      scrollToEnd(body, behavior);
+      return;
+    }
+    const last = thread.length - 1;
+    if (last >= 0 && thread[last].role === "assistant") {
+      const reply = body.querySelector<HTMLElement>(`[data-msg="${last}"]`);
+      if (reply) scrollChildToTop(body, reply, behavior);
+    }
+  }, [thread, loading, failure]);
+
+  // Grow the box with the text (up to ~6 lines), never beyond the drawer.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 150)}px`;
+  }, [input, open]);
+
   if (!open) return null;
+
+  const lastIsAssistant = thread.length > 0 && thread[thread.length - 1].role === "assistant";
+  const showFollowups = Boolean(activeId && card && !loading && !failure && (thread.length === 0 || lastIsAssistant));
+  const started = Boolean(card || thread.length || failure);
+  const context = activeId
+    ? `Finding · ${card?.cveIds[0] ?? card?.title ?? activeId}`
+    : "General security questions";
+  const remaining = CHAT_LIMITS.perMessage - input.length;
+
   return (
     <>
       <div data-modal-backdrop onClick={close} className="assistant-drawer-backdrop" />
-      <aside ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Ask Vedha assistant" className="assistant-drawer">
+      <aside ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Ask Vedha assistant"
+        className="assistant-drawer" data-wide={wide}>
         <header className="assistant-drawer-header">
-          <span className="assistant-drawer-logo"><Brain size={17} /></span>
-          <div>
+          <span className="assistant-drawer-logo"><Brain size={18} /></span>
+          <div className="assistant-drawer-title">
             <strong>Vedha Security Advisor</strong>
-            <ModelSwitcher value={selectedModel} onChange={setSelectedModel} />
+            <span title={context}>{context}</span>
           </div>
-          <button aria-label="Close assistant" onClick={close} className="btn btn-ghost" style={{ height: 30, width: 30, padding: 0 }}>
-            <X size={16} />
-          </button>
+          <div className="assistant-drawer-tools">
+            <ModelSwitcher value={selectedModel} onChange={setSelectedModel} />
+            {started && (
+              <button type="button" className="assistant-icon-btn" onClick={reset} aria-label="Start a new chat" title="New chat">
+                <RotateCcw size={15} />
+              </button>
+            )}
+            <button type="button" className="assistant-icon-btn assistant-expand" onClick={toggleWide}
+              aria-label={wide ? "Make the panel narrower" : "Make the panel wider"} aria-pressed={wide}
+              title={wide ? "Narrower" : "Wider"}>
+              {wide ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            </button>
+            <button type="button" className="assistant-icon-btn" aria-label="Close assistant" onClick={close}>
+              <X size={16} />
+            </button>
+          </div>
         </header>
 
-        <div className="assistant-drawer-body">
-          {!card && !loading && !error && (
+        <div className="assistant-drawer-body" ref={bodyRef} aria-busy={loading}>
+          {!started && !loading && (
             <div className="assistant-drawer-welcome">
-              <span><Sparkles size={18} /></span>
+              <span><Sparkles size={20} /></span>
               <h3>Understand risk. Decide what to fix.</h3>
               <p>Paste any published CVE or a Vedha finding ID. The answer separates public vulnerability facts from verified organizational exposure.</p>
               <div>
-                {[
-                  "Explain CVE-2021-44228",
-                  "What should I remediate first?",
-                  "How do I validate a critical finding?",
-                ].map((prompt) => <button type="button" key={prompt} onClick={() => setInput(prompt)}>{prompt}</button>)}
+                {GENERAL_STARTERS.map((prompt) => (
+                  <button type="button" key={prompt} onClick={() => submit(prompt)}>{prompt}</button>
+                ))}
               </div>
             </div>
           )}
-          {error && <div className="brain-error"><ShieldCheck size={15} /><div><strong>Request could not be completed</strong><span>{error}</span></div></div>}
+
           {card && <FactCard vm={card} compact />}
           {served?.fallback && (
             <div className="assistant-fallback-chip" role="status">
-              <Zap size={12} />
+              <Zap size={13} />
               <span>Answered by <code>{served.model}</code> — free fallback, the selected provider was out of credit.</span>
             </div>
           )}
           {card && advisor && <AdvisorFlow vm={advisor} />}
-          {card && !advisor && narration && <div className="assistant-narration"><AssistantText content={narration} /></div>}
+          {card && !advisor && narration && (
+            <div className="assistant-msg" data-role="assistant">
+              <div className="assistant-bubble"><AssistantText content={narration} /></div>
+            </div>
+          )}
           {card && !advisor && !narration && <div className="assistant-model-note">The grounded brief above remains available even when the advisor model is offline.</div>}
+
           {thread.map((m, i) => (
-            <div key={i} className="assistant-thread-message" data-role={m.role}>
-              {m.role === "assistant" ? <AssistantText content={m.content} /> : m.content}
+            <div key={i} className="assistant-msg" data-role={m.role} data-msg={i}>
+              {m.role === "assistant" ? (
+                <>
+                  <div className="assistant-msg-head">
+                    <span><Brain size={13} /> Vedha Advisor</span>
+                    <CopyAnswerButton content={m.content} />
+                  </div>
+                  <div className="assistant-bubble"><AssistantText content={m.content} /></div>
+                </>
+              ) : (
+                <div className="assistant-bubble">{m.content}</div>
+              )}
             </div>
           ))}
-          {loading && <div className="assistant-thinking"><span /><span /><span /> Analyzing evidence and remediation…</div>}
+
+          {loading && (
+            <div className="assistant-thinking" role="status">
+              <span /><span /><span />
+              {activeId && !card && thread.length === 0 ? "Loading the finding and checking the evidence…" : "Analyzing evidence and remediation…"}
+            </div>
+          )}
+
+          {failure && (
+            <div className="assistant-failure" role="alert">
+              <AlertTriangle size={16} />
+              <div>
+                <strong>That didn&apos;t go through</strong>
+                <span>{failure.message}</span>
+              </div>
+              <button type="button" onClick={retryFailure}><RotateCcw size={13} /> Try again</button>
+            </div>
+          )}
+
+          {showFollowups && (
+            <div className="assistant-chips" aria-label="Suggested follow-up questions">
+              {FINDING_FOLLOWUPS.map((q) => (
+                <button type="button" key={q} onClick={() => submit(q)}>{q}</button>
+              ))}
+            </div>
+          )}
         </div>
 
         <footer className="assistant-drawer-composer">
-          <div>
-            <Search size={15} />
+          <div className="assistant-composer-box">
             <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
-            }}
-            placeholder={loading ? "Analyzing…" : activeId ? "Ask about impact, score, evidence, or remediation…" : "Paste CVE-YYYY-NNNN or ask a security question…"}
-            aria-label="Assistant input"
-            disabled={loading}
-            rows={2}
+              ref={inputRef}
+              value={input}
+              maxLength={CHAT_LIMITS.perMessage}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
+              }}
+              placeholder={activeId ? "Ask about impact, score, evidence, or remediation…" : "Paste CVE-YYYY-NNNN or ask a security question…"}
+              aria-label="Assistant input"
+              rows={1}
             />
+            <button
+              type="button"
+              className="btn btn-primary assistant-send-btn"
+              onClick={() => submit()}
+              disabled={loading || !input.trim()}
+              aria-label={loading ? "Waiting for the answer" : "Send"}
+              title={loading ? "Waiting for the answer…" : !input.trim() ? "Type a message to send" : "Send (Enter)"}
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            </button>
           </div>
-          <button
-            className="btn btn-primary assistant-send-btn"
-            onClick={submit}
-            disabled={loading || !input.trim()}
-            aria-label={loading ? "Sending…" : "Send"}
-            title={!input.trim() ? "Type a message to send" : undefined}
-          >
-            {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={17} />}
-          </button>
-          <small><ShieldCheck size={11} /> Public CVE data does not prove client exposure · Shift+Enter for a new line</small>
+          <small>
+            <span><ShieldCheck size={12} /> Public CVE data does not prove client exposure</span>
+            <span>{remaining < 500 ? `${remaining} characters left` : "Enter to send · Shift+Enter for a new line"}</span>
+          </small>
         </footer>
       </aside>
     </>

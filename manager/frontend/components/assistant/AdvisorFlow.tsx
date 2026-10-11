@@ -6,24 +6,10 @@ import {
 } from "lucide-react";
 import type { AdvisorVM } from "../../lib/assistant";
 import { copyText } from "../../lib/clipboard";
+import { InlineText } from "./AssistantText";
 
-/** Inline renderer: split on **bold** spans; everything else is secondary text. */
-function RichText({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
-  return (
-    <>
-      {parts.map((part, i) =>
-        part.startsWith("**") && part.endsWith("**") ? (
-          <strong key={i} style={{ color: "var(--text-primary)", fontWeight: 650 }}>
-            {part.slice(2, -2)}
-          </strong>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </>
-  );
-}
+/** Inline Markdown (bold, italic, code, links) in advisor sentences. */
+const RichText = ({ text }: { text: string }) => <InlineText text={text} />;
 
 function CopyButton({ value }: { value: string }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
