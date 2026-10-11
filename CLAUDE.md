@@ -17,3 +17,7 @@ Setup (each teammate, once): `git clone --single-branch --depth 1 https://github
 Rules:
 - For ALL web browsing, use the `/browse` skill from gstack. NEVER use the `mcp__claude-in-chrome__*` tools.
 - Available skills: `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/review`, `/ship`, `/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`, `/qa-only`, `/design-review`, `/setup-browser-cookies`, `/setup-deploy`, `/setup-gbrain`, `/retro`, `/investigate`, `/document-release`, `/document-generate`, `/codex`, `/cso`, `/autoplan`, `/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`, `/unfreeze`, `/gstack-upgrade`, `/learn`
+
+## secure-dev
+
+For any non-trivial code change (endpoints, auth/RBAC, probe scanners, uploads, integrations, AI features, CI/Docker) or any security / system-design review, follow `.claude/skills/secure-dev/SKILL.md` (`/secure-dev`): Think → Verify → Plan → Implement one step at a time → Security-verify against OWASP Top 10:2025 and CWE Top 25:2025.
