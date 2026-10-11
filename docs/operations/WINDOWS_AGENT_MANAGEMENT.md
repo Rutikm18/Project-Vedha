@@ -184,6 +184,8 @@ Get-Content 'C:\ProgramData\vedha-agent\logs\agent.log' -Tail 80 -Wait
 | `Device credential was revoked, expired, or disabled` / `This agent's access has expired` | see 6.3 |
 | `Manager not reachable [n/6]` | network: run `doctor` |
 | `Port scans: closed ports report in N ms (Windows SYN retry off ...)` | good (2.2.6 and later) |
+| `WebSocket: Cannot connect WebSocket: the manager could not be reached to refresh the device credential - reconnecting in Ns` | the manager was briefly unreachable; the agent keeps retrying (2.2.7 and later; before, it dropped to polling for good) |
+| `Trying push mode again...` | the agent was polling over HTTP and goes back to push mode every `PROBE_PUSH_RETRY_SECS` (default 300 s; 60 to 3600). It is not an error |
 | `Port scans: Windows still retries refused connections (~2 s per closed port)` | full-port scans from this agent will be slow; see 8 |
 
 **In Fleet** (or `GET /agents`): the agent should be listed with `online: true`. The manager calls an agent
@@ -313,7 +315,8 @@ To see what every enrolled agent runs: Fleet, or `GET /agents` (`agent_version`)
 
 **Which version should you be on?** The newest one that has been built and tried. 2.2.6 added the Windows
 closed-port fix and removed the Deep Port Sweep host cap; 2.2.7 makes `vedha-agent doctor` show the closed-port
-check that the 2.2.6 startup message tells you to run. An agent below 2.2.1 cannot open its live connection at
+check that the 2.2.6 startup message tells you to run, and an agent that falls back to HTTP polling returns to push
+mode by itself every few minutes (before 2.2.7 it stayed on polling until restarted). An agent below 2.2.1 cannot open its live connection at
 all (section 11).
 
 ### Putting the agent on other computers
@@ -367,13 +370,26 @@ itself serves. The zip's SHA-256 is printed beside it; send that by a different 
 | Approve a waiting agent | Fleet → Pending requests | section 2.6 |
 | Stop a running job | the **Cancel** button on the campaign page (console `POST /api/fleet/jobs/{id}/cancel`, manager `POST /agents/jobs/{job_id}/cancel`). A queued job just becomes `cancelled`; a running one has its lease superseded, which is what makes the agent abandon the scan | the agent sees it as a lease revoked (`409` on its next heartbeat) and stops |
 | Limit how long an agent may work | Fleet → access expiry (`+Nd`, or clear) | the agent then logs `This agent's access has expired` and re-checks every `PROBE_EXPIRED_RETRY_SECS` (default 300 s) |
-| **Cut an agent off now** | set its access expiry to a time in the past (`PATCH /agents/{id}/access-expiry`) | "A past instant expires the agent immediately." |
+| **Cut an agent off for good** | Fleet → the agent → **Revoke…** (asks first). Admin or manager role. `POST /agents/{id}/revoke` | see below |
 
-**What does not exist.** There is no *revoke*, *disable* or *delete* agent button or endpoint. The database
-has `lifecycle_status` and credential `revoked_at` fields and the manager refuses an agent that is not
-`active` or whose credential is revoked, but nothing in the current code sets them. So: to cut an agent
-off, use the expiry above; to remove it from the list, there is no way yet. (The older operator guide says
-you can "revoke the agent from Fleet"; that is not true today, and its text is corrected.)
+**Revoking an agent.** Use it for a lost laptop, a retired machine or a compromised host. It takes effect at once and
+cannot be undone:
+
+* the agent is refused from then on: every HTTP call (401), a new WebSocket connection, and a token refresh;
+* its live WebSocket is closed at once (through Redis, so it works whichever API worker holds the socket); if that
+  message is lost, the next heartbeat (about 30 s) closes it;
+* it is shown **offline** and **revoked**, and engagements assigned to it are released so a replacement agent can
+  be enrolled (one engagement holds one agent);
+* **nothing is deleted**: the agent's record, its jobs, results and findings stay, and the revoke is written to the audit
+  log (who, why, what it was doing). There is deliberately **no delete**, because jobs and findings refer to the agent;
+* a job it was running is not touched by the revoke itself. The agent can no longer renew the job's 300-second lease,
+  so the manager's reaper puts the job back in the queue, or fails it once its attempts are used; results that were
+  already uploaded host by host are kept. Results the revoked agent had not uploaded yet cannot be uploaded;
+* to use that computer again, install the agent afresh (it gets a new identity). A revoked agent that is left running
+  may appear again as a new pending request in Fleet: ignore or deny it, and remove it with
+  `install.cmd -Uninstall -Purge`.
+
+If you only want to stop an agent working for a while, use the access expiry above instead: it can be extended again.
 
 ---
 

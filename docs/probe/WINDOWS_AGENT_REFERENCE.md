@@ -80,6 +80,7 @@ Other settings the agent honours (not written by the installer; add a line to us
 | Key | Effect |
 |---|---|
 | `PROBE_WS_ENABLED=false` | skip the live (WebSocket) connection and use HTTPS polling only |
+| `PROBE_PUSH_RETRY_SECS` | while the agent polls over HTTP instead of using the live connection, how often it tries the live connection again (60-3600, default 300) |
 | `PROBE_UPDATE_CHECK=off` | do not ask the manager whether a newer agent exists |
 | `PROBE_UPDATE_CHECK_INTERVAL_HOURS` | how often (1-168, default 6) |
 | `HEARTBEAT_INTERVAL`, `POLL_INTERVAL` | seconds (5-300 and 1-300; defaults 30 and 10) |

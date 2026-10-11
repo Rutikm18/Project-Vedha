@@ -55,6 +55,7 @@ from agent.transport import (
     EnrollmentRequestNotFound,
     Transport,
     TransportError,
+    TransportUnavailableError,
     manager_fingerprint,
 )
 
@@ -812,22 +813,10 @@ def main() -> None:
         "false", "0", "no",
     )
 
+    push_retry_secs = _bounded_env_int("PROBE_PUSH_RETRY_SECS", 300, 60, 3600)
     if ws_mode_available:
-        say("Attempting WebSocket push mode...")
-        try:
-            ws_result = asyncio.run(_run_ws_push_loop(
-                transport, runner, agent_id, spool, HEARTBEAT_INTERVAL, POLL_INTERVAL,
-            ))
-            if ws_result:
-                # WS loop exited cleanly (shutdown or unrecoverable error)
-                say("WebSocket loop exited. Probe stopping.")
-                return
-            # ws_result is False → WS unavailable, fall through to HTTP poll
-        except KeyboardInterrupt:
-            say("\nProbe stopped (WebSocket mode).")
-            raise SystemExit(0)
-        except Exception as exc:
-            say(f"WebSocket mode crashed ({exc}) — falling back to HTTP poll.")
+        if _attempt_push_mode(transport, runner, agent_id, spool, HEARTBEAT_INTERVAL, POLL_INTERVAL):
+            return
     else:
         # Flush spool over HTTP before entering poll loop
         flushed = spool.flush_spool(
@@ -839,6 +828,7 @@ def main() -> None:
     # ── Step 6: Main loop (HTTP polling — fallback) ──────────────────────────
     say("Waiting for scan jobs (HTTP polling)...")
     _status("online", detail="connected to the manager (polling); waiting for jobs")
+    next_push_attempt = time.monotonic() + push_retry_secs
     last_hb = 0.0
     last_spool_warning = 0.0
     # Runtime resilience: an already-onboarded probe rides out Manager restarts
@@ -849,6 +839,16 @@ def main() -> None:
 
     while True:
         now = time.monotonic()
+        if _push_retry_due(enabled=ws_mode_available, unavailable_for_good=_PUSH_UNAVAILABLE_FOR_GOOD,
+                           now=now, next_attempt=next_push_attempt):
+            # No job is running here (jobs run inline below), so it is safe to leave polling for a while.
+            say("Trying push mode again...")
+            if _attempt_push_mode(transport, runner, agent_id, spool, HEARTBEAT_INTERVAL, POLL_INTERVAL):
+                return
+            say("Waiting for scan jobs (HTTP polling)...")
+            _status("online", detail="connected to the manager (polling); waiting for jobs")
+            next_push_attempt = time.monotonic() + push_retry_secs
+            now = time.monotonic()
         jobs: list[dict] = []
         try:
             if now - last_hb >= HEARTBEAT_INTERVAL:
@@ -950,6 +950,27 @@ def main() -> None:
 
         # P2: jitter to avoid thundering herd across a probe fleet
         time.sleep(POLL_INTERVAL + random.uniform(0, POLL_INTERVAL * 0.5))
+
+
+def _attempt_push_mode(transport, runner, agent_id, spool, heartbeat_interval, poll_interval) -> bool:
+    """Run WebSocket push mode until it becomes unusable. True = the probe should stop; False = carry on by
+    polling over HTTP (the caller may try push mode again later)."""
+    say("Attempting WebSocket push mode...")
+    try:
+        ws_result = asyncio.run(_run_ws_push_loop(
+            transport, runner, agent_id, spool, heartbeat_interval, poll_interval,
+        ))
+        if ws_result:
+            # WS loop exited cleanly (shutdown or unrecoverable error)
+            say("WebSocket loop exited. Probe stopping.")
+            return True
+        # ws_result is False → WS unavailable, fall through to HTTP poll
+    except KeyboardInterrupt:
+        say("\nProbe stopped (WebSocket mode).")
+        raise SystemExit(0)
+    except Exception as exc:
+        say(f"WebSocket mode crashed ({exc}) — falling back to HTTP poll.")
+    return False
 
 
 def _lease_deadline(job: dict) -> float | None:
@@ -1092,6 +1113,19 @@ WS_RECONNECT_BACKOFF_MAX = 60.0
 # Consecutive WS auth rejections (403/401) tolerated — each triggers a forced
 # device-token refresh — before falling back to HTTP poll / re-registration.
 WS_AUTH_FAIL_LIMIT = 3
+# Set when push mode can NEVER work in this process (the WebSocket library is missing from the build). Every
+# other reason for dropping to HTTP polling is treated as possibly temporary and retried (see _push_retry_due).
+_PUSH_UNAVAILABLE_FOR_GOOD = False
+
+
+def _push_retry_due(*, enabled: bool, unavailable_for_good: bool, now: float, next_attempt: float) -> bool:
+    """Should the HTTP-poll loop hand control back to push mode now?
+
+    Polling works, but a push agent is the normal state. Dropping to polling used to be permanent: after one
+    blip (the manager restarting, a hello that timed out, a credential refresh that could not reach the
+    manager) the agent polled until someone restarted it. So the poll loop tries push mode again at a slow,
+    fixed interval, unless push can never work in this build."""
+    return enabled and not unavailable_for_good and now >= next_attempt
 # How long a job offer may sit staged, acked but unconfirmed, before the
 # probe drops it. `pending_job` used to be cleared ONLY by a matching
 # job_claim frame, so a confirmation that never arrived (multi-worker
@@ -1315,6 +1349,12 @@ async def _ws_connection_loop(
         except (OSError, asyncio.TimeoutError) as exc:
             say(f"WebSocket unavailable ({exc}) — reconnecting in {backoff:.0f}s...")
             _status_connection_lost(f"live connection unavailable ({type(exc).__name__})")
+        except TransportUnavailableError as exc:
+            # The manager was unreachable (or answered 5xx) while the credential was refreshed: no verdict
+            # was reached, so this is NOT a revoked credential. Retry with backoff; giving up here used to
+            # drop the agent into HTTP polling for good after one blip (seen 11 Oct 2026).
+            say(f"WebSocket: {exc} — reconnecting in {backoff:.0f}s...", 1)
+            _status_connection_lost("manager unreachable while refreshing the credential")
         except TransportError as exc:
             say(f"WebSocket auth error: {exc} — falling back to HTTP poll.")
             return False
@@ -1325,6 +1365,8 @@ async def _ws_connection_loop(
             say(f"Push mode is not available in this build ({type(exc).__name__}: {exc}) "
                 "— falling back to HTTP poll.")
             LOG.error("WebSocket support is missing from this build: %s", exc)
+            global _PUSH_UNAVAILABLE_FOR_GOOD
+            _PUSH_UNAVAILABLE_FOR_GOOD = True      # retrying can never help; the poll loop must not try again
             return False
         except Exception as exc:
             # A 403/401 on the WS upgrade means the manager REJECTED our token —
