@@ -9,7 +9,7 @@ from a signed release built here.
     build   --key FILE [--arch amd64,arm64] [--out DIR] [--from-image TAG]
             [--p256-key FILE --windows-zip ZIP [--authenticode-thumbprint HEX]] [--sbom FILE]
     verify  DIR --public-key B64 [--p256-public-key B64]
-    publish DIR --to DEST              DEST = local dir or user@host:/path (rsync)
+    publish DIR --to DEST              DEST = local dir or user@host:/path (rsync, or ssh+scp on Windows)
     pull    --repo OWNER/REPO --to DIR  download a published release from its GitHub Release,
             [--tag agent-vX.Y.Z]        re-verify BOTH signatures against your pinned keys, and
             [--env-file .env]           only then install it into the manager's release store
@@ -45,6 +45,7 @@ import json
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -281,9 +282,9 @@ def host_arch() -> str:
     return {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(machine, machine)
 
 
-def _run(cmd: list[str]) -> None:
+def _run(cmd: list[str], cwd: Path | None = None) -> None:
     print("  $ " + " ".join(cmd), flush=True)
-    result = subprocess.run(cmd, check=False)
+    result = subprocess.run(cmd, check=False, cwd=str(cwd) if cwd else None)
     if result.returncode != 0:
         raise ReleaseError(f"command failed ({result.returncode}): {' '.join(cmd)}")
 
@@ -548,16 +549,45 @@ def resolve_release_dir(path: Path) -> Path:
 
 # ── publish ──────────────────────────────────────────────────────────────────
 
+_WINDOWS_DRIVE = re.compile(r"^[A-Za-z]:[\\/]")
+
+
+def is_remote_dest(dest: str) -> bool:
+    """`user@host:/path` is remote; `C:\\releases` (a Windows drive) and existing local paths are not."""
+    return (":" in dest and not dest.startswith("/") and not _WINDOWS_DRIVE.match(dest)
+            and not Path(dest).exists())
+
+
+def _publish_with_scp(release_dir: Path, host: str, remote: str, version: str) -> None:
+    """Remote publish for machines without rsync (Windows ships OpenSSH's ssh and scp).
+
+    Same guarantees as the rsync path: the version is copied completely first and CURRENT is
+    switched last, atomically, so the manager never points at a half-copied release; and a
+    published version is immutable, so an existing one is refused rather than overwritten."""
+    qremote = shlex.quote(remote)
+    qdir = shlex.quote(f"{remote}/{version}")
+    _run(["ssh", host, f"mkdir -p {qremote} && {{ test ! -e {qdir} || "
+                       f"{{ echo 'release {version} already exists on the manager - releases are immutable' >&2; exit 1; }}; }}"])
+    # Relative name + cwd: a Windows path such as C:\\x would be read by scp as "host C".
+    _run(["scp", "-r", release_dir.name, f"{host}:{remote}/"], cwd=release_dir.parent)
+    _run(["ssh", host, f"chmod -R u=rwX,go=rX {qdir} && printf '%s\\n' {shlex.quote(version)} > {qremote}/.CURRENT.tmp "
+                       f"&& chmod 644 {qremote}/.CURRENT.tmp && mv -f {qremote}/.CURRENT.tmp {qremote}/CURRENT"])
+
+
 def publish(release_dir: Path, dest: str) -> None:
     """Copy one version into the manager's release store, then flip CURRENT —
     in that order, so the manager never points at a half-copied release."""
     release_dir = resolve_release_dir(release_dir)
     version = release_dir.name
-    if ":" in dest and not dest.startswith("/") and not Path(dest).exists():
+    if is_remote_dest(dest):
         host, _, remote = dest.partition(":")
         remote = remote.rstrip("/") or "."
         if shutil.which("rsync") is None:
-            raise ReleaseError("rsync is required to publish to a remote host")
+            if shutil.which("ssh") and shutil.which("scp"):
+                _publish_with_scp(release_dir, host, remote, version)
+                return
+            raise ReleaseError("publishing to a remote host needs rsync, or ssh and scp "
+                               "(Windows 10/11: Settings > Optional features > OpenSSH Client)")
         _run(["rsync", "-a", "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r", f"{release_dir}/", f"{host}:{remote}/{version}/"])
         with tempfile.TemporaryDirectory() as tmp:
             current = Path(tmp) / "CURRENT"

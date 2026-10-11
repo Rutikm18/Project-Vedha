@@ -171,6 +171,33 @@ For many machines, remember the enrolment rules: one token installs one agent, a
 ([handbook, section 5](WINDOWS_AGENT_MANAGEMENT.md#putting-the-agent-on-other-computers)). The pairing-code route
 (run the installer with no token and approve it in Fleet) avoids creating a token per machine.
 
+### Doing steps 1 to 6 from a Windows PC only (no `make`, no Linux)
+
+`make` is not needed: the Makefile only calls `scripts/agent_release.py`, which is plain Python. You need, on the
+Windows PC: Python 3.10 to 3.12 (python.org, tick "Add to PATH"), `pip install cryptography`, Git, and the
+**OpenSSH Client** (Settings, Apps, Optional features) for the publish step. Run in PowerShell, in the repository root:
+
+```powershell
+$k = "$env:USERPROFILE\.vedha"
+# Step 1: both keys. Prints AGENT_RELEASE_PUBLIC_KEY=... and AGENT_RELEASE_P256_PUBLIC_KEY=... (copy them)
+python scripts\agent_release.py keygen --out "$k\agent-release-key.pem" --p256-out "$k\agent-release-p256-key.pem"
+
+# Steps 3-4: package built by probe\windows\package-zip.ps1 -Release (keep the .release.json beside the zip)
+python scripts\agent_release.py build --key "$k\agent-release-key.pem" --arch "" `
+  --p256-key "$k\agent-release-p256-key.pem" --windows-zip "C:\path\vedha-agent-win.zip"
+
+# Step 5
+python scripts\agent_release.py verify dist\agent-release --public-key "<ED25519 value>" --p256-public-key "<P-256 value>"
+
+# Step 6: no rsync on Windows, so the tool uses ssh + scp (it copies the version first, then switches CURRENT)
+python scripts\agent_release.py publish dist\agent-release --to ubuntu@<manager-host>:/opt/Project-Vedha/manager/agent-releases
+```
+
+Step 2 (the manager's `.env`) is done on the manager host, over SSH. Notes: Windows does not enforce the `600` mode the
+tool asks for, so keep the key files in your own profile folder (not a shared or synced one) and back them up offline;
+`publish` refuses to overwrite a version that already exists on the manager. Rehearsed on Linux only (key creation,
+build, local publish, and the ssh/scp command sequence under test with the commands faked); **not run on Windows**.
+
 ---
 
 ## 4. Updating later
