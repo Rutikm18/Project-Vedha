@@ -371,6 +371,9 @@ with the build's hash) to the customer's security team; do not try to evade thei
 | `another Vedha probe is already using this state file` | a second copy is running; stop the task or the other window |
 | `INSTALLED, BUT NOT CONNECTED YET` | the agent keeps retrying; fix what `doctor` lists and it connects without reinstalling |
 | Online here, absent in Fleet | `status` → compare the manager address; read the log; ask the manager (`GET /agents`) |
+| `irm : The remote name could not be resolved: 'manager'` | you pasted the example command with the placeholder `MANAGER` still in it (it appears twice: in the URL and in `-Manager`). Copy the command from Fleet → Add agent → Windows; do not retype it. The URL must be your real manager, e.g. `https://api.example.com/agent/install.ps1` |
+| `status` says ONLINE but the agent is not in Fleet, and `vedha-agent version` says **2.2.0** | the known 2.2.0 bug: the compiled build lacked part of the `websockets` library, so it registered but never connected, and `status` kept saying ONLINE. Read the log (`Select-String -Path C:\ProgramData\vedha-agent\logs\agent.log -Pattern 'websockets' -Context 0,0 \| Select-Object -Last 5`); `No module named 'websockets.asyncio'` confirms it. Install a package built from 2.2.1 or later with `install.cmd -Repair` |
+| `vedha-agent stop` / `restart` says `Unknown command` | the program has no such commands; use `Stop-ScheduledTask` / `Start-ScheduledTask -TaskName VedhaAgent` (section 4) |
 | Lots of `WinError 10054` lines | normal peer resets from scanned hosts; 2.2.6 hides them below DEBUG |
 
 ---
