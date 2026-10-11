@@ -74,6 +74,7 @@ if ($unix) {
 if ($Install -and $unix) {
   # Windows-only pieces replaced by recording stand-ins: the administrator check and icacls.exe.
   function Assert-Environment { }
+  function Enter-VedhaElevation { $false }
   function icacls.exe { $global:LASTEXITCODE = 0; Add-Content -LiteralPath (Join-Path $env:VEDHA_TEST_OUT 'icacls.log') -Value ($args -join ' ') }
 }
 

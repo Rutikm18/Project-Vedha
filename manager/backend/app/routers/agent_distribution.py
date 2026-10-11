@@ -116,8 +116,10 @@ _SAFE_ARG = re.compile(r"[A-Za-z0-9:/._~+=@%-]+")
 def windows_install_commands(manager_url: str, token: str | None = None) -> dict[str, str]:
     """The Windows one-liners, or {} if a value is not safe to embed unescaped.
 
-    PowerShell (run from an ELEVATED prompt — it installs a service):
-      windows_powershell   fetches install.ps1 and runs it with the manager + token
+    windows_powershell   works from ANY window (Command Prompt or an ordinary PowerShell): it fetches
+                         install.ps1 and runs it with the manager + token, and when it is not
+                         elevated the installer asks Windows for administrator permission (UAC) and
+                         continues in a new Administrator window
     cmd.exe / double-click:
       windows_cmd          fetches install.cmd (which self-elevates) and runs it
     Both fetch over TLS 1.2; the installer then verifies the signed manifest

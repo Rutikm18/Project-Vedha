@@ -49,10 +49,10 @@ export function windowsOffered(info: AgentInstallInfo | null): boolean {
 export function windowsCommands(commands: InstallCommands | undefined): { key: string; label: string; command: string }[] {
   const out: { key: string; label: string; command: string }[] = [];
   if (commands?.windows_powershell) {
-    out.push({ key: "powershell", label: "PowerShell — open it with “Run as administrator”", command: commands.windows_powershell });
+    out.push({ key: "powershell", label: "Paste into any Command Prompt or PowerShell window — Windows asks for administrator permission itself", command: commands.windows_powershell });
   }
   if (commands?.windows_cmd) {
-    out.push({ key: "cmd", label: "Command Prompt — asks for administrator rights itself", command: commands.windows_cmd });
+    out.push({ key: "cmd", label: "Alternative for Command Prompt (also asks for administrator rights itself)", command: commands.windows_cmd });
   }
   return out;
 }
@@ -295,7 +295,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
           )}
           <div className="aa-result-head">
             <span className="flt-cmd-label">
-              {target === "windows" ? "Run on the Windows host (as administrator)" : "Run on the Linux host (as root)"}
+              {target === "windows" ? "Run on the Windows host (one command, any window)" : "Run on the Linux host (as root)"}
             </span>
             <span className="flt-state" style={{ color: STATE_COLOR[createdState ?? "active"] }}>
               <span className="flt-dot" style={{ background: STATE_COLOR[createdState ?? "active"] }} />
@@ -366,7 +366,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
       </button>
       {showReqs && target === "windows" && (
         <ul className="aa-reqs">
-          <li><strong>Host:</strong> 64-bit Windows 10 / 11 or Windows Server 2016+, Windows PowerShell 5.1 or later, an account that can run PowerShell as administrator. The manager must be reachable over https.</li>
+          <li><strong>Host:</strong> 64-bit Windows 10 / 11 or Windows Server 2016+, Windows PowerShell 5.1 or later, an account that can approve the administrator prompt (UAC). The manager must be reachable over https.</li>
           <li><strong>Placement:</strong> on the same network segment as the systems in scope, with a fixed IP (DHCP reservation).</li>
           <li><strong>Network:</strong> outbound HTTPS (443) to <span className="flt-mono">{host}</span>; working time sync. No inbound ports.</li>
           <li><strong>Security tools:</strong> a network scanner can look like malware to antivirus/EDR. Allow-list <span className="flt-mono">vedha-agent.exe</span> with your security team before installing.</li>

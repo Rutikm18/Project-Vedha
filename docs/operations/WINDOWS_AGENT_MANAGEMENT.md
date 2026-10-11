@@ -37,7 +37,12 @@ system drive, outbound HTTPS to the manager.
 The **Windows** tab appears only when the manager has a published release that includes a Windows
 package. If it is missing, use 2.2.
 
-Run it in an **elevated** prompt. PowerShell:
+Paste it into **any** Command Prompt or PowerShell window. If the window is not elevated, the installer asks
+Windows for administrator permission (the UAC prompt: choose **Yes**) and continues in a new Administrator window,
+which stays open at the end so you can read the result. Already elevated (an Administrator window, an RMM tool),
+it just installs. The install token travels to that second window in the environment, not on a command line.
+If a different account supplies the administrator password, the token may not reach it: the installer says so, and
+you then run the same command in a window opened with "Run as administrator". PowerShell or cmd.exe:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; & ([scriptblock]::Create((irm 'https://MANAGER/agent/install.ps1'))) -Manager 'https://MANAGER' -Token 'vet_...'"

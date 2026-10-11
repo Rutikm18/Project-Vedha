@@ -27,7 +27,8 @@ without `-Server` it stops after signing. A release version can be published onc
 do them by hand or something fails.
 
 **Each Windows machine:** in the console, **Fleet -> Add agent -> Windows -> Generate install command**, then run that
-one line in an Administrator PowerShell on the machine. Nothing else.
+one line in **any** Command Prompt or PowerShell window on the machine (no need to open it as Administrator:
+when it is not elevated, the installer asks Windows for permission and continues in a new Administrator window). Nothing else.
 
 What this does not remove: choosing the engagement and clicking Generate (that is what creates the one-time token),
 the first-time server access (SSH), and backing up the keys. Doing the whole thing from a git push, with no PC of
@@ -65,7 +66,7 @@ So "run it on Linux" does not by itself mean SYN scanning: the shipped Docker ag
 
 | User's machine | The one command (Fleet → Add agent prints it with the real address and token) |
 |---|---|
-| Windows, PowerShell as Administrator | `powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; & ([scriptblock]::Create((irm 'https://api.vedhasec.com/agent/install.ps1'))) -Manager 'https://api.vedhasec.com' -Token 'vet_…'"` |
+| Windows, any Command Prompt or PowerShell window (asks for administrator permission itself) | `powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; & ([scriptblock]::Create((irm 'https://api.vedhasec.com/agent/install.ps1'))) -Manager 'https://api.vedhasec.com' -Token 'vet_…'"` |
 | Windows, Command Prompt (it asks for admin itself) | `curl.exe --proto =https --tlsv1.2 -fsSL "https://api.vedhasec.com/agent/install.cmd" -o "%TEMP%\vedha-install.cmd" && "%TEMP%\vedha-install.cmd" "https://api.vedhasec.com" "vet_…"` |
 | Linux | `curl --proto '=https' --tlsv1.2 -fsSL https://api.vedhasec.com/agent/install.sh \| sudo sh -s -- --manager https://api.vedhasec.com --token vet_…` |
 
@@ -195,7 +196,7 @@ Windows package is published and signed). If it does not, see section 7.
 1. Fleet → Add agent → pick the engagement → **Generate**. Choose **Windows**, copy the PowerShell or Command Prompt
    line. It already contains the manager address and the token.
 2. Send it **by a different channel** from the rest of the engagement details (phone or chat), with this note: run it
-   in an Administrator PowerShell, or in Command Prompt (which asks for admin by itself).
+   in any Command Prompt or PowerShell window (Windows asks for administrator permission).
 3. Watch Fleet: the agent appears when it connects. To confirm on the machine:
    `"C:\Program Files\Vedha Agent\vedha-agent.exe" version` and `status`.
 

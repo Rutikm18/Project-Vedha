@@ -9,6 +9,11 @@
 
   or double-click / run install.cmd (it asks for administrator rights itself).
 
+  The same command works from ANY window, Command Prompt or an ordinary PowerShell: when this
+  script is not elevated it asks Windows for administrator permission (the UAC prompt) and
+  continues in a new Administrator window. Already elevated (an RMM tool, an Administrator
+  PowerShell) it simply installs.
+
   What it does, in order - and it stops at the first thing that does not check out:
     1. Fetches the release manifest and its ECDSA P-256 signature from the manager and
        verifies the signature with the release public key baked into THIS script.
@@ -38,7 +43,8 @@ param(
   [string]$Scope   = '',          # CIDR list; empty = auto-detect this host's /24
   [switch]$AllowInsecureHttp,     # testing only: lets -VerifyOnly talk to a local http:// test server
   [switch]$VerifyOnly,            # download and verify everything, install nothing (no administrator needed)
-  [switch]$PauseAtEnd             # keep the window open (set by install.cmd after it elevates)
+  [switch]$PauseAtEnd,            # keep the window open (set by install.cmd after it elevates)
+  [switch]$Elevated               # internal: set on the copy this script starts with administrator rights
 )
 Set-StrictMode -Version 2
 $ErrorActionPreference = 'Stop'
@@ -74,6 +80,9 @@ function Get-CleanManager {
 }
 
 function Assert-CleanToken {
+  if (-not $Token -and $Elevated) {
+    throw 'The install token did not reach the Administrator window (this happens when a different account supplied the administrator password). Open PowerShell with "Run as administrator" and run the command there.'
+  }
   if (-not $Token) {
     throw 'An install token is required to download the agent. In Fleet -> Add agent, create one and copy the command it prints.'
   }
@@ -82,6 +91,52 @@ function Assert-CleanToken {
 
 function Assert-CleanScope {
   if ($Scope -and $Scope -notmatch '^[0-9A-Fa-f:.,/]+$') { throw "-Scope must be a CIDR list such as 10.0.0.0/24 (got '$Scope')." }
+}
+
+function Test-VedhaAdmin {
+  $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+  return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Get-VedhaElevationCommand {
+  # The command the elevated copy runs: this same one-command installer, fetched again from the
+  # manager (this copy came through a pipe, so there is no file to start). The TOKEN is not in it:
+  # it travels in the environment (VEDHA_INSTALL_TOKEN), so it never appears on a command line that
+  # other users of the machine can list. The manager and scope were already checked against strict
+  # patterns, so nothing here can break out of its single quotes.
+  param([string]$ManagerUrl, [string]$InstallScope)
+  $c = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; " +
+       "& ([scriptblock]::Create((irm '" + $ManagerUrl + "/agent/install.ps1'))) -Manager '" + $ManagerUrl + "'" +
+       ' -Token $env:VEDHA_INSTALL_TOKEN'
+  if ($InstallScope) { $c += " -Scope '" + $InstallScope + "'" }
+  return $c + ' -PauseAtEnd -Elevated'
+}
+
+function Enter-VedhaElevation {
+  # Not an administrator: hand the install to an elevated copy (Windows shows its permission prompt)
+  # and wait for it. Returns $true when it did, with the copy's exit code in $script:ElevatedExit.
+  param([string]$ManagerUrl)
+  if ($VerifyOnly -or (Test-VedhaAdmin)) { return $false }
+  if ($Elevated) {
+    throw 'Administrator rights were not granted, so nothing was installed. Run the command again and choose Yes when Windows asks for permission, or open PowerShell with "Run as administrator".'
+  }
+  Write-Step 'administrator rights are needed: Windows will ask for your permission, then the install continues in a new window'
+  $command = Get-VedhaElevationCommand -ManagerUrl $ManagerUrl -InstallScope $Scope
+  $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+  $env:VEDHA_INSTALL_TOKEN = $Token
+  try {
+    $child = Start-Process -FilePath $powershell -Verb RunAs -Wait -PassThru `
+      -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -Command "' + $command + '"')
+  } catch {
+    throw ('Administrator permission was not given (' + $_.Exception.Message + '). Nothing was installed. Run the command again and choose Yes when Windows asks, or open PowerShell with "Run as administrator".')
+  } finally {
+    Remove-Item Env:\VEDHA_INSTALL_TOKEN -ErrorAction SilentlyContinue
+  }
+  $script:ElevatedExit = [int]$child.ExitCode
+  if ($script:ElevatedExit -eq 0) { Write-Step 'the installer finished in the Administrator window: the agent is installed and connected' }
+  elseif ($script:ElevatedExit -eq 3) { Write-Step 'the agent is installed but has not connected yet; the Administrator window shows what to check' }
+  else { throw ('the installer failed in the Administrator window (exit code ' + $script:ElevatedExit + '); that window says why') }
+  return $true
 }
 
 function Assert-Environment {
@@ -307,6 +362,7 @@ function Install-VedhaAgent {
   $managerUrl = Get-CleanManager
   Assert-CleanToken
   Assert-CleanScope
+  if (Enter-VedhaElevation $managerUrl) { return }
   Assert-Environment
 
   Write-Step ("installing Vedha agent release " + $script:VedhaReleaseVersion + " from " + $managerUrl)
@@ -387,6 +443,7 @@ function Install-VedhaAgent {
 }
 
 $script:InstalledNotConnected = $false
+$script:ElevatedExit = $null
 $failed = $false
 try {
   Install-VedhaAgent
@@ -397,4 +454,5 @@ try {
 }
 if ($PauseAtEnd) { Read-Host 'Press Enter to close this window' | Out-Null }
 if ($failed) { exit 1 }
+if ($null -ne $script:ElevatedExit) { exit $script:ElevatedExit }     # the elevated copy did the work
 if ($script:InstalledNotConnected) { exit 3 }
