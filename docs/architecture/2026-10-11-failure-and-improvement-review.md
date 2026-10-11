@@ -153,3 +153,18 @@ These are not bugs; they are where the design will bend next.
 | **Now** | NF4 branch protection on `main` (required checks + no direct push) · F1 RLS spike (the surface is still growing) · NF2 measure the Windows 65k connect audit before calling deep scan production-ready |
 | **Next** | NF1 probe job concurrency + pre-launch ETA · C1 agent coverage records (also closes F5) · NF3 store `why_empty` / precompute on ingest (C4) |
 | **Later** | C3 trace IDs · C5 split the god-files · NF5 count query · the remaining 2026-10-09 items (F3 backups, F4 reaper split, F6 small-host defaults) |
+
+---
+
+## E. Implemented 2026-10-11 (same session)
+
+| Item | What shipped | Proof |
+|---|---|---|
+| **NF3** | A zero-route `GET …/attack-paths` now serves the diagnostics the last recompute already stored (`AttackPathAnalysis.analysis`) and only rebuilds the analyzer on `refresh=true` or when a pre-NF3 row stored none. No more O(assets+findings) rebuild on every poll. | `test_attack_paths_list_readonly` asserts a zero-route read neither recomputes nor rebuilds; 335 attack-path tests pass |
+| **NF5** | `total` is `select(func.count())` instead of `len(select(id).all())`. | same suite |
+| **F1** | Postgres RLS as defense-in-depth, **shipped dormant** (migration 0062 + `app/db_rls.py` + `get_db` GUC wiring, behind `DB_RLS_ENABLED`, off by default). Permissive when the GUC is unset, so workers/migrations are untouched; the request path sets the GUC so a forgotten `tenant_id` filter returns nothing. | live non-superuser Postgres proof (GUC=A → only A's rows unfiltered; cross-tenant write blocked; unset → all) + Postgres-gated `test_tenant_rls_postgres`; full backend **3,144 passed** with the flag off |
+| **NF1 / C1** | Found **already implemented** by PR #15 + the M/A waves: the probe refuses `cannot_finish` jobs, runs `tight` ones as partials, emits a feasibility estimate + check + `not_scanned`/`filtered_unverified`; the manager ingests these as four distinct port-states (`port_coverage.py`) and exposes them. No redundant code added. Residual: a pre-launch ETA in the operator Scanner UI, and the scanner-internal `except: pass` sites (F5) — left as recorded work, not safely changeable without running real scans here. | — |
+
+**Not codeable from here:** NF4 (branch protection on `main`) is a GitHub repo setting — enable required checks (`backend-ci`, `agent-ci`, `scanner-accuracy`, `frontend-ci`) and "require a PR" on `main`. NF2 (measure the Windows 65k connect audit) needs a real Windows agent.
+
+**To enable F1 RLS in production:** run migration 0062, set `DB_RLS_ENABLED=true`, and ensure the app connects as a **non-superuser** Postgres role (superusers bypass RLS). Confirm first that no request-path endpoint reads across tenants on the protected tables (none does today). Extend `RLS_TENANT_TABLES` to cover findings/assets later (they need a subquery policy through `engagement_id`).
