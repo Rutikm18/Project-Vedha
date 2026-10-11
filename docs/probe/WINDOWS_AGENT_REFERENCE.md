@@ -4,6 +4,7 @@ What is installed where, every setting, every command, every state and exit code
 how-to see the [operator guide](WINDOWS_AGENT_INSTALL.md); for why it is built this way see
 [ADR-0005](../adr/0005-windows-agent-delivery.md). Source of truth is the code; the files
 named below are the ones to read when this page and the code disagree.
+For day-to-day use see the [management handbook](../operations/WINDOWS_AGENT_MANAGEMENT.md).
 
 ## 1. What is in the package
 
@@ -53,7 +54,7 @@ Built by `probe/windows/package-zip.ps1`, which also writes two files beside the
 
 One `KEY=VALUE` per line. The agent loads it on every start; **an environment variable that is
 already set wins over the file**. Written by the installer (do not edit while the agent runs;
-`install.cmd -Repair` rewrites it from the existing values plus any options you pass).
+`install.cmd -Repair` rewrites it from the existing values plus any options you pass). **`-Repair` keeps only the keys in the table above: any setting you added by hand (the second table) is dropped and must be added again.**
 
 | Key | Default written | Meaning |
 |---|---|---|

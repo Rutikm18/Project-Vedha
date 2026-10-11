@@ -8,7 +8,7 @@ not. This page is for **you** (the operator). The customer's own instructions ar
 What the customer needs: Windows 10 / Server 2016 or newer (64-bit), administrator
 rights, outbound HTTPS (TCP 443) to your manager. No Python, no downloads.
 
-See also: [reference](WINDOWS_AGENT_REFERENCE.md) (files, settings, commands, states) ·
+See also: **[management handbook](../operations/WINDOWS_AGENT_MANAGEMENT.md)** (start it, run it, update it, troubleshoot) · [reference](WINDOWS_AGENT_REFERENCE.md) (files, settings, commands, states) ·
 [CI and the real-install test](../testing/windows-agent-ci-and-e2e.md) ·
 [decisions](../adr/0005-windows-agent-delivery.md) ·
 [version management](../design/agent-version-management.md) ·
@@ -236,7 +236,8 @@ PowerShell execution policy (a unit test enforces this).
   available" badge is not built yet) and, when started, asks the manager whether a
   newer one exists. It does **not** download or apply updates yet (pipeline item).
 - **Remove:** `install.cmd -Uninstall` (add `-Purge` to delete identity and logs).
-  You can also revoke the agent from Fleet at any time.
+  You can also cut the agent off from Fleet at any time by setting its access expiry to a time in the past
+  (there is no separate revoke or delete button; see the [management handbook](../operations/WINDOWS_AGENT_MANAGEMENT.md#6-what-you-can-do-about-an-agent-in-fleet)).
 
 ## 7. Honest limits today
 
