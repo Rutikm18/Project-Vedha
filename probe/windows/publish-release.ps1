@@ -81,7 +81,9 @@ function Get-VedhaParentPath {
 function New-VedhaRemoteConfigScript {
   # The POSIX shell script that sets the release keys in the manager's .env and restarts the api.
   # Idempotent: it removes the old copies of these settings first, keeps a dated backup, and
-  # rewrites .env in place so its owner and permissions stay as they were.
+  # rewrites .env in place so its owner and permissions stay as they were. umask 077 makes the
+  # temporary copy and the backup private to the user: .env holds every secret of the manager, and
+  # a default umask would have left both world-readable.
   param([string]$ComposeDir, [string[]]$Lines)
   if (-not (Test-VedhaRemotePath $ComposeDir)) { throw "Not a safe folder path on the server: '$ComposeDir'" }
   foreach ($l in $Lines) {
@@ -92,9 +94,10 @@ function New-VedhaRemoteConfigScript {
   $quoted = ($Lines | ForEach-Object { "'" + $_ + "'" }) -join ' '
   $sh = @(
     'set -eu',
+    'umask 077',            # .env holds the manager's secrets: nothing this script writes may be readable by others
     "cd '$ComposeDir'",
     'test -f .env || { echo ".env not found in $(pwd)" >&2; exit 1; }',
-    'cp .env ".env.bak.$(date +%Y%m%d%H%M%S)"',
+    'cp -p .env ".env.bak.$(date +%Y%m%d%H%M%S)"',
     "grep -v -E '^(AGENT_RELEASE_PUBLIC_KEY|AGENT_RELEASE_P256_PUBLIC_KEY|AGENT_RELEASE_REQUIRE_SIGNATURE|MANAGER_PUBLIC_URL)=' .env > .env.new || true",
     "printf '%s\n' $quoted >> .env.new",
     'cat .env.new > .env',

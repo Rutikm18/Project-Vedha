@@ -59,6 +59,9 @@ $lines = @($ed, $p256, 'AGENT_RELEASE_REQUIRE_SIGNATURE=true', 'MANAGER_PUBLIC_U
 $sh = New-VedhaRemoteConfigScript -ComposeDir '/opt/Project-Vedha/manager' -Lines $lines
 Assert-True  ($sh.EndsWith("`n") -and $sh -notmatch "`r") 'remote script: LF line endings only (a CR would break sh)'
 Assert-True  ($sh.StartsWith("set -eu`n")) 'remote script: stops on the first error'
+Assert-True  ($sh.StartsWith("set -eu`numask 077`n")) 'remote script: files it creates are private (umask 077) before anything is written'
+Assert-True  ($sh -match 'cp -p \.env') 'remote script: the backup keeps the original permissions'
+Assert-True  ($sh.IndexOf('umask 077') -lt $sh.IndexOf('.env.new')) 'remote script: the umask is set before the temporary copy of .env exists'
 Assert-True  ($sh -match "cd '/opt/Project-Vedha/manager'") 'remote script: goes to the compose folder'
 Assert-True  ($sh -match '\.env\.bak\.') 'remote script: keeps a dated backup first'
 Assert-True  ($sh.IndexOf('cp .env') -lt $sh.IndexOf('grep -v')) 'remote script: backup happens before any change'
