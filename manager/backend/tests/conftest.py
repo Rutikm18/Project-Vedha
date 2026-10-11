@@ -46,3 +46,25 @@ def _fresh_ai_kv():
         yield
     finally:
         set_default_kv(None)
+
+
+@pytest.fixture(autouse=True)
+def _offline_dns(monkeypatch):
+    """Tenant-supplied outbound hosts (Jira, Slack webhook, SMTP...) are resolved by
+    the SSRF guard before any request. Tests use made-up names like acme.service-now.com
+    and must not depend on real DNS (or fail offline), so a name that does not resolve
+    is treated as a public address. IP literals and real answers are untouched; tests
+    of the guard itself (test_outbound_guard.py) restore the real resolver."""
+    import ipaddress
+
+    from app.services import outbound_guard as og
+
+    real = og._resolve
+
+    def resolve(host, port):
+        try:
+            return real(host, port)
+        except og.OutboundBlocked:
+            return [ipaddress.ip_address("93.184.216.34")]
+
+    monkeypatch.setattr(og, "_resolve", resolve)

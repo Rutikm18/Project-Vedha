@@ -111,7 +111,7 @@ async def test_ad_launch_passes_correct_args_to_get_or_404(monkeypatch):
     db = MagicMock()
     db.flush = AsyncMock()
     db.refresh = AsyncMock()
-    spy = AsyncMock(return_value=SimpleNamespace(id=eng_id))
+    spy = AsyncMock(return_value=SimpleNamespace(id=eng_id, scope_cidrs=["10.0.0.0/24"], excluded_cidrs=[]))
     monkeypatch.setattr(ad_router, "get_or_404", spy)
     body = ad_router.ADAssessRequest.model_validate(
         {"dc_ip": "10.0.0.10", "domain": "corp.local", "username": "u", "password": "p"}

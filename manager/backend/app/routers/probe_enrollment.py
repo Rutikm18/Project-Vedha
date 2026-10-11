@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.auth.jwt import create_device_access_token
 from app.auth.rbac import require_role
@@ -104,6 +104,23 @@ def _verify_signature(public_key_b64: str, message: str, signature_b64: str) -> 
         public_key.verify(signature, message.encode("utf-8"))
     except (InvalidSignature, ValueError, TypeError) as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid device proof-of-possession signature") from exc
+
+
+async def _single_tenant_mode(db) -> bool:
+    """True when this Manager serves exactly one active tenant.
+
+    A new device's enrollment request is unclaimed (tenant_id NULL) until someone
+    approves it, and anyone can file one without logging in. With one tenant,
+    "unclaimed" can only mean theirs, so the fleet list may show it and one-click
+    approval may claim it. With several tenants it is anyone's: listing it, or
+    letting a tenant claim it by id, would let tenant A adopt a probe sitting in
+    tenant B's network. There the operator must prove they hold the device by
+    typing the user code it displays (POST /approve), or use an enroll token.
+    """
+    active = (await db.execute(
+        select(func.count()).select_from(Tenant).where(Tenant.is_active.is_(True))
+    )).scalar_one()
+    return active == 1
 
 
 async def _rate_limit(redis, request: Request, bucket: str, limit: int) -> None:
@@ -700,11 +717,13 @@ async def list_enrollment_requests(
     db: DB,
     current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
 ):
+    visible = ProbeEnrollmentRequest.tenant_id == current_user.tenant_id
+    if await _single_tenant_mode(db):
+        visible = visible | ProbeEnrollmentRequest.tenant_id.is_(None)
     rows = (await db.execute(
         select(ProbeEnrollmentRequest)
         .where(
-            (ProbeEnrollmentRequest.tenant_id == current_user.tenant_id)
-            | (ProbeEnrollmentRequest.tenant_id.is_(None)),
+            visible,
             ProbeEnrollmentRequest.state.in_(["awaiting_approval", "approved"]),
         )
         .order_by(ProbeEnrollmentRequest.created_at)
@@ -772,8 +791,15 @@ async def approve_request_simple(
         .where(ProbeEnrollmentRequest.id == request_id)
         .with_for_update()
     )).scalar_one_or_none()
-    if row is None:
+    if row is None or (row.tenant_id is not None and row.tenant_id != current_user.tenant_id):
         raise HTTPException(404, "Enrollment request not found")
+    if row.tenant_id is None and not await _single_tenant_mode(db):
+        raise HTTPException(
+            403,
+            "This Manager serves more than one tenant, so a device request cannot be "
+            "claimed from the list. Approve it with the code the device displays "
+            "(POST /probe-enrollment/approve) or enroll it with an enroll token.",
+        )
     if row.expires_at <= now:
         row.state = "expired"
         raise HTTPException(410, "Enrollment request expired")
@@ -819,7 +845,7 @@ async def approve_enrollment(
         .with_for_update()
     )).scalar_one_or_none()
     now = datetime.now(timezone.utc)
-    if row is None:
+    if row is None or (row.tenant_id is not None and row.tenant_id != current_user.tenant_id):
         raise HTTPException(404, "Enrollment code not found")
     if row.expires_at <= now:
         row.state = "expired"

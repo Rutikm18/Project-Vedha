@@ -11,12 +11,15 @@ Each engine queries its platform for endpoint detections in a time window
 from __future__ import annotations
 
 import abc
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
 import httpx
 import structlog
+
+from app.services.outbound_guard import check_url
 
 logger = structlog.get_logger()
 
@@ -77,7 +80,10 @@ class EDRQueryEngine(abc.ABC):
 
     async def _request(self, method: str, url: str, **kwargs: Any) -> httpx.Response | None:
         try:
-            async with httpx.AsyncClient(timeout=self._timeout, verify=self._config.get("verify_ssl", True)) as client:
+            # Tenant-supplied base_url: refuse loopback/metadata/private targets first.
+            await asyncio.to_thread(check_url, url)
+            async with httpx.AsyncClient(timeout=self._timeout, verify=self._config.get("verify_ssl", True),
+                                         follow_redirects=False) as client:
                 resp = await client.request(method, url, **kwargs)
                 resp.raise_for_status()
                 return resp

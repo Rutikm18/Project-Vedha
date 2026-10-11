@@ -12,18 +12,20 @@ detections pulled from the configured providers, then persists DetectionResults.
 """
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, Query, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
+from app.detection.config_secrets import protect, reveal
 from app.detection.correlator import AttackAction, DetectionCorrelator
 from app.detection.edr import build_edr_engine
 from app.detection.siem import build_siem_engine
@@ -31,6 +33,7 @@ from app.models.attack_timeline import AttackTimeline
 from app.models.detection import DetectionResult
 from app.models.detection_config import DetectionConfig
 from app.models.engagement import Engagement
+from app.services.outbound_guard import OutboundBlocked, check_url
 from app.utils.db import get_or_404
 from app.models.enums import DetectionStatus, ScanJobStatus, ScanJobType
 from app.models.scan_job import ScanJob
@@ -66,6 +69,15 @@ async def configure_siem(
 ):
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
+    # Refuse loopback/metadata/private base URLs up front (and again on every call).
+    for config in (body.siem_config, body.edr_config):
+        base_url = (config or {}).get("base_url")
+        if base_url:
+            try:
+                await asyncio.to_thread(check_url, str(base_url))
+            except OutboundBlocked as exc:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"base_url rejected: {exc}") from exc
+
     cfg = (await db.execute(
         select(DetectionConfig).where(DetectionConfig.engagement_id == engagement_id)
     )).scalar_one_or_none()
@@ -75,10 +87,10 @@ async def configure_siem(
 
     if body.siem_provider is not None:
         cfg.siem_provider = body.siem_provider
-        cfg.siem_config = body.siem_config
+        cfg.siem_config = protect(body.siem_config)
     if body.edr_provider is not None:
         cfg.edr_provider = body.edr_provider
-        cfg.edr_config = body.edr_config
+        cfg.edr_config = protect(body.edr_config)
     await db.flush()
 
     # Never echo secrets — report only what is configured.
@@ -277,11 +289,11 @@ async def _run_correlation(
 
         siem_alerts, edr_detections = [], []
         if cfg and cfg.siem_provider:
-            engine = build_siem_engine(cfg.siem_provider, cfg.siem_config or {})
+            engine = build_siem_engine(cfg.siem_provider, reveal(cfg.siem_config))
             if engine:
                 siem_alerts = await engine.query_alerts(time_start, time_end)
         if cfg and cfg.edr_provider:
-            engine = build_edr_engine(cfg.edr_provider, cfg.edr_config or {})
+            engine = build_edr_engine(cfg.edr_provider, reveal(cfg.edr_config))
             if engine:
                 edr_detections = await engine.query_detections(time_start, time_end)
 

@@ -8,6 +8,7 @@ delivery (via the outbox) consumes these rows; that wiring is a separate step.
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, status
@@ -21,6 +22,7 @@ from app.models.integration import Integration
 from app.services.audit import record_audit
 from app.services.credential_crypto import decrypt_credential, encrypt_credential
 from app.services.notifications import enqueue_notification
+from app.services.outbound_guard import OutboundBlocked, check_smtp, check_url
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 _OPERATOR = require_role(["admin", "manager"])
@@ -60,6 +62,27 @@ async def list_integrations(db: DB, current_user: Annotated[AuthUser, _OPERATOR]
     return [_out(r) for r in rows]
 
 
+async def _reject_blocked_targets(kind: str, body: IntegrationIn) -> None:
+    """Refuse an integration that points the Manager at loopback, the cloud metadata
+    service or an internal host (the same guard runs again on every delivery)."""
+    cfg = body.config
+    try:
+        if kind == "jira" and cfg.get("JIRA_URL"):
+            await asyncio.to_thread(check_url, cfg["JIRA_URL"])
+        elif kind == "servicenow" and cfg.get("SERVICENOW_URL"):
+            await asyncio.to_thread(check_url, cfg["SERVICENOW_URL"])
+        elif kind == "slack" and body.secret:
+            await asyncio.to_thread(check_url, body.secret)          # the webhook URL
+        elif kind == "email" and cfg.get("SMTP_HOST"):
+            try:
+                port = int(cfg.get("SMTP_PORT") or 587)
+            except ValueError as exc:
+                raise OutboundBlocked("SMTP_PORT must be a number") from exc
+            await asyncio.to_thread(check_smtp, cfg["SMTP_HOST"], port)
+    except OutboundBlocked as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"integration target rejected: {exc}") from exc
+
+
 @router.put("/{kind}", response_model=IntegrationOut,
             summary="Add or update an integration (email|slack|jira|servicenow)")
 async def put_integration(kind: str, body: IntegrationIn, db: DB,
@@ -67,6 +90,7 @@ async def put_integration(kind: str, body: IntegrationIn, db: DB,
     if kind not in _KINDS:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             f"Unknown integration kind '{kind}'")
+    await _reject_blocked_targets(kind, body)
     row = await _row(db, current_user.tenant_id, kind)
     if row is None:
         row = Integration(

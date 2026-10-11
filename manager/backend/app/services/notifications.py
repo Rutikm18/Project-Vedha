@@ -20,6 +20,7 @@ from sqlalchemy import select
 
 from app.models.integration import Integration
 from app.services.credential_crypto import decrypt_credential
+from app.services.outbound_guard import check_smtp, check_url
 
 logger = structlog.get_logger()
 
@@ -36,6 +37,7 @@ def _send_email(config: dict, secret: str | None, subject: str, body: str) -> No
         raise ValueError("email integration missing SMTP_HOST/SMTP_FROM/SMTP_TO")
     msg = MIMEText(body)
     msg["Subject"], msg["From"], msg["To"] = subject, sender, ", ".join(recipients)
+    check_smtp(host, port)
     with smtplib.SMTP(host, port, timeout=15) as smtp:
         smtp.starttls()
         if user and secret:
@@ -46,7 +48,8 @@ def _send_email(config: dict, secret: str | None, subject: str, body: str) -> No
 def _send_slack(config: dict, secret: str | None, subject: str, body: str) -> None:
     if not secret:
         raise ValueError("slack integration missing webhook URL")
-    resp = httpx.post(secret, json={"text": f"*{subject}*\n{body}"}, timeout=15)
+    check_url(secret)
+    resp = httpx.post(secret, json={"text": f"*{subject}*\n{body}"}, timeout=15, follow_redirects=False)
     resp.raise_for_status()
 
 
@@ -56,11 +59,12 @@ def _send_jira(config: dict, secret: str | None, subject: str, body: str) -> Non
     project = config.get("JIRA_PROJECT_KEY")
     if not (url and email and secret and project):
         raise ValueError("jira integration missing URL/EMAIL/token/PROJECT_KEY")
+    check_url(url)
     resp = httpx.post(
         f"{url}/rest/api/2/issue", auth=(email, secret),
         json={"fields": {"project": {"key": project}, "summary": subject,
                          "description": body, "issuetype": {"name": "Task"}}},
-        timeout=20,
+        timeout=20, follow_redirects=False,
     )
     resp.raise_for_status()
 
@@ -86,11 +90,14 @@ def _send_servicenow(config: dict, secret: str | None, subject: str, body: str) 
     table = config.get("SERVICENOW_TABLE") or "incident"
     if not (url and user and secret):
         raise ValueError("servicenow integration missing URL/USERNAME/token")
+    check_url(url)
+    if not table.replace("_", "").isalnum():
+        raise ValueError("servicenow table name is invalid")   # it is spliced into the URL path
     resp = httpx.post(
         f"{url}/api/now/table/{table}",
         auth=(user, secret),
         json={"short_description": subject, "description": body},
-        timeout=20,
+        timeout=20, follow_redirects=False,
     )
     resp.raise_for_status()
 

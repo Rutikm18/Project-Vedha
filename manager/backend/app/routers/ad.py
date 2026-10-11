@@ -9,23 +9,28 @@ table and surfaced through the existing /findings endpoints.
 """
 from __future__ import annotations
 
+import ipaddress
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import require_role
+from app.config import get_settings
 from app.dependencies import DB, AuthUser
 from app.models.engagement import Engagement
 from app.utils.db import get_or_404
 from app.models.enums import FindingSeverity, FindingStatus, ScanJobStatus, ScanJobType
 from app.models.finding import Finding
 from app.models.scan_job import ScanJob
+from app.services.outbound_guard import OutboundBlocked, check_scan_target
+from app.services.scope_targets import validate_targets_in_scope
 from app.services.finding_scan_provenance import (
     CUSTODY_CAPTURED_BY_MANAGER,
     record_scan_observation,
@@ -38,16 +43,23 @@ logger = structlog.get_logger()
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
 class Neo4jConfig(BaseModel):
-    uri: str = "bolt://localhost:7687"
-    user: str = "neo4j"
-    password: str
+    """Kept for API compatibility. Its contents are IGNORED: the graph store is the
+    operator-configured NEO4J_URI / NEO4J_USER / NEO4J_PASSWORD (when NEO4J_ENABLED).
+    Honouring a tenant-supplied URI would let a tester make the Manager open bolt
+    connections, with credentials of their choosing, to any host it can reach."""
+    uri: str | None = None
+    user: str | None = None
+    password: str | None = None
+
+
+_DOMAIN_RE = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$")
 
 
 class ADAssessRequest(BaseModel):
     dc_ip: str = Field(..., description="Domain Controller IP")
     domain: str = Field(..., description="AD domain, e.g. corp.local")
-    username: str
-    password: str
+    username: str = Field(..., min_length=1, max_length=256)
+    password: str = Field(..., min_length=1, max_length=512)
     use_kerberos: bool = False
     capture_hashes: bool = Field(
         default=False,
@@ -56,6 +68,30 @@ class ADAssessRequest(BaseModel):
     run_bloodhound: bool = False
     ca_config: dict | None = Field(default=None, description="AD CS config for ESC8 check")
     neo4j: Neo4jConfig | None = None
+
+
+    @field_validator("dc_ip")
+    @classmethod
+    def _dc_ip_is_an_ip(cls, value: str) -> str:
+        try:
+            return str(ipaddress.ip_address(value.strip()))
+        except ValueError as exc:
+            raise ValueError("dc_ip must be an IP address") from exc
+
+    @field_validator("domain")
+    @classmethod
+    def _domain_is_a_dns_name(cls, value: str) -> str:
+        value = value.strip()
+        if not _DOMAIN_RE.match(value):
+            raise ValueError("domain must be a DNS name such as corp.local")
+        return value
+
+    @field_validator("username")
+    @classmethod
+    def _username_is_plain(cls, value: str) -> str:
+        if value.startswith("-") or any(ord(c) < 32 for c in value):
+            raise ValueError("username must not start with '-' or contain control characters")
+        return value
 
 
 # ── POST /assess ───────────────────────────────────────────────────────────────
@@ -72,7 +108,17 @@ async def launch_ad_assessment(
     background_tasks: BackgroundTasks,
     current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
 ):
-    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    engagement = await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    # The Manager itself binds to this host with the supplied credentials, so it gets
+    # the same scope gate as every other active action — and never loopback/link-local.
+    try:
+        check_scan_target(body.dc_ip)
+    except OutboundBlocked as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"dc_ip rejected: {exc}") from exc
+    if validate_targets_in_scope(
+        [body.dc_ip], engagement.scope_cidrs, engagement.excluded_cidrs,
+    ) is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "dc_ip is not inside this engagement's scope")
 
     job = ScanJob(
         engagement_id=engagement_id,
@@ -130,6 +176,15 @@ async def ad_assessment_status(
 
 
 
+def _operator_neo4j() -> dict[str, str] | None:
+    """The Manager's own Neo4j connection, or None when it is not enabled."""
+    cfg = get_settings()
+    if not cfg.neo4j_enabled:
+        logger.info("ad.assess.neo4j_skipped", reason="NEO4J_ENABLED is false")
+        return None
+    return {"uri": cfg.neo4j_uri, "user": cfg.neo4j_user, "password": cfg.neo4j_password}
+
+
 async def _run_ad_assessment_and_save(
     engagement_id: str,
     job_id: str,
@@ -148,7 +203,7 @@ async def _run_ad_assessment_and_save(
         await db.commit()
 
     runner = ADAssessmentRunner()
-    neo4j = params.get("neo4j")
+    neo4j = _operator_neo4j() if params.get("neo4j") else None
     try:
         outcome = await runner.run(
             params["dc_ip"], params["domain"], params["username"], params["password"],
