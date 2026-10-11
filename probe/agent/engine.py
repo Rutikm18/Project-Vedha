@@ -76,6 +76,10 @@ def _env_number(name: str, default: float, minimum: float, maximum: float) -> fl
 # this path expands every host and runs a multi-stage assessment workflow.
 MAX_TARGETS = int(_env_number("PROBE_MAX_TARGETS", 4096, 1, 200_000))
 MAX_JOB_SECONDS = _env_number("PROBE_MAX_JOB_SECONDS", 7200, 1, 86_400)
+# A scan that must cover every one of the 65,535 TCP ports is sized by its work
+# instead of MAX_JOB_SECONDS (see _full_coverage_ceiling), up to this. Default 24 h.
+MAX_FULL_SCAN_SECONDS = _env_number("PROBE_MAX_FULL_SCAN_SECONDS", 86_400, 1, 604_800)
+FULL_RANGE_PORTS = 65_535
 
 
 def _runtime_manifest() -> dict:
@@ -154,12 +158,11 @@ _SCAN_MAP = {
     "device_inventory":     ("it",  service_fingerprint_mode,  None),
     "full_port_audit":      ("it",  port_scan_mode,            None),
     "exposure_matrix":      ("it",  port_scan_mode,            None),
-    # Deep full-port sweep of a FEW critical hosts: the entire 65,535-port space
+    # Deep full-port sweep (the UI's Deep mode): the entire 65,535-port space
     # AND the full assessment funnel (banner/OS/deep branches) — the thorough
-    # "tell me everything about these boxes" scan. Host count is capped (see
-    # _MAX_HOSTS_BY_SCAN_TYPE) so full-port coverage never fans out across a
-    # subnet; that is what `network_va` aggressive (bounded enterprise breadth)
-    # is for.
+    # "tell me everything about these boxes" scan. Any number of hosts: the
+    # ceiling grows with the sweep (_full_coverage_ceiling); `network_va`
+    # aggressive is the bounded ~2,500-port sweep when time matters more.
     "deep_port_sweep":      ("it",  assessment,                None),
 }
 
@@ -178,15 +181,17 @@ _FORCE_PORT_PROFILE = {"full_port_audit": "full", "deep_port_sweep": "full"}
 
 # scan_types that PHASE a forced full sweep: assess the high-signal first pass,
 # then take the rest of the 65,535 space as a budgeted tail. Reserved for the
-# host-capped deep_port_sweep, so the phased machinery never re-admits a
-# full-port sweep across a whole subnet.
+# deep_port_sweep (the UI's Deep mode).
 _PHASED_FULL_SCAN_TYPES = {"deep_port_sweep"}
 
-# scan_type → the most hosts one job may target. Full-port coverage is only safe
-# on a handful of hosts inside the time ceiling, so deep_port_sweep is capped;
-# a wider scope is refused with guidance (with the allow_infeasible escape hatch).
-DEEP_PORT_SWEEP_MAX_HOSTS = int(_env_number("PROBE_DEEP_PORT_SWEEP_MAX_HOSTS", 3, 1, 4096))
-_MAX_HOSTS_BY_SCAN_TYPE = {"deep_port_sweep": DEEP_PORT_SWEEP_MAX_HOSTS}
+# scan_type → an optional cap on how many hosts one job may target. Deep Port
+# Sweep had a fixed cap of 3 because its 65,535-port tail had to fit a fixed 2 h
+# ceiling. The ceiling is now sized by the sweep (_full_coverage_ceiling), so a
+# wider scope takes longer instead of being refused: no cap by default (0).
+# PROBE_DEEP_PORT_SWEEP_MAX_HOSTS still lets an operator set one.
+DEEP_PORT_SWEEP_MAX_HOSTS = int(_env_number("PROBE_DEEP_PORT_SWEEP_MAX_HOSTS", 0, 0, 4096))
+_MAX_HOSTS_BY_SCAN_TYPE = (
+    {"deep_port_sweep": DEEP_PORT_SWEEP_MAX_HOSTS} if DEEP_PORT_SWEEP_MAX_HOSTS else {})
 
 # Broad assessments run a wider baseline at STANDARD intensity so a manager
 # "Full Assessment" matches the CLI's `run_all` default (top1000 ≈ 1121 ports)
@@ -270,6 +275,50 @@ def _job_runtime_seconds(params: dict) -> float:
     )
 
 
+# Sizing a full-coverage ceiling: silent ports are retried and re-checked, the
+# stages after the sweep re-assess every port the tail opened, and the tail
+# deadline keeps max(300 s, 15 %) of the ceiling in reserve for them.
+_FULL_SWEEP_HEADROOM = 1.5
+_AFTER_SWEEP_SECONDS = 1800.0
+_TAIL_SHARE = 0.85
+
+
+def _full_coverage_ceiling(*, hosts: int, ports: int, rate: float, base: float,
+                           explicit: float | None = None) -> float:
+    """Runtime ceiling for a scan that must sweep every requested port.
+
+    A fixed 2 h ceiling made a 65,535-port sweep stop wherever the clock ran
+    out and report the rest not_scanned. Size it from the work instead: never
+    below the normal ceiling, never above MAX_FULL_SCAN_SECONDS, and a job's own
+    max_runtime_seconds can still only lower it.
+    """
+    if hosts <= 0 or ports <= 0 or rate <= 0:
+        return base
+    sweep = hosts * ports / rate
+    needed = (sweep * _FULL_SWEEP_HEADROOM + _AFTER_SWEEP_SECONDS) / _TAIL_SHARE
+    ceiling = max(base, min(needed, MAX_FULL_SCAN_SECONDS))
+    if explicit is not None:
+        ceiling = min(ceiling, explicit)
+    return ceiling
+
+
+def _rate_to_cover(*, hosts: int, ports: int, ceiling: float) -> float | None:
+    """The pps that would let every port be swept inside `ceiling`, or None when
+    no rate could (the ceiling is too short for the stages after the sweep)."""
+    usable = ceiling * _TAIL_SHARE - _AFTER_SWEEP_SECONDS
+    if usable <= 0:
+        return None
+    return hosts * ports * _FULL_SWEEP_HEADROOM / usable
+
+
+def _explicit_runtime_seconds(params: dict) -> float | None:
+    """A job's own max_runtime_seconds, bounded by the full-scan maximum."""
+    if params.get("max_runtime_seconds") is None:
+        return None
+    return _clamp(params.get("max_runtime_seconds"), 1.0,
+                  MAX_FULL_SCAN_SECONDS, MAX_FULL_SCAN_SECONDS)
+
+
 def _tail_deadline(now: float, job_runtime_seconds: float) -> float:
     """Monotonic time by which the port tail must stop starting work.
 
@@ -338,12 +387,11 @@ def _refuse_if_infeasible(estimate, params: dict) -> dict | None:
 
 def _refuse_if_host_cap_exceeded(scan_type: str, host_count: int,
                                  params: dict) -> dict | None:
-    """Reason to refuse a use-case that caps its host count, or None.
+    """Reason to refuse a use-case whose operator set a host cap, or None.
 
-    A full-port sweep (all 65,535 ports) is only feasible inside the time
-    ceiling on a handful of hosts, so deep_port_sweep caps the count and refuses
-    a wider scope rather than silently truncating it. Same escape hatch as the
-    feasibility gate: `allow_infeasible=true` runs it anyway.
+    No use-case is capped by default (see _MAX_HOSTS_BY_SCAN_TYPE). When an
+    operator sets one, a wider scope is refused rather than silently truncated.
+    Same escape hatch as the feasibility gate: `allow_infeasible=true` runs it.
     """
     cap = _MAX_HOSTS_BY_SCAN_TYPE.get(scan_type)
     if cap is None or host_count <= cap:
@@ -1106,6 +1154,30 @@ def run_scan(scan_type: str, params: dict,
         feasibility = _feasibility
         _sweep_ports = feasibility.port_count_for(
             profile, mode.service_filter, port_override)
+        # FULL COVERAGE. Every one of the 65,535 ports must be swept, so the
+        # ceiling follows the work rather than the fixed MAX_JOB_SECONDS: at the
+        # old 2 h a full sweep simply stopped where the clock ran out.
+        if _sweep_ports >= FULL_RANGE_PORTS:
+            _base_ceiling = job_runtime_seconds
+            job_runtime_seconds = _full_coverage_ceiling(
+                hosts=len(targets), ports=_sweep_ports, rate=float(tuning["rate"]),
+                base=_base_ceiling, explicit=_explicit_runtime_seconds(params))
+            _sweep_floor = len(targets) * _sweep_ports / float(tuning["rate"])
+            LOG.info("full coverage: %d host(s) x %d ports at %g pps — sweep about "
+                     "%s, job ceiling %s", len(targets), _sweep_ports,
+                     float(tuning["rate"]), feasibility._hms(_sweep_floor),
+                     feasibility._hms(job_runtime_seconds))
+            _covering = _rate_to_cover(hosts=len(targets), ports=_sweep_ports,
+                                       ceiling=job_runtime_seconds)
+            if _covering is None or _covering > float(tuning["rate"]):
+                LOG.warning(
+                    "full coverage: not every port can be swept within the %s "
+                    "ceiling at %g pps%s; ports not reached will be reported "
+                    "not_scanned", feasibility._hms(job_runtime_seconds),
+                    float(tuning["rate"]),
+                    "" if _covering is None else
+                    f" — about {_covering:.0f} pps would (job parameter `rate`, "
+                    f"up to 2000), or narrow the scope")
         # Admission sizes a two-phase sweep by its first pass: the tail is
         # budgeted and truncates to not_scanned by design, so measuring the
         # full breadth would refuse a /24 aggressive scan whose assessment

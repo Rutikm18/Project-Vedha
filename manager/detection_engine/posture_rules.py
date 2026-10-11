@@ -35,6 +35,7 @@ from typing import Any, Callable, Optional
 from default_creds_catalog import has_known_defaults
 from eol_catalog import lookup_eol
 from models import Asset, Fact, FindingState
+from os_release_intel import release_from_ssh_fact
 
 # ── trust tier ────────────────────────────────────────────────────────────────
 # Scanners validated against ground truth (DESKTOP-34M18MB / 192.168.1.77) whose
@@ -126,6 +127,20 @@ class TraceRow:
         return {"rule_id": self.rule_id, "scanner": self.scanner,
                 "outcome": self.outcome, "asset_ip": self.asset_ip,
                 "port": self.port, "reason": self.reason}
+
+
+class Undetermined:
+    """What a detector returns when its scanner ran but could not settle the
+    question: an OS guess with no release, or a build two releases share. That is
+    a coverage gap (NO_EVIDENCE, with the reason), not agent drift and not clean.
+    Falsy, so it can never pass for a finding."""
+    __slots__ = ("reason",)
+
+    def __init__(self, reason: str):
+        self.reason = reason
+
+    def __bool__(self) -> bool:
+        return False
 
 
 # ── risk model ────────────────────────────────────────────────────────────────
@@ -243,6 +258,10 @@ class PostureRule:
     # protocol-level answer, hence the default; a rule that keys off an open port or a
     # banner heuristic must say so and is then capped at SUSPECTED.
     evidence_basis: str = "protocol_observed"
+    # One finding per host, whichever fact proved it (port None, so the finding id
+    # is stable when the evidence moves between scanners). For host properties
+    # such as the OS release, which several scanners can each reveal.
+    host_level: bool = False
 
 
 # ── detectors (pure: Fact -> evidence dict | None) ────────────────────────────
@@ -648,17 +667,39 @@ def _os_eol(f: Fact) -> Optional[dict]:
     trust in every other finding, so the asymmetry favours silence.
     """
     d = _d(f)
-    hit = lookup_eol(d.get("os_release"), d.get("os_version"))
+    if f.scanner == "ssh_scan":
+        # A distribution's packaged OpenSSH names the release it was built for.
+        derived = release_from_ssh_fact(d)
+        if derived is None:
+            return Undetermined("the SSH banner does not name a known distribution release")
+        release, version = derived["os_release"], None
+        how = f"identified from the SSH banner {derived['os_release_evidence']!r}"
+    else:
+        release, version = d.get("os_release"), d.get("os_version")
+        if not release:
+            return Undetermined(
+                "OS release not identified: an exact release needs SMB on 445 "
+                "(Windows build) or a distribution SSH banner (Linux)")
+        how = "identified by os_fingerprint"
+    hit = lookup_eol(release, version)
     if hit is None:
         return None
+    alt = d.get("os_release_alt")
+    if alt and lookup_eol(alt) is None:
+        # e.g. build 17763 is Windows 10 1809 (EOL) AND Server 2019 (supported);
+        # the network cannot tell the SKU, so neither verdict is honest.
+        return Undetermined(
+            f"build is shared by {release} (end-of-life) and {alt} (supported); "
+            f"the edition cannot be told apart from the network")
     return {
         "product": hit["product"],
         "eol_date": hit["eol_date"],
         "days_past_eol": hit["days_past_eol"],
         "source": hit["source"],
+        "os_release_source": "ssh_banner" if f.scanner == "ssh_scan" else "os_fingerprint",
         "detail": (f"{hit['product']} reached end-of-support on {hit['eol_date']} "
-                   f"({hit['days_past_eol']} days ago). No security patches are "
-                   f"issued, so its vulnerability count can only grow."),
+                   f"({hit['days_past_eol']} days ago), {how}. No security patches "
+                   f"are issued, so its vulnerability count can only grow."),
     }
 
 
@@ -1230,7 +1271,7 @@ RULES: list[PostureRule] = [
 
     PostureRule(
         "POSTURE-OS-END-OF-LIFE", "Operating system is end-of-life / unsupported",
-        "high", "CWE-1104", "T1190", "eol_software", ("os_fingerprint",), _os_eol,
+        "high", "CWE-1104", "T1190", "eol_software", ("os_fingerprint", "ssh_scan"), _os_eol,
         "Upgrade to a vendor-supported OS release. An unsupported OS receives no "
         "security patches, so known vulnerabilities accumulate permanently and no "
         "amount of hardening closes them.",
@@ -1238,8 +1279,16 @@ RULES: list[PostureRule] = [
                  "catalog (eol_catalog.py), matched longest-key-first so a "
                  "supported successor never inherits its ancestor's date. An OS "
                  "absent from the catalog stays silent rather than guessing — the "
-                 "cost is catalog freshness, never a false accusation.",
-        requires=("os_release",)),
+                 "cost is catalog freshness, never a false accusation. The release "
+                 "comes from os_fingerprint (SMB build) or a distribution SSH "
+                 "banner; a host where neither names it is reported unassessed, "
+                 "and a build two editions share (17763: Windows 10 1809 / "
+                 "Server 2019) is never called end-of-life.",
+        # OR-alternative inputs (os_release on os_fingerprint, banner on ssh_scan),
+        # so no single required path; an unidentified release is reported by the
+        # detector as Undetermined (unassessed), not as drift.
+        requires=(),
+        host_level=True),
 
     PostureRule(
         "POSTURE-DEFAULT-CRED-CANDIDATE", "Device may still use vendor default credentials",
@@ -1649,6 +1698,9 @@ def evaluate_rule(rule: PostureRule, f: Fact) -> TraceRow:
     except Exception as exc:                     # a rule bug must not kill the batch
         return TraceRow(rule.rule_id, f.scanner, OUTCOME_ERROR,
                         f.target, f.port, reason=f"{type(exc).__name__}: {exc}")
+    if isinstance(ev, Undetermined):
+        return TraceRow(rule.rule_id, f.scanner, OUTCOME_NO_EVIDENCE,
+                        f.target, f.port, reason=ev.reason)
     if ev:
         return TraceRow(rule.rule_id, f.scanner, OUTCOME_MATCH,
                         f.target, f.port, evidence=ev)
@@ -1704,7 +1756,8 @@ def detect_posture_traced(
             traces.append(row)
             if row.outcome != OUTCOME_MATCH:
                 continue
-            key = (rule.rule_id, f.port)
+            port = None if rule.host_level else f.port
+            key = (rule.rule_id, port)
             if key in seen:                       # same weakness, same port → one finding
                 continue
             seen.add(key)
@@ -1715,14 +1768,14 @@ def detect_posture_traced(
                 auth = default_auth
             risk, priority = compute_risk(rule.severity, state, internet_facing, auth)
             pf = PostureFinding(
-                finding_id=make_posture_id(asset.ip, rule.rule_id, f.port),
+                finding_id=make_posture_id(asset.ip, rule.rule_id, port),
                 asset_ip=asset.ip, rule_id=rule.rule_id, title=rule.title,
                 category=rule.category, severity=rule.severity, state=state,
                 confidence=_STATE_CONF.get(state, 65), cwe=rule.cwe, mitre=rule.mitre,
-                port=f.port, proto=f.proto, evidence_refs=[_evidence_ref(f)],
+                port=port, proto=f.proto, evidence_refs=[_evidence_ref(f)],
                 evidence={**(row.evidence or {}), "evidence_basis": rule.evidence_basis,
                           DEDUP_KEY: condition_key_for(rule.rule_id, rule.category,
-                                                       f.port, f.proto)},
+                                                       port, f.proto)},
                 remediation=rule.remediation,
                 fp_notes=rule.fp_notes, internet_facing=internet_facing,
                 auth_enforced=auth, risk_score=risk, priority=priority,

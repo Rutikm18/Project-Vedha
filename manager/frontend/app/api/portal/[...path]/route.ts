@@ -1,6 +1,6 @@
 /** Method-complete BFF transport for the engagement-scoped customer portal. */
 import { NextRequest, NextResponse } from "next/server";
-import { backendResponse, cookieFrom } from "../../../../lib/backend";
+import { BackendError, backendResponse, cookieFrom } from "../../../../lib/backend";
 
 export const dynamic = "force-dynamic";
 
@@ -39,14 +39,21 @@ async function proxyPortal(req: NextRequest, method: string, context: RouteConte
       token,
       headers: pickHeaders(req.headers, REQUEST_HEADERS),
       rawBody: hasBody ? req.body : undefined,
+      // Exports (XLSX/CSV) are generated before the first byte; no BFF bound here.
+      timeoutMs: 0,
     });
     return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: pickHeaders(upstream.headers, RESPONSE_HEADERS),
     });
-  } catch {
-    return NextResponse.json({ error: "The portal service is temporarily unavailable" }, { status: 502 });
+  } catch (e) {
+    // Customers get the status (503 down / 502 dropped / 504 slow) and a generic
+    // sentence; the cause is in the frontend log.
+    const status = e instanceof BackendError ? e.status : 502;
+    return NextResponse.json({ error: "The portal service is temporarily unavailable" }, {
+      status, headers: { "Retry-After": "5" },
+    });
   }
 }
 

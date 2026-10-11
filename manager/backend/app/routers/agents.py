@@ -592,17 +592,17 @@ _USE_CASES = {
         "expected_runtime_hint": "5–15 min per /24",
     },
     "uc_deep_port_sweep": {
-        "display_name": "Deep Port Sweep (all 65,535, few hosts)",
+        "display_name": "Deep Port Sweep (all 65,535 ports)",
         "description": (
-            "The thorough single-host scan: every TCP port PLUS the full "
-            "assessment (banners, OS, TLS/SMB/DB/RDP and the rest) on up to a few "
-            "critical hosts. Full-port coverage is capped to a small host count so "
-            "it always finishes; use Aggressive network_va for a whole subnet."
+            "The thorough scan: every TCP port PLUS the full assessment (banners, "
+            "OS, TLS/SMB/DB/RDP and the rest). High-value ports are assessed "
+            "first, then the rest of the range; the job runs as long as the "
+            "sweep needs. Use Aggressive network_va for a faster ~2,500-port sweep."
         ),
         "scan_type": "deep_port_sweep",
         "profile": "it",
         "intensity": "deep",
-        "expected_runtime_hint": "20–90 min per host (≤3 hosts)",
+        "expected_runtime_hint": "minutes per host on Linux; longer from Windows",
     },
 }
 

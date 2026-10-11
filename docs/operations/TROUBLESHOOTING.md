@@ -137,3 +137,24 @@ remain queued:
 3. Check spool permissions and available disk space.
 4. Look for an acknowledgment with the same job ID.
 5. Do not manually delete unacknowledged spool entries.
+
+## Console: "Manager API …" errors (was "fetch failed")
+
+The console's server (Next.js) calls the Manager API (`BACKEND_INTERNAL_URL`, `http://api:8000` in compose). When that call gets no HTTP answer, the console used to show only `fetch failed` with HTTP 500. It now names the cause, returns the matching status with `Retry-After: 5`, and writes one JSON line per failure to the frontend log (`"event":"backend.unreachable"`, with `code`, `path` and `status`). A read (GET) whose connection was dropped is retried once; a write never is.
+
+| Message | Status | Cause | Check |
+|---|---|---|---|
+| `Manager API refused the connection (ECONNREFUSED)` | 503 | The API is down or restarting. | `docker compose ps api`; `docker compose logs --since 1h api` |
+| `Manager API dropped the connection mid-request (ECONNRESET / UND_ERR_SOCKET)` | 502 | An API worker died during the request. The usual reason is the memory limit (`API_MEM_LIMIT`, 768M by default for 2 to 4 workers). | `docker stats --no-stream`; `sudo dmesg -T \| grep -iE "oom\|killed process"`; `docker compose logs api \| grep -Ei "died\|Waiting for child\|Started server process"` |
+| `Manager API did not answer within 60 s` | 504 | The API accepted the request but never answered: overloaded, or a database query is blocked (no `statement_timeout` is set). | `docker compose exec postgres psql -U vapt -d vapt_db -c "select pid, now()-query_start as age, state, wait_event_type, left(query,80) from pg_stat_activity where state <> 'idle' order by age desc;"` |
+| `Manager API address could not be resolved (ENOTFOUND)` | 503 | `BACKEND_INTERNAL_URL` names a host the console container cannot resolve. | `docker compose exec frontend printenv BACKEND_INTERNAL_URL` |
+
+Reads wait at most `BACKEND_READ_TIMEOUT_MS` (default 60000; `0` turns the bound off) for the API to start answering; a download that has started is never cut. Writes and the two streaming proxies (operator exports, customer portal) keep Node's own limit.
+
+One command shows the raw cause from inside the console container:
+
+```bash
+docker compose exec frontend node -e "fetch('http://api:8000/health').then(r=>console.log('HTTP',r.status)).catch(e=>console.log(e.message,e.cause&&(e.cause.code||e.cause.message)))"
+```
+
+A page where only some panels fail (for example *Scan catalog* loads but *Probe inventory* and *Engagement scope* fail) points at the API's database path, not at the network: the catalog is a fixed list and never touches Postgres.

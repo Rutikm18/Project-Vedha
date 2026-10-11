@@ -71,8 +71,8 @@ class Asset:
     msrpc_facts: dict[int, dict] = field(default_factory=dict)
     rdp_facts: dict[int, dict] = field(default_factory=dict)
     printer_facts: dict[int, dict] = field(default_factory=dict)
-    iot_facts: dict[int, dict] = field(default_factory=dict)
-    mobile_facts: dict[int, dict] = field(default_factory=dict)
+    iot_facts: dict[int, dict] = field(default_factory=dict)      # port -> RTSP/MQTT/CWMP/SSDP/mDNS/CoAP fact
+    mobile_facts: dict[int, dict] = field(default_factory=dict)   # port -> ADB / lockdownd / mDNS fact
     smb_enum_state: dict | None = None
     nfs_state: dict | None = None
     passive_facts: list[dict] = field(default_factory=list)
@@ -241,11 +241,13 @@ class Asset:
 
     def _merge_iot_scan(self, r: ScanResult) -> None:
         if r.port is not None:
-            self.iot_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+            self.iot_facts[r.port] = {**r.data, "_collected_at": r.timestamp,
+                                      "_proto": r.proto or "tcp"}
 
     def _merge_mobile_scan(self, r: ScanResult) -> None:
         if r.port is not None:
-            self.mobile_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+            self.mobile_facts[r.port] = {**r.data, "_collected_at": r.timestamp,
+                                         "_proto": r.proto or "tcp"}
 
     def _merge_udp_scan(self, r: ScanResult) -> None:
         if r.port is not None:

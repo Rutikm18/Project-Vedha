@@ -60,6 +60,9 @@ jobs:
           tests/test_diagnostics.py
           tests/test_runtime_gate.py
           tests/test_hosting.py
+          tests/test_win_fast_connect.py tests/test_port_scanner_fast_fail.py
+          tests/test_filtered_unverified.py tests/test_quiet_peer_resets.py
+          tests/test_full_coverage_ceiling.py
       - name: Installer contract (POSIX sh; the curl | sh path customers run)
         if: runner.os != 'Windows'
         run: |

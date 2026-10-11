@@ -60,8 +60,11 @@ DEFAULT_PORT_ROUTES: dict[str, list[int]] = {
     "msrpc": [135],
     "rdp": [3389],
     "printer": [9100, 631],
-    # Port-triggered (A2): run only for a host with one of these open.
-    "iot": [1883, 8883, 554, 8554, 7547],
+    # Host-level IoT / mobile collectors: these ports TRIGGER the scanner, which
+    # then probes its own fixed protocol set (RTSP, MQTT, CWMP + SSDP/mDNS/CoAP;
+    # ADB + iOS lockdownd). Kept equal to workflow/gates.py IOT_SERVICE_PORTS /
+    # MOBILE_SERVICE_PORTS by tests/test_iot_mobile_branches.py.
+    "iot": [554, 8554, 1883, 8883, 7547, 7548],
     "mobile": [5555, 62078],
 }
 
@@ -361,7 +364,8 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
         return PrinterScanner(scope, ports=ports, **common)
 
     def iot_factory(ports):
-        # Probes its own fixed protocol set; the open trigger port only made it eligible.
+        # Host-level: the open trigger port is the evidence; the scanner probes
+        # its own protocol set and takes no `ports` (same shape as smb_factory).
         return IoTScanner(scope, **common)
 
     def mobile_factory(ports):

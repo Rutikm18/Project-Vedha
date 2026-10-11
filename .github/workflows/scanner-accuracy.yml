@@ -85,3 +85,17 @@ jobs:
             tests/test_intensity_envelope.py \
             tests/test_gate6_concurrency.py \
             tests/test_phased_admission.py
+
+      # Workflow wiring: every deep branch is registered, gated, swept, merged and
+      # routed in BOTH orchestrators, and the scanners the manager's rules read
+      # are actually run. These guards existed but ran in no workflow, which is
+      # how iot_scan/mobile_scan stayed unwired with live rules reading them.
+      - name: Workflow wiring guards
+        working-directory: probe
+        run: |
+          ./.venv/bin/python -m pytest -q \
+            tests/test_iot_mobile_branches.py \
+            tests/test_branch_registry.py \
+            tests/test_tier1_wiring_gate.py \
+            tests/test_risk_port_coverage.py \
+            tests/test_tls_port_coverage.py

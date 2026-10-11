@@ -33,8 +33,7 @@ from typing import Callable
 
 from .asset import Asset
 from .gates import (
-    AI_PORTS, DB_PORTS, DNS_PORTS, FTP_PORTS, IOT_TRIGGER_PORTS, IPMI_PORTS, LDAP_PORTS,
-    MOBILE_TRIGGER_PORTS,
+    AI_PORTS, DB_PORTS, DNS_PORTS, FTP_PORTS, IPMI_PORTS, LDAP_PORTS,
     MSRPC_PORTS, NFS_PORTS, PRINTER_PORTS, RDP_PORTS, RSYNC_PORTS,
     SMB_ENUM_PORTS, SMTP_PORTS, SNMP_PORTS, SSH_PORTS, TLS_PORTS, VNC_PORTS,
     WEB_PORTS,
@@ -166,19 +165,22 @@ BRANCHES: tuple[BranchSpec, ...] = (
     BranchSpec("rdp", "rdp_scan", "RDPScanner", frozenset(RDP_PORTS),
                "RDP Posture",
                "Confirm RDP and collect NLA/TLS requirement facts."),
-    # Port-triggered (A2): the scanners probe their own fixed protocol set against the host,
-    # so they take no `ports`; the open trigger port is what makes the branch eligible.
-    BranchSpec("iot", "iot_scan", "IoTScanner", frozenset(IOT_TRIGGER_PORTS),
-               "IoT / Embedded Exposure",
-               "Collect MQTT, RTSP, CoAP, SSDP, mDNS and TR-069 exposure facts when a trigger port is open.",
-               kwargs=_no_kwargs),
-    BranchSpec("mobile", "mobile_scan", "MobileScanner", frozenset(MOBILE_TRIGGER_PORTS),
-               "Mobile Device Exposure",
-               "Collect ADB and iOS lockdownd exposure facts when a trigger port is open.",
-               kwargs=_no_kwargs),
     BranchSpec("printer", "printer_scan", "PrinterScanner", frozenset(PRINTER_PORTS),
                "Printer Service",
                "Confirm a printer through a real PJL handshake, not the port number."),
+    # Host-level IoT / mobile collectors (added 2026-10-10). Both scanners existed
+    # with rules reading their facts, and nothing ran them. Each probes its own
+    # fixed protocol set per host, so they are host-level and gated on their
+    # trigger ports (gates.IOT_SERVICE_PORTS / MOBILE_SERVICE_PORTS): an ordinary
+    # server that shows none of those ports is never handshaked.
+    BranchSpec("iot", "iot_scan", "IoTScanner", None,
+               "IoT / Embedded Survey",
+               "Read-only RTSP, MQTT, CWMP, SSDP, mDNS and CoAP exposure and auth facts.",
+               kwargs=_no_kwargs),
+    BranchSpec("mobile", "mobile_scan", "MobileScanner", None,
+               "Mobile Device Exposure",
+               "ADB handshake (no command is run) and iOS lockdownd presence facts.",
+               kwargs=_no_kwargs),
     # Datagram branches: the probe is a UDP read sent straight at the authorized
     # target, so the port set comes from the table — an open TCP port is neither
     # required nor meaningful. SNMPScanner probes 161 itself and takes no `ports`.
