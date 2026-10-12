@@ -41,6 +41,8 @@ DEFAULT_INTERVAL_HOURS = 6.0
 MIN_INTERVAL_HOURS = 1.0
 MAX_INTERVAL_HOURS = 168.0
 PROMPT_TIMEOUT_SECONDS = 30.0
+FIRST_CHECK_SECONDS = 180.0        # with auto-update on, look soon after start instead of in 6 h
+RETRY_SOON_SECONDS = 15 * 60.0     # the agent was busy scanning: try again when it may be idle
 _JITTER = 0.10  # ±10 %, so a fleet restarted together does not call in lockstep
 
 _VERSION_RE = re.compile(r"\d+(\.\d+){0,3}")
@@ -212,7 +214,14 @@ class PeriodicUpdateChecker:
     never applies anything: nobody is at the keyboard of a long-running agent."""
 
     def __init__(self, transport: Any, current: str, *, platform: str, architecture: str,
-                 say: Callable[[str], None], hours: float | None = None) -> None:
+                 say: Callable[[str], None], hours: float | None = None,
+                 apply: Callable[[UpdateInfo], Any] | None = None) -> None:
+        # `apply` is the optional auto-update hook (agent/auto_update.py). It is only called for
+        # a version the manager offered and the agent re-validated as strictly newer. It returns
+        # an object with `.message` and `.retry_soon`, or None.
+        self._apply = apply
+        self._retry_soon = False
+        self._first = True
         self._transport = transport
         self._current = current
         self._platform = platform
@@ -224,6 +233,12 @@ class PeriodicUpdateChecker:
         self._thread: threading.Thread | None = None
 
     def delay_seconds(self) -> float:
+        if self._apply is not None and self._first:
+            self._first = False
+            return FIRST_CHECK_SECONDS * (1.0 + random.uniform(-_JITTER, _JITTER))
+        if self._retry_soon:
+            self._retry_soon = False
+            return RETRY_SOON_SECONDS * (1.0 + random.uniform(-_JITTER, _JITTER))
         return self._hours * 3600.0 * (1.0 + random.uniform(-_JITTER, _JITTER))
 
     def check_once(self) -> UpdateInfo | None:
@@ -232,7 +247,17 @@ class PeriodicUpdateChecker:
         if info is not None and info.available and info.latest != self._announced:
             self._announced = info.latest
             self._say(f"A newer Vedha agent is available: {info.latest} (this one is {info.current}). "
-                      "It will be offered the next time the agent is started in a terminal.")
+                      + ("Automatic update is on." if self._apply is not None
+                         else "It will be offered the next time the agent is started in a terminal."))
+        if info is not None and info.available and self._apply is not None:
+            try:
+                outcome = self._apply(info)
+            except Exception as exc:  # noqa: BLE001 — an update attempt never stops the agent
+                LOG.warning("auto-update hook failed: %r", exc)
+                outcome = None
+            if outcome is not None:
+                self._say(f"  {outcome.message}")
+                self._retry_soon = bool(getattr(outcome, "retry_soon", False))
         return info
 
     def _loop(self) -> None:

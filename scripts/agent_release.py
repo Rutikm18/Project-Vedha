@@ -6,10 +6,11 @@ registry: the manager serves it (manager/backend/app/routers/agent_distribution.
 from a signed release built here.
 
     keygen  --out FILE [--p256-out FILE]   new Ed25519 release key (+ P-256 key for Windows)
+    pubkey  --key FILE [--p256-key FILE]   print the public key(s) of existing keys as .env lines
     build   --key FILE [--arch amd64,arm64] [--out DIR] [--from-image TAG]
             [--p256-key FILE --windows-zip ZIP [--authenticode-thumbprint HEX]] [--sbom FILE]
     verify  DIR --public-key B64 [--p256-public-key B64]
-    publish DIR --to DEST              DEST = local dir or user@host:/path (rsync)
+    publish DIR --to DEST              DEST = local dir or user@host:/path (rsync, or ssh+scp on Windows)
     pull    --repo OWNER/REPO --to DIR  download a published release from its GitHub Release,
             [--tag agent-vX.Y.Z]        re-verify BOTH signatures against your pinned keys, and
             [--env-file .env]           only then install it into the manager's release store
@@ -45,6 +46,7 @@ import json
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -52,7 +54,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -281,9 +283,9 @@ def host_arch() -> str:
     return {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(machine, machine)
 
 
-def _run(cmd: list[str]) -> None:
+def _run(cmd: list[str], cwd: Path | None = None) -> None:
     print("  $ " + " ".join(cmd), flush=True)
-    result = subprocess.run(cmd, check=False)
+    result = subprocess.run(cmd, check=False, cwd=str(cwd) if cwd else None)
     if result.returncode != 0:
         raise ReleaseError(f"command failed ({result.returncode}): {' '.join(cmd)}")
 
@@ -338,6 +340,7 @@ def build_release(
     windows_installer_source: Path = WIN_INSTALLER,
     windows_launcher_source: Path = WIN_LAUNCHER,
     agent_version: str | None = None,
+    expires_days: int | None = None,
 ) -> Path:
     if windows_zip is not None:
         if p256_key_path is None:
@@ -413,6 +416,8 @@ def build_release(
                 "tag": tag,
             })
 
+        if expires_days is not None and not 1 <= expires_days <= 3650:
+            raise ReleaseError("--expires-days must be between 1 and 3650")
         manifest = {
             "schema": 1,
             "version": version,
@@ -424,6 +429,12 @@ def build_release(
             "images": images,
             "signing_key_id": key_id(raw_b64),
         }
+
+        if expires_days is not None:
+            # Signed with the rest of the manifest. An agent that has pinned the release key refuses
+            # to update from a release past this date, so a manager (or a mirror) that keeps serving
+            # an old signed release cannot hold agents on it forever: the owner must sign a fresh one.
+            manifest["expires"] = (datetime.now(timezone.utc) + timedelta(days=expires_days)).isoformat(timespec="seconds")
 
         # ── schema 2 additions (Windows package, SBOM). Without them the manifest
         # stays exactly the schema-1 shape older managers and install.sh expect.
@@ -548,16 +559,45 @@ def resolve_release_dir(path: Path) -> Path:
 
 # ── publish ──────────────────────────────────────────────────────────────────
 
+_WINDOWS_DRIVE = re.compile(r"^[A-Za-z]:[\\/]")
+
+
+def is_remote_dest(dest: str) -> bool:
+    """`user@host:/path` is remote; `C:\\releases` (a Windows drive) and existing local paths are not."""
+    return (":" in dest and not dest.startswith("/") and not _WINDOWS_DRIVE.match(dest)
+            and not Path(dest).exists())
+
+
+def _publish_with_scp(release_dir: Path, host: str, remote: str, version: str) -> None:
+    """Remote publish for machines without rsync (Windows ships OpenSSH's ssh and scp).
+
+    Same guarantees as the rsync path: the version is copied completely first and CURRENT is
+    switched last, atomically, so the manager never points at a half-copied release; and a
+    published version is immutable, so an existing one is refused rather than overwritten."""
+    qremote = shlex.quote(remote)
+    qdir = shlex.quote(f"{remote}/{version}")
+    _run(["ssh", host, f"mkdir -p {qremote} && {{ test ! -e {qdir} || "
+                       f"{{ echo 'release {version} already exists on the manager - releases are immutable' >&2; exit 1; }}; }}"])
+    # Relative name + cwd: a Windows path such as C:\\x would be read by scp as "host C".
+    _run(["scp", "-r", release_dir.name, f"{host}:{remote}/"], cwd=release_dir.parent)
+    _run(["ssh", host, f"chmod -R u=rwX,go=rX {qdir} && printf '%s\\n' {shlex.quote(version)} > {qremote}/.CURRENT.tmp "
+                       f"&& chmod 644 {qremote}/.CURRENT.tmp && mv -f {qremote}/.CURRENT.tmp {qremote}/CURRENT"])
+
+
 def publish(release_dir: Path, dest: str) -> None:
     """Copy one version into the manager's release store, then flip CURRENT —
     in that order, so the manager never points at a half-copied release."""
     release_dir = resolve_release_dir(release_dir)
     version = release_dir.name
-    if ":" in dest and not dest.startswith("/") and not Path(dest).exists():
+    if is_remote_dest(dest):
         host, _, remote = dest.partition(":")
         remote = remote.rstrip("/") or "."
         if shutil.which("rsync") is None:
-            raise ReleaseError("rsync is required to publish to a remote host")
+            if shutil.which("ssh") and shutil.which("scp"):
+                _publish_with_scp(release_dir, host, remote, version)
+                return
+            raise ReleaseError("publishing to a remote host needs rsync, or ssh and scp "
+                               "(Windows 10/11: Settings > Optional features > OpenSSH Client)")
         _run(["rsync", "-a", "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r", f"{release_dir}/", f"{host}:{remote}/{version}/"])
         with tempfile.TemporaryDirectory() as tmp:
             current = Path(tmp) / "CURRENT"
@@ -795,6 +835,13 @@ def main(argv: list[str] | None = None) -> int:
     bd.add_argument("--authenticode-thumbprint", default=None,
                     help="SHA-1 thumbprint of the cert the Windows exe is Authenticode-signed with")
     bd.add_argument("--sbom", type=Path, help="CycloneDX SBOM to include")
+    bd.add_argument("--expires-days", type=int, default=None,
+                    help="sign an expiry date this many days ahead; agents refuse to update from an expired release "
+                         "(you must then publish a fresh one before it passes). Default: no expiry")
+
+    pk = sub.add_parser("pubkey", help="print the public key(s) of existing signing keys, as .env lines")
+    pk.add_argument("--key", type=Path, help="Ed25519 private key file")
+    pk.add_argument("--p256-key", type=Path, help="P-256 private key file")
 
     vf = sub.add_parser("verify", help="verify a release directory")
     vf.add_argument("path", type=Path)
@@ -834,6 +881,13 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"\nP-256 key (Windows) written to {args.p256_out} (mode 600).")
                 print(f"AGENT_RELEASE_P256_PUBLIC_KEY={spki}")
                 print(f"(key id {p256_key_id(spki)})")
+        elif args.cmd == "pubkey":
+            if not args.key and not args.p256_key:
+                raise ReleaseError("pubkey needs --key and/or --p256-key")
+            if args.key:
+                print(f"AGENT_RELEASE_PUBLIC_KEY={public_raw_b64(load_private_key(args.key))}")
+            if args.p256_key:
+                print(f"AGENT_RELEASE_P256_PUBLIC_KEY={p256_spki_b64(load_p256_private_key(args.p256_key))}")
         elif args.cmd == "build":
             arches = [a.strip() for a in args.arch.split(",") if a.strip()]
             from_images = {}
@@ -848,7 +902,7 @@ def main(argv: list[str] | None = None) -> int:
                                   version=args.version or read_version(), from_images=from_images,
                                   p256_key_path=args.p256_key, windows_zip=args.windows_zip,
                                   authenticode_thumbprint=args.authenticode_thumbprint,
-                                  sbom_path=args.sbom)
+                                  sbom_path=args.sbom, expires_days=args.expires_days)
             print(f"\nRelease ready: {final}")
             print(f"Publish:  python3 scripts/agent_release.py publish {final} --to <user@manager:/path or dir>")
         elif args.cmd == "verify":

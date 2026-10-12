@@ -249,6 +249,33 @@ try {
   Assert-Equal (Copy-VedhaLegacyResults -LegacyDir $empty -DataDir $data) 0 'results: an empty folder means nothing to save'
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 
+# --- an update that does not connect is undone ------------------------------------------------------
+Assert-True  (Get-VedhaRollbackDecision -HadPrevious $true -Kind 'upgrade' -State 'failed')    'rollback: an update whose agent failed is undone'
+Assert-True  (Get-VedhaRollbackDecision -HadPrevious $true -Kind 'upgrade' -State '')          'rollback: an update that never reported a status is undone'
+Assert-True  (Get-VedhaRollbackDecision -HadPrevious $true -Kind 'upgrade' -State 'starting')  'rollback: still starting after the wait is undone'
+Assert-False (Get-VedhaRollbackDecision -HadPrevious $true -Kind 'upgrade' -State 'online')    'rollback: an update that connected stays'
+Assert-False (Get-VedhaRollbackDecision -HadPrevious $true -Kind 'upgrade' -State 'awaiting-approval') 'rollback: waiting for approval is not a failure'
+Assert-False (Get-VedhaRollbackDecision -HadPrevious $false -Kind 'fresh' -State 'failed')     'rollback: a fresh install has nothing to go back to'
+Assert-False (Get-VedhaRollbackDecision -HadPrevious $true -Kind 'same' -State 'failed')       'rollback: a repair of the same version is not rolled back (identical files)'
+Assert-True  (Get-VedhaRollbackDecision -HadPrevious $true -Kind 'unknown' -State 'failed')    'rollback: an unreadable old version is still restored'
+
+$tmpData = Join-Path ([System.IO.Path]::GetTempPath()) ('vedha-test-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force -Path $tmpData | Out-Null
+try {
+  [System.IO.File]::WriteAllText((Join-Path $tmpData 'agent.env'), 'PLATFORM_URL=https://m.example.com')
+  [System.IO.File]::WriteAllText((Join-Path $tmpData 'state.json'), '{"agent_id":"a1"}')
+  $saved = Save-VedhaPreviousState -DataDir $tmpData
+  Assert-Equal ([System.IO.File]::ReadAllText((Join-Path $saved 'agent.env'))) 'PLATFORM_URL=https://m.example.com' 'rollback: the settings file is saved before an update'
+  Assert-Equal ([System.IO.File]::ReadAllText((Join-Path $saved 'state.json'))) '{"agent_id":"a1"}' 'rollback: the identity file is saved before an update'
+  Remove-VedhaPreviousState -SavedDir $saved
+  Assert-False (Test-Path -LiteralPath $saved) 'rollback: the saved copy is removed once the update succeeded'
+  Write-VedhaUpdateRecord -DataDir $tmpData -Result 'rolled-back' -From '2.2.8' -To '2.2.9' -Reason "the new agent stayed 'failed'"
+  $rec = Get-Content -Raw -LiteralPath (Join-Path (Join-Path $tmpData 'update') 'last-update.json') | ConvertFrom-Json
+  Assert-True ($rec.result -eq 'rolled-back' -and $rec.from -eq '2.2.8' -and $rec.to -eq '2.2.9' -and $rec.at) 'rollback: the outcome is written for the agent to log'
+} finally {
+  Remove-Item -LiteralPath $tmpData -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 # --- what ships to customers must be safe for Windows PowerShell 5.1 ---------------------------
 foreach ($name in 'install.ps1', 'uninstall.ps1') {
   $bytes = [System.IO.File]::ReadAllBytes((Join-Path $PSScriptRoot "..\$name"))

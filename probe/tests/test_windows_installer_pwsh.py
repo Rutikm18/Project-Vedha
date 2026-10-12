@@ -188,8 +188,8 @@ def test_zip_unpacker_refuses_hostile_paths(tmp_path):
 # ── the real install path ────────────────────────────────────────────────────
 
 FAKE_PACKAGED_INSTALLER = """\
-param([string]$Manager = '', [string]$Token = '', [string]$Scope = '', [switch]$NoPause, [string]$Unexpected = '')
-$record = [ordered]@{ Manager = $Manager; TokenLength = $Token.Length; Scope = $Scope; NoPause = [bool]$NoPause }
+param([string]$Manager = '', [string]$Token = '', [string]$Scope = '', [switch]$NoPause, [switch]$Pairing, [string]$Unexpected = '')
+$record = [ordered]@{ Manager = $Manager; TokenLength = $Token.Length; Scope = $Scope; NoPause = [bool]$NoPause; Pairing = [bool]$Pairing }
 Set-Content -LiteralPath (Join-Path $env:VEDHA_TEST_OUT 'inner-args.json') -Value ($record | ConvertTo-Json)
 Write-Host 'fake packaged installer ran'
 exit ([int]$env:VEDHA_TEST_INNER_EXIT)
@@ -238,11 +238,15 @@ def release_with_fake_installer(tmp_path_factory):
     )
 
 
-def _install(release, tls, tmp_path, *, inner_exit=0, scope=None):
+def _install(release, tls, tmp_path, *, inner_exit=0, scope=None, trust=None, replace=False, tokenless=None):
     out_dir, programdata = tmp_path / "out", tmp_path / "ProgramData"
     out_dir.mkdir()
     programdata.mkdir()
-    httpd = stub.serve(release, TOKEN, tls=tls)
+    if trust is not None:             # a release key this computer pinned earlier (a dict, or raw text for a damaged file)
+        trust_file = programdata / "vedha-agent" / "release" / "trust.json"
+        trust_file.parent.mkdir(parents=True)
+        trust_file.write_text(trust if isinstance(trust, str) else json.dumps(trust))
+    httpd = stub.serve(release, TOKEN, tls=tls, allow_tokenless=bool(tokenless))
     try:
         env = {**os.environ, "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1", "VEDHA_TEST_OUT": str(out_dir),
                "VEDHA_TEST_INNER_EXIT": str(inner_exit), "ProgramData": str(programdata)}
@@ -250,6 +254,10 @@ def _install(release, tls, tmp_path, *, inner_exit=0, scope=None):
                "-Port", str(httpd.server_address[1]), "-Install"]
         if scope:
             cmd += ["-Scope", scope]
+        if replace:
+            cmd += ["-ReplaceReleaseKey"]
+        if tokenless is not None:
+            cmd += ["-NoToken"]
         if PS.lower().endswith(("powershell", "powershell.exe")):
             cmd[1:1] = ["-ExecutionPolicy", "Bypass"]
         done = subprocess.run(cmd, capture_output=True, text=True, timeout=180, env=env)
@@ -297,6 +305,11 @@ class TestInstallPath:
         assert "has not connected yet" in out
         assert (programdata / "vedha-agent" / "tools" / "uninstall.ps1").exists()      # still removable
 
+    def test_exit_4_means_the_update_was_undone_and_says_so(self, release_with_fake_installer, tls_files, tmp_path):
+        out, _, programdata, _ = _install(release_with_fake_installer, tls_files, tmp_path, inner_exit=4)
+        assert "RESULT: FAIL" in out and "previous version was put back" in out, out
+        assert not (programdata / "vedha-agent" / "release" / "trust.json").exists()      # nothing is pinned for a failed install
+
     @pytest.mark.parametrize("code", [1, 2, 7])
     def test_any_other_exit_code_is_a_failure_and_leaves_no_staging(self, release_with_fake_installer, tls_files, tmp_path, code):
         out, _, programdata, _ = _install(release_with_fake_installer, tls_files, tmp_path, inner_exit=code)
@@ -322,3 +335,97 @@ class TestInstallPath:
             assert "RESULT: FAIL" in done.stdout, done.stdout + done.stderr
         finally:
             httpd.shutdown()
+
+
+@pytest.mark.skipif(not _can_install_here(), reason="the install path needs an elevated Windows session")
+class TestPinnedReleaseKey:
+    """The release key is pinned on the first good install and then protects every later one."""
+
+    def _release_key(self, release) -> str:
+        import re
+        return re.search(r"VedhaReleaseP256Spki = '([^']+)'", (release / "install.ps1").read_text()).group(1)
+
+    def test_a_good_install_pins_the_key_and_the_release(self, release_with_fake_installer, tls_files, tmp_path):
+        out, _, programdata, _ = _install(release_with_fake_installer, tls_files, tmp_path)
+        assert "RESULT: PASS" in out and "release key pinned" in out, out
+        trust = json.loads((programdata / "vedha-agent" / "release" / "trust.json").read_text())
+        assert trust["p256_spki"] == self._release_key(release_with_fake_installer)
+        assert trust["key_id"] == json.loads((release_with_fake_installer / "manifest.json").read_text())["p256_key_id"]
+        assert trust["release_version"] == "3.4.5" and trust["manager"].startswith("https://127.0.0.1:")
+
+    def test_the_same_key_installs_again(self, release_with_fake_installer, tls_files, tmp_path):
+        key = self._release_key(release_with_fake_installer)
+        out, _, _, _ = _install(release_with_fake_installer, tls_files, tmp_path,
+                                trust={"schema": 1, "p256_spki": key, "release_version": "3.4.4"})
+        assert "RESULT: PASS" in out, out
+
+    def test_a_different_key_is_refused_before_anything_is_downloaded(self, release_with_fake_installer, tls_files, tmp_path):
+        other = tool.p256_spki_b64(tool.load_p256_private_key(_other_p256(tmp_path)))
+        out, _, programdata, requests = _install(release_with_fake_installer, tls_files, tmp_path,
+                                                 trust={"schema": 1, "p256_spki": other, "release_version": "3.4.4"})
+        assert "RESULT: FAIL" in out and "trusts Vedha release key" in out and "do not install" in out, out
+        assert not [r for r in requests if r[1].startswith("/agent/package")], requests      # no token was ever sent
+        assert not [r for r in requests if "manifest" in r[1]], requests
+        kept = json.loads((programdata / "vedha-agent" / "release" / "trust.json").read_text())
+        assert kept["p256_spki"] == other                                                       # the pin was not overwritten
+
+    def test_replace_release_key_is_the_explicit_way_to_rotate(self, release_with_fake_installer, tls_files, tmp_path):
+        other = tool.p256_spki_b64(tool.load_p256_private_key(_other_p256(tmp_path)))
+        out, _, programdata, _ = _install(release_with_fake_installer, tls_files, tmp_path, replace=True,
+                                          trust={"schema": 1, "p256_spki": other, "release_version": "3.4.4"})
+        assert "RESULT: PASS" in out and "replacing the pinned release key" in out, out
+        kept = json.loads((programdata / "vedha-agent" / "release" / "trust.json").read_text())
+        assert kept["p256_spki"] == self._release_key(release_with_fake_installer)
+
+    def test_an_older_release_than_the_installed_one_is_refused(self, release_with_fake_installer, tls_files, tmp_path):
+        key = self._release_key(release_with_fake_installer)
+        out, _, _, requests = _install(release_with_fake_installer, tls_files, tmp_path,
+                                       trust={"schema": 1, "p256_spki": key, "release_version": "9.0.0"})
+        assert "RESULT: FAIL" in out and "older release" in out.lower() and "already installed" in out, out
+        assert not [r for r in requests if r[1].startswith("/agent/package")]
+
+    def test_replace_release_key_does_not_allow_an_older_release(self, release_with_fake_installer, tls_files, tmp_path):
+        key = self._release_key(release_with_fake_installer)
+        out, _, _, _ = _install(release_with_fake_installer, tls_files, tmp_path, replace=True,
+                                trust={"schema": 1, "p256_spki": key, "release_version": "9.0.0"})
+        assert "RESULT: FAIL" in out and "already installed" in out, out
+
+    def test_a_damaged_pin_file_stops_the_install_instead_of_switching_protection_off(self, release_with_fake_installer, tls_files, tmp_path):
+        out, _, _, requests = _install(release_with_fake_installer, tls_files, tmp_path, trust="{not json")
+        assert "RESULT: FAIL" in out and "cannot be read" in out, out
+        assert not [r for r in requests if r[1].startswith("/agent/package")]
+
+
+def _other_p256(tmp_path) -> Path:
+    path = tmp_path / "other-p256.pem"
+    tool.keygen_p256(path)
+    return path
+
+
+@pytest.mark.skipif(not _can_install_here(), reason="the install path needs an elevated Windows session")
+class TestTokenlessInstall:
+    """No install token: the machine installs, shows a pairing code, and a person approves it in Fleet."""
+
+    def test_a_manager_that_allows_it_serves_the_package_with_no_credential(self, release_with_fake_installer, tls_files, tmp_path):
+        out, out_dir, _, requests = _install(release_with_fake_installer, tls_files, tmp_path, tokenless=True)
+        assert "RESULT: PASS" in out and "no install token" in out, out
+        record = json.loads((out_dir / "inner-args.json").read_text())
+        assert record["Pairing"] is True and record["TokenLength"] == 0      # the packaged installer is told to pair
+        assert ("GET", "/agent/package/windows", 200) in requests
+
+    def test_a_manager_that_does_not_allow_it_says_so_plainly(self, release_with_fake_installer, tls_files, tmp_path):
+        out, out_dir, programdata, requests = _install(release_with_fake_installer, tls_files, tmp_path, tokenless=False)
+        assert "RESULT: FAIL" in out and "does not allow installing without a token" in out, out
+        assert "AGENT_ALLOW_TOKENLESS_INSTALL" in out
+        assert not (out_dir / "inner-args.json").exists()                   # nothing was run
+        assert not (programdata / "vedha-agent" / "release" / "trust.json").exists()
+
+    def test_a_token_install_is_unchanged_and_is_not_told_to_pair(self, release_with_fake_installer, tls_files, tmp_path):
+        _, out_dir, _, _ = _install(release_with_fake_installer, tls_files, tmp_path)
+        record = json.loads((out_dir / "inner-args.json").read_text())
+        assert record["Pairing"] is False and record["TokenLength"] == len(TOKEN)
+
+    def test_a_tokenless_install_still_pins_the_release_key(self, release_with_fake_installer, tls_files, tmp_path):
+        out, _, programdata, _ = _install(release_with_fake_installer, tls_files, tmp_path, tokenless=True)
+        assert "release key pinned" in out
+        assert (programdata / "vedha-agent" / "release" / "trust.json").exists()

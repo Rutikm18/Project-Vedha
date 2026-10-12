@@ -215,3 +215,73 @@ def test_read_agent_version_reads_text_and_refuses_a_missing_value(tmp_path):
 def test_the_tool_reads_the_real_agent_version_file():
     text = (REPO / "probe" / "agent" / "version.py").read_text()
     assert f'AGENT_VERSION = "{tool.read_agent_version()}"' in text
+
+
+# ── publishing from a machine without rsync (Windows) ────────────────────────
+
+@pytest.mark.parametrize("dest, remote", [
+    ("ubuntu@10.0.0.5:/opt/vedha/agent-releases", True),
+    ("host:/srv/releases", True),
+    ("C:\\agent-releases", False),            # a Windows drive is a local path, not host "C"
+    ("D:/agent-releases", False),
+    ("/var/lib/vedha/agent-releases", False),
+])
+def test_remote_destinations_are_told_apart_from_windows_and_local_paths(dest, remote):
+    assert tool.is_remote_dest(dest) is remote
+
+
+def test_publish_without_rsync_uses_ssh_and_scp_and_flips_current_last(tmp_path, key, monkeypatch):
+    key_path, _ = key
+    _build(tmp_path, key_path, version="1.0.7")
+    calls: list[tuple[list[str], Path | None]] = []
+    monkeypatch.setattr(tool, "_run", lambda cmd, cwd=None: calls.append((cmd, cwd)))
+    monkeypatch.setattr(tool.shutil, "which", lambda name: None if name == "rsync" else f"/usr/bin/{name}")
+
+    tool.publish(tmp_path / "out", "ubuntu@10.0.0.5:/opt/vedha/agent releases")
+
+    kinds = [c[0][0] for c in calls]
+    assert kinds == ["ssh", "scp", "ssh"]
+    check, copy, finish = (c[0] for c in calls)
+    assert "test ! -e" in check[2] and "immutable" in check[2]            # an existing version is refused
+    assert copy[:2] == ["scp", "-r"] and copy[2] == "1.0.7"               # relative name: C:\... would read as a host
+    assert calls[1][1] == (tmp_path / "out")
+    assert copy[3] == "ubuntu@10.0.0.5:/opt/vedha/agent releases/"
+    assert "mv -f" in finish[2] and finish[2].rstrip().endswith("agent releases'/CURRENT")  # CURRENT switched last, atomically
+    assert "'/opt/vedha/agent releases'" in finish[2]                      # paths with spaces are quoted
+
+
+def test_publish_without_rsync_or_ssh_says_what_to_install(tmp_path, key, monkeypatch):
+    key_path, _ = key
+    _build(tmp_path, key_path, version="1.0.8")
+    monkeypatch.setattr(tool.shutil, "which", lambda name: None)
+    with pytest.raises(tool.ReleaseError, match="OpenSSH Client"):
+        tool.publish(tmp_path / "out", "ubuntu@10.0.0.5:/opt/vedha/agent-releases")
+
+
+def test_publish_with_rsync_is_unchanged(tmp_path, key, monkeypatch):
+    key_path, _ = key
+    _build(tmp_path, key_path, version="1.0.9")
+    calls: list[list[str]] = []
+    monkeypatch.setattr(tool, "_run", lambda cmd, cwd=None: calls.append(cmd))
+    monkeypatch.setattr(tool.shutil, "which", lambda name: f"/usr/bin/{name}")
+    tool.publish(tmp_path / "out", "ubuntu@10.0.0.5:/opt/vedha/agent-releases")
+    assert [c[0] for c in calls] == ["rsync", "rsync"]
+    assert calls[1][-1].endswith("/agent-releases/CURRENT")
+
+
+# ── pubkey: the public values of keys that already exist ─────────────────────
+
+def test_pubkey_prints_the_same_values_keygen_printed(tmp_path, capsys):
+    ed, p256 = tmp_path / "ed.pem", tmp_path / "p256.pem"
+    ed_pub, p256_pub = tool.keygen(ed), tool.keygen_p256(p256)
+    assert tool.main(["pubkey", "--key", str(ed), "--p256-key", str(p256)]) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out == [f"AGENT_RELEASE_PUBLIC_KEY={ed_pub}", f"AGENT_RELEASE_P256_PUBLIC_KEY={p256_pub}"]
+
+
+def test_pubkey_needs_a_key_and_refuses_the_wrong_kind(tmp_path, capsys):
+    assert tool.main(["pubkey"]) != 0
+    ed, p256 = tmp_path / "ed.pem", tmp_path / "p256.pem"
+    tool.keygen(ed), tool.keygen_p256(p256)
+    assert tool.main(["pubkey", "--key", str(p256)]) != 0       # a P-256 file is not an Ed25519 key
+    assert tool.main(["pubkey", "--p256-key", str(ed)]) != 0

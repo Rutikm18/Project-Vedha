@@ -1098,6 +1098,50 @@ class Transport:
             return None
         return body if isinstance(body, dict) else None
 
+    def update_ticket(self, agent_version: str, platform: str, architecture: str,
+                      *, timeout: float = 10.0) -> dict[str, Any] | None:
+        """Ask the manager for a one-time download ticket for the update it offers this agent.
+        None for any failure; like update_check it never refreshes credentials."""
+        if not self._agent_id:
+            return None
+        try:
+            r = self._client.post(
+                "/agents/update-ticket",
+                headers=self.auth_header,
+                json={"agent_id": self._agent_id, "agent_version": agent_version,
+                      "platform": platform, "architecture": architecture},
+                timeout=timeout,
+            )
+            if r.status_code != 200:
+                return None
+            body = r.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        return body if isinstance(body, dict) else None
+
+    def download_installer(self, *, timeout: float = 30.0, max_bytes: int = 2 * 1024 * 1024) -> bytes | None:
+        """The Windows installer script the manager publishes (public, no credential sent)."""
+        try:
+            r = self._client.get("/agent/install.ps1", timeout=timeout)
+            if r.status_code != 200 or len(r.content) > max_bytes:
+                return None
+            return r.content if b"Vedha" in r.content[:4096] else None
+        except httpx.HTTPError:
+            return None
+
+    def download_release_manifest(self, *, timeout: float = 30.0) -> tuple[bytes, str] | None:
+        """The signed release manifest and its P-256 signature (both public). None for any failure."""
+        try:
+            manifest = self._client.get("/agent/manifest.json", timeout=timeout)
+            signature = self._client.get("/agent/manifest.json.p256.sig", timeout=timeout)
+            if manifest.status_code != 200 or signature.status_code != 200:
+                return None
+            if len(manifest.content) > 1024 * 1024 or len(signature.content) > 4096:
+                return None
+            return manifest.content, signature.content.decode("ascii")
+        except (httpx.HTTPError, UnicodeDecodeError):
+            return None
+
     # ── Low-level HTTP GET for callbacks ───────────────────────────────────────
 
     def http_get(self, path: str) -> dict[str, Any] | None:

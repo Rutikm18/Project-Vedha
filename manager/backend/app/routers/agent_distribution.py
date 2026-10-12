@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 import shlex
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
@@ -34,6 +35,7 @@ from app.config import get_settings
 from app.dependencies import AuthUser, DB, RedisConn
 from app.models.probe_enrollment import ProbeEnrollmentToken
 from app.ratelimit import client_ip
+from app.services import agent_update_ticket
 from app.routers.probe_enrollment import ENROLL_TOKEN_PREFIX, _secret_hash, enroll_token_is_usable
 
 router = APIRouter(prefix="/agent", tags=["agent-distribution"])
@@ -114,8 +116,10 @@ _SAFE_ARG = re.compile(r"[A-Za-z0-9:/._~+=@%-]+")
 def windows_install_commands(manager_url: str, token: str | None = None) -> dict[str, str]:
     """The Windows one-liners, or {} if a value is not safe to embed unescaped.
 
-    PowerShell (run from an ELEVATED prompt — it installs a service):
-      windows_powershell   fetches install.ps1 and runs it with the manager + token
+    windows_powershell   works from ANY window (Command Prompt or an ordinary PowerShell): it fetches
+                         install.ps1 and runs it with the manager + token, and when it is not
+                         elevated the installer asks Windows for administrator permission (UAC) and
+                         continues in a new Administrator window
     cmd.exe / double-click:
       windows_cmd          fetches install.cmd (which self-elevates) and runs it
     Both fetch over TLS 1.2; the installer then verifies the signed manifest
@@ -250,6 +254,60 @@ async def _rate_limit_download(redis, request: Request) -> None:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many agent downloads; wait a minute")
 
 
+async def _rate_limit_tokenless(redis, request: Request) -> None:
+    """Stricter than the shared limit: with no token there is nothing else tying a download to a person."""
+    key = f"agent-distribution:tokenless:{client_ip(request)}"
+    try:
+        count = await redis.incr(key)
+        if count == 1:
+            await redis.expire(key, 60)
+    except Exception as exc:
+        logger.error("agent_distribution.rate_limit_unavailable", error=str(exc))
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Download rate limiter unavailable") from exc
+    if count > 6:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many tokenless downloads; wait a minute")
+
+
+async def _authorize_update_ticket(raw: str, request: Request, db, redis):
+    """An enrolled agent fetching its own update with the ticket the manager gave it.
+
+    The ticket must be genuine and unexpired, belong to an agent that still exists and is
+    active, and be spent now (single use). The manager also re-checks that the release it
+    serves is STILL newer than what that agent runs, so a ticket cannot be used to install
+    the same version again or to roll an agent back."""
+    from types import SimpleNamespace
+
+    from app.models.agent import Agent  # local: keep the router's import graph unchanged
+
+    ticket = agent_update_ticket.verify(raw)
+    if ticket is None:
+        logger.warning("agent_distribution.update_ticket_rejected", ip=client_ip(request))
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            "This update ticket is invalid or has expired; the agent will ask for a new one")
+    try:
+        agent_uuid = uuid.UUID(ticket.agent_id)
+    except ValueError:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This update ticket is invalid")
+    agent = (await db.execute(select(Agent).where(Agent.id == agent_uuid))).scalar_one_or_none()
+    if (agent is None or str(agent.tenant_id) != ticket.tenant_id
+            or getattr(agent, "lifecycle_status", "active") != "active"):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This update ticket is no longer valid")
+    release = _release_or_503()
+    if not agent_release.agent_version_is_newer(release.agent_version, agent.agent_version):
+        raise HTTPException(status.HTTP_409_CONFLICT, "This agent is already up to date")
+    try:
+        first_use = await redis.set(agent_update_ticket.spend_key(ticket), "1",
+                                    nx=True, ex=agent_update_ticket.TTL_SECONDS + 60)
+    except Exception as exc:
+        logger.error("agent_distribution.update_ticket_unavailable", error=str(exc))
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Update ticket check unavailable") from exc
+    if not first_use:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This update ticket was already used")
+    logger.info("agent_distribution.update_ticket_spent", agent_id=ticket.agent_id,
+                from_version=agent.agent_version, to_version=release.agent_version, ip=client_ip(request))
+    return SimpleNamespace(id=f"update:{ticket.agent_id}", tenant_id=agent.tenant_id)
+
+
 async def _authorize_download(request: Request, db, redis) -> ProbeEnrollmentToken:
     """Rate-limit, then require a live enrolment token. Shared by every route that
     hands out an agent binary, so the Linux image and the Windows package can
@@ -258,8 +316,18 @@ async def _authorize_download(request: Request, db, redis) -> ProbeEnrollmentTok
 
     auth = request.headers.get("Authorization", "")
     raw = auth.removeprefix("Bearer ").strip() if auth.startswith("Bearer ") else ""
+    if not auth.strip() and getattr(get_settings(), "agent_allow_tokenless_install", False):
+        # Tokenless install (opt-in): no credential was offered at all. The package is signed and holds
+        # no secret; the machine still has to be approved in Fleet with the code it shows before it can
+        # do anything. A credential that IS offered but wrong is still refused below, never ignored.
+        await _rate_limit_tokenless(redis, request)
+        logger.info("agent_distribution.tokenless_download", ip=client_ip(request))
+        from types import SimpleNamespace
+        return SimpleNamespace(id="tokenless", tenant_id="none")
     if not raw.startswith(ENROLL_TOKEN_PREFIX):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "An enrolment token is required to download the agent")
+    if agent_update_ticket.is_ticket(raw):
+        return await _authorize_update_ticket(raw, request, db, redis)
     token = (await db.execute(
         select(ProbeEnrollmentToken).where(ProbeEnrollmentToken.token_hash == _secret_hash(raw))
     )).scalar_one_or_none()
@@ -327,6 +395,12 @@ async def agent_image(arch: str, request: Request, db: DB, redis: RedisConn) -> 
     )
 
 
+def tokenless_status(manager_url: str) -> dict:
+    """Whether this manager lets a machine install without a token, and the commands for it (no secret in them)."""
+    enabled = bool(getattr(get_settings(), "agent_allow_tokenless_install", False))
+    return {"enabled": enabled, "commands": install_commands(manager_url, None) if enabled else {}}
+
+
 def release_status(*, detailed: bool, request: Request | None = None) -> dict:
     """What Fleet shows about the published release. Operators see why a release
     is unavailable; customers get a neutral message."""
@@ -336,7 +410,9 @@ def release_status(*, detailed: bool, request: Request | None = None) -> dict:
         release = load_current_release()
     except agent_release.ReleaseUnavailable as exc:
         body.update(available=False, reason=exc.reason if detailed else "The agent installer is not available yet")
+        body["tokenless"] = tokenless_status(manager_url)
         return body
+    body["tokenless"] = tokenless_status(manager_url)
     body.update(
         available=True,
         version=release.version,

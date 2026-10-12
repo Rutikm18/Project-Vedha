@@ -37,7 +37,12 @@ system drive, outbound HTTPS to the manager.
 The **Windows** tab appears only when the manager has a published release that includes a Windows
 package. If it is missing, use 2.2.
 
-Run it in an **elevated** prompt. PowerShell:
+Paste it into **any** Command Prompt or PowerShell window. If the window is not elevated, the installer asks
+Windows for administrator permission (the UAC prompt: choose **Yes**) and continues in a new Administrator window,
+which stays open at the end so you can read the result. Already elevated (an Administrator window, an RMM tool),
+it just installs. The install token travels to that second window in the environment, not on a command line.
+If a different account supplies the administrator password, the token may not reach it: the installer says so, and
+you then run the same command in a window opened with "Run as administrator". PowerShell or cmd.exe:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; & ([scriptblock]::Create((irm 'https://MANAGER/agent/install.ps1'))) -Manager 'https://MANAGER' -Token 'vet_...'"
@@ -246,8 +251,9 @@ assumed.
 
 ## 5. Update to a newer agent
 
-The agent does **not** download or apply updates. It reports its version on every heartbeat and, at start,
-asks the manager whether a newer one exists; the manager answers and sends nothing.
+By default the agent does **not** download or apply updates. It reports its version on every heartbeat and, at
+start, asks the manager whether a newer one exists; the manager answers and sends nothing. **Automatic update**
+exists from agent 2.2.8, **off by default**: see [5.1](#51-automatic-update-off-by-default-agent-228-and-later).
 
 1. Get the new package: a new zip, or run the Fleet / S3 command again with a **fresh token**.
 2. For a zip: unzip it somewhere new, then in an Administrator prompt there:
@@ -289,6 +295,77 @@ asks the manager whether a newer one exists; the manager answers and sends nothi
 
 The uninstall (without `-Purge`) saves those old scan results the same way before it deletes the program folder.
 4. Hand-added settings are kept by a package built after 11 Oct 2026 (the note above); with an older package, re-add them.
+
+### 5.0 Installing with no token (approval install, opt-in)
+
+Set `AGENT_ALLOW_TOKENLESS_INSTALL=true` on the manager (publish with `-AllowTokenlessInstall`, see
+[ONE_COMMAND_INSTALL](ONE_COMMAND_INSTALL.md)). The installer then runs without `-Token`: it downloads the signed
+package with no credential, passes `-Pairing` to the packaged installer, and the agent shows a pairing code and
+waits in `awaiting-approval`. Approve it in Fleet -> Pending requests with that code. If the manager does not allow it
+the installer says so (`This manager does not allow installing without a token`) and nothing is installed. The
+release key is pinned in this mode too (5.1). Exit codes are unchanged (0 connected or waiting for approval).
+
+### 5.1 Automatic update (off by default, agent 2.2.8 and later)
+
+**Status: built and unit-tested, never run on a real Windows machine.** Try it on one test PC first.
+Agent 2.2.9 adds the pinned release key and the automatic rollback described below.
+
+What it does, when switched on: the agent notices the manager offers a newer agent, downloads the manager's
+`install.ps1` and the signed release manifest and **checks them against the release key pinned on this computer**
+(the manifest must be signed by that key, list this exact script's SHA-256, offer a newer agent, not be older than the
+newest release already installed here, and not be past its `expires` date). Only then does it ask the manager for a
+one-time download ticket (15 minutes, single use, issued only to an enrolled, active agent that is really older) and
+run the script **as SYSTEM through a one-shot Scheduled Task** called `VedhaAgentUpdate`. That is the same installer a
+person would run, so the same checks apply: signature and SHA-256 against the signed manifest, no downgrade, in-place
+replace, identity and saved results kept.
+
+**The pinned key.** The one-command installer stores the release key in `C:\ProgramData\vedha-agent\release\trust.json`
+(administrators only) after its first successful install. A computer installed by an older installer has no pin and
+refuses to update itself (`no-pin` in the log) until the install command from Fleet is run once more. If you rotate
+the release key on purpose, every computer refuses the new one until a person runs the installer by hand from an
+Administrator PowerShell with `-ReplaceReleaseKey` after confirming the new key id: that is deliberate, because a
+silent key change is exactly what a tampered manager would do.
+
+**Rollback.** When an update replaces a working agent, the installer keeps the previous program folder, `agent.env`
+and `state.json` until the new agent reports `online` (or waits for approval), for up to 5 minutes. If it does not,
+the previous version is put back and started, `update\last-update.json` says `rolled-back` and why, the agent logs
+it as a warning on its next start, and the installer exits with code 4. Scan results and logs live outside the
+program folder and are never touched. A repair of the same version is not rolled back.
+
+It only starts when **no scan is running** (it looks again 15 minutes later if one is), and it tries a given
+version **once per 24 hours** so a failing update cannot loop.
+
+Turn it on, on one PC, in an Administrator Command Prompt:
+
+```bat
+echo PROBE_AUTO_UPDATE=on>> "C:\ProgramData\vedha-agent\agent.env"
+schtasks /End /TN VedhaAgent
+schtasks /Run /TN VedhaAgent
+```
+
+(The installer keeps your own extra lines in `agent.env` when it updates, so the switch survives.) The agent log
+then says `Automatic update: on`, and checks about 3 minutes after it starts, then every 6 hours. Turn it off by
+deleting that line and restarting the task.
+
+Needs on the manager: a **newer** release published (guide: [ONE_COMMAND_INSTALL](ONE_COMMAND_INSTALL.md), steps 1
+to 6) whose Windows package has a higher `agent_version` than the agent runs. To try it: install an older agent,
+switch it on, publish a newer release, wait a few minutes.
+
+Where to look: `C:\ProgramData\vedha-agent\update\update.log` (what the installer printed),
+`...\update\last-attempt.json`, `schtasks /Query /TN VedhaAgentUpdate`, and Fleet's version column. The one-shot
+task and the downloaded installer are removed the next time the agent starts; the log is kept.
+
+**What it does not do yet** (so do not enable it fleet-wide):
+* **No staged rollout or pause.** Every agent with the switch on updates once the manager offers it. Rollback
+  limits the damage of a bad build to the agents that updated in the same five minutes; it does not stop the next
+  agent from trying.
+* **The first install is trusted on first use** (TLS to your manager); the pin protects every update after it.
+  It does not protect against the key holder signing something bad, or against a stolen signing key.
+* **Optional expiry.** `agent_release.py build --expires-days 90` signs an expiry date into the manifest; agents then
+  refuse a release past it, so a mirror cannot hold agents on an old release forever, but you must publish a fresh
+  one before it passes. Off by default.
+* **Windows only.** The manager gives no ticket to Linux or macOS agents.
+* A scan that starts while the installer is running is cut off (its finished hosts are kept and the job is re-queued).
 
 ### Which version is the latest?
 

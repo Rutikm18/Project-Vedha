@@ -103,9 +103,38 @@ def test_remote_installer_avoids_unsafe_constructs(forbidden):
 
 def test_remote_installer_never_puts_the_token_on_a_child_command_line():
     code = re.sub(r"<#.*?#>", "", _text("install-remote.ps1"), flags=re.S)
-    assert not re.search(r"Start-Process|&\s*['\"]?powershell|powershell(\.exe)?\s+-", code, re.I)
+    # The only child process is the elevated copy of this same installer, started in one place.
+    assert len(re.findall(r"Start-Process", code)) == 1
+    elevate = _body(code, "Enter-VedhaElevation")
+    assert "Start-Process" in elevate and "-Verb RunAs" in elevate and "-Wait" in elevate
+    # The elevated copy's command never contains the token: it reads it from the environment,
+    # which is set just before and removed right after (even when starting it fails).
+    command = _body(code, "Get-VedhaElevationCommand")
+    assert "$InstallToken" not in command and "$Token" not in command
+    assert "$env:VEDHA_INSTALL_TOKEN" in command
+    assert elevate.index("$env:VEDHA_INSTALL_TOKEN = $Token") < elevate.index("Start-Process")
+    assert "if ($Token) { $env:VEDHA_INSTALL_TOKEN = $Token }" in elevate           # a tokenless install sets nothing
+    assert "finally" in elevate and "Remove-Item Env:" in elevate
     # the token reaches the packaged installer as a parameter of an in-process call
-    assert "Token = $Token" in code and "& $inner @innerArgs" in code
+    assert "innerArgs.Token = $Token" in code and "& $inner @innerArgs" in code
+    # no token: the packaged installer is told to pair instead of asking for one
+    assert "innerArgs.Pairing = $true" in code
+
+
+def test_elevation_is_attempted_once_only_when_needed_and_never_loops():
+    code = re.sub(r"<#.*?#>", "", _text("install-remote.ps1"), flags=re.S)
+    elevate = _body(code, "Enter-VedhaElevation")
+    assert "if ($VerifyOnly -or (Test-VedhaAdmin)) { return $false }" in elevate      # no prompt for -VerifyOnly or an admin
+    assert elevate.index("return $false") < elevate.index("if ($Elevated)") < elevate.index("Start-Process")
+    assert "-Elevated" in _body(code, "Get-VedhaElevationCommand")                     # the copy refuses to elevate again
+    main = _body(code, "Install-VedhaAgent")
+    order = ["Assert-CleanToken", "Assert-CleanScope", "Enter-VedhaElevation", "Assert-Environment", "Get-VerifiedPackage"]
+    positions = [main.index(step) for step in order]
+    assert positions == sorted(positions), dict(zip(order, positions))               # validate first, then elevate, then do the work
+    assert "Assert-Environment" in code and "IsInRole" in _body(code, "Test-VedhaAdmin")
+    # an elevated copy that lacks the token explains why, unless the install was started tokenless on purpose
+    clean = _body(code, "Assert-CleanToken")
+    assert "did not reach the Administrator window" in clean and "-not $Tokenless" in clean
 
 
 def test_zip_extraction_rejects_traversal_and_streams():
@@ -235,3 +264,38 @@ def test_package_zip_release_switch_skips_baking_a_manager():
 def test_token_shape_is_checked_before_anything_is_downloaded():
     assert r"^vet_[A-Za-z0-9_\-]{8,}$" in _text("install-remote.ps1")
     assert r"^vet_[A-Za-z0-9_\-]{8,}$" in _text("install-remote.cmd")
+
+
+@pytest.mark.skipif(shutil.which("pwsh") is None, reason="no PowerShell on this machine")
+@pytest.mark.parametrize("scope, expect_scope", [("", False), ("10.0.0.0/24", True)])
+def test_the_elevated_copys_command_has_no_token_and_works_from_any_window(scope, expect_scope):
+    code = re.sub(r"<#.*?#>", "", _text("install-remote.ps1"), flags=re.S)
+    func = _body(code, "Get-VedhaElevationCommand")
+    out = subprocess.run(
+        ["pwsh", "-NoProfile", "-Command",
+         f"{func}\nGet-VedhaElevationCommand -ManagerUrl 'https://api.vedhasec.com' -InstallScope '{scope}'"],
+        capture_output=True, text=True, timeout=60, check=True).stdout.strip()
+    assert out.startswith("[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; ")
+    assert "irm 'https://api.vedhasec.com/agent/install.ps1'" in out
+    assert "-Manager 'https://api.vedhasec.com'" in out
+    assert "-Token $env:VEDHA_INSTALL_TOKEN" in out and "vet_" not in out
+    assert out.endswith("-PauseAtEnd -Elevated")
+    assert ("-Scope '10.0.0.0/24'" in out) is expect_scope
+    assert '"' not in out                                  # it is wrapped in double quotes when started
+
+
+def test_a_tokenless_install_hands_the_elevated_copy_a_flag_not_an_empty_token():
+    code = re.sub(r"<#.*?#>", "", _text("install-remote.ps1"), flags=re.S)
+    func = _body(code, "Get-VedhaElevationCommand")
+    out = subprocess.run(
+        ["pwsh", "-NoProfile", "-Command",
+         f"{func}\nGet-VedhaElevationCommand -ManagerUrl 'https://api.vedhasec.com' -InstallScope '' -NoToken"],
+        capture_output=True, text=True, timeout=60, check=True).stdout.strip()
+    assert "-Tokenless" in out and "-Token " not in out and "VEDHA_INSTALL_TOKEN" not in out
+    assert out.endswith("-PauseAtEnd -Elevated")
+
+
+def test_the_cmd_launcher_accepts_no_token_but_still_checks_one_when_given():
+    cmd = _text("install-remote.cmd")
+    assert "if not defined VEDHA_TOKEN goto :usage" not in cmd
+    assert "$env:VEDHA_TOKEN -and $env:VEDHA_TOKEN -notmatch" in cmd

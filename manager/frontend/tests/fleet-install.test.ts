@@ -7,7 +7,9 @@ import { GET as listTokens, POST as createToken } from "../app/api/fleet/enroll-
 import { DELETE as revokeToken } from "../app/api/fleet/enroll-tokens/[id]/route";
 import { GET as releaseGet } from "../app/api/fleet/release/route";
 import { PATCH as setExpiry } from "../app/api/fleet/agents/[id]/access-expiry/route";
-import { managerHost, windowsCommands, windowsIntegrity, windowsOffered } from "../app/fleet/AddAgent";
+import {
+  managerHost, publishAdvice, tokenlessWindowsCommands, windowsCommands, windowsIntegrity, windowsOffered,
+} from "../app/fleet/AddAgent";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -166,5 +168,49 @@ describe("Fleet install UI", () => {
     assert.equal(managerHost("https://api.vedhasec.com"), "api.vedhasec.com");
     assert.equal(managerHost("http://10.0.0.5:18080/"), "10.0.0.5:18080");
     assert.equal(managerHost(""), "your Vedha manager");
+  });
+});
+
+describe("Fleet → Add agent: install without a token", () => {
+  const base = {
+    available: true, version: "1.0.404", arches: ["amd64"], signed: true, manager_url: "https://api.example.com",
+    manager_url_configured: true, windows: { available: true },
+  };
+  const commands = {
+    windows_powershell: "powershell -NoProfile -ExecutionPolicy Bypass -Command \"… -Manager 'https://api.example.com'\"",
+    windows_cmd: "curl.exe … \"https://api.example.com\"",
+  };
+
+  test("the no-token commands are offered only when the manager allows it and Windows is published", () => {
+    assert.equal(tokenlessWindowsCommands({ ...base, tokenless: { enabled: true, commands } }).length, 2);
+    assert.deepEqual(tokenlessWindowsCommands({ ...base, tokenless: { enabled: false, commands: {} } }), []);
+    assert.deepEqual(tokenlessWindowsCommands({ ...base }), []);                       // an older manager
+    assert.deepEqual(tokenlessWindowsCommands(null), []);
+    assert.deepEqual(tokenlessWindowsCommands({ ...base, windows: { available: false }, tokenless: { enabled: true, commands } }), []);
+    assert.deepEqual(tokenlessWindowsCommands({ ...base, available: false, tokenless: { enabled: true, commands } }), []);
+  });
+
+  test("the no-token commands carry no token", () => {
+    for (const c of tokenlessWindowsCommands({ ...base, tokenless: { enabled: true, commands } })) {
+      assert.doesNotMatch(c.command, /vet_|-Token/);
+    }
+  });
+
+  test("when nothing is published the console points at the one-command publish script first", () => {
+    const advice = publishAdvice();
+    assert.match(advice.windows, /publish-release\.ps1/);
+    assert.match(advice.windows, /-ConfigureManager/);
+    assert.match(advice.windows, /probe\\windows\\publish-release\.ps1/);            // real Windows path separators
+    assert.match(advice.linux, /make agent-release/);
+  });
+
+  test("approving from the operator console forwards the code the machine shows, and only when typed", async () => {
+    const { createFleetWorkspaceApi } = await import("../lib/fleet-workspace-api");
+    const seen = stubBackend({ state: "approved" });
+    const api = createFleetWorkspaceApi("manager");
+    await api.approve("req-1", null, " abcd-2345 ");
+    await api.approve("req-2", "edge", "");
+    assert.deepEqual(seen.map((s) => s.body), [{ probe_name: null, user_code: "abcd-2345" }, { probe_name: "edge" }]);
+    assert.match(seen[0].url, /enrollment\/req-1\/approve$/);
   });
 });

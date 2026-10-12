@@ -1088,6 +1088,47 @@ async def update_check(body: UpdateCheckRequest, db: DB, request: Request):
     return agent_release.update_offer(release, body.agent_version)
 
 
+@router.post("/update-ticket", summary="Agent asks for a one-time download ticket for the update the manager offers it")
+async def update_ticket(body: UpdateCheckRequest, db: DB, request: Request):
+    """The authorised download route for an enrolled agent (the missing half of update-check).
+
+    The manager, not the agent, decides: a ticket is issued only when the current release
+    states an agent version strictly newer than the one this agent reported AND carries a
+    package this agent can install. The ticket is short-lived and single-use (see
+    services/agent_update_ticket.py). Otherwise a normal 200 with `update_available: false`."""
+    _agent_ownership_check(request, body.agent_id)
+    agent = (await db.execute(
+        select(Agent).where(Agent.id == uuid.UUID(body.agent_id))
+    )).scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    if getattr(agent, "lifecycle_status", "active") != "active":
+        raise HTTPException(403, "Agent is not active")
+
+    reported = agent_release.clean_agent_version(body.agent_version)
+    if reported and agent.agent_version != reported:
+        agent.agent_version = reported
+
+    from app.routers.agent_distribution import load_current_release  # avoid an import cycle
+    from app.services import agent_update_ticket
+    try:
+        release = load_current_release()
+    except agent_release.ReleaseUnavailable:
+        release = None
+    offer = agent_release.update_offer(release, body.agent_version)
+    if not offer["update_available"]:
+        return {**offer, "ticket": None}
+    platform = (body.platform or "").lower()
+    # Only the Windows package can be applied by the agent today.
+    if not platform.startswith("win") or release is None or not release.windows_available:
+        return {**offer, "update_available": False, "ticket": None,
+                "message": "A newer agent exists, but this manager cannot update this kind of agent automatically yet."}
+    ticket = agent_update_ticket.issue(str(agent.id), str(agent.tenant_id), offer["latest"])
+    logger.info("agent.update_ticket.issued", agent_id=str(agent.id),
+                from_version=body.agent_version, to_version=offer["latest"])
+    return {**offer, "ticket": ticket, "ticket_expires_in_seconds": agent_update_ticket.TTL_SECONDS}
+
+
 @router.post(
     "/{agent_id}/refresh",
     summary="Agent refreshes its own capability and routing metadata",

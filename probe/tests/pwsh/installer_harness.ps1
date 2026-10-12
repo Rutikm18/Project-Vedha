@@ -20,7 +20,9 @@ param(
   [switch]$NoAllowHttp,
   [string]$ZipDir = '',
   [switch]$Install,          # run the real install path (not -VerifyOnly) against an https stub
-  [string]$Scope = ''
+  [string]$Scope = '',
+  [switch]$ReplaceReleaseKey,  # pass -ReplaceReleaseKey to the installer
+  [switch]$NoToken             # install without a token (approval install)
 )
 $text = Get-Content -Raw -LiteralPath $Installer
 $cut = $text.IndexOf('$failed = $false')
@@ -43,7 +45,9 @@ public static class HarnessTrustAll {
     [System.Net.Security.RemoteCertificateValidationCallback][Delegate]::CreateDelegate(
       [System.Net.Security.RemoteCertificateValidationCallback], [HarnessTrustAll].GetMethod('Yes'))
   $loadArgs = @{ Manager = "https://127.0.0.1:$Port"; Token = $Token }
+  if ($NoToken) { $loadArgs.Remove('Token') }
   if ($Scope) { $loadArgs.Scope = $Scope }
+  if ($ReplaceReleaseKey) { $loadArgs.ReplaceReleaseKey = $true }
 } else {
   $loadArgs = @{ Manager = "http://127.0.0.1:$Port"; Token = $Token; VerifyOnly = $true }
   if (-not $NoAllowHttp) { $loadArgs.AllowInsecureHttp = $true }
@@ -74,6 +78,7 @@ if ($unix) {
 if ($Install -and $unix) {
   # Windows-only pieces replaced by recording stand-ins: the administrator check and icacls.exe.
   function Assert-Environment { }
+  function Enter-VedhaElevation { $false }
   function icacls.exe { $global:LASTEXITCODE = 0; Add-Content -LiteralPath (Join-Path $env:VEDHA_TEST_OUT 'icacls.log') -Value ($args -join ' ') }
 }
 

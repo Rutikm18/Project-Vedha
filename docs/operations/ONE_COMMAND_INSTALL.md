@@ -9,6 +9,56 @@ distribution router and the real installer script. What was and was not run is i
 
 ---
 
+## 0. The shortest path: one command for you, one command per machine
+
+**You (once per release), on a Windows PC with this repository, Python 3.10 to 3.12 and OpenSSH Client:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File probe\windows\publish-release.ps1 `
+    -Server ubuntu@YOUR_SERVER -ManagerUrl https://api.vedhasec.com -ConfigureManager
+```
+
+It creates the signing keys the first time (and tells you to back them up), builds the Windows agent, packages it,
+builds and signs the release, verifies it, uploads it to the manager, puts the two public keys in the manager's
+`.env` (a dated backup is kept) and restarts the api, then asks the manager for its manifest and confirms it serves
+the Windows package. `-DryRun` shows the plan without doing anything; `-SkipBuild` reuses the agent already built;
+without `-Server` it stops after signing. A release version can be published once: change `VERSION` or pass
+`-Version 1.0.404` for the next one. Steps 1 to 7 in section 3 below are what this script does, in case you want to
+do them by hand or something fails.
+
+**Each Windows machine:** in the console, **Fleet -> Add agent -> Windows -> Generate install command**, then run that
+one line in **any** Command Prompt or PowerShell window on the machine (no need to open it as Administrator:
+when it is not elevated, the installer asks Windows for permission and continues in a new Administrator window). Nothing else.
+
+**No token at all (opt-in, 12 Oct 2026):** add `-AllowTokenlessInstall` to the publish command (it sets
+`AGENT_ALLOW_TOKENLESS_INSTALL=true` on the manager). Fleet -> Add agent then also shows a command with **no `vet_`
+token in it**: it can be pasted on any number of machines. Each one downloads the signed package, installs, connects
+to the manager and shows an 8-character **pairing code**; in Fleet -> Pending requests you pick the machine (host
+name, IP address, key fingerprint are shown), type the code, and press Approve. The manager then gives that agent its
+credentials by itself: nothing to copy, nothing secret to send. The request expires after 15 minutes (the agent
+shows a new code if you were late: `vedha-agent.exe status`). What protects it: nothing runs until you approve; the
+approval must carry the code the machine shows (so you approve the machine in front of you, not a stranger's
+request); at most 100 requests may wait at once and each address gets 10 per minute; the package is the same signed,
+secret-free one a token would fetch; and a wrong credential is still refused, not ignored. What it costs: anyone
+who can reach the manager can download the agent package, so keep it off, or limit the manager's reachability, on a
+manager shared by several customers.
+
+**Updates after that (agent 2.2.9):** publish a new release with the same script and the agents that have
+`PROBE_AUTO_UPDATE=on` update themselves, nobody types anything on the machines and nobody clones the repo. Three
+safeguards: the first install pins your release key on the machine, and the agent refuses any installer that the
+signed manifest does not list; if the new version does not connect within 5 minutes the old one is put back; and
+a release can carry a signed expiry (`agent_release.py build --expires-days 90`). It is **off by default** and
+Windows only; turn it on per machine first (see [WINDOWS_AGENT_MANAGEMENT 5.1](WINDOWS_AGENT_MANAGEMENT.md)).
+A machine installed before 2.2.9 has no pinned key and must be given the Fleet command once more.
+
+What this does not remove: choosing the engagement and clicking Generate (that is what creates the one-time token),
+the first-time server access (SSH), and backing up the keys. Doing the whole thing from a git push, with no PC of
+yours involved, is the `agent-release` workflow, which is blocked until GitHub Actions billing is fixed. The script
+was unit-tested (55 checks, plus `-DryRun`) and its Python half rehearsed on Linux; **it has not been run on Windows
+or against a real server**.
+
+---
+
 ## 1. Which operating systems the agent is built for
 
 | OS | What you ship | How it runs | Status |
@@ -37,9 +87,13 @@ So "run it on Linux" does not by itself mean SYN scanning: the shipped Docker ag
 
 | User's machine | The one command (Fleet → Add agent prints it with the real address and token) |
 |---|---|
-| Windows, PowerShell as Administrator | `powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; & ([scriptblock]::Create((irm 'https://api.vedhasec.com/agent/install.ps1'))) -Manager 'https://api.vedhasec.com' -Token 'vet_…'"` |
+| Windows, any Command Prompt or PowerShell window (asks for administrator permission itself) | `powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; & ([scriptblock]::Create((irm 'https://api.vedhasec.com/agent/install.ps1'))) -Manager 'https://api.vedhasec.com' -Token 'vet_…'"` |
 | Windows, Command Prompt (it asks for admin itself) | `curl.exe --proto =https --tlsv1.2 -fsSL "https://api.vedhasec.com/agent/install.cmd" -o "%TEMP%\vedha-install.cmd" && "%TEMP%\vedha-install.cmd" "https://api.vedhasec.com" "vet_…"` |
 | Linux | `curl --proto '=https' --tlsv1.2 -fsSL https://api.vedhasec.com/agent/install.sh \| sudo sh -s -- --manager https://api.vedhasec.com --token vet_…` |
+
+**The customer needs nothing else: no Git, no clone of the repository, no download by hand.** The one command downloads
+one small `install.ps1` (or `install.cmd` / `install.sh`) from your manager, and that script fetches the agent package itself.
+You (the vendor) build and publish the release once; the repository is only ever needed on your build machine.
 
 Copy it from Fleet; do not retype it. **The address in it must be the API's** (`api.…`), not the dashboard's
 (`app.…`): only the API serves `/agent/…`. A leftover placeholder such as `MANAGER` is a common mistake.
@@ -125,7 +179,7 @@ make agent-release AGENT_ARCH= WINDOWS_ZIP=/path/to/vedha-agent-win.zip
   checkout.
 * A release version is **immutable**: building the same `VERSION` twice fails with "already exists". For a second
   release either bump the `VERSION` file or pass `--version`, for example:
-  `python3 scripts/agent_release.py build --key ~/.vedha/agent-release-key.pem --arch "" --p256-key ~/.vedha/agent-release-p256-key.pem --windows-zip /path/vedha-agent-win.zip --version 1.0.404`
+  `python3 scripts/agent_release.py build --key ~/.vedha/agent-release-key.pem --arch= --p256-key ~/.vedha/agent-release-p256-key.pem --windows-zip /path/vedha-agent-win.zip --version 1.0.404`
 * For Linux as well, leave `AGENT_ARCH` at its default (`amd64,arm64`); that builds Docker images, so it needs
   Docker and takes much longer.
 
@@ -163,13 +217,40 @@ Windows package is published and signed). If it does not, see section 7.
 1. Fleet → Add agent → pick the engagement → **Generate**. Choose **Windows**, copy the PowerShell or Command Prompt
    line. It already contains the manager address and the token.
 2. Send it **by a different channel** from the rest of the engagement details (phone or chat), with this note: run it
-   in an Administrator PowerShell, or in Command Prompt (which asks for admin by itself).
+   in any Command Prompt or PowerShell window (Windows asks for administrator permission).
 3. Watch Fleet: the agent appears when it connects. To confirm on the machine:
    `"C:\Program Files\Vedha Agent\vedha-agent.exe" version` and `status`.
 
 For many machines, remember the enrolment rules: one token installs one agent, and an engagement holds one agent
 ([handbook, section 5](WINDOWS_AGENT_MANAGEMENT.md#putting-the-agent-on-other-computers)). The pairing-code route
 (run the installer with no token and approve it in Fleet) avoids creating a token per machine.
+
+### Doing steps 1 to 6 from a Windows PC only (no `make`, no Linux)
+
+`make` is not needed: the Makefile only calls `scripts/agent_release.py`, which is plain Python. You need, on the
+Windows PC: Python 3.10 to 3.12 (python.org, tick "Add to PATH"), `pip install cryptography`, Git, and the
+**OpenSSH Client** (Settings, Apps, Optional features) for the publish step. Run in PowerShell, in the repository root:
+
+```powershell
+$k = "$env:USERPROFILE\.vedha"
+# Step 1: both keys. Prints AGENT_RELEASE_PUBLIC_KEY=... and AGENT_RELEASE_P256_PUBLIC_KEY=... (copy them)
+python scripts\agent_release.py keygen --out "$k\agent-release-key.pem" --p256-out "$k\agent-release-p256-key.pem"
+
+# Steps 3-4: package built by probe\windows\package-zip.ps1 -Release (keep the .release.json beside the zip)
+python scripts\agent_release.py build --key "$k\agent-release-key.pem" --arch= `
+  --p256-key "$k\agent-release-p256-key.pem" --windows-zip "C:\path\vedha-agent-win.zip"
+
+# Step 5
+python scripts\agent_release.py verify dist\agent-release --public-key "<ED25519 value>" --p256-public-key "<P-256 value>"
+
+# Step 6: no rsync on Windows, so the tool uses ssh + scp (it copies the version first, then switches CURRENT)
+python scripts\agent_release.py publish dist\agent-release --to ubuntu@<manager-host>:/opt/Project-Vedha/manager/agent-releases
+```
+
+Step 2 (the manager's `.env`) is done on the manager host, over SSH. Notes: Windows does not enforce the `600` mode the
+tool asks for, so keep the key files in your own profile folder (not a shared or synced one) and back them up offline;
+`publish` refuses to overwrite a version that already exists on the manager. Rehearsed on Linux only (key creation,
+build, local publish, and the ssh/scp command sequence under test with the commands faked); **not run on Windows**.
 
 ---
 
@@ -229,7 +310,7 @@ above is the recommended one.
 ## 8. What was and was not run
 
 **Run on 11 Oct 2026 (a rehearsal on Linux, with throw-away keys and a stand-in zip):**
-a Windows-only release built with the real tool (`--arch ""`), verified by the real verifier, loaded by the real
+a Windows-only release built with the real tool (`--arch=`), verified by the real verifier, loaded by the real
 manager code, and served by the real `agent_distribution` router over a socket. Results: `install.ps1`,
 `install.cmd`, `manifest.json`, `manifest.json.sig`, `manifest.json.p256.sig` and `install.sh` answered 200 without a
 login; the package answered 401 without a token and 200 with one, byte-identical to the file that was signed (SHA-256

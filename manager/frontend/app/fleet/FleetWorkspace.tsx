@@ -22,6 +22,7 @@ interface EnrollmentRequest {
   agent_version: string;
   capabilities: string[];
   fingerprint: string;
+  source_ip?: string | null;
   expires_at: string;
 }
 
@@ -403,6 +404,7 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
                   <div className="flt-req-meta">
                     <span><Laptop size={11} /> {row.platform} / {row.architecture} · agent {row.agent_version}</span>
                     <span className="flt-mono"><Fingerprint size={11} /> {row.fingerprint.slice(0, 16)}…</span>
+                    {row.source_ip && <span className="flt-mono"><Network size={11} /> from {row.source_ip}</span>}
                     <span className="flt-mono"><Clock3 size={11} /> expires {new Date(row.expires_at).toLocaleString()}</span>
                   </div>
                 </button>
@@ -428,23 +430,28 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
               </div>
             ) : (
               <form onSubmit={approve} className="flt-form">
-                {surface === "portal" && (
-                  <label className="flt-field flt-full">
-                    <span className="flt-label">Installer verification code</span>
-                    <input
-                      className="flt-input"
-                      inputMode="text"
-                      autoComplete="one-time-code"
-                      placeholder="ABCD-EFGH"
-                      required
-                      maxLength={9}
-                      value={form.user_code}
-                      onChange={(event) => setForm({ ...form, user_code: event.target.value.toUpperCase() })}
-                      aria-describedby="portal-enrollment-code-hint"
-                    />
-                    <span id="portal-enrollment-code-hint" className="flt-hint">Shown once by the installer and valid for 15 minutes. It is never used as a long-lived credential.</span>
-                  </label>
-                )}
+                <label className="flt-field flt-full">
+                  <span className="flt-label">
+                    {surface === "portal" ? "Installer verification code" : "Code shown on the machine"}
+                    {surface === "manager" && <> <span className="flt-optional">(needed when installs run without a token)</span></>}
+                  </span>
+                  <input
+                    className="flt-input"
+                    inputMode="text"
+                    autoComplete="one-time-code"
+                    placeholder="ABCD-EFGH"
+                    required={surface === "portal"}
+                    maxLength={9}
+                    value={form.user_code}
+                    onChange={(event) => setForm({ ...form, user_code: event.target.value.toUpperCase() })}
+                    aria-describedby="enrollment-code-hint"
+                  />
+                  <span id="enrollment-code-hint" className="flt-hint">
+                    {surface === "portal"
+                      ? "Shown once by the installer and valid for 15 minutes. It is never used as a long-lived credential."
+                      : "Shown by the installer on the machine, valid for 15 minutes. It proves you are approving the machine in front of you, not someone else's request."}
+                  </span>
+                </label>
                 <label className="flt-field flt-full">
                   <span className="flt-label">vedha-agent name <span className="flt-optional">(optional)</span></span>
                   <input className="flt-input" placeholder="auto: vedha_agent_01" value={form.probe_name} onChange={(e) => setForm({ ...form, probe_name: e.target.value })} />

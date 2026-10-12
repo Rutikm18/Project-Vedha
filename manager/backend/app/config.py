@@ -187,6 +187,15 @@ class Settings(BaseSettings):
     # default: leaving it off means every probe needs a pre-authorized token or a
     # dashboard approval. Every auto-enrollment is written to the audit log.
     probe_auto_enroll: bool = False
+    # Tokenless install (OFF by default). When on, the agent package can be downloaded without an
+    # install token, so the one-line installer needs no `vet_` secret: the machine installs, connects,
+    # shows a pairing code, and an operator approves it in Fleet by typing that code (the manager then
+    # issues the agent its credentials by itself). Turning it on makes the signed agent package
+    # downloadable by anyone who can reach this manager, so approval then REQUIRES the code shown on
+    # the machine, and pending requests are capped.
+    agent_allow_tokenless_install: bool = False
+    # Most pairing requests that may wait for approval at once (flood guard for the open endpoint).
+    probe_pending_enrollment_cap: int = 100
     # Coarse authorized scope stamped on the auto-enroll Site policy (the probe
     # still enforces its own local ceiling, and jobs carry per-engagement scope).
     probe_auto_enroll_cidrs: str = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"

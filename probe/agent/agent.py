@@ -781,8 +781,18 @@ def main() -> None:
         update_check.run_startup_check(
             transport, VERSION, platform=sys.platform, architecture=_arch, say=say,
         )
+        _apply = None
+        try:
+            from agent import auto_update
+            auto_update.cleanup_after_update()          # remove a finished update's one-shot task and files
+            if auto_update.enabled():
+                _apply = lambda info: auto_update.apply_update(  # noqa: E731
+                    transport, info, manager_url=PLATFORM_URL, platform=sys.platform, architecture=_arch)
+                say("Automatic update: on (PROBE_AUTO_UPDATE). It only runs while no scan is running.")
+        except Exception as exc:  # noqa: BLE001
+            _dbg(f"auto-update setup skipped: {exc!r}")
         update_check.PeriodicUpdateChecker(
-            transport, VERSION, platform=sys.platform, architecture=_arch, say=say,
+            transport, VERSION, platform=sys.platform, architecture=_arch, say=say, apply=_apply,
         ).start()
     except Exception as exc:  # noqa: BLE001 — a version check must never stop startup
         _dbg(f"update check skipped: {exc!r}")
@@ -1540,6 +1550,11 @@ async def _ws_run_job(
         say(f"▶ Poll fallback: job {job_id} — {_job_intent(job)}")
 
     job_state["current_job_id"] = job_id
+    try:
+        from agent import auto_update
+        auto_update.mark_job_started()          # an automatic update waits until no scan is running
+    except Exception:  # noqa: BLE001
+        pass
     job_state["attempt_id"] = job.get("attempt_id")
     job_state["fence"] = job.get("fence")
     # Best-effort WS status frame (as this function's docstring promises). A flapping
@@ -1578,6 +1593,11 @@ async def _ws_run_job(
             say(f"  ✓ {_result_summary(result)}", 1)
         return result
     finally:
+        try:
+            from agent import auto_update
+            auto_update.mark_job_finished()
+        except Exception:  # noqa: BLE001
+            pass
         job_state["current_job_id"] = None
         job_state["attempt_id"] = None
         job_state["fence"] = None
