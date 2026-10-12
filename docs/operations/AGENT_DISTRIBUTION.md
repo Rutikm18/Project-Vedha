@@ -100,7 +100,40 @@ Release (plus a build-provenance attestation on public repositories). A tag that
 not match `VERSION` is rejected. You can also run the workflow by hand (Actions → agent-release →
 Run workflow) to get the signed files as a run artifact without publishing.
 
-**Put it on the manager** (on the manager host, no CI access needed):
+**Automatic release sync (recommended: no PC, no command per release).** The manager can fetch new signed
+releases from GitHub by itself. It runs as an opt-in service, `agent-release-sync`, in the manager's own
+`docker-compose.yml` (the production host only has `manager/` and `deploy/`, so it needs no repo, no Makefile
+and no Python of its own: it uses the backend image).
+
+1. In the manager's `.env` (the same file that has `AGENT_RELEASE_PUBLIC_KEY` and `AGENT_RELEASE_P256_PUBLIC_KEY`):
+   ```
+   AGENT_RELEASE_GITHUB_REPO=<owner>/<repo>
+   AGENT_RELEASE_GITHUB_TOKEN=<only for a PRIVATE repo: a fine-grained token, read-only "Contents", this one repo>
+   AGENT_RELEASE_SYNC_INTERVAL_MINUTES=15        # 5 to 1440
+   # AGENT_RELEASE_SYNC_AUTO_PROMOTE=false       # install new releases but keep serving the current one until you promote it
+   ```
+2. Let the container write the release folder (once): `sudo chown -R 10001:10001 manager/agent-releases`
+   (or whatever `AGENT_RELEASE_HOST_DIR` points to). The api only ever reads it.
+3. Start it: `docker compose --profile release-sync up -d agent-release-sync`
+   and watch it: `docker compose logs -f agent-release-sync`.
+
+From then on a release is: tag `agent-v<VERSION>` (or Actions -> agent-release -> Run workflow with "publish")
+and wait. Within one interval the manager has verified and installed it and Fleet -> Add agent offers it;
+agents with automatic update switched on then move to it by themselves.
+
+What it will and will not do:
+* It installs a release only if BOTH signatures verify against the public keys in `.env` and every file matches
+  its signed checksum; anything else is logged and retried later (the wait doubles after each failure, up to an
+  hour) and never touches what is being served.
+* It never rolls back: a release that is not newer than the served one is ignored. To roll back, use
+  `make agent-pull ... TAG=agent-v<older>` from a full clone, or write the older version into `CURRENT`.
+* **Pause**: create an empty file named `PAUSE` in the release folder (`touch manager/agent-releases/PAUSE`);
+  delete it to resume. This holds back NEW releases only; a release that is already served stays served.
+* It holds only the two public keys and the optional read-only token: no database, Redis, JWT secret or
+  signing key. The token is sent only to GitHub (never to the storage host a download is redirected to).
+* The signing keys stay in GitHub's `agent-release` environment; this service cannot sign anything.
+
+**Put it on the manager by hand** (needs a full clone of the repo, since the production host only has `manager/`):
 
 ```bash
 make agent-pull REPO=<owner>/<repo> TO=/opt/Project-Vedha/manager/agent-releases

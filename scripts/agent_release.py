@@ -719,16 +719,24 @@ def _version_tuple(version: str):
         return None
 
 
+PAUSE_FILE = "PAUSE"            # an empty file with this name in the release store holds `watch` still
+
+
 def pull(*, repo: str, dest: Path, public_key_b64: str, p256_public_key_b64: str | None = None,
          tag: str | None = None, token: str | None = None, api_url: str = GITHUB_API,
-         make_current: bool = True, opener=None, log=print) -> Path:
+         make_current: bool = True, only_if_newer: bool = False, opener=None, log=print) -> Path | None:
     """Download a release from GitHub, verify it exactly as the manager will, and install it.
 
     Nothing reaches the release store unless BOTH signatures verify against the keys the caller
     pins (the manager's AGENT_RELEASE_PUBLIC_KEY / AGENT_RELEASE_P256_PUBLIC_KEY), every file
     matches its signed SHA-256 and the version matches the tag. The manifest signature is
     checked before the large files are fetched. Only files the signed manifest lists are
-    taken; any other asset on the GitHub release is ignored."""
+    taken; any other asset on the GitHub release is ignored.
+
+    only_if_newer is for a periodic caller (`watch`): after the (small) manifest has been verified,
+    do nothing unless this is a version the store does not hold AND is newer than the one being
+    served, so a poll costs one API call and one small download, never a rollback and never a
+    re-download of a release that is already installed. Returns None when there was nothing to do."""
     if not _REPO_RE.fullmatch(repo):
         raise ReleaseError(f"--repo must be OWNER/REPO (got {repo!r})")
     dest = Path(dest)
@@ -767,6 +775,19 @@ def pull(*, repo: str, dest: Path, public_key_b64: str, p256_public_key_b64: str
         manifest = json.loads(manifest_bytes)
         if manifest.get("version") != version:
             raise ReleaseError(f"manifest is version {manifest.get('version')!r} but the tag says {version!r}")
+        if only_if_newer:
+            held = dest / version
+            served = (dest / "CURRENT").read_text(encoding="utf-8").strip() if (dest / "CURRENT").is_file() else ""
+            if held.exists() and (held / "manifest.json").read_bytes() == manifest_bytes:
+                log(f"  {version} is already installed; nothing to do")
+                if make_current and served != version and (_version_tuple(served) or ()) < (_version_tuple(version) or ()):
+                    _write_current(dest, version)
+                    log(f"  {version} is now the release the manager serves")
+                return held
+            old_t, new_t = _version_tuple(served), _version_tuple(version)
+            if served and old_t and new_t and new_t <= old_t:
+                log(f"  the newest published release ({version}) is not newer than the one served ({served}); nothing to do")
+                return None
         log("  manifest signature OK - fetching the files it lists")
 
         for name in manifest_file_names(manifest):
@@ -798,6 +819,42 @@ def pull(*, repo: str, dest: Path, public_key_b64: str, p256_public_key_b64: str
         return target
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def watch(*, repo: str, dest: Path, public_key_b64: str, p256_public_key_b64: str | None = None,
+          token: str | None = None, api_url: str = GITHUB_API, make_current: bool = True,
+          interval_seconds: float = 900, once: bool = False, sleep=None, log=print, pull_fn=None) -> None:
+    """Keep the manager's release store up to date by itself: every `interval_seconds` look for a newer
+    signed release on GitHub and install it exactly as `pull` does (both signatures, every checksum).
+
+    Safe to leave running: a failure of any kind (GitHub down, a release that does not verify, a full
+    disk) is logged and retried later, with a growing delay, and never stops the loop or touches what
+    is already being served. An empty file named PAUSE in the store holds it still."""
+    import time as _time
+    sleep = sleep or _time.sleep
+    pull_fn = pull_fn or pull
+    dest = Path(dest)
+    failures = 0
+    while True:
+        try:
+            if (dest / PAUSE_FILE).exists():
+                log(f"paused: {dest / PAUSE_FILE} exists (delete it to resume)")
+            else:
+                if dest.exists() and not os.access(dest, os.W_OK):
+                    uid, gid = getattr(os, "getuid", lambda: "?")(), getattr(os, "getgid", lambda: "?")()
+                    raise ReleaseError(f"the release folder {dest} is not writable by this process (uid {uid}): "
+                                       f"run  sudo chown -R {uid}:{gid} <that folder>  on the host")
+                pull_fn(repo=repo, dest=dest, public_key_b64=public_key_b64, p256_public_key_b64=p256_public_key_b64,
+                        token=token, api_url=api_url, make_current=make_current, only_if_newer=True, log=log)
+            failures = 0
+        except (ReleaseError, OSError, ValueError, urllib.error.URLError) as exc:
+            failures += 1
+            log(f"release sync failed ({failures} in a row): {exc}; will retry")
+        if once:
+            if failures:
+                raise ReleaseError("the release sync did not complete (see above)")
+            return
+        sleep(min(interval_seconds * (2 ** min(failures, 4)) if failures else interval_seconds, 3600))
 
 
 def read_env_file(path: Path) -> dict[str, str]:
@@ -865,8 +922,53 @@ def main(argv: list[str] | None = None) -> int:
     pl.add_argument("--api-url", default=GITHUB_API, help="GitHub API base (GitHub Enterprise Server)")
     # The GitHub token comes from GITHUB_TOKEN / GH_TOKEN, never from the command line.
 
+    wt = sub.add_parser("watch", help="keep the release store up to date: poll GitHub and install newer signed releases "
+                                       "(what the agent-release-sync service runs)")
+    wt.add_argument("--repo", default=None, help="OWNER/REPO that publishes the agent releases (default: AGENT_RELEASE_GITHUB_REPO)")
+    wt.add_argument("--to", required=True, type=Path, help="the manager's AGENT_RELEASE_DIR")
+    wt.add_argument("--interval-minutes", type=float, default=None,
+                    help="how often to look (default: AGENT_RELEASE_SYNC_INTERVAL_MINUTES or 15; 5 to 1440)")
+    wt.add_argument("--no-current", action="store_true",
+                    help="install new releases but do not make them the served one (promote by hand)")
+    wt.add_argument("--once", action="store_true", help="look once and exit (non-zero if it could not complete)")
+    wt.add_argument("--env-file", type=Path, default=None)
+    wt.add_argument("--public-key", default=None)
+    wt.add_argument("--p256-public-key", default=None)
+    wt.add_argument("--api-url", default=GITHUB_API)
+
     args = parser.parse_args(argv)
     try:
+        if args.cmd == "watch":
+            env = dict(os.environ)
+            if args.env_file:
+                env.update(read_env_file(args.env_file))
+            repo = args.repo or env.get("AGENT_RELEASE_GITHUB_REPO", "")
+            if not repo:
+                raise ReleaseError("no GitHub repository: pass --repo or set AGENT_RELEASE_GITHUB_REPO (OWNER/REPO)")
+            public_key = args.public_key or env.get("AGENT_RELEASE_PUBLIC_KEY")
+            if not public_key:
+                raise ReleaseError("no release public key: set AGENT_RELEASE_PUBLIC_KEY (the public half only)")
+            minutes = args.interval_minutes
+            if minutes is None:
+                try:
+                    minutes = float(env.get("AGENT_RELEASE_SYNC_INTERVAL_MINUTES") or 15)
+                except ValueError:
+                    minutes = 15.0
+            minutes = min(1440.0, max(5.0, minutes))
+            token = env.get("AGENT_RELEASE_GITHUB_TOKEN") or env.get("GITHUB_TOKEN") or env.get("GH_TOKEN")
+            # AGENT_RELEASE_SYNC_AUTO_PROMOTE=false: install new releases but leave the served one alone,
+            # so the owner can look first and promote by hand (write the version into CURRENT).
+            promote = (env.get("AGENT_RELEASE_SYNC_AUTO_PROMOTE") or "true").strip().lower() not in ("0", "false", "no", "off")
+            make_current = promote and not args.no_current
+            print(f"agent-release sync: watching {repo} every {minutes:g} min into {args.to} "
+                  f"({'authenticated' if token else 'no GitHub token: public repository only'}; "
+                  f"{'new releases are served at once' if make_current else 'new releases are installed but NOT served until promoted'})",
+                  flush=True)
+            watch(repo=repo, dest=args.to, public_key_b64=public_key,
+                  p256_public_key_b64=args.p256_public_key or env.get("AGENT_RELEASE_P256_PUBLIC_KEY") or None,
+                  token=token, api_url=args.api_url, make_current=make_current,
+                  interval_seconds=minutes * 60, once=args.once, log=lambda m: print(m, flush=True))
+            return 0
         if args.cmd == "keygen":
             if not args.out and not args.p256_out:
                 raise ReleaseError("keygen needs --out and/or --p256-out")

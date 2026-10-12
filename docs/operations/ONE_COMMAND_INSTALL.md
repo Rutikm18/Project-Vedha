@@ -30,6 +30,11 @@ do them by hand or something fails.
 one line in **any** Command Prompt or PowerShell window on the machine (no need to open it as Administrator:
 when it is not elevated, the installer asks Windows for permission and continues in a new Administrator window). Nothing else.
 
+**No Windows PC at all (cloud build + automatic sync):** if GitHub Actions works for you, the whole publishing step
+can happen without any PC: GitHub builds and signs the Windows agent, and the manager's `agent-release-sync`
+service picks the signed release up by itself. One-time setup and what it protects:
+[AGENT_DISTRIBUTION](AGENT_DISTRIBUTION.md), "Releasing with CI" and "Automatic release sync".
+
 **No token at all (opt-in, 12 Oct 2026):** add `-AllowTokenlessInstall` to the publish command (it sets
 `AGENT_ALLOW_TOKENLESS_INSTALL=true` on the manager). Fleet -> Add agent then also shows a command with **no `vet_`
 token in it**: it can be pasted on any number of machines. Each one downloads the signed package, installs, connects
