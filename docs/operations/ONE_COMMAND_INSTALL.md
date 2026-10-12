@@ -30,6 +30,12 @@ do them by hand or something fails.
 one line in **any** Command Prompt or PowerShell window on the machine (no need to open it as Administrator:
 when it is not elevated, the installer asks Windows for permission and continues in a new Administrator window). Nothing else.
 
+> **Security review pending (12 Oct 2026).** The kit and `publish-release.ps1 -ConfigureManager` publish over ssh from a PC with a
+> long-lived key, and ssh now trusts a server's host key on first use. The owner flagged the approach as a security problem.
+> Do not rely on it for real customers and do not merge the kit branch until the decisions in
+> [the hand-off note](../planning/2026-10-12-windows-agent-publish-handoff.md) are made. The recommended replacement is a
+> pull-based release (no ssh, the manager verifies signatures), described there.
+
 **The kit has ONE thing to run: `install.cmd`.** Double-click it (or `install.cmd -CheckOnly` to only check). It shows ONE
 screen with the server login, the ssh key file (a `.pem` found automatically in Downloads, `.ssh`, Desktop, Documents or the
 kit folder), the manager address and the no-token choice already filled in: press Enter to accept, or type 1-4 to change one.
