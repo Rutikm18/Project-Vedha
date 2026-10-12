@@ -120,7 +120,7 @@ def test_operator_sets_and_clears_expiry():
     user = _operator()
     agent = SimpleNamespace(id=uuid.uuid4(), tenant_id=user.tenant_id, access_expires_at=None)
     db = _agent_db(agent)
-    when = NOW + timedelta(days=7)
+    when = datetime.now(timezone.utc) + timedelta(days=7)
     out = asyncio.run(agents_router.set_agent_access_expiry(
         agent.id, agents_router.AgentExpiryUpdate(access_expires_at=when), db, user))
     assert agent.access_expires_at == when
