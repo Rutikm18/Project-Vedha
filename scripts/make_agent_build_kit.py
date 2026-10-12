@@ -120,16 +120,89 @@ def build(out_dir: Path) -> Path:
     return target
 
 
+# ---- the one-line bootstrap: download the kit from a private link, check it, unpack it, publish -------------
+
+_URL_RE = __import__("re").compile(r"https://[^\s'\"`<>^|\\]{8,2000}")
+_SHA_RE = __import__("re").compile(r"[0-9a-fA-F]{64}")
+_SERVER_RE = __import__("re").compile(r"([A-Za-z0-9._-]+@)?[A-Za-z0-9.-]+")
+_MANAGER_RE = __import__("re").compile(r"https://[A-Za-z0-9.-]+(:[0-9]{1,5})?")
+_DIR_RE = __import__("re").compile(r"[A-Za-z]:\\[A-Za-z0-9_.\\-]{1,120}")
+
+PYTHON_BLOCK = (
+    "$py = try { (& python --version 2>&1 | Out-String) } catch { '' }; "
+    "if ($py -notmatch '^Python 3\\.(10|11|12)\\.') { "
+    "Write-Host 'Python 3.10-3.12 not found: installing Python 3.12 with winget'; "
+    "winget install -e --id Python.Python.3.12 --silent --accept-package-agreements --accept-source-agreements; "
+    "$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User'); "
+    "$py = try { (& python --version 2>&1 | Out-String) } catch { '' }; "
+    "if ($py -notmatch '^Python 3\\.(10|11|12)\\.') { throw 'Python 3.10-3.12 is needed and could not be installed automatically: install it from python.org (tick Add Python to PATH) and run this again.' } }"
+)
+
+
+def bootstrap_command(url: str, sha256: str, *, server: str, manager_url: str, allow_tokenless: bool = False,
+                      install_dir: str = "C:\\VedhaKit", powershell: str = "powershell", ensure_python: bool = True,
+                      extra_args: str = "") -> str:
+    """The ONE command to paste into PowerShell on the publishing PC.
+
+    It downloads the kit from `url` (any private, time-limited link: an S3 pre-signed URL, an Azure SAS URL, a GCS
+    signed URL), refuses it unless its SHA-256 equals `sha256`, unpacks it OVER `install_dir` (an existing build
+    environment, built agent and keys folder are never deleted), installs Python 3.12 with winget when no usable
+    Python is there, and runs publish-release.ps1. Every value is checked against a strict pattern first, because
+    each one ends up inside a single-quoted PowerShell string."""
+    if not _URL_RE.fullmatch(url):
+        raise ValueError("the kit link must be an https:// address with no spaces or quote characters")
+    if not _SHA_RE.fullmatch(sha256):
+        raise ValueError("the SHA-256 must be 64 hex characters")
+    if not _SERVER_RE.fullmatch(server):
+        raise ValueError("the server must look like user@host")
+    if not _MANAGER_RE.fullmatch(manager_url.rstrip("/")):
+        raise ValueError("the manager address must look like https://host")
+    if not _DIR_RE.fullmatch(install_dir):
+        raise ValueError("the install folder must be a plain Windows path such as C:\\VedhaKit")
+    if extra_args and not __import__("re").fullmatch(r"(-[A-Za-z]+ ?)+", extra_args):
+        raise ValueError("extra arguments must be plain switches such as -DryRun")
+    publish = (f"& {powershell} -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dir 'probe\\windows\\publish-release.ps1') "
+               f"-Server '{server}' -ManagerUrl '{manager_url.rstrip('/')}' -ConfigureManager"
+               + (" -AllowTokenlessInstall" if allow_tokenless else "") + (f" {extra_args.strip()}" if extra_args else ""))
+    parts = [
+        "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12",
+        "$ErrorActionPreference = 'Stop'",
+        f"$dir = '{install_dir}'",
+        "$zip = Join-Path ([IO.Path]::GetTempPath()) 'vedha-agent-build-kit.zip'",
+        f"Invoke-WebRequest -UseBasicParsing -Uri '{url}' -OutFile $zip",
+        f"if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne '{sha256.lower()}') "
+        "{ Remove-Item -LiteralPath $zip -Force; throw 'The downloaded kit does not match its checksum: nothing was unpacked.' }",
+        "Expand-Archive -LiteralPath $zip -DestinationPath $dir -Force",
+        "Remove-Item -LiteralPath $zip -Force",
+        "try { Get-ChildItem -LiteralPath $dir -Recurse -File | Unblock-File } catch { }",
+    ]
+    if ensure_python:
+        parts.append(PYTHON_BLOCK)
+    parts.append(publish)
+    return "; ".join(parts)
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=REPO / "dist")
+    parser.add_argument("--url", help="private, time-limited https link the kit will be downloaded from; "
+                                      "prints the one command to paste into PowerShell")
+    parser.add_argument("--server", default="ubuntu@YOUR_SERVER", help="user@host of the manager server (ssh)")
+    parser.add_argument("--manager-url", default="https://api.your-domain", help="https address of the manager")
+    parser.add_argument("--allow-tokenless", action="store_true", help="add -AllowTokenlessInstall")
     args = parser.parse_args(argv)
     target = build(args.out)
     size = target.stat().st_size
     with zipfile.ZipFile(target) as zf:
         count = len(zf.namelist())
     print(f"{target}  ({count} files, {size / 1e6:.2f} MB)")
-    print("sha256", hashlib.sha256(target.read_bytes()).hexdigest())
+    digest = hashlib.sha256(target.read_bytes()).hexdigest()
+    print("sha256", digest)
+    if args.url:
+        command = bootstrap_command(args.url, digest, server=args.server, manager_url=args.manager_url,
+                                    allow_tokenless=args.allow_tokenless)
+        print("\nPaste this into PowerShell on the publishing PC (the link inside it is a secret until it expires):\n")
+        print(command)
     return 0
 
 

@@ -123,3 +123,137 @@ def test_a_forbidden_path_stops_the_build():
         kit.check_clean(["probe/scanner/findings.py"])
     with pytest.raises(SystemExit):
         kit.check_clean(["probe/windows/signing-key.pem"])
+
+
+# ── the one-line bootstrap: download from a private link, check, unpack, publish ──────────────────────
+
+import hashlib
+import shutil
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+SERVER = {"server": "ubuntu@203.0.113.7", "manager_url": "https://api.example.com"}
+
+
+def _serve(data: bytes):
+    seen: list[str] = []
+
+    class H(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_GET(self):
+            seen.append(self.path)
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return httpd, f"http://127.0.0.1:{httpd.server_address[1]}", seen
+
+
+def _run(command: str, cwd: Path):
+    return subprocess.run([shutil.which("pwsh"), "-NoProfile", "-Command", command], cwd=cwd,
+                          capture_output=True, text=True, timeout=180)
+
+
+def _command(url, sha, dest, **kw):
+    # The test serves plain http on localhost and unpacks into a temp folder; the real command is https and C:\...
+    cmd = kit.bootstrap_command("https://placeholder.example.com/kit.zip", sha, install_dir="C:\\VedhaKit", powershell="pwsh",
+                                ensure_python=False, extra_args="-DryRun", **SERVER, **kw)
+    return cmd.replace("https://placeholder.example.com/kit.zip", url).replace("C:\\VedhaKit", str(dest)).replace(
+        "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; ", "")
+
+
+def test_the_command_has_exactly_the_shape_a_person_pastes(built):
+    sha = hashlib.sha256(built["zip"].read_bytes()).hexdigest()
+    cmd = kit.bootstrap_command("https://b.s3.amazonaws.com/k.zip?X-Amz-Signature=ab&X-Amz-Expires=3600", sha,
+                                allow_tokenless=True, **SERVER)
+    assert "\n" not in cmd and cmd.count("Invoke-WebRequest") == 1
+    assert f"-ne '{sha}'" in cmd and "-AllowTokenlessInstall" in cmd and "-ConfigureManager" in cmd
+    assert "Expand-Archive" in cmd and "-Force" in cmd
+    assert "Remove-Item -LiteralPath $dir" not in cmd                       # never deletes an existing build folder
+    assert "ExecutionPolicy Bypass" in cmd                                   # a default Windows policy cannot block the script
+    assert "winget install -e --id Python.Python.3.12" in cmd               # installs Python only when it is missing
+    assert "Tls12" in cmd
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="no PowerShell here")
+def test_download_check_unpack_and_run_the_publish_plan(built, tmp_path):
+    data = built["zip"].read_bytes()
+    httpd, base, seen = _serve(data)
+    try:
+        dest = tmp_path / "VedhaKit"
+        done = _run(_command(base + "/kit.zip?sig=abc&exp=1", hashlib.sha256(data).hexdigest(), dest), tmp_path)
+    finally:
+        httpd.shutdown()
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "Dry run: nothing was done" in done.stdout
+    assert (dest / "probe" / "windows" / "publish-release.ps1").is_file() and (dest / "VERSION").is_file()
+    assert seen == ["/kit.zip?sig=abc&exp=1"]
+    assert not list(Path(tmp_path).glob("vedha-agent-build-kit.zip"))      # the download is removed
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="no PowerShell here")
+def test_a_kit_that_does_not_match_its_checksum_is_not_unpacked(built, tmp_path):
+    data = built["zip"].read_bytes()
+    httpd, base, _ = _serve(data[:-1] + b"X")                              # tampered in transit
+    try:
+        dest = tmp_path / "VedhaKit"
+        done = _run(_command(base + "/kit.zip", hashlib.sha256(data).hexdigest(), dest), tmp_path)
+    finally:
+        httpd.shutdown()
+    assert done.returncode != 0 and "does not match its checksum" in (done.stdout + done.stderr)
+    assert not dest.exists()
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="no PowerShell here")
+def test_unpacking_over_an_existing_folder_keeps_what_is_already_there(built, tmp_path):
+    data = built["zip"].read_bytes()
+    dest = tmp_path / "VedhaKit"
+    (dest / "probe" / "windows" / "dist" / "vedha-agent").mkdir(parents=True)
+    (dest / "probe" / "windows" / "dist" / "vedha-agent" / "vedha-agent.exe").write_bytes(b"built earlier")
+    (dest / "probe" / "windows" / ".venv-win").mkdir()
+    (dest / "probe" / "windows" / ".venv-win" / "marker").write_text("keep me")
+    httpd, base, _ = _serve(data)
+    try:
+        done = _run(_command(base + "/kit.zip", hashlib.sha256(data).hexdigest(), dest), tmp_path)
+    finally:
+        httpd.shutdown()
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert (dest / "probe" / "windows" / "dist" / "vedha-agent" / "vedha-agent.exe").read_bytes() == b"built earlier"
+    assert (dest / "probe" / "windows" / ".venv-win" / "marker").read_text() == "keep me"
+
+
+@pytest.mark.parametrize("url", ["http://x.example.com/k.zip", "https://x.example.com/k zip", "https://x.example.com/k'.zip",
+                                 "https://x.example.com/k\".zip", "https://x.example.com/k`whoami`.zip", "ftp://x/k.zip", ""])
+def test_a_link_that_could_break_out_of_its_quotes_is_refused(url):
+    with pytest.raises(ValueError):
+        kit.bootstrap_command(url, "a" * 64, **SERVER)
+
+
+@pytest.mark.parametrize("field, value", [("server", "ubuntu@host; calc"), ("server", "a b"), ("manager_url", "http://x.com"),
+                                          ("manager_url", "https://x.com/'; calc; '"), ("sha256", "abc"),
+                                          ("install_dir", "C:\\a b\\c"), ("install_dir", "C:\\x'; calc; '"),
+                                          ("extra_args", "; calc")])
+def test_other_values_are_checked_too(field, value):
+    args = {"url": "https://x.example.com/k.zip", "sha256": "a" * 64, **SERVER}
+    kwargs = {field: value}
+    if field in ("server", "manager_url"):
+        args[field] = value
+        kwargs = {}
+    elif field == "sha256":
+        args["sha256"] = value
+        kwargs = {}
+    with pytest.raises(ValueError):
+        kit.bootstrap_command(**args, **kwargs)
+
+
+def test_the_cli_prints_the_command_with_the_zips_own_checksum(tmp_path, capsys):
+    assert kit.main(["--out", str(tmp_path), "--url", "https://x.example.com/k.zip?sig=1", "--server", "ubuntu@203.0.113.7",
+                     "--manager-url", "https://api.example.com", "--allow-tokenless"]) == 0
+    out = capsys.readouterr().out
+    zip_path = next(tmp_path.glob("*.zip"))
+    assert hashlib.sha256(zip_path.read_bytes()).hexdigest() in out and "-AllowTokenlessInstall" in out
