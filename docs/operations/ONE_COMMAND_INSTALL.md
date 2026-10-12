@@ -30,6 +30,14 @@ do them by hand or something fails.
 one line in **any** Command Prompt or PowerShell window on the machine (no need to open it as Administrator:
 when it is not elevated, the installer asks Windows for permission and continues in a new Administrator window). Nothing else.
 
+**The kit has ONE thing to run: `install.cmd`.** Double-click it (or `install.cmd -CheckOnly` to only check). It asks for
+the server login, the ssh key file and the manager address, remembers them in `%USERPROFILE%\.vedha\kit-settings.json`
+(no secrets), and checks this PC (64-bit Windows, disk space, Python 3.10-3.12 which it installs with winget if
+missing, ssh/scp, internet access to the build downloads) and the SERVER (login works, the manager folder with
+`docker-compose.yml` and `.env` is where you said, your login may run docker) BEFORE the long build, then builds,
+signs and publishes. It stops at the first thing it cannot fix and says what to do. Tested here with unit tests and a
+fake `ssh` (healthy, unreachable, wrong folder, docker refused, missing key file); not run on a real Windows PC.
+
 **Only the agent on the Windows PC, not the whole repository:** `python scripts/make_agent_build_kit.py` writes
 `dist/vedha-agent-build-kit-<VERSION>.zip` (about 0.5 MB, 105 files). It holds the agent's own code (only the modules
 `agent_closure.py` lists), the build and publish scripts and the release tool. It does NOT hold the manager, the

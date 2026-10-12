@@ -56,7 +56,7 @@ def test_it_is_small(built):
 
 def test_the_expected_files_are_there(built):
     names = set(built["names"])
-    for needed in ("VERSION", "KIT-README.txt", "KIT-FILES.txt", "scripts/agent_release.py", "probe/install.sh",
+    for needed in ("VERSION", "install.cmd", "KIT-README.txt", "KIT-FILES.txt", "probe/windows/kit-install.ps1", "scripts/agent_release.py", "probe/install.sh",
                    "probe/requirements-runtime.txt", "probe/tools/agent_closure.py", "probe/agent/agent.py",
                    "probe/agent/release_trust.py", "probe/agent/auto_update.py", "probe/windows/publish-release.ps1",
                    "probe/windows/build-agent-exe.ps1", "probe/windows/package-zip.ps1", "probe/windows/install-remote.ps1",
@@ -100,15 +100,29 @@ def test_the_release_tool_in_the_kit_can_build_and_verify_a_release(built, tmp_p
     assert manifest["version"] == "9.9.9" and manifest["packages"][0]["os"] == "windows"
 
 
-def test_the_plan_runs_from_the_kit_without_the_repository(built):
+def test_there_is_exactly_one_thing_to_double_click_and_it_is_the_install_script(built):
+    root_files = [n for n in built["names"] if "/" not in n]
+    assert sorted(root_files) == ["KIT-FILES.txt", "KIT-README.txt", "VERSION", "install.cmd"]
+    cmd = zipfile.ZipFile(built["zip"]).read("install.cmd").decode("ascii")
+    assert "probe\\windows\\kit-install.ps1" in cmd and "ExecutionPolicy Bypass" in cmd and "%*" in cmd
+    assert "\r\n" in cmd                                                       # Windows line endings
+    assert "probe/windows/kit-install.cmd" not in built["names"]               # not shipped twice
+
+
+def test_the_install_script_starts_from_the_kit_without_the_repository(built, tmp_path, monkeypatch):
     pwsh = __import__("shutil").which("pwsh")
     if not pwsh:
         pytest.skip("no PowerShell here")
-    done = subprocess.run([pwsh, "-NoProfile", "-File", str(built["root"] / "probe" / "windows" / "publish-release.ps1"),
-                           "-DryRun", "-Server", "ubuntu@203.0.113.7", "-ManagerUrl", "https://api.example.com",
-                           "-ConfigureManager", "-AllowTokenlessInstall"],
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    done = subprocess.run([pwsh, "-NoProfile", "-File", str(built["root"] / "probe" / "windows" / "kit-install.ps1"),
+                           "-CheckOnly", "-Yes", "-NoPause", "-Server", "ubuntu@203.0.113.7",
+                           "-ManagerUrl", "https://api.example.com"],
                           capture_output=True, text=True, timeout=120)
-    assert done.returncode == 0 and "Dry run: nothing was done" in done.stdout, done.stdout + done.stderr
+    out = done.stdout + done.stderr
+    assert "Vedha agent build kit 1.0" in out and "Checking this PC" in out, out        # it ran from the kit alone
+    if sys.platform != "win32":
+        assert done.returncode == 1 and "must run on Windows" in out                   # and refuses cleanly elsewhere
+        assert "Nothing was built or changed" in out
 
 
 def test_it_is_reproducible(built, tmp_path):
@@ -162,7 +176,7 @@ def _run(command: str, cwd: Path):
 def _command(url, sha, dest, **kw):
     # The test serves plain http on localhost and unpacks into a temp folder; the real command is https and C:\...
     cmd = kit.bootstrap_command("https://placeholder.example.com/kit.zip", sha, install_dir="C:\\VedhaKit", powershell="pwsh",
-                                ensure_python=False, extra_args="-DryRun", **SERVER, **kw)
+                                extra_args="-CheckOnly", **SERVER, **kw)
     return cmd.replace("https://placeholder.example.com/kit.zip", url).replace("C:\\VedhaKit", str(dest)).replace(
         "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; ", "")
 
@@ -172,11 +186,12 @@ def test_the_command_has_exactly_the_shape_a_person_pastes(built):
     cmd = kit.bootstrap_command("https://b.s3.amazonaws.com/k.zip?X-Amz-Signature=ab&X-Amz-Expires=3600", sha,
                                 allow_tokenless=True, **SERVER)
     assert "\n" not in cmd and cmd.count("Invoke-WebRequest") == 1
-    assert f"-ne '{sha}'" in cmd and "-AllowTokenlessInstall" in cmd and "-ConfigureManager" in cmd
+    assert f"-ne '{sha}'" in cmd and "-AllowTokenlessInstall" in cmd
     assert "Expand-Archive" in cmd and "-Force" in cmd
     assert "Remove-Item -LiteralPath $dir" not in cmd                       # never deletes an existing build folder
     assert "ExecutionPolicy Bypass" in cmd                                   # a default Windows policy cannot block the script
-    assert "winget install -e --id Python.Python.3.12" in cmd               # installs Python only when it is missing
+    assert "kit-install.ps1" in cmd and "-Yes -NoPause" in cmd               # the one script does the checks and the publish
+    assert "publish-release.ps1" not in cmd and "winget" not in cmd          # nothing is duplicated in the command
     assert "Tls12" in cmd
 
 
@@ -189,9 +204,9 @@ def test_download_check_unpack_and_run_the_publish_plan(built, tmp_path):
         done = _run(_command(base + "/kit.zip?sig=abc&exp=1", hashlib.sha256(data).hexdigest(), dest), tmp_path)
     finally:
         httpd.shutdown()
-    assert done.returncode == 0, done.stdout + done.stderr
-    assert "Dry run: nothing was done" in done.stdout
-    assert (dest / "probe" / "windows" / "publish-release.ps1").is_file() and (dest / "VERSION").is_file()
+    out = done.stdout + done.stderr
+    assert "Vedha agent build kit 1.0" in out, out                            # downloaded, verified, unpacked, started
+    assert (dest / "probe" / "windows" / "kit-install.ps1").is_file() and (dest / "install.cmd").is_file()
     assert seen == ["/kit.zip?sig=abc&exp=1"]
     assert not list(Path(tmp_path).glob("vedha-agent-build-kit.zip"))      # the download is removed
 
@@ -222,7 +237,7 @@ def test_unpacking_over_an_existing_folder_keeps_what_is_already_there(built, tm
         done = _run(_command(base + "/kit.zip", hashlib.sha256(data).hexdigest(), dest), tmp_path)
     finally:
         httpd.shutdown()
-    assert done.returncode == 0, done.stdout + done.stderr
+    assert "Vedha agent build kit 1.0" in done.stdout + done.stderr
     assert (dest / "probe" / "windows" / "dist" / "vedha-agent" / "vedha-agent.exe").read_bytes() == b"built earlier"
     assert (dest / "probe" / "windows" / ".venv-win" / "marker").read_text() == "keep me"
 

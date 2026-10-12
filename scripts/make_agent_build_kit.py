@@ -9,6 +9,7 @@ builds the agent has no business holding that, so this packs the minimum:
   probe/install.sh                 the Linux installer the release tool embeds
   probe/requirements-runtime.txt   what the compiled agent needs
   probe/tools/agent_closure.py     computes which agent modules are compiled (and refuses the rest)
+  install.cmd                      THE one thing to double-click: checks this PC and the server, then builds and publishes
   probe/windows/                   the build, package, install and publish scripts (no tests)
   probe/agent, scanner, workflow   ONLY the modules the agent can load (agent_closure.py's list)
 
@@ -17,8 +18,8 @@ NOT in it: the manager, the console, the detection engine, the vulnerability-jud
 
     python scripts/make_agent_build_kit.py [--out DIR]       -> DIR/vedha-agent-build-kit-<VERSION>.zip
 
-On the Windows PC: unzip, open PowerShell in the unzipped folder, and run
-    powershell -ExecutionPolicy Bypass -File probe\\windows\\publish-release.ps1 -Server user@host -ManagerUrl https://api.example.com -ConfigureManager
+On the Windows PC: unzip and double-click install.cmd. It asks for the server login, the ssh key file and the manager
+address, checks everything (Python, ssh, disk, internet, the server, docker), then builds and publishes.
 """
 from __future__ import annotations
 
@@ -55,8 +56,11 @@ def kit_files() -> dict[str, Path]:
         "probe/requirements-runtime.txt": PROBE / "requirements-runtime.txt",
         "probe/tools/agent_closure.py": PROBE / "tools" / "agent_closure.py",
     }
+    files["install.cmd"] = PROBE / "windows" / "kit-install.cmd"       # the single file a person double-clicks
     for path in sorted((PROBE / "windows").rglob("*")):
         rel = path.relative_to(PROBE / "windows")
+        if rel.as_posix() == "kit-install.cmd":
+            continue                                                  # shipped as install.cmd at the root instead
         if path.suffix == ".md":
             continue                                           # developer notes: not needed to build
         if path.is_file() and not (set(rel.parts[:-1]) & WINDOWS_EXCLUDED_DIRS):
@@ -78,24 +82,20 @@ def check_clean(names) -> None:
 README = """Vedha agent build kit {version}
 =================================
 
-What this is: the minimum needed to build, sign and publish the Windows agent from this PC.
-It holds the agent's own code and the build scripts. It does not hold the manager, the console, the
-detection engine, the vulnerability rules, tests, or any key or password.
+Double-click  install.cmd  . That is all.
 
-You need on this PC: Windows 10/11 or Server 2016+, Python 3.10, 3.11 or 3.12 (tick "Add Python to PATH"),
-and ssh that already logs in to your manager server with a key.
+It asks you for three things (the server login such as ubuntu@16.4.75.44, the ssh key file if your server uses one,
+and the manager address such as https://api.your-domain), then it:
+  - checks this PC: Windows, disk space, Python 3.10-3.12 (it installs Python 3.12 if missing), ssh, internet
+  - checks the server before anything long starts: you can log in, the manager folder is there, you may run docker
+  - builds, signs and publishes the Windows agent (15-35 minutes the first time) and tells the manager about it
+It stops at the first thing it cannot fix and says exactly what to do. Re-running is safe.
 
-1. Unzip this folder somewhere with a short path and no spaces, for example C:\\VedhaKit
-2. Open PowerShell in that folder and run (use your own server and manager address):
+What is in this kit: the agent's own code and the build scripts. It does not hold the manager, the console, the
+detection engine, the vulnerability rules, tests, or any key or password. KIT-FILES.txt lists every file with its SHA-256.
 
-   powershell -ExecutionPolicy Bypass -File probe\\windows\\publish-release.ps1 -Server ubuntu@YOUR_SERVER -ManagerUrl https://api.your-domain -ConfigureManager
-
-   Add -AllowTokenlessInstall to let machines install without a token (you approve them in Fleet).
-   Add -DryRun first to see the plan without doing anything.
-3. The first run takes 15-35 minutes (it builds the agent). It creates your signing keys in
-   %USERPROFILE%\\.vedha : copy that folder somewhere safe and offline, and never send it to anyone.
-
-Files in this kit and their SHA-256 are listed in KIT-FILES.txt.
+Your signing keys are created in %USERPROFILE%\\.vedha : copy that folder somewhere safe and offline, never send it to anyone.
+To only check (no build, nothing changed):  install.cmd -CheckOnly
 """
 
 
@@ -128,26 +128,15 @@ _SERVER_RE = __import__("re").compile(r"([A-Za-z0-9._-]+@)?[A-Za-z0-9.-]+")
 _MANAGER_RE = __import__("re").compile(r"https://[A-Za-z0-9.-]+(:[0-9]{1,5})?")
 _DIR_RE = __import__("re").compile(r"[A-Za-z]:\\[A-Za-z0-9_.\\-]{1,120}")
 
-PYTHON_BLOCK = (
-    "$py = try { (& python --version 2>&1 | Out-String) } catch { '' }; "
-    "if ($py -notmatch '^Python 3\\.(10|11|12)\\.') { "
-    "Write-Host 'Python 3.10-3.12 not found: installing Python 3.12 with winget'; "
-    "winget install -e --id Python.Python.3.12 --silent --accept-package-agreements --accept-source-agreements; "
-    "$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User'); "
-    "$py = try { (& python --version 2>&1 | Out-String) } catch { '' }; "
-    "if ($py -notmatch '^Python 3\\.(10|11|12)\\.') { throw 'Python 3.10-3.12 is needed and could not be installed automatically: install it from python.org (tick Add Python to PATH) and run this again.' } }"
-)
-
-
 def bootstrap_command(url: str, sha256: str, *, server: str, manager_url: str, allow_tokenless: bool = False,
-                      install_dir: str = "C:\\VedhaKit", powershell: str = "powershell", ensure_python: bool = True,
+                      install_dir: str = "C:\\VedhaKit", powershell: str = "powershell",
                       extra_args: str = "", ssh_key: str = "") -> str:
     """The ONE command to paste into PowerShell on the publishing PC.
 
     It downloads the kit from `url` (any private, time-limited link: an S3 pre-signed URL, an Azure SAS URL, a GCS
     signed URL), refuses it unless its SHA-256 equals `sha256`, unpacks it OVER `install_dir` (an existing build
-    environment, built agent and keys folder are never deleted), installs Python 3.12 with winget when no usable
-    Python is there, and runs publish-release.ps1. Every value is checked against a strict pattern first, because
+    environment, built agent and keys folder are never deleted), and runs kit-install.ps1 with -Yes: that one
+    script checks this PC and the server (installing Python 3.12 with winget when it is missing) and then publishes. Every value is checked against a strict pattern first, because
     each one ends up inside a single-quoted PowerShell string."""
     if not _URL_RE.fullmatch(url):
         raise ValueError("the kit link must be an https:// address with no spaces or quote characters")
@@ -163,9 +152,9 @@ def bootstrap_command(url: str, sha256: str, *, server: str, manager_url: str, a
         raise ValueError("the ssh key must be a plain Windows path such as C:\\Users\\you\\keys\\server.pem")
     if extra_args and not __import__("re").fullmatch(r"(-[A-Za-z]+ ?)+", extra_args):
         raise ValueError("extra arguments must be plain switches such as -DryRun")
-    publish = (f"& {powershell} -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dir 'probe\\windows\\publish-release.ps1') "
+    publish = (f"& {powershell} -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dir 'probe\\windows\\kit-install.ps1') -Yes -NoPause "
                f"-Server '{server}' " + (f"-SshKey '{ssh_key}' " if ssh_key else "")
-               + f"-ManagerUrl '{manager_url.rstrip('/')}' -ConfigureManager"
+               + f"-ManagerUrl '{manager_url.rstrip('/')}'"
                + (" -AllowTokenlessInstall" if allow_tokenless else "") + (f" {extra_args.strip()}" if extra_args else ""))
     parts = [
         "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12",
@@ -179,8 +168,6 @@ def bootstrap_command(url: str, sha256: str, *, server: str, manager_url: str, a
         "Remove-Item -LiteralPath $zip -Force",
         "try { Get-ChildItem -LiteralPath $dir -Recurse -File | Unblock-File } catch { }",
     ]
-    if ensure_python:
-        parts.append(PYTHON_BLOCK)
     parts.append(publish)
     return "; ".join(parts)
 
