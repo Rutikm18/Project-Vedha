@@ -36,6 +36,7 @@ def fake_ssh(tmp_path):
     bin_dir.mkdir()
     ssh = bin_dir / "ssh"
     ssh.write_text("""#!/bin/sh
+echo "$*" >> "$FAKE_SSH_LOG"
 cmd="$*"
 case "$FAKE_SSH_MODE" in
   unreachable) echo "ssh: connect to host x port 22: Connection timed out" >&2; exit 255 ;;
@@ -61,9 +62,16 @@ def _server_check(fake_ssh, tmp_path, mode, *, keyfile=None):
                f"$r = Confirm-KitServer -Target 'ubuntu@203.0.113.7' {key_arg} -ComposeDir '/opt/Project-Vedha/manager'; "
                "Write-Host ('RESULT=[' + $r + '] PROBLEMS=' + $script:Problems.Count)")
     env = {**os.environ, "PATH": f"{fake_ssh}{os.pathsep}{os.environ['PATH']}", "FAKE_SSH_MODE": mode,
-           "USERPROFILE": str(tmp_path)}
+           "USERPROFILE": str(tmp_path), "FAKE_SSH_LOG": str(tmp_path / "ssh.log")}
     done = subprocess.run([PS, "-NoProfile", "-Command", snippet], capture_output=True, text=True, timeout=120, env=env)
     return done.stdout + done.stderr
+
+
+def test_the_host_key_question_is_never_asked(fake_ssh, tmp_path):
+    out = _server_check(fake_ssh, tmp_path, "ok")
+    assert "continue connecting" not in out and "type yes" not in out
+    calls = (tmp_path / "ssh.log").read_text().splitlines()
+    assert calls and all("StrictHostKeyChecking=accept-new" in line for line in calls), calls
 
 
 def test_a_healthy_server_passes_every_check(fake_ssh, tmp_path):

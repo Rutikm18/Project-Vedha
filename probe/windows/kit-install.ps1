@@ -46,6 +46,19 @@ function Test-KitKeyPath([string]$Value) {
   return [bool]($Value -match '^[A-Za-z]:\\[A-Za-z0-9 _.()\\-]{1,200}$') -and ($Value -notmatch '\.\.')
 }
 
+function Select-KitPython($Found) {
+  # $Found: objects with .Path and .Text (the output of `<path> --version`). The best SUPPORTED one wins: 3.12, then
+  # 3.11, then 3.10. 3.13 and newer are skipped on purpose (the compiler and pinned libraries do not support them yet).
+  $best = ''; $bestMinor = -1
+  foreach ($f in @($Found)) {
+    if ($f.Text -match '^\s*Python 3\.(10|11|12)\.\d+') {
+      $minor = [int]$Matches[1]
+      if ($minor -gt $bestMinor) { $best = [string]$f.Path; $bestMinor = $minor }
+    }
+  }
+  return $best
+}
+
 function Test-KitPythonOutput([string]$Text) {
   # 'Python 3.12.4' -> true for 3.10, 3.11, 3.12 only (the build needs a version Nuitka and the pins support).
   return [bool]($Text -match '^\s*Python 3\.(10|11|12)\.\d+')
@@ -113,7 +126,7 @@ function Get-KitRemoteFacts([string]$Output) {
 function Get-KitPublishArguments {
   # The argument list for publish-release.ps1, built only from values that passed their checks.
   param([string]$Server, [string]$SshKey, [string]$ManagerUrl, [string]$ComposeDir, [string]$ReleaseDir,
-        [bool]$Tokenless, [bool]$DryRun, [bool]$SkipBuild)
+        [bool]$Tokenless, [bool]$DryRun, [bool]$SkipBuild, [string]$PythonExe = '')
   $a = @('-Server', $Server)
   if ($SshKey) { $a += @('-SshKey', $SshKey) }
   $a += @('-ManagerUrl', $ManagerUrl.TrimEnd('/'), '-ConfigureManager')
@@ -122,6 +135,7 @@ function Get-KitPublishArguments {
   if ($Tokenless) { $a += '-AllowTokenlessInstall' }
   if ($DryRun) { $a += '-DryRun' }
   if ($SkipBuild) { $a += '-SkipBuild' }
+  if ($PythonExe) { $a += @('-PythonExe', $PythonExe) }
   return $a
 }
 
@@ -130,6 +144,7 @@ function Get-KitPublishArguments {
 # ---------------------------------------------------------------------------
 
 $script:Problems = @()
+$script:PythonExe = ''
 function Write-Head([string]$Text) { Write-Host ''; Write-Host $Text -ForegroundColor Cyan }
 function Write-Ok([string]$Text)   { Write-Host ('  [ OK ] ' + $Text) -ForegroundColor Green }
 function Write-Warn([string]$Text) { Write-Host ('  [WARN] ' + $Text) -ForegroundColor Yellow }
@@ -166,25 +181,55 @@ function Update-KitPath {
   $env:Path = (@($machine, $user) | Where-Object { $_ }) -join ';'
 }
 
-function Get-KitPythonVersionText {
+function Get-KitPythonVersionOf([string]$Exe) {
   $previous = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
-  try { return ((& python --version 2>&1) | Out-String).Trim() } catch { return '' } finally { $ErrorActionPreference = $previous }
+  try { return ((& $Exe --version 2>&1) | Out-String).Trim() } catch { return '' } finally { $ErrorActionPreference = $previous }
+}
+
+function Get-KitPythonCandidates {
+  # Every python.exe worth asking: the one on PATH, the ones the py launcher knows, and the usual install folders.
+  # Several Pythons can be installed side by side, and the newest is often the one first on PATH.
+  $paths = @()
+  foreach ($c in @(Get-Command python -All -ErrorAction SilentlyContinue)) { if ($c.Source) { $paths += $c.Source } }
+  if (Get-Command py -ErrorAction SilentlyContinue) {
+    foreach ($v in '3.12', '3.11', '3.10') {
+      $previous = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+      try { $p = ((& py "-$v" -c 'import sys; print(sys.executable)' 2>$null) | Out-String).Trim() } catch { $p = '' } finally { $ErrorActionPreference = $previous }
+      if ($p) { $paths += $p }
+    }
+  }
+  foreach ($v in '312', '311', '310') {
+    foreach ($root in @((Join-Path $env:LOCALAPPDATA 'Programs\Python'), $env:ProgramFiles, 'C:\')) {
+      if ($root) { $paths += (Join-Path (Join-Path $root ('Python' + $v)) 'python.exe') }
+    }
+  }
+  return @($paths | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) } | Select-Object -Unique)
+}
+
+function Find-KitPython {
+  $found = @()
+  foreach ($exe in (Get-KitPythonCandidates)) { $found += [pscustomobject]@{ Path = $exe; Text = (Get-KitPythonVersionOf $exe) } }
+  return $found
 }
 
 function Confirm-KitPython {
-  $text = Get-KitPythonVersionText
-  if (Test-KitPythonOutput $text) { Write-Ok ($text + ' is installed'); return }
-  if ($text) { Write-Warn ("Found '$text'; the build needs Python 3.10, 3.11 or 3.12.") } else { Write-Warn 'Python was not found.' }
-  if ($CheckOnly) { Write-Bad 'Python 3.10-3.12 is missing' 'Run install.cmd without -CheckOnly and it installs Python 3.12 for you.'; return }
+  $found = Find-KitPython
+  $best = Select-KitPython $found
+  if ($best) { Write-Ok ((Get-KitPythonVersionOf $best) + ' will be used (' + $best + ')'); $script:PythonExe = $best; return }
+  $seen = (@($found | ForEach-Object { $_.Text }) | Where-Object { $_ } | Select-Object -Unique) -join ', '
+  if ($seen) { Write-Warn ("Found $seen; the build needs Python 3.10, 3.11 or 3.12.") } else { Write-Warn 'Python was not found.' }
+  if ($CheckOnly) { Write-Bad 'Python 3.10-3.12 is missing' 'Run install.cmd without -CheckOnly and it installs Python 3.12 for you (it can sit next to your other Python).'; return }
+  $detail = ''
   if (Get-Command winget -ErrorAction SilentlyContinue) {
-    Write-Host '         installing Python 3.12 with winget (a few minutes; nothing else on this PC is changed) ...'
-    & winget install -e --id Python.Python.3.12 --silent --accept-package-agreements --accept-source-agreements | Out-Null
+    Write-Host '         installing Python 3.12 with winget (a few minutes; your other Python is left alone) ...'
+    $out = (& winget install -e --id Python.Python.3.12 --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-String)
+    $detail = 'winget exit code ' + $LASTEXITCODE + ': ' + (($out.Trim() -split "`n" | Select-Object -Last 2) -join ' ')
     Update-KitPath
-    $text = Get-KitPythonVersionText
-    if (Test-KitPythonOutput $text) { Write-Ok ($text + ' was installed'); return }
-  }
-  Write-Bad 'Python 3.10-3.12 could not be installed automatically' 'Install Python 3.12 from https://www.python.org/downloads/ (tick "Add Python to PATH"), then double-click install.cmd again.'
+    $best = Select-KitPython (Find-KitPython)
+    if ($best) { Write-Ok ((Get-KitPythonVersionOf $best) + ' was installed (' + $best + ')'); $script:PythonExe = $best; return }
+  } else { $detail = 'winget is not available on this PC' }
+  Write-Bad ('Python 3.10-3.12 could not be installed automatically (' + $detail + ')') 'Install Python 3.12 from https://www.python.org/downloads/ (it can stay next to Python 3.13; tick "Add Python to PATH"), then double-click install.cmd again.'
 }
 
 function Confirm-KitSsh {
@@ -203,7 +248,11 @@ function Confirm-KitPc {
   Confirm-KitSsh
   foreach ($site in @(@('pypi.org', 'https://pypi.org/simple/'), @('files.pythonhosted.org', 'https://files.pythonhosted.org/'), @('github.com', 'https://github.com/'))) {
     try { Invoke-WebRequest -UseBasicParsing -Method Head -Uri $site[1] -TimeoutSec 20 | Out-Null; Write-Ok ($site[0] + ' is reachable') }
-    catch { Write-Warn ($site[0] + ' did not answer (' + $_.Exception.Message + '). The build downloads from it; behind a proxy, set HTTPS_PROXY first.') }
+    catch {
+      # Any HTTP answer, even 404 for a page that does not exist, proves the site is reachable; only a network failure does not.
+      if ($_.Exception.Response) { Write-Ok ($site[0] + ' is reachable') }
+      else { Write-Warn ($site[0] + ' did not answer (' + $_.Exception.Message + '). The build downloads from it; behind a proxy, set HTTPS_PROXY first.') }
+    }
   }
 }
 
@@ -219,11 +268,11 @@ function Invoke-KitSsh {
   $ErrorActionPreference = 'Continue'
   try {
     if ($Show) {
-      # Not captured: the first connection asks whether to trust the server, and a key may ask for its passphrase.
-      & ssh @KeyArgs -o ConnectTimeout=20 $Target $Command
+      # Not captured: a key with a passphrase may ask for it. The server's host key is trusted on first use, with no question.
+      & ssh @KeyArgs -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 $Target $Command
       return [pscustomobject]@{ Code = $LASTEXITCODE; Output = '' }
     }
-    $out = & ssh @KeyArgs -o ConnectTimeout=20 $Target $Command 2>&1 | Out-String
+    $out = & ssh @KeyArgs -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 $Target $Command 2>&1 | Out-String
     return [pscustomobject]@{ Code = $LASTEXITCODE; Output = $out }
   } finally { $ErrorActionPreference = $previous }
 }
@@ -235,7 +284,6 @@ function Confirm-KitServer {
     if (Test-Path -LiteralPath $Key -PathType Leaf) { Write-Ok "ssh key file found: $Key" } else { Write-Bad "The ssh key file was not found: $Key" 'Check the path, or leave it empty if you use ssh-agent.'; return $null }
   }
   $keyArgs = if ($Key) { @('-i', $Key) } else { @() }
-  Write-Host '         (the first time, ssh asks whether to trust the server: type yes)'
   $hello = Invoke-KitSsh $keyArgs $Target 'echo vedha-ssh-ok' -Show
   if ($hello.Code -ne 0) {
     Write-Bad "Cannot log in to $Target (ssh exit code $($hello.Code); its message is above)" 'Check the user name (ubuntu on Ubuntu, ec2-user on Amazon Linux), the key file, and that the server is running and port 22 is open to this PC.'
@@ -368,7 +416,7 @@ function Invoke-KitMain {
   $release = if ($RemoteReleaseDir) { $RemoteReleaseDir } else { ($RemoteComposeDir.TrimEnd('/') + '/agent-releases') }
   if (-not (Test-KitRemoteDir $release)) { throw "Not a safe release folder on the server: '$release'" }
   $publishArgs = Get-KitPublishArguments -Server $Server -SshKey $SshKey -ManagerUrl $ManagerUrl -ComposeDir $RemoteComposeDir `
-    -ReleaseDir $release -Tokenless $tokenless -DryRun ([bool]$DryRun) -SkipBuild ([bool]$SkipBuild)
+    -ReleaseDir $release -Tokenless $tokenless -DryRun ([bool]$DryRun) -SkipBuild ([bool]$SkipBuild) -PythonExe ([string]$script:PythonExe)
   Write-Host ''
   Write-Host ('Starting: building and publishing release ' + $version + ' (15-35 minutes the first time). Leave this window open.') -ForegroundColor Cyan
 

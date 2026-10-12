@@ -568,14 +568,21 @@ def is_remote_dest(dest: str) -> bool:
             and not Path(dest).exists())
 
 
+# The first connection to a server is trusted and remembered without asking ("Are you sure you want to continue
+# connecting?"); a server whose key LATER changes is refused. This is trust-on-first-use (see
+# docs/design/agent-delivery-threat-model.md, point 7): check the host key fingerprint once if that matters to you.
+_SSH_TRUST = ["-o", "StrictHostKeyChecking=accept-new"]
+
+
 def _ssh_identity_args() -> list[str]:
-    """`-i <key>` when VEDHA_SSH_IDENTITY names a key file (set by publish-release.ps1 -SshKey), else nothing."""
+    """ssh/scp options: `-i <key>` when VEDHA_SSH_IDENTITY names a key file (set by publish-release.ps1 -SshKey),
+    plus trust-on-first-use host keys so nothing stops to ask a question."""
     key = os.environ.get("VEDHA_SSH_IDENTITY", "").strip()
     if not key:
-        return []
+        return list(_SSH_TRUST)
     if not Path(key).is_file():
         raise ReleaseError(f"VEDHA_SSH_IDENTITY names a file that does not exist: {key}")
-    return ["-i", key]
+    return ["-i", key, *_SSH_TRUST]
 
 
 def _publish_with_scp(release_dir: Path, host: str, remote: str, version: str) -> None:
@@ -610,7 +617,7 @@ def publish(release_dir: Path, dest: str) -> None:
             raise ReleaseError("publishing to a remote host needs rsync, or ssh and scp "
                                "(Windows 10/11: Settings > Optional features > OpenSSH Client)")
         ident = _ssh_identity_args()
-        rsh = ["-e", "ssh -i " + shlex.quote(ident[1])] if ident else []
+        rsh = ["-e", "ssh " + " ".join(shlex.quote(a) for a in ident)]
         _run(["rsync", "-a", *rsh, "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r", f"{release_dir}/", f"{host}:{remote}/{version}/"])
         with tempfile.TemporaryDirectory() as tmp:
             current = Path(tmp) / "CURRENT"

@@ -29,6 +29,15 @@ foreach ($bad in 'server.pem', 'C:\k\..\x.pem', "C:\k\a'b.pem", 'C:\k\a;b.pem', 
 foreach ($v in 'Python 3.10.11', 'Python 3.11.9', 'Python 3.12.4', "  Python 3.12.1`r`n") { Assert-True (Test-KitPythonOutput $v) "python ok: [$($v.Trim())]" }
 foreach ($v in 'Python 3.9.13', 'Python 3.13.0', 'Python 2.7.18', '', 'python is not recognized', 'Python 3.1.2') { Assert-False (Test-KitPythonOutput $v) "python refused: [$v]" }
 
+# --- choosing among several installed Pythons (3.13 first on PATH must not win) ----------------------
+function New-Py($path, $text) { return [pscustomobject]@{ Path = $path; Text = $text } }
+Assert-Equal (Select-KitPython @((New-Py 'C:\Py313\python.exe' 'Python 3.13.14'))) '' 'python pick: 3.13 alone is not enough'
+Assert-Equal (Select-KitPython @((New-Py 'C:\Py313\python.exe' 'Python 3.13.14'), (New-Py 'C:\Py312\python.exe' 'Python 3.12.7'))) 'C:\Py312\python.exe' 'python pick: 3.12 beside 3.13 is chosen'
+Assert-Equal (Select-KitPython @((New-Py 'C:\Py310\python.exe' 'Python 3.10.11'), (New-Py 'C:\Py311\python.exe' 'Python 3.11.9'))) 'C:\Py311\python.exe' 'python pick: the highest supported version wins'
+Assert-Equal (Select-KitPython @((New-Py 'C:\a\python.exe' 'Python was not found; run without arguments to install from the Microsoft Store'))) '' 'python pick: the Windows Store stub is not a Python'
+Assert-Equal (Select-KitPython @()) '' 'python pick: nothing installed'
+Assert-Equal (Select-KitPython @((New-Py 'C:\Py39\python.exe' 'Python 3.9.13'), (New-Py 'C:\Py312\python.exe' 'Python 3.12.1'))) 'C:\Py312\python.exe' 'python pick: too old is skipped'
+
 # --- saved settings: only well-formed values survive ------------------------------------------------
 $json = ConvertTo-KitSettingsJson 'ubuntu@1.2.3.4' 'C:\k\s.pem' 'https://api.example.com' '/opt/x/manager' $true
 $back = ConvertFrom-KitSettingsJson $json
@@ -86,6 +95,14 @@ $a = Get-KitPublishArguments -Server 'ubuntu@h' -SshKey 'C:\k\s.pem' -ManagerUrl
 Assert-Equal ($a -join ' ') '-Server ubuntu@h -SshKey C:\k\s.pem -ManagerUrl https://api.example.com -ConfigureManager -RemoteComposeDir /opt/x/manager -RemoteReleaseDir /opt/x/manager/agent-releases -AllowTokenlessInstall' 'publish args: full'
 $a = Get-KitPublishArguments -Server 'ubuntu@h' -SshKey '' -ManagerUrl 'https://api.example.com' -ComposeDir '' -ReleaseDir '' -Tokenless $false -DryRun $true -SkipBuild $true
 Assert-Equal ($a -join ' ') '-Server ubuntu@h -ManagerUrl https://api.example.com -ConfigureManager -DryRun -SkipBuild' 'publish args: minimal'
+
+$a = Get-KitPublishArguments -Server 'ubuntu@h' -SshKey '' -ManagerUrl 'https://api.example.com' -ComposeDir '' -ReleaseDir '' -Tokenless $false -DryRun $false -SkipBuild $false -PythonExe 'C:\Py312\python.exe'
+Assert-True ((($a -join ' ') -like '*-PythonExe C:\Py312\python.exe')) 'publish args: the chosen Python is passed on'
+$text = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '..\kit-install.ps1')
+Assert-True ($text -match 'Exception\.Response') 'a site that answers 404 still counts as reachable'
+Assert-False ($text -match 'GB free') 'no disk-space check'
+Assert-True ($text -match 'StrictHostKeyChecking=accept-new') 'ssh never asks whether to trust the server'
+Assert-False ($text -match 'type yes') 'no instruction to type yes'
 
 # --- what ships must be safe for Windows PowerShell 5.1 -----------------------------------------------
 $bytes = [System.IO.File]::ReadAllBytes((Join-Path $PSScriptRoot '..\kit-install.ps1'))

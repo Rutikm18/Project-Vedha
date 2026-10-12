@@ -27,8 +27,8 @@
   download the (signed, secret-free) agent package; approvals always need the code shown on the machine.
 
   -SshKey C:\path\server.pem names the private key file when your server uses a key pair (AWS does); without it
-  ssh uses its defaults and any key already loaded in ssh-agent. Connect once by hand first
-  (ssh -i C:\path\server.pem user@host) so you can accept the server's host key.
+  ssh uses its defaults and any key already loaded in ssh-agent. The first connection to a server is trusted and
+  remembered without a question (a server whose key changes later is refused).
 
   Without -Server it stops after step 5 and tells you what is left. -DryRun prints the plan and
   runs nothing. -SkipBuild reuses the agent already built in probe\windows\dist\vedha-agent.
@@ -42,6 +42,7 @@
 param(
   [string]$Server = '',                 # user@host of the manager server (ssh)
   [string]$SshKey = '',                 # private key file for ssh, e.g. C:\Users\you\keys\server.pem (AWS key pairs)
+  [string]$PythonExe = '',              # python.exe to build with when several are installed (3.10, 3.11 or 3.12)
   [string]$ManagerUrl = '',             # https://api.example.com  (MANAGER_PUBLIC_URL, and the final check)
   [string]$RemoteReleaseDir = '/opt/Project-Vedha/manager/agent-releases',
   [string]$RemoteComposeDir = '',       # folder with docker-compose.yml and .env (default: the release folder's parent)
@@ -130,11 +131,19 @@ function Test-VedhaSshKeyPath {
   return [bool]($Value -match '^[A-Za-z]:\\[A-Za-z0-9 _.()\\-]{1,200}$') -and ($Value -notmatch '\.\.')
 }
 
+function Test-VedhaPythonExe {
+  # A Windows path ending in python.exe, of plain characters (it is run directly, never through a shell).
+  param([string]$Value)
+  return [bool]($Value -match '^[A-Za-z]:\\[A-Za-z0-9 _.()\\-]{1,200}\\python(w)?\.exe$') -and ($Value -notmatch '\.\.')
+}
+
 function Get-VedhaSshArgs {
-  # The ssh/scp options that select the key: nothing when no key was given (ssh then uses its own defaults and agent).
+  # The ssh/scp options: the key when one was given (otherwise ssh uses its defaults and agent), and the first
+  # connection to a server is trusted and remembered without a question; a server whose key changes later is refused.
   param([string]$Key)
-  if ($Key) { return @('-i', $Key) }
-  return @()
+  $trust = @('-o', 'StrictHostKeyChecking=accept-new')
+  if ($Key) { return (@('-i', $Key) + $trust) }
+  return $trust
 }
 
 function Get-VedhaPlan {
@@ -198,13 +207,23 @@ function Invoke-Main {
   if (-not $KeyDir) { $KeyDir = Join-Path $env:USERPROFILE '.vedha' }
   $venv = Join-Path $winDir '.venv-win'
   $py = Join-Path $venv 'Scripts\python.exe'
+  if ($PythonExe -and -not (Test-VedhaPythonExe $PythonExe)) { throw "-PythonExe must be a Windows path to python.exe (got '$PythonExe')." }
+  if ($PythonExe -and -not (Test-Path -LiteralPath $PythonExe -PathType Leaf)) { throw "The python.exe '$PythonExe' was not found." }
+  if (Test-Path -LiteralPath $py) {
+    # A build environment made earlier with an unsupported Python (3.13, say) cannot build the agent: remake it.
+    $venvVersion = (& $py -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>$null)
+    if ("$venvVersion".Trim() -notmatch '^3\.(10|11|12)$') {
+      Write-Note "the build environment uses Python $venvVersion, which cannot build the agent; recreating it"
+      Remove-Item -LiteralPath $venv -Recurse -Force
+    }
+  }
   if (-not (Test-Path -LiteralPath $py)) {
-    $sys = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $sys) { throw 'Python was not found. Install Python 3.10 to 3.12 from python.org (tick "Add python.exe to PATH") and run this again.' }
-    $v = (& python -c 'import sys; print("%d.%d" % sys.version_info[:2])').Trim()
-    if ($v -notmatch '^3\.(10|11|12)$') { throw "Python $v found; the Windows build needs 3.10, 3.11 or 3.12." }
+    $basePython = if ($PythonExe) { $PythonExe } else { 'python' }
+    if (-not $PythonExe -and -not (Get-Command python -ErrorAction SilentlyContinue)) { throw 'Python was not found. Install Python 3.10 to 3.12 from python.org (tick "Add python.exe to PATH") and run this again.' }
+    $v = (& $basePython -c 'import sys; print("%d.%d" % sys.version_info[:2])').Trim()
+    if ($v -notmatch '^3\.(10|11|12)$') { throw "Python $v found; the Windows build needs 3.10, 3.11 or 3.12. If several Pythons are installed, point to the right one with -PythonExe C:\path\to\python.exe" }
     Write-Note 'creating the build environment (first time only)'
-    Invoke-Native 'python' @('-m', 'venv', $venv) 'Creating the build environment'
+    Invoke-Native $basePython @('-m', 'venv', $venv) 'Creating the build environment'
   }
   Invoke-Native $py @('-m', 'pip', 'install', '--quiet', '--upgrade', 'pip', 'cryptography') 'Installing the signing library'
   Write-Ok 'Python and the signing library are ready'

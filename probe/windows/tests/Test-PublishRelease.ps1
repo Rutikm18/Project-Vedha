@@ -87,8 +87,13 @@ Assert-False (Test-VedhaSshKeyPath 'server.pem') 'ssh key: a relative path is re
 Assert-False (Test-VedhaSshKeyPath 'C:\keys\a.pem; calc') 'ssh key: shell characters are refused'
 Assert-False (Test-VedhaSshKeyPath 'C:\keys\..\x.pem') 'ssh key: .. is refused'
 Assert-False (Test-VedhaSshKeyPath "C:\keys\a'b.pem") 'ssh key: quotes are refused'
-Assert-Equal ((Get-VedhaSshArgs 'C:\k\s.pem') -join ' ') '-i C:\k\s.pem' 'ssh key: -i and the path become two arguments'
-Assert-Equal (@(Get-VedhaSshArgs '').Count) 0 'ssh key: no key means no extra arguments'
+Assert-Equal ((Get-VedhaSshArgs 'C:\k\s.pem') -join ' ') '-i C:\k\s.pem -o StrictHostKeyChecking=accept-new' 'ssh key: -i, the path, then the trust option'
+Assert-Equal ((Get-VedhaSshArgs '') -join ' ') '-o StrictHostKeyChecking=accept-new' 'ssh key: with no key only the trust option (no host-key question)'
+
+# --- the python option ----------------------------------------------------------------
+Assert-True  (Test-VedhaPythonExe 'C:\Users\WZ\AppData\Local\Programs\Python\Python312\python.exe') 'python exe: a normal path is accepted'
+Assert-True  (Test-VedhaPythonExe 'C:\Program Files\Python312\python.exe') 'python exe: Program Files is fine'
+foreach ($bad in 'python', 'C:\p\python.bat', 'C:\p\..\python.exe', "C:\p'q\python.exe", 'C:\p;calc\python.exe', 'python.exe') { Assert-False (Test-VedhaPythonExe $bad) "python exe refused: [$bad]" }
 
 # --- the plan ------------------------------------------------------------------
 $full = Get-VedhaPlan -HasServer $true -Configure $true -HasUrl $true -Skip $false

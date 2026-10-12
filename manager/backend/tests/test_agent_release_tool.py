@@ -242,12 +242,14 @@ def test_publish_without_rsync_uses_ssh_and_scp_and_flips_current_last(tmp_path,
     kinds = [c[0][0] for c in calls]
     assert kinds == ["ssh", "scp", "ssh"]
     check, copy, finish = (c[0] for c in calls)
-    assert "test ! -e" in check[2] and "immutable" in check[2]            # an existing version is refused
-    assert copy[:2] == ["scp", "-r"] and copy[2] == "1.0.7"               # relative name: C:\... would read as a host
+    trust = ["-o", "StrictHostKeyChecking=accept-new"]                    # no "continue connecting?" question, ever
+    assert check[1:3] == trust and copy[1:3] == trust and finish[1:3] == trust
+    assert "test ! -e" in check[-1] and "immutable" in check[-1]          # an existing version is refused
+    assert copy[0] == "scp" and copy[3:5] == ["-r", "1.0.7"]               # relative name: C:\... would read as a host
     assert calls[1][1] == (tmp_path / "out")
-    assert copy[3] == "ubuntu@10.0.0.5:/opt/vedha/agent releases/"
-    assert "mv -f" in finish[2] and finish[2].rstrip().endswith("agent releases'/CURRENT")  # CURRENT switched last, atomically
-    assert "'/opt/vedha/agent releases'" in finish[2]                      # paths with spaces are quoted
+    assert copy[-1] == "ubuntu@10.0.0.5:/opt/vedha/agent releases/"
+    assert "mv -f" in finish[-1] and finish[-1].rstrip().endswith("agent releases'/CURRENT")  # CURRENT switched last, atomically
+    assert "'/opt/vedha/agent releases'" in finish[-1]                     # paths with spaces are quoted
 
 
 def test_publish_without_rsync_or_ssh_says_what_to_install(tmp_path, key, monkeypatch):
@@ -306,6 +308,8 @@ def test_the_scp_publish_uses_the_named_ssh_key_for_every_ssh_and_scp_call(tmp_p
     calls.clear()
     tool._publish_with_scp(release, "ubuntu@203.0.113.7", "/opt/x", "1.2.3")
     assert not any("-i" in c[:3] for c in calls)                       # and absent when none was given
+    for command in calls:                                              # but the host key is never asked about
+        assert "StrictHostKeyChecking=accept-new" in command
 
 
 def test_a_key_that_does_not_exist_is_reported_clearly(monkeypatch):
