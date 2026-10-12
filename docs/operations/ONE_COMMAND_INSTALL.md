@@ -30,6 +30,14 @@ do them by hand or something fails.
 one line in **any** Command Prompt or PowerShell window on the machine (no need to open it as Administrator:
 when it is not elevated, the installer asks Windows for permission and continues in a new Administrator window). Nothing else.
 
+**Only the agent on the Windows PC, not the whole repository:** `python scripts/make_agent_build_kit.py` writes
+`dist/vedha-agent-build-kit-<VERSION>.zip` (about 0.5 MB, 105 files). It holds the agent's own code (only the modules
+`agent_closure.py` lists), the build and publish scripts and the release tool. It does NOT hold the manager, the
+console, the detection engine, the vulnerability rules (`scanner/findings.py`), tests, docs or any key (a test
+fails if any of those get in). Unzip it on the Windows PC and run the same `publish-release.ps1` command from the
+unzipped folder; `KIT-README.txt` inside says how. Tested: the closure check and the release tool both work from a
+fresh unzip with no repository, and the plan (`-DryRun`) runs. The kit must be rebuilt from `main` for each release.
+
 **No Windows PC at all (cloud build + automatic sync):** if GitHub Actions works for you, the whole publishing step
 can happen without any PC: GitHub builds and signs the Windows agent, and the manager's `agent-release-sync`
 service picks the signed release up by itself. One-time setup and what it protects:
