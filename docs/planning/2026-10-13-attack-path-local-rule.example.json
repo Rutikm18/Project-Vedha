@@ -1,0 +1,114 @@
+{
+  "tenant_id": "00000000-0000-4000-8000-000000000001",
+  "engagement_id": "00000000-0000-4000-8000-000000000002",
+  "rule_id": "LOCAL-DATASTORE-READ",
+  "rule_version": "binding-contract@1",
+  "as_of": "2026-10-13T09:05:00Z",
+  "entry": {
+    "tenant_id": "00000000-0000-4000-8000-000000000001",
+    "engagement_id": "00000000-0000-4000-8000-000000000002",
+    "id": "00000000-0000-4000-8000-000000000003",
+    "kind": "external_actor",
+    "authentication": "unauthenticated",
+    "context_ref": "synthetic:external-unauthenticated"
+  },
+  "asset": {
+    "tenant_id": "00000000-0000-4000-8000-000000000001",
+    "engagement_id": "00000000-0000-4000-8000-000000000002",
+    "id": "00000000-0000-4000-8000-000000000004",
+    "kind": "asset"
+  },
+  "service": {
+    "tenant_id": "00000000-0000-4000-8000-000000000001",
+    "engagement_id": "00000000-0000-4000-8000-000000000002",
+    "id": "00000000-0000-4000-8000-000000000005",
+    "kind": "service",
+    "asset_id": "00000000-0000-4000-8000-000000000004",
+    "instance_ref": "synthetic:listener-instance-1",
+    "protocol": "tcp",
+    "port": 6379
+  },
+  "finding": {
+    "tenant_id": "00000000-0000-4000-8000-000000000001",
+    "engagement_id": "00000000-0000-4000-8000-000000000002",
+    "id": "00000000-0000-4000-8000-000000000006",
+    "asset_id": "00000000-0000-4000-8000-000000000004",
+    "service_id": "00000000-0000-4000-8000-000000000005",
+    "lifecycle": "open",
+    "evidence_ids": [
+      "00000000-0000-4000-8000-000000000010"
+    ]
+  },
+  "assertions": [
+    {
+      "tenant_id": "00000000-0000-4000-8000-000000000001",
+      "engagement_id": "00000000-0000-4000-8000-000000000002",
+      "subject_id": "00000000-0000-4000-8000-000000000003",
+      "target_id": "00000000-0000-4000-8000-000000000005",
+      "context_ref": "synthetic:external-unauthenticated",
+      "service_instance_ref": "synthetic:listener-instance-1",
+      "protocol": "tcp",
+      "port": 6379,
+      "id": "00000000-0000-4000-8000-000000000007",
+      "predicate": "service_reachable_from_declared_entry",
+      "truth": "supported_true",
+      "evidence_ids": [
+        "00000000-0000-4000-8000-000000000009"
+      ]
+    },
+    {
+      "tenant_id": "00000000-0000-4000-8000-000000000001",
+      "engagement_id": "00000000-0000-4000-8000-000000000002",
+      "subject_id": "00000000-0000-4000-8000-000000000003",
+      "target_id": "00000000-0000-4000-8000-000000000005",
+      "context_ref": "synthetic:external-unauthenticated",
+      "service_instance_ref": "synthetic:listener-instance-1",
+      "protocol": "tcp",
+      "port": 6379,
+      "id": "00000000-0000-4000-8000-000000000008",
+      "predicate": "unauthenticated_datastore_data_read_supported",
+      "truth": "supported_true",
+      "evidence_ids": [
+        "00000000-0000-4000-8000-000000000010"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "tenant_id": "00000000-0000-4000-8000-000000000001",
+      "engagement_id": "00000000-0000-4000-8000-000000000002",
+      "subject_id": "00000000-0000-4000-8000-000000000003",
+      "target_id": "00000000-0000-4000-8000-000000000005",
+      "context_ref": "synthetic:external-unauthenticated",
+      "service_instance_ref": "synthetic:listener-instance-1",
+      "protocol": "tcp",
+      "port": 6379,
+      "id": "00000000-0000-4000-8000-000000000009",
+      "kind": "entry_service_reachability",
+      "raw_ref": "fixture:synthetic-entry_service_reachability",
+      "collector_version": "synthetic@1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "observed_at": "2026-10-13T09:00:00Z",
+      "valid_until": "2026-10-13T09:30:00Z",
+      "operation_ref": null
+    },
+    {
+      "tenant_id": "00000000-0000-4000-8000-000000000001",
+      "engagement_id": "00000000-0000-4000-8000-000000000002",
+      "subject_id": "00000000-0000-4000-8000-000000000003",
+      "target_id": "00000000-0000-4000-8000-000000000005",
+      "context_ref": "synthetic:external-unauthenticated",
+      "service_instance_ref": "synthetic:listener-instance-1",
+      "protocol": "tcp",
+      "port": 6379,
+      "id": "00000000-0000-4000-8000-000000000010",
+      "kind": "datastore_application_read",
+      "raw_ref": "fixture:synthetic-datastore_application_read",
+      "collector_version": "synthetic@1",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "observed_at": "2026-10-13T09:00:00Z",
+      "valid_until": "2026-10-13T09:30:00Z",
+      "operation_ref": "fixture:one-synthetic-application-record-read"
+    }
+  ]
+}
