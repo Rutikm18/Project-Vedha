@@ -2,11 +2,12 @@
   Vedha agent build kit - the ONE script to run.   Double-click  install.cmd  in the kit folder.
 
   What it does, in order. It stops at the first thing it cannot fix and says exactly what to do:
-    1  asks for the three things only you know (server login, ssh key file, manager https address),
-       remembers them in %USERPROFILE%\.vedha\kit-settings.json (no passwords, no key contents)
-    2  checks THIS PC: 64-bit Windows, PowerShell 5.1+, free disk space, Python 3.10-3.12 (installs
-       Python 3.12 with winget when it is missing), ssh and scp, internet access to the build downloads,
-       the ssh key file
+    1  shows the settings it will use on ONE screen, already filled in (server login, ssh key file found
+       automatically, manager https address, tokenless install): press Enter to accept, or type 1-4 to change
+       one. Defaults come from the kit (kit-defaults.json) and then from your last run
+       (%USERPROFILE%\.vedha\kit-settings.json: no passwords, no key contents)
+    2  checks THIS PC: 64-bit Windows, PowerShell 5.1+, Python 3.10-3.12 (installs Python 3.12 with winget
+       when it is missing), ssh and scp, internet access to the build downloads, the ssh key file
     3  checks the SERVER over ssh BEFORE the long build: you can log in, the manager folder with
        docker-compose.yml and .env is where you said, and your login may run docker
     4  builds, signs and publishes the Windows agent (publish-release.ps1: 15-35 minutes the first time),
@@ -51,6 +52,25 @@ function Test-KitPythonOutput([string]$Text) {
 }
 
 function Get-KitDefaultComposeDir { return '/opt/Project-Vedha/manager' }
+
+function Get-KitKeyFolders([string]$UserHome, [string]$KitRoot) {
+  # Where a downloaded AWS key file usually is. Checked in this order.
+  return @((Join-Path $UserHome 'Downloads'), (Join-Path $UserHome '.ssh'), (Join-Path $UserHome 'Desktop'),
+           (Join-Path $UserHome 'Documents'), $KitRoot)
+}
+
+function Find-KitSshKeys([string[]]$Folders, [scriptblock]$Accept = ${function:Test-KitKeyPath}) {
+  # Every .pem file (not searched recursively) in those folders whose path is safe to hand to ssh, newest first
+  # within a folder, without duplicates.
+  $found = @()
+  foreach ($f in $Folders) {
+    if (-not $f -or -not (Test-Path -LiteralPath $f -PathType Container)) { continue }
+    foreach ($file in @(Get-ChildItem -LiteralPath $f -Filter '*.pem' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)) {
+      if ((& $Accept $file.FullName) -and ($found -notcontains $file.FullName)) { $found += $file.FullName }
+    }
+  }
+  return $found
+}
 
 function Get-KitSettingsPath([string]$UserHome) { return (Join-Path (Join-Path $UserHome '.vedha') 'kit-settings.json') }
 
@@ -179,12 +199,6 @@ function Confirm-KitPc {
   if ([Environment]::OSVersion.Platform -ne 'Win32NT') { Write-Bad 'This kit builds the Windows agent and must run on Windows' ''; return }
   if ([Environment]::Is64BitOperatingSystem) { Write-Ok '64-bit Windows' } else { Write-Bad 'A 64-bit version of Windows is required' '' }
   if ($PSVersionTable.PSVersion.Major -ge 5) { Write-Ok ('PowerShell ' + $PSVersionTable.PSVersion) } else { Write-Bad 'Windows PowerShell 5.1 or later is required' '' }
-  try {
-    $drive = (Get-Item -LiteralPath $PSScriptRoot).PSDrive
-    $freeGb = [math]::Round($drive.Free / 1GB, 1)
-    if ($freeGb -ge 5) { Write-Ok ("$freeGb GB free on " + $drive.Name + ':') }
-    else { Write-Bad ("Only $freeGb GB free on " + $drive.Name + ': (5 GB are needed for the build)') 'Free some disk space and run again.' }
-  } catch { Write-Warn 'Could not read the free disk space.' }
   Confirm-KitPython
   Confirm-KitSsh
   foreach ($site in @(@('pypi.org', 'https://pypi.org/simple/'), @('files.pythonhosted.org', 'https://files.pythonhosted.org/'), @('github.com', 'https://github.com/'))) {
@@ -244,6 +258,41 @@ function Confirm-KitServer {
   return $ComposeDir
 }
 
+function Show-KitSettings($S) {
+  Write-Head 'These settings will be used'
+  Write-Host ('  1) Server login ........... ' + $S.server)
+  Write-Host ('  2) ssh key file ........... ' + $(if ($S.ssh_key) { $S.ssh_key } else { '(none: ssh uses its own default key)' }))
+  Write-Host ('  3) Manager address ........ ' + $S.manager_url)
+  Write-Host ('  4) Installs without token . ' + $(if ($S.tokenless) { 'yes (you approve each machine in Fleet)' } else { 'no (a token from Fleet is needed)' }))
+}
+
+function Read-KitChange([string]$Prompt, [string]$Current, [scriptblock]$Valid, [string]$Hint) {
+  while ($true) {
+    $answer = (Read-Host ($Prompt + $(if ($Current) { " [$Current]" } else { '' }))).Trim().Trim('"')
+    if (-not $answer) { return $Current }
+    if (& $Valid $answer) { return $answer }
+    Write-Host ('  That does not look right. ' + $Hint) -ForegroundColor Yellow
+  }
+}
+
+function Edit-KitSettings($S) {
+  # One screen, one Enter. Typing a number changes that one value.
+  while ($true) {
+    Show-KitSettings $S
+    Write-Host ''
+    $c = (Read-Host 'Press Enter to start, or type 1-4 to change one').Trim()
+    if (-not $c) { return $S }
+    if ($c -eq '1') { $S.server = Read-KitChange 'Server login (user@address)' $S.server ${function:Test-KitServer} 'Use user@address with letters, digits, dots and dashes only.' }
+    elseif ($c -eq '2') {
+      $v = Read-KitChange 'ssh key file (full path, empty for none)' $S.ssh_key { param($x) (Test-KitKeyPath $x) } 'It must look like C:\Users\you\keys\server.pem'
+      $S.ssh_key = $v
+    }
+    elseif ($c -eq '3') { $S.manager_url = (Read-KitChange 'Manager address (https://...)' $S.manager_url ${function:Test-KitManagerUrl} 'It must start with https:// and have no path, for example https://api.example.com').TrimEnd('/') }
+    elseif ($c -eq '4') { $S.tokenless = -not $S.tokenless }
+    else { Write-Host '  Type 1, 2, 3 or 4, or just press Enter.' -ForegroundColor Yellow }
+  }
+}
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -262,24 +311,40 @@ function Invoke-KitMain {
   $saved = @{ server = ''; ssh_key = ''; manager_url = ''; remote_compose_dir = ''; tokenless = $false }
   if (Test-Path -LiteralPath $settingsPath) { $saved = ConvertFrom-KitSettingsJson (Get-Content -Raw -LiteralPath $settingsPath) }
 
-  Write-Head 'What this needs to know (Enter keeps the value shown)'
-  if (-not $Server) { $Server = $saved.server }
-  $Server = Read-KitValue 'Server login (user@address, for example ubuntu@16.4.75.44)' $Server ${function:Test-KitServer} 'Use user@address with letters, digits, dots and dashes only.'
-  if (-not $SshKey) { $SshKey = $saved.ssh_key }
-  if (-not $Yes) {
-    $answer = (Read-Host ('ssh key file (C:\path\key.pem), empty if you use ssh-agent' + $(if ($SshKey) { " [$SshKey]" } else { '' }))).Trim().Trim('"')
-    if ($answer) { $SshKey = $answer }
+  # Defaults, weakest first: the kit's own, then what was used last time, then what was given on the command line.
+  $defaults = @{ server = ''; ssh_key = ''; manager_url = ''; remote_compose_dir = ''; tokenless = $false }
+  $defaultsPath = Join-Path $PSScriptRoot 'kit-defaults.json'
+  if (Test-Path -LiteralPath $defaultsPath) { $defaults = ConvertFrom-KitSettingsJson (Get-Content -Raw -LiteralPath $defaultsPath) }
+  $S = @{ server = $defaults.server; ssh_key = $defaults.ssh_key; manager_url = $defaults.manager_url
+          remote_compose_dir = $defaults.remote_compose_dir; tokenless = [bool]$defaults.tokenless }
+  foreach ($k in 'server', 'ssh_key', 'manager_url', 'remote_compose_dir') { if ($saved[$k]) { $S[$k] = $saved[$k] } }
+  if ($saved.tokenless) { $S.tokenless = $true }
+  if ($Server) { $S.server = $Server }
+  if ($SshKey) { $S.ssh_key = $SshKey }
+  if ($ManagerUrl) { $S.manager_url = $ManagerUrl.TrimEnd('/') }
+  if ($RemoteComposeDir) { $S.remote_compose_dir = $RemoteComposeDir }
+  if ($AllowTokenlessInstall) { $S.tokenless = $true }
+  if (-not $S.remote_compose_dir) { $S.remote_compose_dir = Get-KitDefaultComposeDir }
+  $autoKey = $false
+  if (-not $S.ssh_key) {
+    $keys = @(Find-KitSshKeys (Get-KitKeyFolders $userHome $kitRoot))
+    if ($keys.Count -gt 0) { $S.ssh_key = $keys[0]; $autoKey = $true }
   }
-  if ($SshKey -and -not (Test-KitKeyPath $SshKey)) { throw "The ssh key path must look like C:\Users\you\keys\server.pem (got '$SshKey')." }
-  if (-not $ManagerUrl) { $ManagerUrl = $saved.manager_url }
-  $ManagerUrl = (Read-KitValue 'Manager address (https://...)' $ManagerUrl ${function:Test-KitManagerUrl} 'It must start with https:// and have no path, for example https://api.example.com').TrimEnd('/')
-  if (-not $RemoteComposeDir) { $RemoteComposeDir = if ($saved.remote_compose_dir) { $saved.remote_compose_dir } else { Get-KitDefaultComposeDir } }
-  if ($RemoteComposeDir -and -not (Test-KitRemoteDir $RemoteComposeDir)) { throw "The server folder must be an absolute path such as /opt/Project-Vedha/manager (got '$RemoteComposeDir')." }
-  $tokenless = ([bool]$AllowTokenlessInstall) -or ([bool]$saved.tokenless)
-  if (-not $Yes -and -not $AllowTokenlessInstall) {
-    $t = (Read-Host ('Let machines install with no token (you approve each one in Fleet)? [' + $(if ($tokenless) { 'Y/n' } else { 'y/N' }) + ']')).Trim().ToLower()
-    if ($t) { $tokenless = ($t -eq 'y' -or $t -eq 'yes') }
+  if ($autoKey) { Write-Host ('  (found an ssh key file automatically: ' + $S.ssh_key + ')') }
+
+  if ($Yes) {
+    if (-not $S.server) { throw '-Yes needs a server login (-Server user@address).' }
+    if (-not $S.manager_url) { throw '-Yes needs the manager address (-ManagerUrl https://...).' }
+  } else {
+    if (-not $S.server) { $S.server = Read-KitChange 'Server login (user@address)' '' ${function:Test-KitServer} 'Use user@address with letters, digits, dots and dashes only.' }
+    if (-not $S.manager_url) { $S.manager_url = (Read-KitChange 'Manager address (https://...)' '' ${function:Test-KitManagerUrl} 'It must start with https:// and have no path, for example https://api.example.com').TrimEnd('/') }
+    $S = Edit-KitSettings $S
   }
+  if (-not (Test-KitServer $S.server)) { throw "The server login must look like user@address (got '$($S.server)')." }
+  if (-not (Test-KitManagerUrl $S.manager_url)) { throw "The manager address must look like https://api.example.com (got '$($S.manager_url)')." }
+  if ($S.ssh_key -and -not (Test-KitKeyPath $S.ssh_key)) { throw "The ssh key path must look like C:\Users\you\keys\server.pem (got '$($S.ssh_key)')." }
+  if (-not (Test-KitRemoteDir $S.remote_compose_dir)) { throw "The server folder must be an absolute path such as /opt/Project-Vedha/manager (got '$($S.remote_compose_dir)')." }
+  $Server = $S.server; $SshKey = $S.ssh_key; $ManagerUrl = $S.manager_url; $RemoteComposeDir = $S.remote_compose_dir; $tokenless = [bool]$S.tokenless
 
   Confirm-KitPc
   if (Get-Command ssh -ErrorAction SilentlyContinue) {
@@ -304,12 +369,8 @@ function Invoke-KitMain {
   if (-not (Test-KitRemoteDir $release)) { throw "Not a safe release folder on the server: '$release'" }
   $publishArgs = Get-KitPublishArguments -Server $Server -SshKey $SshKey -ManagerUrl $ManagerUrl -ComposeDir $RemoteComposeDir `
     -ReleaseDir $release -Tokenless $tokenless -DryRun ([bool]$DryRun) -SkipBuild ([bool]$SkipBuild)
-  if (-not $Yes -and -not $DryRun) {
-    Write-Host ''
-    Write-Host ('Ready. This builds the Windows agent (15-35 minutes the first time), signs release ' + $version + ',') 
-    Write-Host ("uploads it to $Server, sets the public keys in $RemoteComposeDir/.env and restarts the manager's api.")
-    [void](Read-Host 'Press Enter to start (close this window to cancel)')
-  }
+  Write-Host ''
+  Write-Host ('Starting: building and publishing release ' + $version + ' (15-35 minutes the first time). Leave this window open.') -ForegroundColor Cyan
 
   $publish = Join-Path $PSScriptRoot 'publish-release.ps1'
   $global:LASTEXITCODE = 0

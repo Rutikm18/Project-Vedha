@@ -99,11 +99,26 @@ To only check (no build, nothing changed):  install.cmd -CheckOnly
 """
 
 
-def build(out_dir: Path) -> Path:
+def defaults_json(server: str = "", manager_url: str = "", tokenless: bool = False) -> str:
+    """kit-defaults.json: what install.cmd shows already filled in. Values are checked here as well as by the script."""
+    import json
+    import re
+    if server and not re.fullmatch(r"([A-Za-z0-9._-]+@)?[A-Za-z0-9.-]+", server):
+        raise ValueError("the default server must look like user@host")
+    if manager_url and not re.fullmatch(r"https://[A-Za-z0-9.-]+(:[0-9]{1,5})?", manager_url.rstrip("/")):
+        raise ValueError("the default manager address must look like https://host")
+    return json.dumps({"server": server, "manager_url": manager_url.rstrip("/"), "tokenless": bool(tokenless)}, indent=2) + "\n"
+
+
+def build(out_dir: Path, *, default_server: str = "", default_manager_url: str = "", default_tokenless: bool = False) -> Path:
     version = (REPO / "VERSION").read_text(encoding="utf-8").strip()
     files = kit_files()
     check_clean(files)
+    generated = {"probe/windows/kit-defaults.json": defaults_json(default_server, default_manager_url, default_tokenless).encode("utf-8")}
+    check_clean(generated)
     listing = "".join(f"{hashlib.sha256(src.read_bytes()).hexdigest()}  {name}\n" for name, src in sorted(files.items()))
+    listing += "".join(f"{hashlib.sha256(data).hexdigest()}  {name}\n" for name, data in sorted(generated.items()))
+    listing = "".join(sorted(listing.splitlines(keepends=True), key=lambda line: line.split("  ", 1)[1]))
     out_dir.mkdir(parents=True, exist_ok=True)
     target = out_dir / f"vedha-agent-build-kit-{version}.zip"
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -112,6 +127,11 @@ def build(out_dir: Path) -> Path:
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o644 << 16
             zf.writestr(info, src.read_bytes())
+        for name, data in sorted(generated.items()):
+            info = zipfile.ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            zf.writestr(info, data)
         for name, text in (("KIT-README.txt", README.format(version=version)), ("KIT-FILES.txt", listing)):
             info = zipfile.ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
@@ -177,12 +197,16 @@ def main(argv=None) -> int:
     parser.add_argument("--out", type=Path, default=REPO / "dist")
     parser.add_argument("--url", help="private, time-limited https link the kit will be downloaded from; "
                                       "prints the one command to paste into PowerShell")
-    parser.add_argument("--server", default="ubuntu@YOUR_SERVER", help="user@host of the manager server (ssh)")
-    parser.add_argument("--manager-url", default="https://api.your-domain", help="https address of the manager")
+    parser.add_argument("--server", default="ubuntu@YOUR_SERVER", help="user@host of the manager server (ssh), for --url")
+    parser.add_argument("--manager-url", default="https://api.your-domain", help="https address of the manager, for --url")
+    parser.add_argument("--default-server", default="", help="the server login install.cmd shows already filled in")
+    parser.add_argument("--default-manager-url", default="", help="the manager address install.cmd shows already filled in")
+    parser.add_argument("--default-tokenless", action="store_true", help="install.cmd defaults to installs without a token")
     parser.add_argument("--allow-tokenless", action="store_true", help="add -AllowTokenlessInstall")
     parser.add_argument("--ssh-key", default="", help="Windows path of the ssh private key on the publishing PC, e.g. C:\\Users\\you\\keys\\server.pem")
     args = parser.parse_args(argv)
-    target = build(args.out)
+    target = build(args.out, default_server=args.default_server, default_manager_url=args.default_manager_url,
+                   default_tokenless=args.default_tokenless)
     size = target.stat().st_size
     with zipfile.ZipFile(target) as zf:
         count = len(zf.namelist())

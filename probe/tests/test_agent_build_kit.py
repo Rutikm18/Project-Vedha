@@ -7,6 +7,7 @@ tool inside the kit can build and verify a release.
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 import sys
 import zipfile
@@ -281,3 +282,80 @@ def test_the_command_can_carry_the_ssh_key_path_and_refuses_a_bad_one():
     for bad in ("server.pem", "C:\\k'; calc; '", "C:\\a\\..\\b.pem", "C:\\a;b.pem"):
         with pytest.raises(ValueError):
             kit.bootstrap_command("https://x.example.com/k.zip", "a" * 64, ssh_key=bad, **SERVER)
+
+
+# ── defaults baked into the kit, and the one-screen settings flow ────────────────────────────────
+
+def test_the_defaults_file_carries_the_values_install_cmd_shows_and_is_validated(tmp_path):
+    import json
+    target = kit.build(tmp_path, default_server="ubuntu@16.4.75.44", default_manager_url="https://api.vedhasec.com/",
+                       default_tokenless=True)
+    with zipfile.ZipFile(target) as zf:
+        data = json.loads(zf.read("probe/windows/kit-defaults.json"))
+        assert "probe/windows/kit-defaults.json" in zf.read("KIT-FILES.txt").decode()
+    assert data == {"server": "ubuntu@16.4.75.44", "manager_url": "https://api.vedhasec.com", "tokenless": True}
+    for bad in ({"default_server": "u@h; calc"}, {"default_manager_url": "http://x.com"}, {"default_manager_url": "https://x/'"}):
+        with pytest.raises(ValueError):
+            kit.build(tmp_path / "bad", **bad)
+
+
+def test_without_defaults_the_file_is_empty_not_missing(built):
+    import json
+    assert json.loads(zipfile.ZipFile(built["zip"]).read("probe/windows/kit-defaults.json")) == {
+        "server": "", "manager_url": "", "tokenless": False}
+
+
+def _run_install(root, tmp_path, stdin, *extra):
+    return subprocess.run([shutil.which("pwsh"), "-NoProfile", "-File", str(root / "probe" / "windows" / "kit-install.ps1"),
+                           "-NoPause", "-CheckOnly", *extra], input=stdin, capture_output=True, text=True, timeout=120,
+                          env={**os.environ, "USERPROFILE": str(tmp_path / "home")})
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="no PowerShell here")
+def test_the_settings_screen_shows_the_defaults_and_one_enter_accepts_them(tmp_path):
+    target = kit.build(tmp_path / "k", default_server="ubuntu@16.4.75.44", default_manager_url="https://api.vedhasec.com",
+                       default_tokenless=True)
+    root = tmp_path / "kit"
+    zipfile.ZipFile(target).extractall(root)
+    (tmp_path / "home").mkdir()
+    done = _run_install(root, tmp_path, "\n")
+    out = done.stdout + done.stderr
+    assert "These settings will be used" in out, out
+    assert "ubuntu@16.4.75.44" in out and "https://api.vedhasec.com" in out and "yes (you approve each machine in Fleet)" in out
+    assert "Press Enter to start, or type 1-4 to change one" in out
+    assert "Checking this PC" in out                                # one Enter and it moved on to the checks
+    assert "free on" not in out and "GB free" not in out           # no disk check any more
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="no PowerShell here")
+def test_typing_a_number_changes_that_value_and_the_new_value_is_used_and_remembered(tmp_path):
+    target = kit.build(tmp_path / "k", default_server="ubuntu@16.4.75.44", default_manager_url="https://api.vedhasec.com")
+    root = tmp_path / "kit"
+    zipfile.ZipFile(target).extractall(root)
+    (tmp_path / "home").mkdir()
+    done = _run_install(root, tmp_path, "1\nec2-user@10.0.0.9\n3\nhttps://manager.example.org\n4\n\n")
+    out = done.stdout + done.stderr
+    assert "ec2-user@10.0.0.9" in out and "https://manager.example.org" in out, out
+    assert "Installs without token . yes" in out                      # option 4 turned it on
+    assert "Checking the server ec2-user@10.0.0.9" in out or "Checking the server" in out
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="no PowerShell here")
+def test_a_value_typed_wrongly_is_refused_and_asked_again(tmp_path):
+    target = kit.build(tmp_path / "k", default_server="ubuntu@16.4.75.44", default_manager_url="https://api.vedhasec.com")
+    root = tmp_path / "kit"
+    zipfile.ZipFile(target).extractall(root)
+    (tmp_path / "home").mkdir()
+    done = _run_install(root, tmp_path, "3\nhttp://not-https.example.com\nhttps://good.example.com\n\n")
+    out = done.stdout + done.stderr
+    assert "That does not look right" in out and "https://good.example.com" in out, out
+
+
+@pytest.mark.skipif(not shutil.which("pwsh"), reason="no PowerShell here")
+def test_yes_mode_asks_nothing_and_needs_the_values(tmp_path):
+    target = kit.build(tmp_path / "k")                                 # a kit with no defaults
+    root = tmp_path / "kit"
+    zipfile.ZipFile(target).extractall(root)
+    (tmp_path / "home").mkdir()
+    done = _run_install(root, tmp_path, "", "-Yes")
+    assert "-Yes needs a server login" in done.stdout + done.stderr

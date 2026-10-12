@@ -48,6 +48,28 @@ Assert-Equal $broken.server '' 'settings: damaged file gives empty values, not a
 Assert-True  ((Get-KitSettingsPath ([System.IO.Path]::GetTempPath())) -like '*.vedha*kit-settings.json') 'settings path is under .vedha'
 Assert-False ($json -match 'password|passphrase|BEGIN') 'settings never hold secrets'
 
+# --- finding the key file by itself -------------------------------------------------------------------
+$tmpRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('kitkeys-' + [guid]::NewGuid().ToString('N'))
+$dl = Join-Path $tmpRoot 'Downloads'; $ssh = Join-Path $tmpRoot '.ssh'
+New-Item -ItemType Directory -Force -Path $dl, $ssh | Out-Null
+Set-Content -LiteralPath (Join-Path $dl 'old.pem') -Value 'x'
+Start-Sleep -Milliseconds 50
+Set-Content -LiteralPath (Join-Path $dl 'new.pem') -Value 'x'
+Set-Content -LiteralPath (Join-Path $dl 'notes.txt') -Value 'x'
+Set-Content -LiteralPath (Join-Path $ssh 'id_rsa') -Value 'x'
+Set-Content -LiteralPath (Join-Path $ssh 'work.pem') -Value 'x'
+$any = { param($x) $true }
+$found = @(Find-KitSshKeys @($dl, $ssh, (Join-Path $tmpRoot 'missing')) $any)
+Assert-Equal $found.Count 3 'key finder: every .pem in the folders, nothing else'
+Assert-True  ($found[0] -like '*new.pem') 'key finder: the newest file in the first folder comes first'
+Assert-True  ($found[-1] -like '*work.pem') 'key finder: folders are searched in the order given'
+Assert-Equal @(Find-KitSshKeys @((Join-Path $tmpRoot 'nothing-here')) $any).Count 0 'key finder: no folder, no keys'
+Assert-Equal @(Find-KitSshKeys @($dl, $dl) $any).Count 2 'key finder: no duplicates'
+Assert-Equal @(Find-KitSshKeys @($dl) { param($x) $false }).Count 0 'key finder: a path ssh must not get is skipped'
+$folders = Get-KitKeyFolders $tmpRoot 'KITROOT'
+Assert-True ($folders[0] -like '*Downloads' -and $folders[1] -like '*.ssh' -and $folders[-1] -eq 'KITROOT') 'key folders: Downloads first, the kit folder last'
+Remove-Item -LiteralPath $tmpRoot -Recurse -Force -ErrorAction SilentlyContinue
+
 # --- the command run on the server -------------------------------------------------------------------
 $cmd = Get-KitRemoteLayoutCommand '/opt/Project-Vedha/manager'
 Assert-True  ($cmd -match "^d='/opt/Project-Vedha/manager'; ") 'layout command: the folder is single-quoted'
