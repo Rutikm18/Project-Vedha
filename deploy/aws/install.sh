@@ -26,7 +26,9 @@
 #        curl -fsSL "https://raw.githubusercontent.com/<org>/vedha/main/deploy/aws/install.sh" | bash
 #
 # Environment variables (all optional except where noted):
-#   DOMAIN             e.g. vedha.example.com  → UI at app.$DOMAIN, API at api.$DOMAIN
+#   DOMAIN             e.g. vedhasec.com  → UI at app.$DOMAIN, API at api.$DOMAIN,
+#                      agent facade at get.$DOMAIN (the only host clients ever see).
+#                      Create an A/ALIAS DNS record for all THREE subdomains.
 #   REPO_URL           git URL (required if not already in a checkout)
 #   APP_DIR            install location (default /opt/vedha)
 #   ADMIN_EMAIL        seeded admin email (default admin@vedha.io)
@@ -459,13 +461,18 @@ CADDY_DIR="$APP_DIR/deploy/aws"
 if [ -n "$DOMAIN" ]; then
   UI_HOST="app.$DOMAIN"
   API_HOST="api.$DOMAIN"
+  # The zero-knowledge agent facade: the ONLY hostname a client ever sees. It is a
+  # generic brand name that reveals nothing about the real manager, and it serves
+  # only the agent-facing paths (see the Caddyfile block below).
+  GET_HOST="get.$DOMAIN"
   COOKIE_SECURE=true
   UI_URL="https://$UI_HOST"
   API_URL="https://$API_HOST"
+  FACADE_URL="https://$GET_HOST"
 
   # Validate DNS resolves before writing Caddyfile (Caddy will fail ACME if not)
   if command -v dig >/dev/null; then
-    for HOST in "$UI_HOST" "$API_HOST"; do
+    for HOST in "$UI_HOST" "$API_HOST" "$GET_HOST"; do
       if ! dig +short "$HOST" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
         warn "DNS: $HOST does not resolve yet. Caddy ACME will fail until DNS propagates."
       else
@@ -506,6 +513,31 @@ $API_HOST {
         header_up X-Real-IP {remote_host}
         health_path /health
         health_interval 15s
+    }
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        -Server
+    }
+}
+
+$GET_HOST {
+    # Zero-knowledge agent facade. The only hostname a client is ever given. It
+    # proxies ONLY the agent-facing paths (install, enrol, redeem, runtime API,
+    # WebSocket and result upload) to the manager, and 404s everything else — so
+    # the generic brand name exposes no operator or portal surface. The real
+    # console API stays on $API_HOST. reverse_proxy upgrades WebSockets natively.
+    encode gzip
+    @agent path /agent/* /agents/* /probe-enrollment/* /health
+    handle @agent {
+        reverse_proxy api:8000 {
+            header_up X-Real-IP {remote_host}
+            health_path /health
+            health_interval 15s
+        }
+    }
+    handle {
+        respond "Vedha agent endpoint." 404
     }
     header {
         Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
@@ -619,7 +651,10 @@ OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
 GEMINI_API_KEY=${GEMINI_API_KEY:-}
 GROQ_API_KEY=${GROQ_API_KEY:-}
 CORS_ORIGINS=$UI_URL
-MANAGER_PUBLIC_URL=$API_URL
+# Agents and install commands dial the generic facade (get.$DOMAIN) when a domain
+# is set, so clients never see the real manager host; falls back to the API host
+# for the no-domain self-signed case. The operator console still uses $API_URL.
+MANAGER_PUBLIC_URL=${FACADE_URL:-$API_URL}
 NEO4J_ENABLED=$([ "$ENABLE_GRAPH" = "1" ] && echo true || echo false)
 NEO4J_PASSWORD=$NEO4J_PASSWORD
 VEDHA_RELEASE_ID=$RELEASE_ID

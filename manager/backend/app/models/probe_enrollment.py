@@ -108,3 +108,54 @@ class ProbeEnrollmentToken(Base, TimestampMixin):
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class AgentInstallCode(Base, TimestampMixin):
+    """A one-time *install code* the operator hands a Windows client (``vac_...``).
+
+    Unlike a ProbeEnrollmentToken, this row stores **no enrolment secret**: it is a
+    pointer that authorises minting exactly one ``vet_`` token, once, at redeem
+    time. The client pastes only this opaque code — never the manager URL, a key,
+    or a token. On redeem the manager mints the real ``vet_`` for the bound
+    engagement/Site, hands it back over TLS, and burns the code.
+
+    Only the SHA-256 of the raw code is stored; the raw ``vac_...`` is shown once.
+    Single-use redeem + the minted token's ``max_uses=1`` together bind the whole
+    install to the first machine that redeems — a stolen-but-already-redeemed code
+    is dead, and the redeemer's IP is recorded for the operator to sanity-check.
+    """
+
+    __tablename__ = "agent_install_codes"
+    __table_args__ = (
+        UniqueConstraint("code_hash", name="uq_agent_install_code_hash"),
+        CheckConstraint(
+            "site_id IS NOT NULL OR engagement_id IS NOT NULL",
+            name="ck_agent_install_codes_target",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default="gen_random_uuid()")
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # Exactly one target (same rule as ProbeEnrollmentToken): the vet_ minted on
+    # redeem installs for this engagement, or into this pre-built Site.
+    engagement_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("engagements.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    site_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("probe_sites.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    code_prefix: Mapped[str] = mapped_column(String(24), nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    redeemed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    redeemed_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    # The vet_ this code minted on redeem — traceability from the pasted code all
+    # the way to the enrolled agent. Never the raw token, only its row id.
+    minted_token_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("probe_enrollment_tokens.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)

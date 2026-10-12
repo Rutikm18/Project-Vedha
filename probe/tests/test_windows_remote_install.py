@@ -121,6 +121,35 @@ def test_remote_installer_never_puts_the_token_on_a_child_command_line():
     assert "innerArgs.Pairing = $true" in code
 
 
+# ── install-remote.ps1: the zero-knowledge -Code path ───────────────────────
+
+def test_code_path_validates_and_is_mutually_exclusive_with_token():
+    clean = _body(_text("install-remote.ps1"), "Assert-CleanCode")
+    assert "vac_" in clean
+    assert "not both" in clean                       # -Code and -Token cannot be given together
+    assert "VerifyOnly" in clean                     # a code cannot be spent just to verify a release
+
+
+def test_code_is_redeemed_before_elevation_so_only_the_token_crosses_processes():
+    code = re.sub(r"<#.*?#>", "", _text("install-remote.ps1"), flags=re.S)
+    main = _body(code, "Install-VedhaAgent")
+    # redeem turns the opaque code into a token BEFORE elevation; from there it is the token path
+    assert main.index("Assert-CleanCode") < main.index("Invoke-VedhaRedeem") < main.index("Enter-VedhaElevation")
+    # the opaque code is NEVER handed to the elevated child — only the env token is
+    command = _body(code, "Get-VedhaElevationCommand")
+    assert "$Code" not in command and "VEDHA_INSTALL_CODE" not in command
+
+
+def test_redeem_is_a_no_redirect_post_that_validates_the_returned_token():
+    code = _text("install-remote.ps1")
+    redeem = _body(code, "Invoke-VedhaRedeem")
+    assert "/agent/redeem" in redeem
+    assert "AllowAutoRedirect = $false" in redeem    # a token-bearing response is never bounced elsewhere
+    assert "'POST'" in redeem
+    parser = _body(code, "ConvertFrom-VedhaRedeem")
+    assert "^vet_" in parser                          # only a real enrolment token is accepted back
+
+
 def test_elevation_is_attempted_once_only_when_needed_and_never_loops():
     code = re.sub(r"<#.*?#>", "", _text("install-remote.ps1"), flags=re.S)
     elevate = _body(code, "Enter-VedhaElevation")

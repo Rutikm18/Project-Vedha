@@ -58,6 +58,27 @@ export interface InstallToken {
   commands?: InstallCommands;
 }
 
+/** A zero-knowledge Windows install code as Fleet lists it. `code` and `command`
+ *  exist only in the create response — the raw code is never returned again. The
+ *  command is the single line pasted to the client; it carries no manager IP, key
+ *  or token, only the generic facade address and the opaque code. */
+export interface InstallCode {
+  id: string;
+  name: string;
+  code_prefix: string;
+  engagement_id: string | null;
+  site_id: string | null;
+  state: "active" | "redeemed" | "expired" | "revoked";
+  usable: boolean;
+  created_at: string | null;
+  expires_at: string;
+  redeemed_at: string | null;
+  redeemed_ip: string | null;
+  code?: string;
+  command?: string;
+  manager_url_configured?: boolean;
+}
+
 export interface FleetEngagementOption {
   id: string;
   name: string;
@@ -121,6 +142,21 @@ export function createFleetWorkspaceApi(surface: FleetWorkspaceSurface) {
       revokeInstallToken: (id: string) => fetchJson<null>(
         `/api/fleet/enroll-tokens/${encodeURIComponent(id)}`, { method: "DELETE" },
       ),
+      // Zero-knowledge Windows install codes (operator only). A code is a one-time
+      // pointer; the vet_ token is minted only when the client redeems it.
+      installCodes: (engagementId?: string) => fetchJson<InstallCode[]>(
+        `/api/fleet/install-codes${engagementId ? `?engagement_id=${encodeURIComponent(engagementId)}` : ""}`,
+      ),
+      createInstallCode: (engagementId: string | null, name: string, lifetimeMinutes: number) => {
+        if (!engagementId) throw new Error("Choose the engagement this agent will scan for");
+        return fetchJson<InstallCode>("/api/fleet/install-codes", {
+          method: "POST",
+          body: JSON.stringify({ engagement_id: engagementId, name, expires_in_minutes: lifetimeMinutes }),
+        });
+      },
+      revokeInstallCode: (id: string) => fetchJson<null>(
+        `/api/fleet/install-codes/${encodeURIComponent(id)}`, { method: "DELETE" },
+      ),
       // Set/extend/clear an agent's access expiry (operator only). null clears it.
       setAgentExpiry: (agentId: string, accessExpiresAt: string | null) => fetchJson<AgentExpiryResult>(
         `/api/fleet/agents/${encodeURIComponent(agentId)}/access-expiry`,
@@ -166,6 +202,20 @@ export function createFleetWorkspaceApi(surface: FleetWorkspaceSurface) {
     revokeInstallToken: (id: string) => portalApi<null>(
       `/workspace/fleet/enroll-tokens/${encodeURIComponent(id)}`, { method: "DELETE" },
     ),
+    // Zero-knowledge install codes are an operator-only artifact (the endpoint is
+    // admin/manager). The portal surface keeps the shape but offers nothing.
+    installCodes: (_engagementId?: string): Promise<InstallCode[]> => {
+      void _engagementId;
+      return Promise.resolve([]);
+    },
+    createInstallCode: (_engagementId: string | null, _name: string, _lifetimeMinutes: number): Promise<InstallCode> => {
+      void _engagementId; void _name; void _lifetimeMinutes;
+      return Promise.reject(new Error("One-command install codes are created by your Vedha operator"));
+    },
+    revokeInstallCode: (_id: string): Promise<null> => {
+      void _id;
+      return Promise.resolve(null);
+    },
     // Customers can't change expiry — only the operator sets it.
     setAgentExpiry: (_agentId: string, _accessExpiresAt: string | null): Promise<AgentExpiryResult> => {
       void _agentId; void _accessExpiresAt;
