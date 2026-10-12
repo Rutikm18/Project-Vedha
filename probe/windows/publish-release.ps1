@@ -26,6 +26,10 @@
   Fleet by typing that code. Only turn it on if you accept that anyone who can reach the manager can
   download the (signed, secret-free) agent package; approvals always need the code shown on the machine.
 
+  -SshKey C:\path\server.pem names the private key file when your server uses a key pair (AWS does); without it
+  ssh uses its defaults and any key already loaded in ssh-agent. Connect once by hand first
+  (ssh -i C:\path\server.pem user@host) so you can accept the server's host key.
+
   Without -Server it stops after step 5 and tells you what is left. -DryRun prints the plan and
   runs nothing. -SkipBuild reuses the agent already built in probe\windows\dist\vedha-agent.
 
@@ -37,6 +41,7 @@
 [CmdletBinding()]
 param(
   [string]$Server = '',                 # user@host of the manager server (ssh)
+  [string]$SshKey = '',                 # private key file for ssh, e.g. C:\Users\you\keys\server.pem (AWS key pairs)
   [string]$ManagerUrl = '',             # https://api.example.com  (MANAGER_PUBLIC_URL, and the final check)
   [string]$RemoteReleaseDir = '/opt/Project-Vedha/manager/agent-releases',
   [string]$RemoteComposeDir = '',       # folder with docker-compose.yml and .env (default: the release folder's parent)
@@ -119,6 +124,19 @@ function New-VedhaRemoteConfigScript {
   return $sh + "`n"
 }
 
+function Test-VedhaSshKeyPath {
+  # A Windows file path of plain characters (it is passed to ssh and scp as one argument, never through a shell).
+  param([string]$Value)
+  return [bool]($Value -match '^[A-Za-z]:\\[A-Za-z0-9 _.()\\-]{1,200}$') -and ($Value -notmatch '\.\.')
+}
+
+function Get-VedhaSshArgs {
+  # The ssh/scp options that select the key: nothing when no key was given (ssh then uses its own defaults and agent).
+  param([string]$Key)
+  if ($Key) { return @('-i', $Key) }
+  return @()
+}
+
 function Get-VedhaPlan {
   # The ordered list of steps for the given options (also what -DryRun prints).
   param([bool]$HasServer, [bool]$Configure, [bool]$HasUrl, [bool]$Skip)
@@ -190,10 +208,16 @@ function Invoke-Main {
   }
   Invoke-Native $py @('-m', 'pip', 'install', '--quiet', '--upgrade', 'pip', 'cryptography') 'Installing the signing library'
   Write-Ok 'Python and the signing library are ready'
+  if ($SshKey) {
+    if (-not (Test-VedhaSshKeyPath $SshKey)) { throw "-SshKey must be a Windows path such as C:\Users\you\keys\server.pem (got '$SshKey')." }
+    if (-not (Test-Path -LiteralPath $SshKey -PathType Leaf)) { throw "The ssh key file '$SshKey' was not found." }
+    $env:VEDHA_SSH_IDENTITY = $SshKey          # the release tool's own ssh/scp calls use it too
+  }
+  $sshKeyArgs = Get-VedhaSshArgs $SshKey
   if ($Server) {
     foreach ($t in 'ssh', 'scp') { if (-not (Get-Command $t -ErrorAction SilentlyContinue)) { throw "$t was not found. Install it: Settings > Apps > Optional features > OpenSSH Client." } }
     Write-Note "checking that ssh works to $Server (it may ask for your password or key passphrase)"
-    Invoke-Native 'ssh' @('-o', 'ConnectTimeout=15', $Server, 'echo vedha-ssh-ok') "ssh to $Server"
+    Invoke-Native 'ssh' (@('-o', 'ConnectTimeout=15') + $sshKeyArgs + @($Server, 'echo vedha-ssh-ok')) "ssh to $Server"
     Write-Ok "ssh to $Server works"
   }
 
@@ -268,8 +292,8 @@ function Invoke-Main {
     $remote = '/tmp/' + (Split-Path $tmp -Leaf)
     Push-Location (Split-Path $tmp -Parent)      # relative name: scp reads "C:" as a host
     try {
-      Invoke-Native 'scp' @((Split-Path $tmp -Leaf), "${Server}:$remote") 'Copying the configuration script'
-      Invoke-Native 'ssh' @($Server, "sh $remote; rc=`$?; rm -f $remote; exit `$rc") 'Configuring the manager'
+      Invoke-Native 'scp' ($sshKeyArgs + @((Split-Path $tmp -Leaf), "${Server}:$remote")) 'Copying the configuration script'
+      Invoke-Native 'ssh' ($sshKeyArgs + @($Server, "sh $remote; rc=`$?; rm -f $remote; exit `$rc")) 'Configuring the manager'
     } finally {
       Pop-Location
       Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue

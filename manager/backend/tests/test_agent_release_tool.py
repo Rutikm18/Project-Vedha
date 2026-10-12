@@ -285,3 +285,30 @@ def test_pubkey_needs_a_key_and_refuses_the_wrong_kind(tmp_path, capsys):
     tool.keygen(ed), tool.keygen_p256(p256)
     assert tool.main(["pubkey", "--key", str(p256)]) != 0       # a P-256 file is not an Ed25519 key
     assert tool.main(["pubkey", "--p256-key", str(ed)]) != 0
+
+
+# ── ssh key for the remote publish (publish-release.ps1 -SshKey sets VEDHA_SSH_IDENTITY) ───────────
+
+def test_the_scp_publish_uses_the_named_ssh_key_for_every_ssh_and_scp_call(tmp_path, monkeypatch):
+    key = tmp_path / "server.pem"
+    key.write_text("pretend key")
+    release = tmp_path / "1.2.3"
+    release.mkdir()
+    (release / "manifest.json").write_text("{}")
+    calls = []
+    monkeypatch.setattr(tool, "_run", lambda cmd, cwd=None: calls.append(list(cmd)))
+    monkeypatch.setenv("VEDHA_SSH_IDENTITY", str(key))
+    tool._publish_with_scp(release, "ubuntu@203.0.113.7", "/opt/x", "1.2.3")
+    assert [c[0] for c in calls] == ["ssh", "scp", "ssh"]
+    for command in calls:
+        assert command[1:3] == ["-i", str(key)]                       # the key is on every call
+    monkeypatch.delenv("VEDHA_SSH_IDENTITY")
+    calls.clear()
+    tool._publish_with_scp(release, "ubuntu@203.0.113.7", "/opt/x", "1.2.3")
+    assert not any("-i" in c[:3] for c in calls)                       # and absent when none was given
+
+
+def test_a_key_that_does_not_exist_is_reported_clearly(monkeypatch):
+    monkeypatch.setenv("VEDHA_SSH_IDENTITY", "C:\\no\\such\\key.pem")
+    with pytest.raises(tool.ReleaseError, match="does not exist"):
+        tool._ssh_identity_args()

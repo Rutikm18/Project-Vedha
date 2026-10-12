@@ -141,7 +141,7 @@ PYTHON_BLOCK = (
 
 def bootstrap_command(url: str, sha256: str, *, server: str, manager_url: str, allow_tokenless: bool = False,
                       install_dir: str = "C:\\VedhaKit", powershell: str = "powershell", ensure_python: bool = True,
-                      extra_args: str = "") -> str:
+                      extra_args: str = "", ssh_key: str = "") -> str:
     """The ONE command to paste into PowerShell on the publishing PC.
 
     It downloads the kit from `url` (any private, time-limited link: an S3 pre-signed URL, an Azure SAS URL, a GCS
@@ -159,10 +159,13 @@ def bootstrap_command(url: str, sha256: str, *, server: str, manager_url: str, a
         raise ValueError("the manager address must look like https://host")
     if not _DIR_RE.fullmatch(install_dir):
         raise ValueError("the install folder must be a plain Windows path such as C:\\VedhaKit")
+    if ssh_key and (".." in ssh_key or not __import__("re").fullmatch(r"[A-Za-z]:\\[A-Za-z0-9 _.()\\-]{1,200}", ssh_key)):
+        raise ValueError("the ssh key must be a plain Windows path such as C:\\Users\\you\\keys\\server.pem")
     if extra_args and not __import__("re").fullmatch(r"(-[A-Za-z]+ ?)+", extra_args):
         raise ValueError("extra arguments must be plain switches such as -DryRun")
     publish = (f"& {powershell} -NoProfile -ExecutionPolicy Bypass -File (Join-Path $dir 'probe\\windows\\publish-release.ps1') "
-               f"-Server '{server}' -ManagerUrl '{manager_url.rstrip('/')}' -ConfigureManager"
+               f"-Server '{server}' " + (f"-SshKey '{ssh_key}' " if ssh_key else "")
+               + f"-ManagerUrl '{manager_url.rstrip('/')}' -ConfigureManager"
                + (" -AllowTokenlessInstall" if allow_tokenless else "") + (f" {extra_args.strip()}" if extra_args else ""))
     parts = [
         "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12",
@@ -190,6 +193,7 @@ def main(argv=None) -> int:
     parser.add_argument("--server", default="ubuntu@YOUR_SERVER", help="user@host of the manager server (ssh)")
     parser.add_argument("--manager-url", default="https://api.your-domain", help="https address of the manager")
     parser.add_argument("--allow-tokenless", action="store_true", help="add -AllowTokenlessInstall")
+    parser.add_argument("--ssh-key", default="", help="Windows path of the ssh private key on the publishing PC, e.g. C:\\Users\\you\\keys\\server.pem")
     args = parser.parse_args(argv)
     target = build(args.out)
     size = target.stat().st_size
@@ -200,7 +204,7 @@ def main(argv=None) -> int:
     print("sha256", digest)
     if args.url:
         command = bootstrap_command(args.url, digest, server=args.server, manager_url=args.manager_url,
-                                    allow_tokenless=args.allow_tokenless)
+                                    allow_tokenless=args.allow_tokenless, ssh_key=args.ssh_key)
         print("\nPaste this into PowerShell on the publishing PC (the link inside it is a secret until it expires):\n")
         print(command)
     return 0

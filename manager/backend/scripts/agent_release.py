@@ -568,6 +568,16 @@ def is_remote_dest(dest: str) -> bool:
             and not Path(dest).exists())
 
 
+def _ssh_identity_args() -> list[str]:
+    """`-i <key>` when VEDHA_SSH_IDENTITY names a key file (set by publish-release.ps1 -SshKey), else nothing."""
+    key = os.environ.get("VEDHA_SSH_IDENTITY", "").strip()
+    if not key:
+        return []
+    if not Path(key).is_file():
+        raise ReleaseError(f"VEDHA_SSH_IDENTITY names a file that does not exist: {key}")
+    return ["-i", key]
+
+
 def _publish_with_scp(release_dir: Path, host: str, remote: str, version: str) -> None:
     """Remote publish for machines without rsync (Windows ships OpenSSH's ssh and scp).
 
@@ -576,11 +586,12 @@ def _publish_with_scp(release_dir: Path, host: str, remote: str, version: str) -
     published version is immutable, so an existing one is refused rather than overwritten."""
     qremote = shlex.quote(remote)
     qdir = shlex.quote(f"{remote}/{version}")
-    _run(["ssh", host, f"mkdir -p {qremote} && {{ test ! -e {qdir} || "
+    ident = _ssh_identity_args()
+    _run(["ssh", *ident, host, f"mkdir -p {qremote} && {{ test ! -e {qdir} || "
                        f"{{ echo 'release {version} already exists on the manager - releases are immutable' >&2; exit 1; }}; }}"])
     # Relative name + cwd: a Windows path such as C:\\x would be read by scp as "host C".
-    _run(["scp", "-r", release_dir.name, f"{host}:{remote}/"], cwd=release_dir.parent)
-    _run(["ssh", host, f"chmod -R u=rwX,go=rX {qdir} && printf '%s\\n' {shlex.quote(version)} > {qremote}/.CURRENT.tmp "
+    _run(["scp", *ident, "-r", release_dir.name, f"{host}:{remote}/"], cwd=release_dir.parent)
+    _run(["ssh", *ident, host, f"chmod -R u=rwX,go=rX {qdir} && printf '%s\\n' {shlex.quote(version)} > {qremote}/.CURRENT.tmp "
                        f"&& chmod 644 {qremote}/.CURRENT.tmp && mv -f {qremote}/.CURRENT.tmp {qremote}/CURRENT"])
 
 
@@ -598,12 +609,14 @@ def publish(release_dir: Path, dest: str) -> None:
                 return
             raise ReleaseError("publishing to a remote host needs rsync, or ssh and scp "
                                "(Windows 10/11: Settings > Optional features > OpenSSH Client)")
-        _run(["rsync", "-a", "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r", f"{release_dir}/", f"{host}:{remote}/{version}/"])
+        ident = _ssh_identity_args()
+        rsh = ["-e", "ssh -i " + shlex.quote(ident[1])] if ident else []
+        _run(["rsync", "-a", *rsh, "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r", f"{release_dir}/", f"{host}:{remote}/{version}/"])
         with tempfile.TemporaryDirectory() as tmp:
             current = Path(tmp) / "CURRENT"
             current.write_text(version + "\n", encoding="utf-8")
             current.chmod(0o644)
-            _run(["rsync", "-a", str(current), f"{host}:{remote}/CURRENT"])
+            _run(["rsync", "-a", *rsh, str(current), f"{host}:{remote}/CURRENT"])
         return
     root = Path(dest)
     root.mkdir(parents=True, exist_ok=True)

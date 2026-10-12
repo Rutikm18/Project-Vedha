@@ -257,3 +257,12 @@ def test_the_cli_prints_the_command_with_the_zips_own_checksum(tmp_path, capsys)
     out = capsys.readouterr().out
     zip_path = next(tmp_path.glob("*.zip"))
     assert hashlib.sha256(zip_path.read_bytes()).hexdigest() in out and "-AllowTokenlessInstall" in out
+
+
+def test_the_command_can_carry_the_ssh_key_path_and_refuses_a_bad_one():
+    cmd = kit.bootstrap_command("https://x.example.com/k.zip", "a" * 64, ssh_key="C:\\Users\\WZ\\keys\\server.pem", **SERVER)
+    assert "-SshKey 'C:\\Users\\WZ\\keys\\server.pem' -ManagerUrl" in cmd
+    assert "-SshKey" not in kit.bootstrap_command("https://x.example.com/k.zip", "a" * 64, **SERVER)
+    for bad in ("server.pem", "C:\\k'; calc; '", "C:\\a\\..\\b.pem", "C:\\a;b.pem"):
+        with pytest.raises(ValueError):
+            kit.bootstrap_command("https://x.example.com/k.zip", "a" * 64, ssh_key=bad, **SERVER)
