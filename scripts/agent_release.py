@@ -54,7 +54,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -340,6 +340,7 @@ def build_release(
     windows_installer_source: Path = WIN_INSTALLER,
     windows_launcher_source: Path = WIN_LAUNCHER,
     agent_version: str | None = None,
+    expires_days: int | None = None,
 ) -> Path:
     if windows_zip is not None:
         if p256_key_path is None:
@@ -415,6 +416,8 @@ def build_release(
                 "tag": tag,
             })
 
+        if expires_days is not None and not 1 <= expires_days <= 3650:
+            raise ReleaseError("--expires-days must be between 1 and 3650")
         manifest = {
             "schema": 1,
             "version": version,
@@ -426,6 +429,12 @@ def build_release(
             "images": images,
             "signing_key_id": key_id(raw_b64),
         }
+
+        if expires_days is not None:
+            # Signed with the rest of the manifest. An agent that has pinned the release key refuses
+            # to update from a release past this date, so a manager (or a mirror) that keeps serving
+            # an old signed release cannot hold agents on it forever: the owner must sign a fresh one.
+            manifest["expires"] = (datetime.now(timezone.utc) + timedelta(days=expires_days)).isoformat(timespec="seconds")
 
         # ── schema 2 additions (Windows package, SBOM). Without them the manifest
         # stays exactly the schema-1 shape older managers and install.sh expect.
@@ -826,6 +835,9 @@ def main(argv: list[str] | None = None) -> int:
     bd.add_argument("--authenticode-thumbprint", default=None,
                     help="SHA-1 thumbprint of the cert the Windows exe is Authenticode-signed with")
     bd.add_argument("--sbom", type=Path, help="CycloneDX SBOM to include")
+    bd.add_argument("--expires-days", type=int, default=None,
+                    help="sign an expiry date this many days ahead; agents refuse to update from an expired release "
+                         "(you must then publish a fresh one before it passes). Default: no expiry")
 
     pk = sub.add_parser("pubkey", help="print the public key(s) of existing signing keys, as .env lines")
     pk.add_argument("--key", type=Path, help="Ed25519 private key file")
@@ -890,7 +902,7 @@ def main(argv: list[str] | None = None) -> int:
                                   version=args.version or read_version(), from_images=from_images,
                                   p256_key_path=args.p256_key, windows_zip=args.windows_zip,
                                   authenticode_thumbprint=args.authenticode_thumbprint,
-                                  sbom_path=args.sbom)
+                                  sbom_path=args.sbom, expires_days=args.expires_days)
             print(f"\nRelease ready: {final}")
             print(f"Publish:  python3 scripts/agent_release.py publish {final} --to <user@manager:/path or dir>")
         elif args.cmd == "verify":

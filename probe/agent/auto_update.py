@@ -10,19 +10,25 @@ How, in order:
   1. Gates. Switched on (PROBE_AUTO_UPDATE=on, a line in agent.env, which the installer keeps
      across updates), Windows, no scan running right now, and this version was not already
      attempted in the last 24 hours (so a failing update cannot loop).
-  2. Ask the manager for an update ticket (a short-lived, single-use download token that only
+  2. Download the installer script and the signed release manifest from the manager, and CHECK
+     them against the release key pinned on this machine (release_trust.py): the manifest must be
+     signed by that key, list this exact script's SHA-256, offer a newer agent, not be older than
+     the newest release already installed here, and not be expired. A manager that has been broken
+     into cannot get a different script run this way.
+  3. Ask the manager for an update ticket (a short-lived, single-use download token that only
      exists when the manager has decided this agent should update; see
      manager/backend/app/services/agent_update_ticket.py).
-  3. Download the installer script from the manager (public; it carries the release key).
-  4. Run it as SYSTEM through a ONE-SHOT Scheduled Task, not as a child of this process: the
-     installer stops this agent's own task, and a child process would die with it.
-  5. The installer replaces the agent, starts it, and waits for it to connect.
+  4. Run the verified script as SYSTEM through a ONE-SHOT Scheduled Task, not as a child of this
+     process: the installer stops this agent's own task, and a child process would die with it.
+  5. The installer replaces the agent, starts it, and waits up to 5 minutes for it to connect. If
+     it does not, the installer puts the previous version back (program, settings, identity) and
+     records "rolled-back" in update/last-update.json, which this agent logs when it next starts.
 
 What it does NOT do yet (be honest about it):
-  * No automatic rollback. The installer keeps the previous program folder as `.old`, but nothing
-    restores it if the new agent fails to connect. See docs/design/agent-version-management.md (section 7).
   * No staged rollout or pause switch: every agent with this on updates when the manager offers.
-  * It trusts TLS to your manager for the installer script, exactly like the first install.
+  * A machine installed before the pin existed has no pinned key: it refuses to update itself
+    (reason "no-pin") until the install command is run once more.
+  * The first install is trusted on first use (TLS to the manager); the pin protects what follows.
   * Not run on a real Windows machine yet.
 """
 from __future__ import annotations
@@ -78,7 +84,7 @@ def is_busy() -> bool:
 @dataclass(frozen=True)
 class Outcome:
     applied: bool
-    reason: str      # off | unsupported | busy | recently-tried | no-ticket | no-installer | io | schedule | started
+    reason: str      # off | unsupported | busy | recently-tried | no-pin | untrusted | no-ticket | no-installer | io | schedule | started
     message: str
 
     @property
@@ -172,7 +178,7 @@ def apply_update(
     runner: Runner = _default_runner,
 ) -> Outcome:
     """Start the update. Never raises; the Outcome says what happened and why."""
-    from agent import update_check
+    from agent import release_trust, update_check
 
     if not enabled(env):
         return Outcome(False, "off", "Automatic update is off (set PROBE_AUTO_UPDATE=on in agent.env to enable it).")
@@ -188,7 +194,27 @@ def apply_update(
     if " " in str(base):
         return Outcome(False, "unsupported", "The agent's data folder path contains a space; run the installer by hand.")
 
+    pin = release_trust.load_pin(base)
+    if pin is None:
+        return Outcome(False, "no-pin",
+                       "This computer has no pinned release key (the agent was installed before keys were pinned), "
+                       "so it will not run an installer the manager serves. Run the install command from Fleet once "
+                       "more to pin it.")
+
     try:
+        script = transport.download_installer()
+        if not script:
+            return Outcome(False, "no-installer", "Could not download the installer from the manager.")
+        if len(script) > _MAX_INSTALLER_BYTES:
+            return Outcome(False, "no-installer", "The installer the manager sent is larger than expected; not running it.")
+        signed = transport.download_release_manifest()
+        if not signed:
+            return Outcome(False, "no-installer", "Could not download the signed release manifest from the manager.")
+        verdict = release_trust.verify_update(pin, signed[0], signed[1], script, current_agent_version=info.current)
+        if not verdict.ok:
+            LOG.warning("auto-update refused (%s): %s", verdict.reason, verdict.message)
+            return Outcome(False, "untrusted", f"Update refused ({verdict.reason}): {verdict.message}")
+
         reply = transport.update_ticket(info.current, platform, architecture)
         ticket = reply.get("ticket") if isinstance(reply, dict) else None
         latest = reply.get("latest") if isinstance(reply, dict) else None
@@ -196,11 +222,9 @@ def apply_update(
         if not (isinstance(ticket, str) and reply.get("update_available") is True
                 and update_check.is_newer(latest, info.current)):
             return Outcome(False, "no-ticket", "The manager did not offer an update ticket.")
-        script = transport.download_installer()
-        if not script:
-            return Outcome(False, "no-installer", "Could not download the installer from the manager.")
-        if len(script) > _MAX_INSTALLER_BYTES:
-            return Outcome(False, "no-installer", "The installer the manager sent is larger than expected; not running it.")
+        if str((verdict.manifest or {}).get("agent_version")) != str(latest):
+            return Outcome(False, "untrusted",
+                           "Update refused (offer-mismatch): the manager offered a different agent version than the signed release lists.")
 
         folder = update_dir(base)
         folder.mkdir(parents=True, exist_ok=True)
@@ -232,6 +256,23 @@ def apply_update(
                    f"the installer's output is in {log_file}.")
 
 
+def report_last_update(base: Path) -> str:
+    """Log how the installer's last update ended (update/last-update.json), once per start. A
+    rolled-back update is a WARNING: the new version could not connect and the old one is running.
+    Returns the result word ('' when there is no record)."""
+    try:
+        data = json.loads((update_dir(base) / "last-update.json").read_text(encoding="utf-8-sig"))
+        result = str(data.get("result", ""))[:40]
+        text = f"{data.get('from', '?')} -> {data.get('to', '?')}"
+    except (OSError, ValueError, AttributeError):
+        return ""
+    if result in ("rolled-back", "rollback-failed"):
+        LOG.warning("the last update (%s) ended as %s: %s", text, result, str(data.get("reason", ""))[:200])
+    elif result:
+        LOG.info("the last update (%s) ended as %s", text, result)
+    return result
+
+
 def cleanup_after_update(base: Path | None = None, *, runner: Runner = _default_runner,
                          env: dict[str, str] | None = None) -> None:
     """Called when the agent starts: remove the one-shot task and the downloaded installer and
@@ -240,6 +281,7 @@ def cleanup_after_update(base: Path | None = None, *, runner: Runner = _default_
     folder = update_dir(base)
     if not folder.exists():
         return
+    report_last_update(base)
     try:
         runner(delete_task_command())
     except Exception:  # noqa: BLE001

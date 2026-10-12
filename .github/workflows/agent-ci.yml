@@ -62,7 +62,7 @@ jobs:
           tests/test_hosting.py
           tests/test_win_fast_connect.py tests/test_port_scanner_fast_fail.py
           tests/test_filtered_unverified.py tests/test_quiet_peer_resets.py
-          tests/test_full_coverage_ceiling.py tests/test_push_mode_recovery.py tests/test_auto_update.py
+          tests/test_full_coverage_ceiling.py tests/test_push_mode_recovery.py tests/test_auto_update.py tests/test_release_trust_integration.py
       - name: Installer contract (POSIX sh; the curl | sh path customers run)
         if: runner.os != 'Windows'
         run: |

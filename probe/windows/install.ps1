@@ -30,6 +30,12 @@
 
 .NOTES
   This installer never changes your firewall, proxy, antivirus or certificate settings.
+
+  An update can undo itself: the previous program folder, settings and identity are kept until the new
+  agent has connected (up to 5 minutes). If it does not, the previous version is put back, the result is
+  written to ProgramData\vedha-agent\update\last-update.json, and the installer exits with code 4.
+  Exit codes: 0 done (connected, or waiting for approval) | 1 failed, nothing changed | 3 installed but
+  not connected yet (fresh install or repair) | 4 update undone, previous version restored.
 #>
 [CmdletBinding()]
 param(
@@ -59,6 +65,7 @@ $PackageVersion = '__VEDHA_PACKAGE_VERSION__'
 
 $TaskName   = 'VedhaAgent'
 $WaitSeconds = 120
+$UpgradeWaitSeconds = 300   # replacing a working agent: give the new one longer before undoing the update
 
 # ---------------------------------------------------------------------------
 # Pure helpers (no side effects; unit-tested)
@@ -250,6 +257,60 @@ function Get-VedhaUpdatePlan {
   }
   return [pscustomobject]@{ Kind = 'downgrade'; Allowed = $false
     Message = "This package ($Package) is OLDER than the installed agent ($Installed). Installing it would replace a newer agent with an older one." }
+}
+
+function Get-VedhaRollbackDecision {
+  # After an update, should the previous version be put back? Only when there was a previous
+  # version to go back to, the update really changed the program (a repair of the same version
+  # would only bring back identical files, and the new run's output is what a person needs to see),
+  # and the new agent never got to 'online' or 'awaiting-approval' within the wait.
+  param([bool]$HadPrevious, [string]$Kind, [string]$State)
+  if (-not $HadPrevious) { return $false }
+  if ($Kind -eq 'same' -or $Kind -eq 'fresh') { return $false }
+  return ($State -ne 'online' -and $State -ne 'awaiting-approval')
+}
+
+function Save-VedhaPreviousState {
+  # The settings file and the identity file as they were before the update, so a rollback puts the
+  # previous agent back exactly as it was. They stay inside the locked data folder.
+  param([string]$DataDir)
+  $saved = Join-Path (Join-Path $DataDir 'update') 'previous'
+  New-Item -ItemType Directory -Force -Path $saved | Out-Null
+  foreach ($name in 'agent.env', 'state.json') {
+    $source = Join-Path $DataDir $name
+    if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination (Join-Path $saved $name) -Force }
+  }
+  return $saved
+}
+
+function Remove-VedhaPreviousState {
+  param([string]$SavedDir)
+  if ($SavedDir -and (Test-Path -LiteralPath $SavedDir)) { Remove-Item -LiteralPath $SavedDir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+function Write-VedhaUpdateRecord {
+  # One small file that says how the last update ended; the agent logs it when it next starts.
+  param([string]$DataDir, [string]$Result, [string]$From, [string]$To, [string]$Reason)
+  $dir = Join-Path $DataDir 'update'
+  New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  $record = [ordered]@{ result = $Result; from = $From; to = $To; reason = $Reason; at = (Get-Date).ToUniversalTime().ToString('o') }
+  Write-Utf8NoBom -Path (Join-Path $dir 'last-update.json') -Text ($record | ConvertTo-Json)
+}
+
+function Restore-VedhaPrevious {
+  # Undo an update: stop the new agent, put the previous program folder and its settings and identity
+  # back, and start it again. The scan results and logs were never touched (they live in the data folder).
+  param([string]$AppDir, [string]$Backup, [string]$DataDir, [string]$SavedDir)
+  Stop-VedhaAgent -AppDir $AppDir
+  if (Test-Path -LiteralPath $AppDir) { Remove-Item -LiteralPath $AppDir -Recurse -Force }
+  Move-Item -LiteralPath $Backup -Destination $AppDir -Force
+  foreach ($name in 'agent.env', 'state.json') {
+    $kept = Join-Path $SavedDir $name
+    if (Test-Path -LiteralPath $kept) { Copy-Item -LiteralPath $kept -Destination (Join-Path $DataDir $name) -Force }
+  }
+  Set-VedhaAcl -Path $DataDir
+  Register-VedhaTask -AppDir $AppDir
+  Start-ScheduledTask -TaskName $TaskName
 }
 
 function Copy-VedhaLegacyResults {
@@ -639,6 +700,11 @@ function Invoke-VedhaInstall {
   # --- 4. Install -----------------------------------------------------------
   Write-Step '4/6' 'Installing'
   $backup = "$AppDir.old"
+  # Replacing a working agent: remember its settings and identity, and keep its program folder until
+  # the new one has connected, so a bad update can be undone (see the end of step 5).
+  $hadPrevious = $installedPresent
+  $savedDir = ''
+  if ($hadPrevious) { $savedDir = Save-VedhaPreviousState -DataDir $DataDir }
   Stop-VedhaAgent -AppDir $AppDir
   try {
     if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Recurse -Force }
@@ -694,9 +760,15 @@ function Invoke-VedhaInstall {
       Move-Item -LiteralPath $backup -Destination $AppDir -Force -ErrorAction SilentlyContinue
       if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) { Start-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue }
     }
+    Remove-VedhaPreviousState -SavedDir $savedDir
     throw
   }
-  if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue }
+  # The previous program folder is kept until the new agent has connected, unless nobody is waiting to see.
+  $keepBackup = $hadPrevious -and -not $NoWait -and (Test-Path -LiteralPath $backup)
+  if (-not $keepBackup) {
+    if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue }
+    Remove-VedhaPreviousState -SavedDir $savedDir
+  }
 
   # --- 5. Start and wait for it to connect ----------------------------------
   Write-Step '5/6' 'Starting the agent'
@@ -706,7 +778,8 @@ function Invoke-VedhaInstall {
     return 0
   }
   $exe = Join-Path $AppDir 'vedha-agent.exe'
-  $deadline = (Get-Date).AddSeconds($WaitSeconds)
+  $waitFor = if ($keepBackup) { $UpgradeWaitSeconds } else { $WaitSeconds }
+  $deadline = (Get-Date).AddSeconds($waitFor)
   $last = ''
   $final = $null
   while ((Get-Date) -lt $deadline) {
@@ -721,6 +794,30 @@ function Invoke-VedhaInstall {
 
   # --- 6. Result --------------------------------------------------------------
   Write-Step '6/6' 'Result'
+  if ($keepBackup) {
+    $finalState = if ($null -ne $final) { [string]$final.state } else { '' }
+    if (Get-VedhaRollbackDecision -HadPrevious $true -Kind $plan.Kind -State $finalState) {
+      Write-Host ''
+      Write-Host 'THE NEW VERSION DID NOT CONNECT, so the previous version is being put back.' -ForegroundColor Yellow
+      if ($null -ne $final) { Write-Host "  The new agent's last status was: $(Get-StatusLine -Status $final)" }
+      $reason = if ($finalState) { "the new agent stayed '$finalState'" } else { 'the new agent never reported a status' }
+      try {
+        Restore-VedhaPrevious -AppDir $AppDir -Backup $backup -DataDir $DataDir -SavedDir $savedDir
+        Write-VedhaUpdateRecord -DataDir $DataDir -Result 'rolled-back' -From "$installedVersion" -To "$packageVersion" -Reason $reason
+        Remove-VedhaPreviousState -SavedDir $savedDir
+        Write-Host "  Restored the previous agent ($installedVersion). Scan results, logs and identity are unchanged." -ForegroundColor Green
+        Write-Host '  The update will not be tried again for 24 hours. To see why the new version failed, read the lines above.'
+      } catch {
+        Write-Bad "Could not restore the previous version automatically: $($_.Exception.Message)"
+        Write-Fix "The previous program folder is still at $backup. Rename it to '$AppDir' (after stopping the '$TaskName' task) to go back by hand."
+        Write-VedhaUpdateRecord -DataDir $DataDir -Result 'rollback-failed' -From "$installedVersion" -To "$packageVersion" -Reason $_.Exception.Message
+      }
+      return 4
+    }
+    Remove-VedhaPreviousState -SavedDir $savedDir
+    if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue }
+    Write-VedhaUpdateRecord -DataDir $DataDir -Result 'updated' -From "$installedVersion" -To "$packageVersion" -Reason ''
+  }
   if ($null -ne $final -and $final.state -eq 'online') {
     if ($Token -and (Test-Path -LiteralPath $configPath)) {
       Write-Utf8NoBom -Path $configPath -Text (Remove-VedhaTokenLine -Text ([System.IO.File]::ReadAllText($configPath)))

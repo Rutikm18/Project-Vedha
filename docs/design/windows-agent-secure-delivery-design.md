@@ -273,12 +273,12 @@ Sized S under a day, M a few days, L a week or more. "Needs you" is an owner dec
 **Phase 0 - close the cheap, high-impact gaps (no money, no certificate).**
 | # | Item | Size | Needs you |
 |---|---|---|---|
-| 0.1 | **Pin the release key on the machine**: install it from the *first* trusted copy, store it, and make `update_check`/`auto_update` verify against the stored key, not the one in a freshly fetched script | M | no |
+| 0.1 | **BUILT 12 Oct, agent 2.2.9 (untested on real Windows).** **Pin the release key on the machine**: install it from the *first* trusted copy, store it, and make `update_check`/`auto_update` verify against the stored key, not the one in a freshly fetched script | M | no |
 | 0.2 | **Hash-locked, pinned build** (`requirements.lock` with hashes, pinned Nuitka, compiler from a checksummed artifact) | M | no |
 | 0.3 | **Encrypt the signing keys at rest** and move signing to one clean machine; write the rotation and compromise procedures; run a rotation drill on a test key | S-M | no |
-| 0.4 | **Rollback**: if the new agent is not `online` in 5 minutes, restore the previous folder and report it | M | no |
+| 0.4 | **BUILT 12 Oct, agent 2.2.9 (untested on real Windows).** **Rollback**: if the new agent is not `online` in 5 minutes, restore the previous folder and report it | M | no |
 | 0.5 | **Rings and a pause switch** in the manager, a Fleet "update available / rolled back" column | M | no |
-| 0.6 | Manager signs a **release expiry and monotonic version**; the agent stores the last accepted version | S | no |
+| 0.6 | **BUILT 12 Oct, agent 2.2.9 (untested on real Windows); expiry is optional and off by default.** Manager signs a **release expiry and monotonic version**; the agent stores the last accepted version | S | no |
 
 **Phase 1 - trust and the MSI.**
 | # | Item | Size | Needs you |

@@ -1129,6 +1129,19 @@ class Transport:
         except httpx.HTTPError:
             return None
 
+    def download_release_manifest(self, *, timeout: float = 30.0) -> tuple[bytes, str] | None:
+        """The signed release manifest and its P-256 signature (both public). None for any failure."""
+        try:
+            manifest = self._client.get("/agent/manifest.json", timeout=timeout)
+            signature = self._client.get("/agent/manifest.json.p256.sig", timeout=timeout)
+            if manifest.status_code != 200 or signature.status_code != 200:
+                return None
+            if len(manifest.content) > 1024 * 1024 or len(signature.content) > 4096:
+                return None
+            return manifest.content, signature.content.decode("ascii")
+        except (httpx.HTTPError, UnicodeDecodeError):
+            return None
+
     # ── Low-level HTTP GET for callbacks ───────────────────────────────────────
 
     def http_get(self, path: str) -> dict[str, Any] | None:

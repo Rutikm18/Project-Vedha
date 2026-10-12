@@ -299,12 +299,29 @@ The uninstall (without `-Purge`) saves those old scan results the same way befor
 ### 5.1 Automatic update (off by default, agent 2.2.8 and later)
 
 **Status: built and unit-tested, never run on a real Windows machine.** Try it on one test PC first.
+Agent 2.2.9 adds the pinned release key and the automatic rollback described below.
 
-What it does, when switched on: the agent notices the manager offers a newer agent, asks the manager for a
-one-time download ticket (15 minutes, single use, issued only to an enrolled, active agent that is really older),
-downloads the manager's `install.ps1`, and runs it **as SYSTEM through a one-shot Scheduled Task** called
-`VedhaAgentUpdate`. That is the same installer a person would run, so the same checks apply: signature and SHA-256
-against the signed manifest, no downgrade, in-place replace, identity and saved results kept.
+What it does, when switched on: the agent notices the manager offers a newer agent, downloads the manager's
+`install.ps1` and the signed release manifest and **checks them against the release key pinned on this computer**
+(the manifest must be signed by that key, list this exact script's SHA-256, offer a newer agent, not be older than the
+newest release already installed here, and not be past its `expires` date). Only then does it ask the manager for a
+one-time download ticket (15 minutes, single use, issued only to an enrolled, active agent that is really older) and
+run the script **as SYSTEM through a one-shot Scheduled Task** called `VedhaAgentUpdate`. That is the same installer a
+person would run, so the same checks apply: signature and SHA-256 against the signed manifest, no downgrade, in-place
+replace, identity and saved results kept.
+
+**The pinned key.** The one-command installer stores the release key in `C:\ProgramData\vedha-agent\release\trust.json`
+(administrators only) after its first successful install. A computer installed by an older installer has no pin and
+refuses to update itself (`no-pin` in the log) until the install command from Fleet is run once more. If you rotate
+the release key on purpose, every computer refuses the new one until a person runs the installer by hand from an
+Administrator PowerShell with `-ReplaceReleaseKey` after confirming the new key id: that is deliberate, because a
+silent key change is exactly what a tampered manager would do.
+
+**Rollback.** When an update replaces a working agent, the installer keeps the previous program folder, `agent.env`
+and `state.json` until the new agent reports `online` (or waits for approval), for up to 5 minutes. If it does not,
+the previous version is put back and started, `update\last-update.json` says `rolled-back` and why, the agent logs
+it as a warning on its next start, and the installer exits with code 4. Scan results and logs live outside the
+program folder and are never touched. A repair of the same version is not rolled back.
 
 It only starts when **no scan is running** (it looks again 15 minutes later if one is), and it tries a given
 version **once per 24 hours** so a failing update cannot loop.
@@ -330,12 +347,14 @@ Where to look: `C:\ProgramData\vedha-agent\update\update.log` (what the installe
 task and the downloaded installer are removed the next time the agent starts; the log is kept.
 
 **What it does not do yet** (so do not enable it fleet-wide):
-* **No automatic rollback.** The previous program folder is kept as `Vedha Agent.old`, but nothing puts it back if
-  the new agent installs and then fails to connect. A bad build would leave every updated agent offline until
-  someone reinstalls.
-* **No staged rollout or pause.** Every agent with the switch on updates once the manager offers it.
-* **The installer script is fetched over TLS from your manager**, the same trust as the first install. A later
-  step should pin the release key on the machine at install time.
+* **No staged rollout or pause.** Every agent with the switch on updates once the manager offers it. Rollback
+  limits the damage of a bad build to the agents that updated in the same five minutes; it does not stop the next
+  agent from trying.
+* **The first install is trusted on first use** (TLS to your manager); the pin protects every update after it.
+  It does not protect against the key holder signing something bad, or against a stolen signing key.
+* **Optional expiry.** `agent_release.py build --expires-days 90` signs an expiry date into the manifest; agents then
+  refuse a release past it, so a mirror cannot hold agents on an old release forever, but you must publish a fresh
+  one before it passes. Off by default.
 * **Windows only.** The manager gives no ticket to Linux or macOS agents.
 * A scan that starts while the installer is running is cut off (its finished hosts are kept and the job is re-queued).
 

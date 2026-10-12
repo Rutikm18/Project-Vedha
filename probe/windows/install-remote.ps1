@@ -27,8 +27,15 @@
   Add -VerifyOnly to do steps 1-3 and the unpack, then stop: nothing is installed and no
   administrator rights are needed. Useful to audit a release before rolling it out.
 
+  The release key is PINNED the first time: after a successful install it is stored in
+  ProgramData\vedha-agent\release\trust.json (administrators only). From then on this installer
+  refuses to run if it carries a different key, or an older release than the last one installed, and
+  the agent's automatic update checks the installer it downloads against that stored key before it
+  runs it. Changing the key on purpose needs a person: run this script by hand, from an
+  Administrator PowerShell, with -ReplaceReleaseKey.
+
   Trust model: the script is fetched over TLS from the manager, so TLS to the manager is the
-  root of trust for the script itself. The signature then protects everything the script
+  root of trust for the script itself the FIRST time; after that the pinned key is. The signature then protects everything the script
   downloads: a tampered or swapped package, a stale manifest, or a mirror that was changed after
   the release was signed. It does not protect against a manager that serves you a different
   script. Verify out-of-band with the release key id shown in Fleet if that matters to you.
@@ -43,6 +50,7 @@ param(
   [string]$Scope   = '',          # CIDR list; empty = auto-detect this host's /24
   [switch]$AllowInsecureHttp,     # testing only: lets -VerifyOnly talk to a local http:// test server
   [switch]$VerifyOnly,            # download and verify everything, install nothing (no administrator needed)
+  [switch]$ReplaceReleaseKey,     # by hand only: accept a release key different from the one this computer pinned
   [switch]$PauseAtEnd,            # keep the window open (set by install.cmd after it elevates)
   [switch]$Elevated               # internal: set on the copy this script starts with administrator rights
 )
@@ -137,6 +145,71 @@ function Enter-VedhaElevation {
   elseif ($script:ElevatedExit -eq 3) { Write-Step 'the agent is installed but has not connected yet; the Administrator window shows what to check' }
   else { throw ('the installer failed in the Administrator window (exit code ' + $script:ElevatedExit + '); that window says why') }
   return $true
+}
+
+# --- pinned release key ----------------------------------------------------------------------
+
+function Get-VedhaTrustPath { return (Join-Path (Join-Path (Join-Path $env:ProgramData 'vedha-agent') 'release') 'trust.json') }
+
+function Get-VedhaKeyId([string]$SpkiB64) {
+  # The first 16 hex characters of the SHA-256 of the DER key: the id Fleet and the release tool show.
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try { $hash = $sha.ComputeHash([Convert]::FromBase64String($SpkiB64)) } finally { $sha.Dispose() }
+  return (([BitConverter]::ToString($hash) -replace '-', '').ToLowerInvariant()).Substring(0, 16)
+}
+
+function ConvertTo-VedhaReleaseVersion([string]$Text) {
+  # '1.0.403' -> [version]; $null for anything that is not plainly numeric (never guessed).
+  if ($Text -match '^(\d+(\.\d+){1,3})') { return [version]$Matches[1] }
+  return $null
+}
+
+function Read-VedhaTrust {
+  # $null when nothing is pinned yet. A file that exists but cannot be read is an error, not "nothing":
+  # silently ignoring it would let damage switch the protection off.
+  $path = Get-VedhaTrustPath
+  if (-not (Test-Path -LiteralPath $path)) { return $null }
+  try {
+    $trust = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+    if (-not $trust.p256_spki) { throw 'no key in it' }
+    return $trust
+  } catch {
+    throw ("The file that pins this computer's release key ($path) cannot be read (" + $_.Exception.Message + '). Nothing was changed. Restore it from a backup, or if you are sure, delete it and run the install again to pin the key afresh.')
+  }
+}
+
+function Assert-VedhaTrust {
+  # Refuse a release key or an older release than the one this computer already trusts.
+  param($Trust, [string]$Spki, [string]$Version, [switch]$Replace)
+  if ($null -eq $Trust) { return }
+  if ([string]$Trust.p256_spki -ne $Spki) {
+    $have = Get-VedhaKeyId ([string]$Trust.p256_spki)
+    $got = Get-VedhaKeyId $Spki
+    if (-not $Replace) {
+      throw ("This computer trusts Vedha release key $have, but this installer carries key $got. Nothing was changed. " +
+             'If you rotated the release key on purpose, confirm the new key id ' + $got + ' with whoever runs your Vedha manager, then run this installer by hand from an Administrator PowerShell with -ReplaceReleaseKey. ' +
+             'If you did not, the manager may have been tampered with: do not install.')
+    }
+    Write-Step ("replacing the pinned release key $have with $got, because -ReplaceReleaseKey was given")
+  }
+  $was = ConvertTo-VedhaReleaseVersion ([string]$Trust.release_version)
+  $now = ConvertTo-VedhaReleaseVersion $Version
+  if ($null -ne $was -and $null -ne $now -and $now -lt $was) {
+    throw ("This installer belongs to release $Version, but release $($Trust.release_version) was already installed here. Going back to an older release is refused (a stale or replayed release). Nothing was changed.")
+  }
+}
+
+function Write-VedhaTrust {
+  param([string]$Spki, [string]$Version, [string]$ManagerUrl)
+  $path = Get-VedhaTrustPath
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
+  $record = [ordered]@{
+    schema = 1; p256_spki = $Spki; key_id = (Get-VedhaKeyId $Spki); release_version = $Version
+    manager = $ManagerUrl; updated_at = (Get-Date).ToUniversalTime().ToString('o')
+  }
+  $tmp = $path + '.new'
+  [System.IO.File]::WriteAllText($tmp, ($record | ConvertTo-Json), (New-Object System.Text.UTF8Encoding($false)))
+  Move-Item -LiteralPath $tmp -Destination $path -Force
 }
 
 function Assert-Environment {
@@ -364,6 +437,7 @@ function Install-VedhaAgent {
   Assert-CleanScope
   if (Enter-VedhaElevation $managerUrl) { return }
   Assert-Environment
+  if (-not $VerifyOnly) { Assert-VedhaTrust -Trust (Read-VedhaTrust) -Spki $script:VedhaReleaseP256Spki -Version $script:VedhaReleaseVersion -Replace:$ReplaceReleaseKey }
 
   Write-Step ("installing Vedha agent release " + $script:VedhaReleaseVersion + " from " + $managerUrl)
   $release = Get-VerifiedPackage $managerUrl
@@ -423,7 +497,14 @@ function Install-VedhaAgent {
       throw ('PowerShell policy blocked the packaged installer (' + $_.Exception.Message + '). Run the command exactly as Fleet shows it: it starts PowerShell with -ExecutionPolicy Bypass for this one process, which is all that is needed.')
     }
     $innerExit = $LASTEXITCODE
+    if ($innerExit -eq 4) {
+      throw 'The new version did not connect to the manager, so the previous version was put back and keeps running. Nothing was lost. The lines above say what the new version reported; the update will be tried again after 24 hours, or run the command again once that is fixed.'
+    }
     if ($innerExit -ne 0 -and $innerExit -ne 3) { throw "The packaged installer failed (exit code $innerExit)." }
+
+    # The agent is in place: remember which release key and release this computer now trusts.
+    Write-VedhaTrust -Spki $script:VedhaReleaseP256Spki -Version $script:VedhaReleaseVersion -ManagerUrl $managerUrl
+    Write-Step ('release key pinned on this computer (key id ' + (Get-VedhaKeyId $script:VedhaReleaseP256Spki) + ')')
 
     # Keep the installer and uninstaller with the install (the package is deleted below), so the
     # agent can be repaired or removed later without downloading anything.

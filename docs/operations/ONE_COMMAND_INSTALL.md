@@ -30,6 +30,14 @@ do them by hand or something fails.
 one line in **any** Command Prompt or PowerShell window on the machine (no need to open it as Administrator:
 when it is not elevated, the installer asks Windows for permission and continues in a new Administrator window). Nothing else.
 
+**Updates after that (agent 2.2.9):** publish a new release with the same script and the agents that have
+`PROBE_AUTO_UPDATE=on` update themselves, nobody types anything on the machines and nobody clones the repo. Three
+safeguards: the first install pins your release key on the machine, and the agent refuses any installer that the
+signed manifest does not list; if the new version does not connect within 5 minutes the old one is put back; and
+a release can carry a signed expiry (`agent_release.py build --expires-days 90`). It is **off by default** and
+Windows only; turn it on per machine first (see [WINDOWS_AGENT_MANAGEMENT 5.1](WINDOWS_AGENT_MANAGEMENT.md)).
+A machine installed before 2.2.9 has no pinned key and must be given the Fleet command once more.
+
 What this does not remove: choosing the engagement and clicking Generate (that is what creates the one-time token),
 the first-time server access (SSH), and backing up the keys. Doing the whole thing from a git push, with no PC of
 yours involved, is the `agent-release` workflow, which is blocked until GitHub Actions billing is fixed. The script

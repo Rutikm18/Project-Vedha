@@ -22,6 +22,7 @@ MODULES = (
     'agent.kernel_limits',
     'agent.license',
     'agent.local_run',
+    'agent.release_trust',
     'agent.result_spool',
     'agent.runtime_status',
     'agent.scope_crypt',

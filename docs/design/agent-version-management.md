@@ -153,9 +153,20 @@ agent (idle, PROBE_AUTO_UPDATE=on)            manager
   job), not attempted for this version in the last 24 h, data path without spaces, and the reply re-validated as
   strictly newer. The ticket sits in its own file in the locked data folder (the launcher reads it); it still appears
   on the installer's command line for the minutes the update runs, which is why it is single-use and short-lived.
-* **Still to build** (section 7 items 3 to 5): rollback if the new agent does not report online in time; a pinned
-  release key on the machine instead of trusting the installer fetched from the manager; per-agent or per-group
-  targets, a pause switch and staged rollout; Authenticode; Fleet's "update available" badge; Linux and macOS.
+* **Added in agent 2.2.9 (12 Oct 2026):**
+  * *Pinned release key* (`probe/agent/release_trust.py`, `install-remote.ps1`). The one-command installer stores the
+    release key in `ProgramData\vedha-agent\release\trust.json` after a good install and refuses a different key
+    (or an older release) unless a person passes `-ReplaceReleaseKey`. Before running the downloaded installer the
+    agent fetches `manifest.json` and its P-256 signature, verifies them with the pinned key, and requires the script's
+    SHA-256 to equal `windows_installer.sha256` in the signed manifest, the manifest to be at least the newest
+    installed release, not expired, and to offer a newer `agent_version` than the manager's reply. A broken-into
+    manager can no longer make agents run a different script. Reason codes: `no-pin`, `bad-signature`, `malformed`,
+    `installer-mismatch`, `key-mismatch`, `older-release`, `expired`, `not-newer`, `offer-mismatch`.
+  * *Rollback* (`install.ps1`, exit code 4). See WINDOWS_AGENT_MANAGEMENT 5.1.
+  * *Optional signed expiry* (`agent_release.py build --expires-days N`).
+* **Still to build:** per-agent or per-group targets, a pause switch and staged rollout (rings); Authenticode; Fleet's
+  "update available / rolled back" column; key rotation by a root-signed statement (today a person runs
+  `-ReplaceReleaseKey`); Linux and macOS.
 
 ## 8. Tests
 
@@ -163,4 +174,4 @@ agent (idle, PROBE_AUTO_UPDATE=on)            manager
 periodic checker), `probe/tests/test_check_agent_version.py` (the CI gate),
 `manager/backend/tests/test_agent_update_check.py` (route, offers, auth, storing the version),
 `manager/backend/tests/test_agent_release_tool.py` (the manifest field), and for section 7a
-`manager/backend/tests/test_agent_update_ticket.py` (ticket, route, download), `probe/tests/test_auto_update.py` (gates, files, commands with a fake runner).
+`manager/backend/tests/test_agent_update_ticket.py` (ticket, route, download), `probe/tests/test_auto_update.py` (gates, files, commands with a fake runner; the pinned-key refusals), `probe/tests/test_release_trust_integration.py` (a release built by the real tool passes the agent's verifier), `probe/tests/test_windows_installer_pwsh.py` (`TestPinnedReleaseKey`), `probe/windows/tests/Test-Install.ps1` (rollback decision and saved state).
