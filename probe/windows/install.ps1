@@ -53,6 +53,7 @@ param(
   [switch]$NoWait,            # register and start, but do not wait to see it connect
   [switch]$SkipPreflight,     # skip the pre-install network check (not recommended)
   [switch]$NoPause,
+  [switch]$Pairing,           # no install token: do not ask for one; the agent shows a pairing code to approve in Fleet
   [switch]$ElevatedChild      # internal: set when this script re-launched itself as administrator
 )
 
@@ -905,7 +906,7 @@ function Invoke-Main {
     if ($Uninstall) {
       $exitCode = [int](@(Invoke-VedhaUninstall -AppDir $appDir -DataDir $dataDir) | Select-Object -Last 1)
     } else {
-      if (-not $Token -and -not $Repair -and [Environment]::UserInteractive -and -not $NoWait -and -not (Test-Path (Join-Path $dataDir 'state.json'))) {
+      if (-not $Token -and -not $Repair -and -not $Pairing -and [Environment]::UserInteractive -and -not $NoWait -and -not (Test-Path (Join-Path $dataDir 'state.json'))) {
         Write-Host ''
         Write-Host 'Paste the one-time install token from Fleet > Add agent, or press Enter to approve this agent with a pairing code instead.'
         $script:Token = (Read-Host 'Install token').Trim()

@@ -21,7 +21,8 @@ param(
   [string]$ZipDir = '',
   [switch]$Install,          # run the real install path (not -VerifyOnly) against an https stub
   [string]$Scope = '',
-  [switch]$ReplaceReleaseKey  # pass -ReplaceReleaseKey to the installer
+  [switch]$ReplaceReleaseKey,  # pass -ReplaceReleaseKey to the installer
+  [switch]$NoToken             # install without a token (approval install)
 )
 $text = Get-Content -Raw -LiteralPath $Installer
 $cut = $text.IndexOf('$failed = $false')
@@ -44,6 +45,7 @@ public static class HarnessTrustAll {
     [System.Net.Security.RemoteCertificateValidationCallback][Delegate]::CreateDelegate(
       [System.Net.Security.RemoteCertificateValidationCallback], [HarnessTrustAll].GetMethod('Yes'))
   $loadArgs = @{ Manager = "https://127.0.0.1:$Port"; Token = $Token }
+  if ($NoToken) { $loadArgs.Remove('Token') }
   if ($Scope) { $loadArgs.Scope = $Scope }
   if ($ReplaceReleaseKey) { $loadArgs.ReplaceReleaseKey = $true }
 } else {

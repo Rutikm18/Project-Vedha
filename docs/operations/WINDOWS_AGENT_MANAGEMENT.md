@@ -296,6 +296,15 @@ exists from agent 2.2.8, **off by default**: see [5.1](#51-automatic-update-off-
 The uninstall (without `-Purge`) saves those old scan results the same way before it deletes the program folder.
 4. Hand-added settings are kept by a package built after 11 Oct 2026 (the note above); with an older package, re-add them.
 
+### 5.0 Installing with no token (approval install, opt-in)
+
+Set `AGENT_ALLOW_TOKENLESS_INSTALL=true` on the manager (publish with `-AllowTokenlessInstall`, see
+[ONE_COMMAND_INSTALL](ONE_COMMAND_INSTALL.md)). The installer then runs without `-Token`: it downloads the signed
+package with no credential, passes `-Pairing` to the packaged installer, and the agent shows a pairing code and
+waits in `awaiting-approval`. Approve it in Fleet -> Pending requests with that code. If the manager does not allow it
+the installer says so (`This manager does not allow installing without a token`) and nothing is installed. The
+release key is pinned in this mode too (5.1). Exit codes are unchanged (0 connected or waiting for approval).
+
 ### 5.1 Automatic update (off by default, agent 2.2.8 and later)
 
 **Status: built and unit-tested, never run on a real Windows machine.** Try it on one test PC first.

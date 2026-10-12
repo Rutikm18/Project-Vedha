@@ -50,6 +50,7 @@ param(
   [string]$Scope   = '',          # CIDR list; empty = auto-detect this host's /24
   [switch]$AllowInsecureHttp,     # testing only: lets -VerifyOnly talk to a local http:// test server
   [switch]$VerifyOnly,            # download and verify everything, install nothing (no administrator needed)
+  [switch]$Tokenless,             # internal: the Administrator copy of an install that was started without a token
   [switch]$ReplaceReleaseKey,     # by hand only: accept a release key different from the one this computer pinned
   [switch]$PauseAtEnd,            # keep the window open (set by install.cmd after it elevates)
   [switch]$Elevated               # internal: set on the copy this script starts with administrator rights
@@ -88,11 +89,14 @@ function Get-CleanManager {
 }
 
 function Assert-CleanToken {
-  if (-not $Token -and $Elevated) {
-    throw 'The install token did not reach the Administrator window (this happens when a different account supplied the administrator password). Open PowerShell with "Run as administrator" and run the command there.'
-  }
+  # No token is allowed: it means an APPROVAL install. The machine installs, connects, shows a pairing
+  # code, and a person approves it in Fleet; the manager then hands the agent its credentials by itself.
+  # (The manager must allow the tokenless download; see Open-Response for what is said if it does not.)
   if (-not $Token) {
-    throw 'An install token is required to download the agent. In Fleet -> Add agent, create one and copy the command it prints.'
+    if ($Elevated -and -not $Tokenless) {
+      throw 'The install token did not reach the Administrator window (this happens when a different account supplied the administrator password). Open PowerShell with "Run as administrator" and run the command there.'
+    }
+    return
   }
   if ($Token -notmatch '^vet_[A-Za-z0-9_\-]{8,}$') { throw 'The install token is malformed (expected vet_...). Copy it again from Fleet -> Add agent.' }
 }
@@ -112,10 +116,10 @@ function Get-VedhaElevationCommand {
   # it travels in the environment (VEDHA_INSTALL_TOKEN), so it never appears on a command line that
   # other users of the machine can list. The manager and scope were already checked against strict
   # patterns, so nothing here can break out of its single quotes.
-  param([string]$ManagerUrl, [string]$InstallScope)
+  param([string]$ManagerUrl, [string]$InstallScope, [switch]$NoToken)
   $c = "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; " +
-       "& ([scriptblock]::Create((irm '" + $ManagerUrl + "/agent/install.ps1'))) -Manager '" + $ManagerUrl + "'" +
-       ' -Token $env:VEDHA_INSTALL_TOKEN'
+       "& ([scriptblock]::Create((irm '" + $ManagerUrl + "/agent/install.ps1'))) -Manager '" + $ManagerUrl + "'"
+  if ($NoToken) { $c += ' -Tokenless' } else { $c += ' -Token $env:VEDHA_INSTALL_TOKEN' }
   if ($InstallScope) { $c += " -Scope '" + $InstallScope + "'" }
   return $c + ' -PauseAtEnd -Elevated'
 }
@@ -129,9 +133,9 @@ function Enter-VedhaElevation {
     throw 'Administrator rights were not granted, so nothing was installed. Run the command again and choose Yes when Windows asks for permission, or open PowerShell with "Run as administrator".'
   }
   Write-Step 'administrator rights are needed: Windows will ask for your permission, then the install continues in a new window'
-  $command = Get-VedhaElevationCommand -ManagerUrl $ManagerUrl -InstallScope $Scope
+  $command = Get-VedhaElevationCommand -ManagerUrl $ManagerUrl -InstallScope $Scope -NoToken:(-not $Token)
   $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-  $env:VEDHA_INSTALL_TOKEN = $Token
+  if ($Token) { $env:VEDHA_INSTALL_TOKEN = $Token }
   try {
     $child = Start-Process -FilePath $powershell -Verb RunAs -Wait -PassThru `
       -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -Command "' + $command + '"')
@@ -141,7 +145,8 @@ function Enter-VedhaElevation {
     Remove-Item Env:\VEDHA_INSTALL_TOKEN -ErrorAction SilentlyContinue
   }
   $script:ElevatedExit = [int]$child.ExitCode
-  if ($script:ElevatedExit -eq 0) { Write-Step 'the installer finished in the Administrator window: the agent is installed and connected' }
+  if ($script:ElevatedExit -eq 0 -and -not $Token) { Write-Step 'the installer finished in the Administrator window: if it showed a pairing code, approve it in Fleet (Pending requests); the agent connects by itself once you do' }
+  elseif ($script:ElevatedExit -eq 0) { Write-Step 'the installer finished in the Administrator window: the agent is installed and connected' }
   elseif ($script:ElevatedExit -eq 3) { Write-Step 'the agent is installed but has not connected yet; the Administrator window shows what to check' }
   else { throw ('the installer failed in the Administrator window (exit code ' + $script:ElevatedExit + '); that window says why') }
   return $true
@@ -264,6 +269,9 @@ function Open-Response([string]$Url, [string]$Bearer) {
   $resp.Close()
   if ($code -ge 300 -and $code -lt 400) {
     throw ("The manager redirected $Url to '$location'. Redirects are refused; use the manager's canonical https:// address.")
+  }
+  if ($code -eq 401 -and -not $Bearer) {
+    throw ('This manager does not allow installing without a token. In Fleet -> Add agent create an install command with a token, or ask your Vedha administrator to switch on tokenless install (AGENT_ALLOW_TOKENLESS_INSTALL=true on the manager). ' + $detail)
   }
   if ($code -eq 401) { throw ('The install token was refused (expired, revoked or already used). Create a new one in Fleet -> Add agent. ' + $detail) }
   if ($code -eq 429) { throw 'Too many downloads from this address; wait a minute and run the command again.' }
@@ -439,6 +447,7 @@ function Install-VedhaAgent {
   Assert-Environment
   if (-not $VerifyOnly) { Assert-VedhaTrust -Trust (Read-VedhaTrust) -Spki $script:VedhaReleaseP256Spki -Version $script:VedhaReleaseVersion -Replace:$ReplaceReleaseKey }
 
+  if (-not $Token) { Write-Step 'no install token: this computer will show a pairing code, and a person approves it in Fleet' }
   Write-Step ("installing Vedha agent release " + $script:VedhaReleaseVersion + " from " + $managerUrl)
   $release = Get-VerifiedPackage $managerUrl
 
@@ -489,7 +498,8 @@ function Install-VedhaAgent {
     # registers the task, waits for the agent to connect, removes the token). It exits 0 when the
     # agent is connected or waiting for approval, 3 when it is installed but not connected yet.
     $global:LASTEXITCODE = 0
-    $innerArgs = @{ Manager = $managerUrl; Token = $Token; NoPause = $true }
+    $innerArgs = @{ Manager = $managerUrl; NoPause = $true }
+    if ($Token) { $innerArgs.Token = $Token } else { $innerArgs.Pairing = $true }
     if ($Scope) { $innerArgs.Scope = $Scope }
     try {
       & $inner @innerArgs

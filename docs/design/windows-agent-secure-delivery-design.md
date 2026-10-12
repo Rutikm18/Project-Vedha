@@ -15,6 +15,8 @@ Builds on: [ADR-0005](../adr/0005-windows-agent-delivery.md) · [threat model](a
 | Many machines (Intune, GPO, RMM) | Deploy one signed `VedhaAgent.msi` with the command Fleet prints | 0 on the machine |
 | A machine with no token to hand | Run the MSI (or the line without a token); approve the pairing code in Fleet | 1 on the machine, 1 in Fleet |
 
+*Tier C is built for the one-line installer (12 Oct 2026, opt-in `AGENT_ALLOW_TOKENLESS_INSTALL`); the MSI form is still Phase 1.*
+
 **What makes it safe**, in eight rules:
 
 1. **Two independent signatures on everything shipped.** Authenticode (so Windows and endpoint products trust it, and the prompt names a verified publisher) *and* our own release signature (so an agent trusts only us, even if the manager is compromised).

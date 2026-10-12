@@ -18,6 +18,8 @@ export interface AgentInstallInfo {
   blocker?: string | null;
   /** The Windows side of the release; absent on managers that predate it. */
   windows?: AgentWindowsInfo;
+  /** Install without a token: the machine shows a pairing code and an operator approves it. Absent on older managers. */
+  tokenless?: { enabled: boolean; commands: Partial<InstallCommands> };
 }
 
 export interface AgentWindowsInfo {
@@ -93,10 +95,12 @@ export function createFleetWorkspaceApi(surface: FleetWorkspaceSurface) {
       probes: <T>() => fetchJson<T>("/api/scan/probes"),
       agentJobs: <T>(agentId: string) => fetchJson<T>(`/api/fleet/agents/${encodeURIComponent(agentId)}/jobs`),
       jobs: <T>(query: string) => fetchJson<T>(`/api/fleet/jobs?${query}`),
-      approve: <T>(requestId: string, probeName: string | null, _userCode?: string) => {
-        void _userCode;
+      // The code is optional here, except while tokenless install is on: the manager then requires the code
+      // the machine shows, so an operator can only approve the machine in front of them.
+      approve: <T>(requestId: string, probeName: string | null, userCode?: string) => {
+        const code = userCode?.trim();
         return fetchJson<T>(`/api/fleet/enrollment/${encodeURIComponent(requestId)}/approve`, {
-        method: "POST", body: JSON.stringify({ probe_name: probeName }),
+          method: "POST", body: JSON.stringify({ probe_name: probeName, ...(code ? { user_code: code } : {}) }),
         });
       },
       installInfo: () => fetchJson<AgentInstallInfo>("/api/fleet/release"),

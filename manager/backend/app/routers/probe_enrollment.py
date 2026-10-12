@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.auth.jwt import create_device_access_token
 from app.auth.rbac import require_role
@@ -520,6 +520,18 @@ async def create_enrollment_request(
 ):
     await _rate_limit(redis, request, "create", 10)
     now = datetime.now(timezone.utc)
+    # This endpoint is open to any device that can reach the manager. Bound what can pile up waiting
+    # for a person, so a flood of requests cannot bury the real one or fill the table.
+    waiting = (await db.execute(
+        select(func.count()).select_from(ProbeEnrollmentRequest).where(
+            ProbeEnrollmentRequest.state == "awaiting_approval",
+            ProbeEnrollmentRequest.expires_at > now,
+        )
+    )).scalar_one()
+    if waiting >= getattr(get_settings(), "probe_pending_enrollment_cap", 100):
+        logger.warning("probe_enrollment.pending_cap_reached", waiting=waiting, ip=client_ip(request))
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many devices are waiting for approval; an operator must approve or let them expire")
     signing_raw = _decode_public_key(body.signing_public_key, "signing_public_key")
     fingerprint = hashlib.sha256(signing_raw).hexdigest()
     existing_agent = (await db.execute(
@@ -546,7 +558,7 @@ async def create_enrollment_request(
         installer_version=body.installer_version,
         build_digest=body.build_digest,
         reported_capabilities=list(dict.fromkeys(body.capabilities)),
-        source_ip=request.client.host if request.client else None,
+        source_ip=client_ip(request)[:45] if request.client else None,   # the real client behind the proxy, shown to the approver
         expires_at=now + timedelta(minutes=15),
     )
     db.add(row)
@@ -718,6 +730,7 @@ async def list_enrollment_requests(
         "agent_version": row.agent_version,
         "capabilities": row.reported_capabilities,
         "fingerprint": row.signing_key_fingerprint,
+        "source_ip": row.source_ip,
         "expires_at": row.expires_at.isoformat(),
     } for row in rows]
 
@@ -731,6 +744,10 @@ class SimpleApproveInput(BaseModel):
     authorized_cidrs: list[str] | None = None
     excluded_cidrs: list[str] = Field(default_factory=list)
     approved_capabilities: list[str] | None = None
+    # The 8-character code the machine itself shows. Optional normally; REQUIRED when tokenless install is
+    # on (the pending list is then open to anyone who can reach the manager, and the code is what proves
+    # the operator is approving the machine in front of them and not someone else's request).
+    user_code: str | None = Field(default=None, max_length=16)
 
     @field_validator("authorized_cidrs", "excluded_cidrs")
     @classmethod
@@ -779,6 +796,15 @@ async def approve_request_simple(
         raise HTTPException(410, "Enrollment request expired")
     if row.state != "awaiting_approval":
         raise HTTPException(409, f"Enrollment request is already {row.state}")
+
+    supplied = (body.user_code or "").replace("-", "").strip().upper()
+    if supplied or getattr(get_settings(), "agent_allow_tokenless_install", False):
+        if not supplied:
+            raise HTTPException(422, "Enter the code shown on the machine: approvals need it while tokenless install is on")
+        if not hmac.compare_digest(_keyed_hash(supplied), row.user_code_hash):
+            logger.warning("probe_enrollment.approval_code_mismatch", request_id=str(row.id),
+                           user_id=str(current_user.user_id))
+            raise HTTPException(403, "That code does not match this device. Check the code on the machine and try again")
 
     # Auto-fill everything the operator would otherwise type; blanks fall back to
     # the device's own reported data so the subset-check in _provision always passes.

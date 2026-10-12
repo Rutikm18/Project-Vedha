@@ -57,6 +57,20 @@ export function windowsCommands(commands: InstallCommands | undefined): { key: s
   return out;
 }
 
+/** The Windows commands for an install with NO token (approval install), or [] while the manager does not allow it. */
+export function tokenlessWindowsCommands(info: AgentInstallInfo | null): { key: string; label: string; command: string }[] {
+  if (!info?.available || !info.tokenless?.enabled || !windowsOffered(info)) return [];
+  return windowsCommands(info.tokenless.commands as InstallCommands);
+}
+
+/** What an operator should do when no release is published yet. Windows first, because that is the common case. */
+export function publishAdvice(): { windows: string; linux: string } {
+  return {
+    windows: "powershell -ExecutionPolicy Bypass -File probe\\windows\\publish-release.ps1 -Server user@your-server -ManagerUrl https://api.your-domain -ConfigureManager",
+    linux: "make agent-release   then   make agent-publish TO=user@your-server:/opt/Project-Vedha/manager/agent-releases",
+  };
+}
+
 /** One honest sentence on what protects the Windows download. */
 export function windowsIntegrity(info: AgentInstallInfo | null): string {
   const windows = info?.windows;
@@ -172,6 +186,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
   const hasWindows = windowsOffered(info);
   const target: InstallOs = hasWindows ? os : "linux";
   const winCommands = windowsCommands(created?.commands);
+  const noTokenCommands = tokenlessWindowsCommands(info);
   const blocked = surface === "portal" && info?.can_add_agent === false;
   const canGenerate = Boolean(info?.available) && !blocked && (surface === "portal" || Boolean(engagementId));
   const recent = tokens.filter((t) => t.id !== created?.id).slice(0, 6);
@@ -198,10 +213,20 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
             <strong>The agent installer is not available yet.</strong>
             {surface === "manager" ? (
               <>
-                {" "}{info.reason}. Publish a signed release from the build machine:{" "}
-                <span className="flt-mono">make agent-release</span> then{" "}
-                <span className="flt-mono">make agent-publish TO=…</span> and set{" "}
-                <span className="flt-mono">AGENT_RELEASE_PUBLIC_KEY</span> on the manager.
+                {" "}{info.reason}. Nothing can be installed until one signed release is published. One command does the
+                whole job (build, sign, upload, set the keys on the manager, restart it):
+                <div className="flt-install" style={{ marginTop: 6 }}>
+                  <code className="flt-code">{publishAdvice().windows}</code>
+                  <button className="flt-icon-btn" aria-label="Copy the publish command" onClick={() => copy(publishAdvice().windows)}>
+                    <Clipboard size={15} />
+                  </button>
+                </div>
+                <span className="aa-small">
+                  Run it on your Windows PC (steps and what it does: docs/operations/ONE_COMMAND_INSTALL.md). On Linux or macOS use{" "}
+                  <span className="flt-mono">{publishAdvice().linux}</span>, then set{" "}
+                  <span className="flt-mono">AGENT_RELEASE_PUBLIC_KEY</span> (and, for Windows,{" "}
+                  <span className="flt-mono">AGENT_RELEASE_P256_PUBLIC_KEY</span>) on the manager.
+                </span>
               </>
             ) : " Your Vedha team needs to publish it — contact them, then come back to this page."}
           </div>
@@ -222,6 +247,33 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
       )}
       {blocked && info?.blocker && (
         <div className="aa-note" role="status"><AlertTriangle size={14} /><div>{info.blocker}.</div></div>
+      )}
+
+      {noTokenCommands.length > 0 && (
+        <div className="aa-result" aria-label="Install without a token">
+          <div className="aa-result-head">
+            <span className="flt-cmd-label">Windows — no token needed (approve it here afterwards)</span>
+          </div>
+          <div className="flt-cmds">
+            {noTokenCommands.map((c) => (
+              <div className="flt-cmd" key={c.key}>
+                <span className="flt-cmd-label">{c.label}</span>
+                <div className="flt-install">
+                  <code className="flt-code">{c.command}</code>
+                  <button className="flt-icon-btn" aria-label={`Copy ${c.key} command without a token`} onClick={() => copy(c.command)}>
+                    <Clipboard size={15} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="aa-small">
+            The command holds no secret, so it can be reused on any number of machines. Each machine installs, connects to
+            this manager and shows a short <strong>pairing code</strong>. Find it under <strong>Pending requests</strong> below
+            (check the host name and IP address), type the code, and approve: the manager then gives that agent its
+            credentials by itself. Nothing is scanned until you approve, and the request expires after 15 minutes.
+          </p>
+        </div>
       )}
 
       <form className="aa-form" onSubmit={generate}>
@@ -419,6 +471,8 @@ export const ADD_AGENT_STYLES = `
 .aa-dot { color: var(--text-faint); }
 .aa-note { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); color: var(--text-secondary); font-size: 11.5px; line-height: 1.5; margin-bottom: 12px; }
 .aa-note svg { flex-shrink: 0; margin-top: 2px; color: var(--sev-medium-color); }
+/* A long command must scroll inside its box, never widen the page: every flex/grid parent above it needs min-width: 0. */
+.flt-card, .aa-note > div, .aa-result > *, .aa-result .flt-cmds, .aa-result .flt-cmd { min-width: 0; }
 .aa-warn { border-color: var(--sev-medium-color); }
 .aa-form + .aa-note { margin: 12px 0 0; }
 .aa-form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; }

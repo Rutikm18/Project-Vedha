@@ -21,6 +21,11 @@
        and restarts the api container                         [needs -Server and -ManagerUrl]
     8  asks the manager for its manifest and confirms the Windows package is being served
 
+  -AllowTokenlessInstall (with -ConfigureManager) also sets AGENT_ALLOW_TOKENLESS_INSTALL=true. Machines then
+  install with NO token: they download the signed package, show a pairing code, and you approve them in
+  Fleet by typing that code. Only turn it on if you accept that anyone who can reach the manager can
+  download the (signed, secret-free) agent package; approvals always need the code shown on the machine.
+
   Without -Server it stops after step 5 and tells you what is left. -DryRun prints the plan and
   runs nothing. -SkipBuild reuses the agent already built in probe\windows\dist\vedha-agent.
 
@@ -38,6 +43,7 @@ param(
   [string]$KeyDir = '',                 # default %USERPROFILE%\.vedha
   [string]$Version = '',                # default: the VERSION file
   [switch]$ConfigureManager,            # edit the manager's .env and restart the api (opt in)
+  [switch]$AllowTokenlessInstall,       # with -ConfigureManager: let machines install with no token (approval install); see below
   [switch]$SkipBuild,
   [switch]$DryRun
 )
@@ -87,18 +93,22 @@ function New-VedhaRemoteConfigScript {
   param([string]$ComposeDir, [string[]]$Lines)
   if (-not (Test-VedhaRemotePath $ComposeDir)) { throw "Not a safe folder path on the server: '$ComposeDir'" }
   foreach ($l in $Lines) {
-    if (-not ((Test-VedhaKeyLine $l) -or ($l -match '^AGENT_RELEASE_REQUIRE_SIGNATURE=true$') -or ($l -match '^MANAGER_PUBLIC_URL=https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$'))) {
+    if (-not ((Test-VedhaKeyLine $l) -or ($l -match '^AGENT_RELEASE_REQUIRE_SIGNATURE=true$') -or ($l -match '^AGENT_ALLOW_TOKENLESS_INSTALL=true$') -or ($l -match '^MANAGER_PUBLIC_URL=https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$'))) {
       throw "Refusing to write an unexpected line to the manager's .env: '$l'"
     }
   }
   $quoted = ($Lines | ForEach-Object { "'" + $_ + "'" }) -join ' '
+  # Only the settings this run writes are removed first. The tokenless switch is touched ONLY when it is
+  # given, so running this script without it never silently turns off a setting someone enabled.
+  $owned = 'AGENT_RELEASE_PUBLIC_KEY|AGENT_RELEASE_P256_PUBLIC_KEY|AGENT_RELEASE_REQUIRE_SIGNATURE|MANAGER_PUBLIC_URL'
+  if (@($Lines | Where-Object { $_ -like 'AGENT_ALLOW_TOKENLESS_INSTALL=*' }).Count -gt 0) { $owned += '|AGENT_ALLOW_TOKENLESS_INSTALL' }
   $sh = @(
     'set -eu',
     'umask 077',            # .env holds the manager's secrets: nothing this script writes may be readable by others
     "cd '$ComposeDir'",
     'test -f .env || { echo ".env not found in $(pwd)" >&2; exit 1; }',
     'cp -p .env ".env.bak.$(date +%Y%m%d%H%M%S)"',
-    "grep -v -E '^(AGENT_RELEASE_PUBLIC_KEY|AGENT_RELEASE_P256_PUBLIC_KEY|AGENT_RELEASE_REQUIRE_SIGNATURE|MANAGER_PUBLIC_URL)=' .env > .env.new || true",
+    "grep -v -E '^($owned)=' .env > .env.new || true",
     "printf '%s\n' $quoted >> .env.new",
     'cat .env.new > .env',
     'rm -f .env.new',
@@ -156,6 +166,7 @@ function Invoke-Main {
     $ManagerUrl = $ManagerUrl.TrimEnd('/')
   }
   if ($ConfigureManager -and -not ($Server -and $ManagerUrl)) { throw '-ConfigureManager needs both -Server and -ManagerUrl.' }
+  if ($AllowTokenlessInstall -and -not $ConfigureManager) { throw '-AllowTokenlessInstall needs -ConfigureManager (it changes the manager''s .env).' }
   if (-not $RemoteComposeDir -and $Server) { $RemoteComposeDir = Get-VedhaParentPath $RemoteReleaseDir }
 
   $plan = Get-VedhaPlan -HasServer ([bool]$Server) -Configure ([bool]$ConfigureManager) -HasUrl ([bool]$ManagerUrl) -Skip ([bool]$SkipBuild)
@@ -250,6 +261,7 @@ function Invoke-Main {
   if ($ConfigureManager) {
     Write-Step '7' "Setting the release keys on the manager ($RemoteComposeDir\.env) and restarting the api"
     $lines = @($pub[0], $pub[1], 'AGENT_RELEASE_REQUIRE_SIGNATURE=true', ('MANAGER_PUBLIC_URL=' + $ManagerUrl))
+    if ($AllowTokenlessInstall) { $lines += 'AGENT_ALLOW_TOKENLESS_INSTALL=true' }
     $script = New-VedhaRemoteConfigScript -ComposeDir $RemoteComposeDir -Lines $lines
     $tmp = Join-Path $env:TEMP ('vedha-config-' + [guid]::NewGuid().ToString('N') + '.sh')
     [System.IO.File]::WriteAllText($tmp, $script, (New-Object System.Text.UTF8Encoding($false)))   # LF line endings, no BOM

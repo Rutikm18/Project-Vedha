@@ -219,8 +219,8 @@ class TestConsume:
     def test_token_enrols_and_assigns_the_agent_to_the_engagement(self):
         engagement = _engagement()
         token = _live_token(engagement)
-        # existing-agent lookup → none; token; engagement; duplicate-name check → none
-        db = FakeDB(None, token, engagement, None)
+        # waiting-requests count; existing-agent lookup → none; token; engagement; duplicate-name check → none
+        db = FakeDB(0, None, token, engagement, None)
         response = asyncio.run(pe.create_enrollment_request(_enroll_body("vet_live"), _request(), db, _redis()))
 
         assert response["state"] == "approved" and "user_code" not in response
@@ -239,7 +239,7 @@ class TestConsume:
     def test_engagement_that_gained_an_agent_degrades_to_manual_approval(self):
         engagement = _engagement(assigned_agent_id=uuid.uuid4())
         token = _live_token(engagement)
-        db = FakeDB(None, token, engagement)
+        db = FakeDB(0, None, token, engagement)
         response = asyncio.run(pe.create_enrollment_request(_enroll_body("vet_live"), _request(), db, _redis()))
 
         assert response["state"] == "awaiting_approval" and "user_code" in response
@@ -250,7 +250,7 @@ class TestConsume:
         engagement = _engagement()
         token = _live_token(engagement)
         token.uses = 1
-        db = FakeDB(None, token)
+        db = FakeDB(0, None, token)
         response = asyncio.run(pe.create_enrollment_request(_enroll_body("vet_live"), _request(), db, _redis()))
         assert response["state"] == "awaiting_approval"
         assert engagement.assigned_agent_id is None

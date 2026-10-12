@@ -65,6 +65,7 @@ class _Handler(BaseHTTPRequestHandler):
     release: Path
     token: str
     tamper: str
+    allow_tokenless: bool
     package_name: str
     requests: list  # (method, path, status), for assertions
 
@@ -107,9 +108,10 @@ class _Handler(BaseHTTPRequestHandler):
         if path == "/agent/package/windows":
             auth = self.headers.get("Authorization", "")
             raw = auth[len("Bearer "):].strip() if auth.startswith("Bearer ") else ""
-            if not raw.startswith(TOKEN_PREFIX):
+            tokenless_ok = self.allow_tokenless and not auth.strip()      # AGENT_ALLOW_TOKENLESS_INSTALL
+            if not tokenless_ok and not raw.startswith(TOKEN_PREFIX):
                 return self._detail(401, "An enrolment token is required to download the agent")
-            if raw != self.token:
+            if not tokenless_ok and raw != self.token:
                 return self._detail(401, "This enrolment token is invalid, expired, revoked or already used"
                                          " - create a new one in Fleet")
             if t == "redirect":
@@ -129,7 +131,7 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 def serve(release: Path, token: str, *, port: int = 0, tamper: str = "none",
-          tls: tuple[Path, Path] | None = None) -> ThreadingHTTPServer:
+          tls: tuple[Path, Path] | None = None, allow_tokenless: bool = False) -> ThreadingHTTPServer:
     """Start the stub on 127.0.0.1 (port 0 = any free port) in a daemon thread.
     `tls` = (certificate, key) PEM files to serve https."""
     if tamper not in TAMPER_MODES:
@@ -145,6 +147,7 @@ def serve(release: Path, token: str, *, port: int = 0, tamper: str = "none",
     Handler.release = release
     Handler.token = token
     Handler.tamper = tamper
+    Handler.allow_tokenless = allow_tokenless
     Handler.package_name = packages[0]["file"]
     httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     if tls:

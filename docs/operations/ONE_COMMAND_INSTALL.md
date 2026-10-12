@@ -30,6 +30,19 @@ do them by hand or something fails.
 one line in **any** Command Prompt or PowerShell window on the machine (no need to open it as Administrator:
 when it is not elevated, the installer asks Windows for permission and continues in a new Administrator window). Nothing else.
 
+**No token at all (opt-in, 12 Oct 2026):** add `-AllowTokenlessInstall` to the publish command (it sets
+`AGENT_ALLOW_TOKENLESS_INSTALL=true` on the manager). Fleet -> Add agent then also shows a command with **no `vet_`
+token in it**: it can be pasted on any number of machines. Each one downloads the signed package, installs, connects
+to the manager and shows an 8-character **pairing code**; in Fleet -> Pending requests you pick the machine (host
+name, IP address, key fingerprint are shown), type the code, and press Approve. The manager then gives that agent its
+credentials by itself: nothing to copy, nothing secret to send. The request expires after 15 minutes (the agent
+shows a new code if you were late: `vedha-agent.exe status`). What protects it: nothing runs until you approve; the
+approval must carry the code the machine shows (so you approve the machine in front of you, not a stranger's
+request); at most 100 requests may wait at once and each address gets 10 per minute; the package is the same signed,
+secret-free one a token would fetch; and a wrong credential is still refused, not ignored. What it costs: anyone
+who can reach the manager can download the agent package, so keep it off, or limit the manager's reachability, on a
+manager shared by several customers.
+
 **Updates after that (agent 2.2.9):** publish a new release with the same script and the agents that have
 `PROBE_AUTO_UPDATE=on` update themselves, nobody types anything on the machines and nobody clones the repo. Three
 safeguards: the first install pins your release key on the machine, and the agent refuses any installer that the

@@ -71,6 +71,11 @@ Assert-True  ($sh -match [regex]::Escape("'$p256'")) 'remote script: writes the 
 Assert-True  ($sh -match 'cat \.env\.new > \.env') 'remote script: rewrites in place (keeps owner and mode)'
 Assert-True  ($sh.TrimEnd().EndsWith('echo "[manager] api restarted"')) 'remote script: restarts the api last'
 Assert-True  ($sh.IndexOf('docker compose up -d api') -gt $sh.IndexOf('cat .env.new > .env')) 'remote script: restart comes after the write'
+$shT = New-VedhaRemoteConfigScript -ComposeDir '/opt/Project-Vedha/manager' -Lines ($lines + 'AGENT_ALLOW_TOKENLESS_INSTALL=true')
+Assert-True  ($shT -match "AGENT_ALLOW_TOKENLESS_INSTALL=true'") 'remote script: writes the tokenless switch when asked'
+Assert-True  ($shT -match "MANAGER_PUBLIC_URL\|AGENT_ALLOW_TOKENLESS_INSTALL\)='") 'remote script: removes the old tokenless line only when it is writing one'
+Assert-False ($sh -match 'AGENT_ALLOW_TOKENLESS_INSTALL') 'remote script: without the switch the tokenless setting is neither written nor removed'
+Assert-Throws { New-VedhaRemoteConfigScript -ComposeDir '/opt/x' -Lines @('AGENT_ALLOW_TOKENLESS_INSTALL=false') } 'unexpected line' 'remote script: only the value true can be written'
 Assert-Throws { New-VedhaRemoteConfigScript -ComposeDir '/opt/x y' -Lines $lines } 'safe folder' 'remote script: unsafe folder refused'
 Assert-Throws { New-VedhaRemoteConfigScript -ComposeDir '/opt/x' -Lines @("FOO=bar") } 'unexpected line' 'remote script: only the expected settings are written'
 Assert-Throws { New-VedhaRemoteConfigScript -ComposeDir '/opt/x' -Lines @("MANAGER_PUBLIC_URL=https://a.com'; rm -rf /") } 'unexpected line' 'remote script: injection in a value refused'
