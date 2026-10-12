@@ -213,6 +213,34 @@ async def _handle_facts_ready(event: Event) -> None:
                 engagement_id=event.engagement_id, findings=n)
 
 
+@register("attack_assessment.compute")
+async def _handle_attack_assessment(event: Event) -> None:
+    """Idempotently compute the stored cut; never reread mutable source inputs."""
+    import uuid
+    from app.services.attack_assessments import compute_snapshot
+    from app.models.attack_assessment import AttackAssessmentSnapshot
+
+    payload = event.payload or {}
+    snapshot_id = uuid.UUID(payload["snapshot_id"])
+    tenant_id = uuid.UUID(payload["tenant_id"])
+    try:
+        async with AsyncSessionLocal() as db:
+            await compute_snapshot(db, snapshot_id, tenant_id)
+            await db.commit()
+    except Exception:
+        # Preserve the immutable input for retries; do not expose exception text
+        # or overwrite any completed result if a competing attempt finished.
+        from sqlalchemy import update
+        async with AsyncSessionLocal() as db:
+            await db.execute(update(AttackAssessmentSnapshot).where(
+                AttackAssessmentSnapshot.id == snapshot_id,
+                AttackAssessmentSnapshot.tenant_id == tenant_id,
+                AttackAssessmentSnapshot.status != "completed",
+            ).values(status="failed", failure_code="assessment_compute_failed"))
+            await db.commit()
+        raise
+
+
 @register(TOPIC_NOTIFY)
 async def _handle_notify(event: Event) -> None:
     """Fan a notification out to the tenant's enabled email/Slack/Jira integrations."""

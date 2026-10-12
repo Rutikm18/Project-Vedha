@@ -30,3 +30,9 @@ The current backend `Finding` has engagement and asset fields, but no dedicated 
 R01–R04 combined with the existing correlation suite: 139 cases passed. R05/R07/R08 bring the combined count to 154, including one oracle test checking 256 finite worlds. Those worlds are not 256 independently observed environments. Tests use pinned core runtime dependencies installed in a temporary directory; the global environment is unchanged.
 
 No release task is marked production-complete from these counts alone. The next slices are scoped durable snapshot storage and acquisition, asynchronous computation, real transport and the evidence-first analyst interface. Keep failures, missing data and old results visible; preserve branding/themes and existing findings.
+
+## Durable storage/transport checkpoint
+
+[Snapshot implementation](2026-10-13-attack-path-snapshot-implementation.md) covers immutable scoped PostgreSQL storage, coherent capture, transactional outbox, idempotent worker, atomic publication and real readiness endpoints behind a disabled-by-default flag. Migration upgrade, downgrade and re-upgrade passed in an isolated PostgreSQL database. Nine integration cases passed, including source updates between queries and the actual outbox handler's duplicate delivery. Six additional readiness cases ensure metadata never grants application-data read and unmapped findings stay visible.
+
+The wider non-integration backend suite passed **2,422 cases**, with four skipped and 13 integration cases deselected. One pre-existing agent-expiry test used a stale hardcoded future date; its date reference was corrected without changing agent behavior. The nine new PostgreSQL/API cases were run separately and passed. The analyst interface is in progress. This checkpoint does not close supported-path activation, real-data/analyst gates or the full first-release definition of done.

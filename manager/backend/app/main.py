@@ -23,6 +23,7 @@ from app.routers.agent_ws import router as agent_ws_router  # WebSocket probe pu
 from app.routers.ai_report import router as ai_report_router
 from app.routers.ai import router as ai_router
 from app.routers.attack_paths import router as attack_paths_router
+from app.routers.attack_assessments import router as attack_assessments_router
 from app.routers.detection import router as detection_router
 from app.routers.detection_runs import router as detection_runs_router
 from app.routers.agent_advisor import router as agent_advisor_router
@@ -258,6 +259,7 @@ app.include_router(exploits_router)
 app.include_router(validation_router)
 app.include_router(ad_router)
 app.include_router(attack_paths_router)
+app.include_router(attack_assessments_router)
 app.include_router(detection_router)
 app.include_router(detection_runs_router)
 app.include_router(agent_advisor_router)

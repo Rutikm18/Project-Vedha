@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     neo4j_password: str = "neo4j"
     neo4j_enabled: bool = False
 
+    # Experimental finding-driven assessments: opt in after evidence/role review.
+    attack_assessments_enabled: bool = False
+
     # P2 — passive verification (deterministic verdict always; LLM/LangGraph optional)
     verification_enabled: bool = True
 
