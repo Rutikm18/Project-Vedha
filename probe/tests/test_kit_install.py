@@ -40,6 +40,7 @@ echo "$*" >> "$FAKE_SSH_LOG"
 cmd="$*"
 case "$FAKE_SSH_MODE" in
   unreachable) echo "ssh: connect to host x port 22: Connection timed out" >&2; exit 255 ;;
+  needkey) case "$cmd" in *" -i "*|"-i "*) ;; *) echo "ubuntu@x: Permission denied (publickey)." >&2; exit 255 ;; esac ;;
 esac
 case "$cmd" in
   *vedha-ssh-ok*) echo vedha-ssh-ok; exit 0 ;;
@@ -115,3 +116,40 @@ def test_the_script_never_assigns_the_read_only_home_variable_and_relaxes_stderr
     text = SCRIPT.read_text()
     assert "$home =" not in text.lower().replace("$userhome =", "")
     assert text.count("$ErrorActionPreference = 'Continue'") >= 2           # ssh and python write warnings to stderr
+
+
+def _server_check_stdin(fake_ssh, tmp_path, mode, stdin, *, trust_any_key=False, extra=""):
+    override = "function Test-KitKeyPath { $true }; " if trust_any_key else ""
+    snippet = (f". '{SCRIPT}' {extra} -NoPause; {override}"
+               "$r = Confirm-KitServer -Target 'ubuntu@203.0.113.7' -Key '' -ComposeDir '/opt/Project-Vedha/manager'; "
+               "Write-Host ('RESULT=[' + $r + '] PROBLEMS=' + $script:Problems.Count + ' KEY=[' + $script:KitSshKey + ']')")
+    env = {**os.environ, "PATH": f"{fake_ssh}{os.pathsep}{os.environ['PATH']}", "FAKE_SSH_MODE": mode,
+           "USERPROFILE": str(tmp_path), "FAKE_SSH_LOG": str(tmp_path / "ssh.log")}
+    done = subprocess.run([PS, "-NoProfile", "-Command", snippet], input=stdin, capture_output=True, text=True, timeout=120, env=env)
+    return done.stdout + done.stderr
+
+
+def test_a_refused_login_asks_for_the_key_file_and_carries_on_with_it(fake_ssh, tmp_path):
+    key = tmp_path / "mykey.pem"
+    key.write_text("pretend")
+    out = _server_check_stdin(fake_ssh, tmp_path, "needkey", f"{key}\n", trust_any_key=True)
+    assert "The server did not accept the login" in out and "needs the key file" in out, out
+    assert "search your PC for *.pem" in out
+    assert f"RESULT=[/opt/Project-Vedha/manager] PROBLEMS=0 KEY=[{key}]" in out        # logged in, key remembered for the publish
+    calls = (tmp_path / "ssh.log").read_text().splitlines()
+    assert " -i " not in " " + calls[0] and any(f"-i {key}" in line for line in calls[1:])      # first try without a key, then with it
+
+
+def test_pressing_enter_at_the_key_question_stops_with_one_clear_problem(fake_ssh, tmp_path):
+    out = _server_check_stdin(fake_ssh, tmp_path, "needkey", "\n")
+    assert "Cannot log in to ubuntu@203.0.113.7 without a key file" in out and "PROBLEMS=1" in out and "RESULT=[]" in out, out
+
+
+def test_a_wrong_path_is_asked_again_and_it_gives_up_after_three_tries(fake_ssh, tmp_path):
+    out = _server_check_stdin(fake_ssh, tmp_path, "needkey", "nonsense\nnonsense2\nnonsense3\n")
+    assert out.count("does not look like a Windows path") >= 1 and "PROBLEMS=1" in out and "RESULT=[]" in out, out
+
+
+def test_with_yes_it_never_asks_a_question(fake_ssh, tmp_path):
+    out = _server_check_stdin(fake_ssh, tmp_path, "needkey", "", extra="-Yes")
+    assert "Paste the full path" not in out and "PROBLEMS=1" in out and "RESULT=[]" in out, out

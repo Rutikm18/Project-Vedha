@@ -145,6 +145,7 @@ function Get-KitPublishArguments {
 
 $script:Problems = @()
 $script:PythonExe = ''
+$script:KitSshKey = ''
 function Write-Head([string]$Text) { Write-Host ''; Write-Host $Text -ForegroundColor Cyan }
 function Write-Ok([string]$Text)   { Write-Host ('  [ OK ] ' + $Text) -ForegroundColor Green }
 function Write-Warn([string]$Text) { Write-Host ('  [WARN] ' + $Text) -ForegroundColor Yellow }
@@ -280,14 +281,28 @@ function Invoke-KitSsh {
 function Confirm-KitServer {
   param([string]$Target, [string]$Key, [string]$ComposeDir)
   Write-Head ("Checking the server $Target")
-  if ($Key) {
-    if (Test-Path -LiteralPath $Key -PathType Leaf) { Write-Ok "ssh key file found: $Key" } else { Write-Bad "The ssh key file was not found: $Key" 'Check the path, or leave it empty if you use ssh-agent.'; return $null }
-  }
-  $keyArgs = if ($Key) { @('-i', $Key) } else { @() }
-  $hello = Invoke-KitSsh $keyArgs $Target 'echo vedha-ssh-ok' -Show
-  if ($hello.Code -ne 0) {
-    Write-Bad "Cannot log in to $Target (ssh exit code $($hello.Code); its message is above)" 'Check the user name (ubuntu on Ubuntu, ec2-user on Amazon Linux), the key file, and that the server is running and port 22 is open to this PC.'
-    return $null
+  $script:KitSshKey = ''
+  $attempt = 0
+  while ($true) {
+    $attempt++
+    if ($Key) {
+      if (Test-Path -LiteralPath $Key -PathType Leaf) { Write-Ok "ssh key file found: $Key" } else { Write-Bad "The ssh key file was not found: $Key" 'Check the path, or leave it empty if you use ssh-agent.'; return $null }
+    }
+    $keyArgs = if ($Key) { @('-i', $Key) } else { @() }
+    $hello = Invoke-KitSsh $keyArgs $Target 'echo vedha-ssh-ok' -Show
+    if ($hello.Code -eq 0) { break }
+    Write-Bad "Cannot log in to $Target (ssh exit code $($hello.Code); its message is above)" 'Check the user name (ubuntu on Ubuntu, ec2-user on Amazon Linux) and that the server is running and port 22 is open to this PC.'
+    if ($Yes -or $CheckOnly -or $attempt -ge 3) { return $null }
+    # "Permission denied (publickey)" means the server did not accept the key (or none was given). Ask for the file now.
+    $script:Problems = @($script:Problems | Select-Object -SkipLast 1)
+    Write-Host ''
+    Write-Host '  The server did not accept the login. A server on AWS needs the key file (.pem) you were given when it was created.' -ForegroundColor Yellow
+    Write-Host '  Tip: in File Explorer search your PC for *.pem; the file name is the "Key pair name" shown for the server in the AWS console.'
+    $new = (Read-Host '  Paste the full path of the key file (for example C:\Users\you\Downloads\mykey.pem), or press Enter to stop').Trim().Trim('"')
+    if (-not $new) { Write-Bad "Cannot log in to $Target without a key file" 'Run install.cmd again with the key file (option 2), or add your own key to the server (see the steps in the chat).'; return $null }
+    if (-not (Test-KitKeyPath $new)) { Write-Warn 'That does not look like a Windows path such as C:\Users\you\Downloads\mykey.pem'; continue }
+    $Key = $new
+    $script:KitSshKey = $new
   }
   Write-Ok "logged in to $Target"
   $facts = $null
@@ -398,6 +413,7 @@ function Invoke-KitMain {
   if (Get-Command ssh -ErrorAction SilentlyContinue) {
     $composeDir = Confirm-KitServer -Target $Server -Key $SshKey -ComposeDir $RemoteComposeDir
     if ($composeDir) { $RemoteComposeDir = $composeDir }
+    if ($script:KitSshKey) { $SshKey = $script:KitSshKey }      # the key file the person pasted when the first try was refused
   } else {
     Write-Head 'Checking the server'
     Write-Warn 'Skipped: ssh is not installed yet (see above).'
