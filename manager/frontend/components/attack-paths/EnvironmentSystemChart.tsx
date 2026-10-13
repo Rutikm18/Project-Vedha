@@ -10,7 +10,7 @@ export function EnvironmentSystemChart({ result, selectedId, onSelect }: {result
       <span className="environment-system-source"><Building2 size={16} aria-hidden="true" /><span>{item.engagement_name}</span></span>
       <span className="environment-system-asset"><Server size={17} aria-hidden="true" /><strong>{item.asset_label}</strong><small>{item.service_endpoint ?? "Service endpoint not recorded"}</small></span>
       <span className="environment-association" data-missing={!item.asset_id} aria-hidden="true" />
-      <span className="environment-system-finding"><ShieldAlert size={16} aria-hidden="true" /><strong>{item.title}</strong><small>{!item.asset_id ? "Asset binding needed · " : ""}{item.severity} · {item.rule_applicability === "unmapped" ? "Rule not mapped" : "Evidence needed"}</small></span>
+      <span className="environment-system-finding" data-severity={item.severity.toLowerCase()}><ShieldAlert size={16} aria-hidden="true" /><strong>{item.title}</strong><small><span className="environment-finding-severity" data-severity={item.severity.toLowerCase()}>{item.severity}</span><span>{!item.asset_id ? "Asset binding needed · " : ""}{item.rule_applicability === "unmapped" ? "Rule not mapped" : "Evidence needed"}</span></small></span>
     </button>)}</div>
     {result.snapshot.engagement_ids.length > 1 && <div className="environment-bridge-gap"><Search size={17} aria-hidden="true" /><div><strong>No supported cross-assessment bridge is available</strong><p>Shared IP addresses, hostnames or vulnerabilities do not prove the same system or a movement path. Record directed reachability, service identity and the required access transfer to connect these chains.</p></div></div>}
   </section>;

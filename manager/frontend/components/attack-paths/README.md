@@ -19,6 +19,24 @@ Use this project's normal backend, database and outbox-worker setup. Apply migra
 
 `npm test` runs the repository's existing Node/TypeScript test runner, including `tests/business-routes.test.ts`. Keeping that runner avoids an unrelated Jest/Vitest migration. `npm run build` and `npx tsc --noEmit` verify the Next.js integration. The framework stays Next.js/React 19; React Flow and dagre are the graph libraries requested in the brief.
 
+## Colour roles
+
+The panel reuses Vedha's existing theme tokens from `app/globals.css`; no brand hex values are duplicated in components. Scoped `--route-*` aliases distinguish action, connection evidence, attack risk and simulated remediation. Confidence and severity are independent: a confirmed attack connection uses teal, while confirmed reachability of a critical asset uses red. A preview uses blue until a scan confirms the fix. Zero routes stays neutral rather than implying safety.
+
+| Role | Light HEX | Dark HEX | Non-colour cue |
+| --- | --- | --- | --- |
+| Actions, selection, focus and fix preview | `#1D4ED8` | `#60A5FA` | Pressed state, focus outline, “Fix preview” label |
+| Confirmed connection / scan-confirmed fix | `#0F766E` on `#CCFBF1` | `#5EEAD4` on `#134E4A` | Solid line, confirmation icon and label |
+| Possible connection | `#854D0E` on `#FEF3C7` | `#FBBF24` on `#3A2C10` | Dashed line, “Possible” label |
+| Confirmed attack risk | `#B91C1C` | `#F87171` | Critical-asset icon and confirmed-route count |
+| Critical finding badge (text / background) | `#FFFFFF` / `#B91C1C` | `#450A0A` / `#F87171` | “Critical” label |
+| High finding badge (text / background) | `#FFFFFF` / `#C2410C` | `#431407` / `#FB923C` | “High” label |
+| Low finding text | `#57534E` | `#A8A29E` | “Low” label |
+| Informational finding text | `#64748B` | `#94A3B8` | “Info” label |
+| Removed connection | `#607086` | `#7D8CA1` | Faded line and explicit preview / scan-fixed label |
+
+Text and badge pairs must meet 4.5:1 contrast; meaningful graph lines, icons and focus indicators must meet 3:1. Faded removed edges are supplementary to the inspector and comparison labels. Desktop and narrow layouts retain textual status, line patterns and the accessible route list.
+
 ## Real-data contract and honesty
 
 `BusinessScan` supports the brief's nodes/edges/findings contract plus scoped source IDs, a captured time, model version and incomplete-coverage metadata. Every edge must reference two captured systems and an actual finding attached to its destination. Duplicate stored hops are collapsed. Engagement-qualified identities never merge by IP/hostname and no cross-engagement hop is invented.

@@ -125,6 +125,8 @@
 .environment-system-asset strong, .environment-system-finding strong { font-size: 13px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
 .environment-system-asset small, .environment-system-finding small { grid-column: 2; color: var(--text-secondary); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
 .environment-system-asset svg, .environment-system-finding svg { margin-top: 2px; color: var(--text-secondary); }
+.environment-system-finding small { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.environment-system-finding svg { color:var(--severity-icon,var(--text-secondary)); }
 .environment-association { height: 1px; background: var(--border-default); }
 .environment-association[data-missing="true"] { background: transparent; }
 .environment-bridge-gap { display: flex; align-items: start; gap: 10px; border-top: 1px solid var(--border-subtle); padding-top: 18px; margin-top: 20px; }

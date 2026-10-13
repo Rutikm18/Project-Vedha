@@ -7,16 +7,16 @@ import { ArrowRight, CheckCircle2, Crown, Globe, List, RotateCcw, Search, Server
 import { analyse, compare, previewFix, validEdges, type BusinessNode, type BusinessScan } from "../../lib/business-routes";
 import { routeLayout } from "../../lib/business-route-layout";
 
-type FlowNode = Node<{ model: BusinessNode; reachable: boolean }, "business">;
+type FlowNode = Node<{ model: BusinessNode; reachable: boolean; confirmed: boolean }, "business">;
 type Selection = {kind:"node"|"edge";id:string}|null;
 const LANES = ["Entry point", "Exposed assets", "Inside the network", "Critical assets"];
 const RouteNode = memo(function RouteNode({data}:NodeProps<FlowNode>){
-  const {model,reachable}=data;
+  const {model,reachable,confirmed}=data;
   const Icon=model.type==="crown"?Crown:model.type==="entry"?Globe:Server;
-  return <div className="business-route-node" data-kind={model.type} data-reachable={reachable}>
+  return <div className="business-route-node" data-kind={model.type} data-reachable={reachable} data-certainty={confirmed?"confirmed":reachable?"possible":"unknown"}>
     <Handle type="target" position={Position.Left} isConnectable={false}/>
     <Icon size={18} aria-hidden="true"/><strong>{model.label}</strong>
-    <span>{model.type==="crown"?(reachable?"Reachable in this view":"No route shown"):model.type==="entry"?"Entry location":model.engagementName??"Assessed system"}</span>
+    <span>{model.type==="crown"?(confirmed?"Confirmed route":reachable?"Possible route":"No route shown"):model.type==="entry"?"Entry location":model.engagementName??"Assessed system"}</span>
     <Handle type="source" position={Position.Right} isConnectable={false}/>
   </div>;
 });
@@ -44,6 +44,7 @@ function RoutePanel({current,previous}:{current:BusinessScan;previous?:BusinessS
     return next;
   },[base,previews]);
   const analysis=useMemo(()=>analyse(scan,{showTheoretical}),[scan,showTheoretical]);
+  const confirmedAnalysis=useMemo(()=>showTheoretical?analyse(scan,{showTheoretical:false}):analysis,[scan,showTheoretical,analysis]);
   const positions=useMemo(()=>routeLayout({nodes:base.nodes,edges:base.edges}),[base.nodes,base.edges]); // preview fixes never move the map
   const normalized=useMemo(()=>validEdges(base).edges,[base]);
   const nodeMap=useMemo(()=>new Map(base.nodes.map(n=>[n.id,n])),[base.nodes]);
@@ -59,17 +60,19 @@ function RoutePanel({current,previous}:{current:BusinessScan;previous?:BusinessS
   },[]);
   const initialIds=analysis.paths[0]?.nodes??base.nodes.slice(0,12).map(n=>n.id);
   const flowNodes:Node[]=base.nodes.map(model=>({id:model.id,type:"business",position:positions.get(model.id)!,width:132,height:134,
-    data:{model,reachable:analysis.reachableCrowns.has(model.id)},selected:selection?.kind==="node"&&selection.id===model.id,
+    data:{model,reachable:analysis.reachableCrowns.has(model.id),confirmed:confirmedAnalysis.reachableCrowns.has(model.id)},selected:selection?.kind==="node"&&selection.id===model.id,
     ariaLabel:`${model.label}, ${model.type==="crown"?"critical asset":model.type==="entry"?"entry location":"system"}${model.type==="crown"?analysis.reachableCrowns.has(model.id)?", reachable in this view":", no route shown":""}`,
     sourcePosition:Position.Right,targetPosition:Position.Left}));
   for(let lane=0;lane<4;lane++) flowNodes.push({id:`route-lane-${lane}`,type:"lane",position:{x:lane*160,y:12},width:132,height:40,data:{label:laneLabels[lane]},selectable:false,focusable:false});
   const flowEdges:Edge[]=normalized.filter(e=>showTheoretical||e.status==="confirmed").map(e=>{
     const fixed=scan.findings[e.findingId].fixed, onRoute=analysis.edgeIds.has(e.id);
     const status=e.status==="confirmed"?"Confirmed":"Theoretical";
-    return {id:e.id,source:e.from,target:e.to,type:"smoothstep",label:selection?.id===e.id?(fixed?"Fix preview / fixed":status):undefined,
+    const inactiveLabel=base.findings[e.findingId].fixed?"Fixed by scan":"Fix preview";
+    const colour=fixed?"var(--route-inactive)":e.status==="confirmed"?"var(--route-confirmed)":"var(--route-possible)";
+    return {id:e.id,source:e.from,target:e.to,type:"smoothstep",label:selection?.id===e.id?(fixed?inactiveLabel:status):undefined,
       selected:selection?.kind==="edge"&&selection.id===e.id,className:`business-route-edge ${fixed?"is-fixed":e.status} ${onRoute?"on-route":""}`,
-      markerEnd:{type:MarkerType.ArrowClosed,width:16,height:16,color:fixed?"var(--text-muted)":e.status==="confirmed"?"var(--nominal-color)":"var(--sev-medium-color)"},
-      style:{stroke:fixed?"var(--text-muted)":e.status==="confirmed"?"var(--nominal-color)":"var(--sev-medium-color)",strokeWidth:onRoute?2.5:1.4,strokeDasharray:e.status==="theoretical"?"6 5":undefined,opacity:fixed?.3:1},
+      markerEnd:{type:MarkerType.ArrowClosed,width:16,height:16,color:colour},
+      style:{stroke:colour,strokeWidth:selection?.id===e.id?3.5:onRoute?2.5:1.4,strokeDasharray:e.status==="theoretical"?"6 5":undefined,opacity:fixed?.55:1},
       labelStyle:{fill:"var(--text-primary)",fontSize:11},labelBgStyle:{fill:"var(--bg-panel)"},labelBgPadding:[5,4],interactionWidth:28,
       ariaLabel:`Route from ${nodeMap.get(e.from)?.label} to ${nodeMap.get(e.to)?.label}, ${status.toLowerCase()}, ${scan.findings[e.findingId].severity}${fixed?", removed from this view":""}`};
   });
@@ -91,10 +94,10 @@ function RoutePanel({current,previous}:{current:BusinessScan;previous?:BusinessS
     {base.source==="demo"?<p className="business-route-notice" role="status">Made-up demonstration. These systems, findings and scans are not customer evidence.</p>:<p className="business-route-notice">Connections come from your stored route models. They remain possible until the full connection is confirmed. Entry locations are modelled; selecting engagements does not establish a shared network.</p>}
     <dl className="business-route-metrics">
       <div><dt>Environment grade</dt><dd data-unavailable={!base.grade}>{base.grade??"Not available"}</dd></div>
-      <div><dt>Confirmed routes</dt><dd>{confirmedLabel}</dd></div>
-      <div><dt>Critical assets reachable</dt><dd>{analysis.reachableCrowns.size}<small>in this view</small></dd></div>
-      <div><dt>Open findings on a route</dt><dd>{analysis.findingIds.size}{analysis.truncated&&<small>partial count</small>}</dd></div>
-      <div><dt>{previewCount?"Fixed in this preview":base.source==="demo"?"Findings fixed":"Findings fixed by scan"}</dt><dd>{fixedCount}</dd></div>
+      <div><dt>Confirmed routes</dt><dd data-tone={analysis.confirmedPaths>0?"risk":"neutral"}>{confirmedLabel}</dd></div>
+      <div><dt>Critical assets reachable</dt><dd data-tone={confirmedAnalysis.reachableCrowns.size>0?"risk":analysis.reachableCrowns.size>0?"possible":"neutral"}>{analysis.reachableCrowns.size}<small>in this view</small></dd></div>
+      <div><dt>Open findings on a route</dt><dd data-tone={analysis.findingIds.size>0?"possible":"neutral"}>{analysis.findingIds.size}{analysis.truncated&&<small>partial count</small>}</dd></div>
+      <div><dt>{previewCount?"Fixed in this preview":base.source==="demo"?"Findings fixed":"Findings fixed by scan"}</dt><dd data-tone={previewCount?"preview":fixedCount>0?"confirmed":"neutral"}>{fixedCount}</dd></div>
     </dl>
     <div className="business-route-toolbar">
       <div className="business-route-captures" aria-label="Captured view"><button type="button" aria-pressed={capture==="current"} onClick={()=>{setCapture("current");setSelection(null);setPage(0);}}>{base.source==="demo"?"Scan two":"Latest view"}</button><button type="button" disabled={!previous} aria-pressed={capture==="previous"} onClick={()=>{setCapture("previous");setSelection(null);setPage(0);}}>{base.source==="demo"?"Scan one":"Previous view"}</button></div>
@@ -108,7 +111,7 @@ function RoutePanel({current,previous}:{current:BusinessScan;previous?:BusinessS
     <div className="business-route-workspace">
       <div className="business-route-main">
         {!analysis.totalPaths&&<div className="business-route-empty"><Search size={18} aria-hidden="true"/><div><strong>No routes shown to your critical assets</strong><p>{base.nodes.some(n=>n.type==="crown")?"The selected connections do not establish a route. Missing evidence or hidden possible routes can explain this result.":"No assessed system in this view is marked critical. Mark the business systems that matter before interpreting route counts."}</p></div></div>}
-        {viewAsList?<div className="business-route-list"><table><caption>Routes in this view; select a connection to read its finding</caption><thead><tr><th>Route</th><th>Systems and enabling findings</th><th>Status</th></tr></thead><tbody>{analysis.paths.slice(page*20,page*20+20).map((path,index)=><tr key={path.id}><th scope="row">{page*20+index+1}</th><td><ol>{path.edges.map(id=>{const e=normalized.find(e=>e.id===id)!;return <li key={id}><button type="button" onClick={()=>openDetails({kind:"edge",id})}>{nodeMap.get(e.from)?.label}<ArrowRight size={12} aria-hidden="true"/>{nodeMap.get(e.to)?.label}<span>{scan.findings[e.findingId].title}</span></button></li>;})}</ol></td><td>{path.confirmed?"Confirmed":"Theoretical"}</td></tr>)}</tbody></table>{analysis.paths.length>20&&<nav aria-label="Route list pages"><button className="btn btn-secondary" disabled={page===0} onClick={()=>setPage(page-1)}>Previous 20</button><span>{Math.max(0,analysis.paths.length-(page+1)*20)} more{analysis.truncated?" or more":""}</span><button className="btn btn-secondary" disabled={(page+1)*20>=analysis.paths.length} onClick={()=>setPage(page+1)}>Next 20</button></nav>}</div>:<div className="business-route-canvas" aria-label="Route map. Use Tab to focus systems and connections; Enter to select. Drag the background to pan.">
+        {viewAsList?<div className="business-route-list"><table><caption>Routes in this view; select a connection to read its finding</caption><thead><tr><th>Route</th><th>Systems and enabling findings</th><th>Status</th></tr></thead><tbody>{analysis.paths.slice(page*20,page*20+20).map((path,index)=><tr key={path.id}><th scope="row">{page*20+index+1}</th><td><ol>{path.edges.map(id=>{const e=normalized.find(e=>e.id===id)!;return <li key={id}><button type="button" onClick={()=>openDetails({kind:"edge",id})}>{nodeMap.get(e.from)?.label}<ArrowRight size={12} aria-hidden="true"/>{nodeMap.get(e.to)?.label}<span>{scan.findings[e.findingId].title}</span></button></li>;})}</ol></td><td><span className="business-route-status" data-status={path.confirmed?"confirmed":"theoretical"}>{path.confirmed?"Confirmed":"Possible"}</span></td></tr>)}</tbody></table>{analysis.paths.length>20&&<nav aria-label="Route list pages"><button className="btn btn-secondary" disabled={page===0} onClick={()=>setPage(page-1)}>Previous 20</button><span>{Math.max(0,analysis.paths.length-(page+1)*20)} more{analysis.truncated?" or more":""}</span><button className="btn btn-secondary" disabled={(page+1)*20>=analysis.paths.length} onClick={()=>setPage(page+1)}>Next 20</button></nav>}</div>:<div className="business-route-canvas" aria-label="Route map. Use Tab to focus systems and connections; Enter to select. Drag the background to pan.">
           <ReactFlow nodes={flowNodes} edges={flowEdges} nodeTypes={nodeTypes} fitView fitViewOptions={{nodes:[...initialIds.map(id=>({id})),...LANES.map((_,i)=>({id:`route-lane-${i}`}))],padding:.12,minZoom:.45,maxZoom:1}}
             onInit={instance=>{flowRef.current=instance;}} onNodeClick={(_,node)=>{if(node.type==="business")openDetails({kind:"node",id:node.id});}} onEdgeClick={(_,edge)=>openDetails({kind:"edge",id:edge.id})}
             onNodesChange={nodeChanges} onEdgesChange={edgeChanges}
@@ -123,7 +126,7 @@ function RoutePanel({current,previous}:{current:BusinessScan;previous?:BusinessS
       <aside ref={inspectorRef} className="business-route-inspector" aria-label="Connection details">
         <header><h3>{selectedNode?"How this system is reached":"Finding behind this connection"}</h3></header>
         {finding&&selectedEdge?<>
-          <div className="business-route-status" data-status={selectedEdge.status}><span>{selectedEdge.status==="confirmed"?<CheckCircle2 size={14}/>:<Search size={14}/>}</span>{selectedEdge.status==="confirmed"?"Confirmed":"Theoretical (possible)"}<span className="business-route-severity">{finding.severity}</span></div>
+          <div className="business-route-status-row"><span className="business-route-status" data-status={previews.has(`${base.id}:${finding.id}`)?"preview":base.findings[finding.id].fixed?"fixed":selectedEdge.status}><span>{previews.has(`${base.id}:${finding.id}`)?<Undo2 size={14}/>:base.findings[finding.id].fixed||selectedEdge.status==="confirmed"?<CheckCircle2 size={14}/>:<Search size={14}/>}</span>{previews.has(`${base.id}:${finding.id}`)?"Fix preview":base.findings[finding.id].fixed?"Fixed by scan":selectedEdge.status==="confirmed"?"Confirmed":"Theoretical (possible)"}</span><span className="business-route-severity" data-severity={finding.severity}>{finding.severity}</span></div>
           <h4>{finding.title}</h4><p className="business-route-direction">{nodeMap.get(selectedEdge.from)?.label}<ArrowRight size={14} aria-hidden="true"/>{nodeMap.get(selectedEdge.to)?.label}</p><p>{finding.plainReason}</p>
           {finding.findingConfirmed&&selectedEdge.status!=="confirmed"&&<p>The finding itself is confirmed. That does not confirm the full connection.</p>}
           {selectedEdge.stale&&<p>This stored connection includes an older observation. Check it again before relying on it.</p>}
