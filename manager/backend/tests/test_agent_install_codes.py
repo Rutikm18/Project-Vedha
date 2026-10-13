@@ -111,7 +111,9 @@ def _code(raw: str, **overrides) -> AgentInstallCode:
     base = dict(
         id=uuid.uuid4(), tenant_id=uuid.uuid4(), engagement_id=uuid.uuid4(), site_id=None,
         name="edge", code_hash=pe._secret_hash(raw), code_prefix=raw[:12],
-        expires_at=NOW + timedelta(hours=1), redeemed_at=None, redeemed_ip=None,
+        # Far future so a "live" code stays live regardless of the real wall clock
+        # (the redeem endpoint uses datetime.now(), not the NOW fixture).
+        expires_at=datetime(2099, 1, 1, tzinfo=timezone.utc), redeemed_at=None, redeemed_ip=None,
         minted_token_id=None, revoked_at=None,
     )
     base.update(overrides)

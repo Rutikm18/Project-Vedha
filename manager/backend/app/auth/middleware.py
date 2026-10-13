@@ -47,10 +47,18 @@ _PUBLIC_DISTRIBUTION_PATHS = (
     re.compile(r"^/agent/manifest\.json(\.sig|\.p256\.sig)?$"),
     re.compile(r"^/agent/(image|package)/[a-z0-9]{1,16}$"),
 )
+# The zero-knowledge install code redeem is public by design: the client holds no
+# credential (that is the whole point). It is a POST and rate-limited, opaque-404
+# and single-use in the handler. Kept separate so the GET distribution paths stay
+# GET/HEAD-only.
+_PUBLIC_REDEEM_PATH = re.compile(r"^/agent/redeem$")
 
 
 def _is_public_distribution_request(path: str, method: str) -> bool:
-    return method.upper() in ("GET", "HEAD") and any(
+    method = method.upper()
+    if method == "POST":
+        return bool(_PUBLIC_REDEEM_PATH.fullmatch(path))
+    return method in ("GET", "HEAD") and any(
         pattern.fullmatch(path) for pattern in _PUBLIC_DISTRIBUTION_PATHS
     )
 
