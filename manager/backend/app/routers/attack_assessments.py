@@ -1,13 +1,14 @@
 """Operator-only, opt-in finding readiness and immutable snapshot transport."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Header, HTTPException, Query, Response
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
-from app.dependencies import AuthUser, DB
+from app.dependencies import DB, AuthUser
 from app.graph.access_policy import may_access_assessment
 from app.graph.finding_readiness import NORMALIZATION_VERSION
 from app.graph.local_rule import RULE_ARTIFACT_SHA256
@@ -70,7 +71,9 @@ async def create_assessment(
     db: DB,
     current_user: AuthUser,
     response: Response,
-    idempotency_key: uuid.UUID | None = Header(default=None, alias="Idempotency-Key"),
+    idempotency_key: Annotated[
+        uuid.UUID | None, Header(alias="Idempotency-Key")
+    ] = None,
 ):
     current_user = await _access(
         db, current_user, response, "compute", engagement_id=engagement_id

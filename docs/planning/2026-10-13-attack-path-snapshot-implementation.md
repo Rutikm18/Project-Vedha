@@ -4,7 +4,7 @@ This increment adds real scoped finding assessment transport behind `ATTACK_ASSE
 
 ## What is implemented
 
-- Migration 0055 adds tenant/engagement-bound snapshot storage, monotonic request sequence and state/result constraints. A composite foreign key prevents a tenant from owning another tenant's engagement snapshot.
+- Migration 0063 (after integrating current main through 0062) adds tenant/engagement-bound snapshot storage, monotonic request sequence and state/result constraints. A composite foreign key prevents a tenant from owning another tenant's engagement snapshot. The table matches main's dormant tenant RLS policy.
 - Database triggers prevent changing the snapshot ID, source cut, input body, model versions, request sequence or creation time. Completed results are immutable. Queued/failed computation can retry without replacing its inputs.
 - Capture uses a short Repeatable Read transaction. Scoped findings, assets and services are materialized into a bounded immutable input document. Ingest/capture time is not used as missing security-observation time.
 - Input bounds: 1,000 findings, 2,000 assets, 5,000 services; individual finding evidence over 64 KiB is explicitly limited. The aggregate document cannot exceed 2 MiB. Omitted findings retain a total denominator and truncated qualifier; an oversized aggregate is rejected without destroying old results.

@@ -51,10 +51,49 @@ Recorded validation: **2,437 backend tests passed, eight skipped**, including th
 
 ## Remaining required work
 
-Engineering continuation: record reproducible local inference/capture budgets; audit the 48-case register against implemented tests; complete snapshot comparison and actionable evidence inspection where the data contract permits it; review the complete diff and prepare the PR. A stronger raw-observation adapter must be grounded in actual payloads, not invented fields.
+Local inference/capture measurements, the [48-case failure audit](2026-10-13-attack-path-failure-coverage.md), and scoped snapshot comparison are now implemented. Comparison explicitly refuses incomplete/reversed/cross-scope records and never awards remediation credit for deleted findings, lifecycle edits or changed model versions. Source evidence inspection remains through the original scoped finding; readiness does not expose invented observation references. A stronger raw-observation adapter must be grounded in actual payloads, not invented fields.
 
 External gates still open: an authorized real engagement/test backend, independently reviewed expected consequences/holdouts, a supported observation-rich local case and analyst/owner shadow pilot. A concise request for engagement ID/test address is pending with the user. The repository corpus cannot fill the missing application-read/scenario/instance observations. **Do not mark positive-path activation, raw observation inference, multi-host composition or the release pilot Done from this checkpoint.** Later grouped/AD/cloud extensions remain out of the local-first release scope.
 
 ## Local continuation resources
 
-All resources below belong to this task, not production: PostgreSQL container `vedha-attack-path-tests` on localhost 25432; Redis container `vedha-attack-path-redis-tests` on localhost 25379; backend on localhost 18081; built frontend on localhost 3114. Temporary pinned Python dependencies are `/private/tmp/vedha-local-rule-deps`. Test-only seed/session/filtered-worker/browser scripts live under `/private/tmp/vedha-attack-path-*`; do not print the private synthetic session token. Stop only these verified resources when finished. The original checkout remains separate and its unrelated changes are preserved.
+All resources below belong to this task, not production: PostgreSQL container `vedha-attack-path-tests` on localhost 25432; Redis container `vedha-attack-path-redis-tests` on localhost 25379. The synthetic API/filtered worker were stopped for the integration migration rebuild; earlier browser screenshots are historical synthetic verification. Temporary pinned Python dependencies are `/private/tmp/vedha-local-rule-deps`. Test-only seed/session/filtered-worker/browser scripts live under `/private/tmp/vedha-attack-path-*`; do not print the private synthetic session token. Stop only verified task resources when finished. The original checkout remains separate and its unrelated changes are preserved.
+
+## Integration retry checkpoint
+
+Integrated current `origin/main` at `8f9575c2` instead of publishing against the old `64051cd` base. Main introduced legacy attack-path analysis/history, stable route IDs, workspace component moves and migrations through 0062. The merged implementation preserves those changes, migrates this feature at **0063**, and applies main's dormant tenant RLS policy to the new snapshot table without modifying the historical migration's table list. Manual legacy refresh now uses POST through the browser API and BFF; GET cannot write on the first read or refresh. Target refresh preserves other targets and engagement-wide history.
+
+Post-merge frontend: **723 tests passed**, production build, regenerated full type check and changed-module lint passed. Migration chain upgraded from empty and 0063 downgraded/re-upgraded. Backend full collection exposes two unchanged main-branch test modules importing removed `SyntheticFinding`/`auto_crown_jewel_ids` APIs (`test_capability_map.py`, `test_crown_jewels.py`); those are a disclosed baseline gate, not silently counted as passes. The feature/affected-route integration run passed **105 tests**. With those two baseline collection failures explicitly excluded, the wider suite passed **3,444 tests**, nine skipped and 51 warnings. This is not an unqualified full-suite pass. Changed comparison/benchmark modules passed current main's Ruff rules.
+
+## Backlog disposition
+
+“Local contract” means synthetic pure engine behavior is tested; it does not mean production observation inference is activated. Later transfer/map/grouping gates remain separate from the local readiness PR.
+
+| Tasks | Delivered | Still required |
+| --- | --- | --- |
+| T01 | Single-engagement experimental scope and exclusions | Scope governance review |
+| T02 | Repository source/fixture census | Representative sanitized live payloads |
+| T03 | Datastore data-read candidate with explicit no-go | Observation-rich supported class approval |
+| T04–T05 | Typed entry/goal/privilege/status contracts | Independent contract approval |
+| T06 | Synthetic golden/adversarial cases and finite developer oracle | Independent labels and held-out real examples |
+| T07–T09 | Scoped immutable readiness storage, explicit ID binding, input manifest | Persisted normalized observation/assertion lineage and collector adapter |
+| T10 | Local lifecycle eligibility | Verified source adjudication/withdrawal integration |
+| T11–T12 | Missing reachability/read coverage retained | Authorized real reachability normalization and completed-batch manifest |
+| T13–T15 | Fixed versioned experimental local rule and AND checks | Reviewed activation and production adapter |
+| T16–T17a | Local alternatives, conflict/freshness checks | Live observation validation |
+| T17b–T18 | Incompatible scenarios rejected | Capability-transfer composition deferred to breadth gate |
+| T19a–T20a | Canonical local proof and measured bounded compute/display | Production cancellation/concurrency capacity |
+| T19b–T20b | No composed output claimed | Composed proof/frontier/cycle stress gate |
+| T21–T24 | Sealed RR capture, durable outbox, retries, atomic history, stale failure preservation | Operational deployment review |
+| T25 | Immutable history and local withdrawal regressions | Live source removal/alternate-source recomputation |
+| T26–T29 | Live-role scoped endpoints, real BFF, no demo fallback | Restricted export design remains excluded |
+| T30–T33 | Finding link, text prerequisites, gaps, scoped detail lookup | Supported proof/raw observation workflow after adapter activation |
+| T34/T35b | Map omitted from text-first local release | Optional equivalent map breadth gate |
+| T35a | Responsive text UI, keyboard navigation, light/dark and adverse states | Broader assistive-tech and analyst task study |
+| T36–T38 | Typed authentication counterfactual, surviving alternatives, simulated-only outputs | Operational feasibility/owner constraints and real evidence |
+| T39–T40 | Visible owner/unassigned state, verification requirements, honest snapshot comparison | Actual owner handoff and fresh comparable verification |
+| T41 | 48-case coverage audit plus regression suite | Independent holdouts and baseline suite repair |
+| T42 | Reproducible local inference/capture measurements | Production concurrency, cancellation and composed stress |
+| T43 | Disabled flag plus explicit engagement allowlist | Analyst/owner shadow pilot |
+| T44 | Local migration rollback and enablement boundaries | Reviewed release/rollback rehearsal with real data |
+| X01–X08 | No organization/AD/cloud/incremental claims | Independent later extension gates |

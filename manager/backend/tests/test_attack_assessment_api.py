@@ -1,7 +1,7 @@
 """API/outbox/capture integration against the isolated PostgreSQL database."""
 
-import os
 import asyncio
+import os
 import uuid
 from types import SimpleNamespace
 
@@ -11,18 +11,18 @@ from fastapi import FastAPI
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from tests.test_attack_assessment_storage import database as storage_database
-from app.dependencies import get_current_user
 from app.database import get_db
+from app.dependencies import get_current_user
 from app.models.attack_assessment import AttackAssessmentSnapshot
 from app.models.outbox import OutboxEvent
 from app.routers import attack_assessments as api
 from app.schemas.auth import CurrentUser
 from app.services.attack_assessments import (
+    TOPIC_ATTACK_ASSESSMENT,
     capture_snapshot,
     compute_snapshot,
-    TOPIC_ATTACK_ASSESSMENT,
 )
+from tests.test_attack_assessment_storage import database as storage_database
 
 pytestmark = [
     pytest.mark.integration,
@@ -388,12 +388,16 @@ async def test_input_budget_rejection_preserves_previous_result(database, monkey
 
 
 @pytest.mark.asyncio
-async def test_comparison_is_scoped_completed_and_never_verifies_removal(database, monkeypatch):
+async def test_comparison_is_scoped_completed_and_never_verifies_removal(
+    database, monkeypatch
+):
     engine, tenant, engagement = database
     finding = await add_finding(engine, engagement)
     app, state, factory = _test_app(engine, tenant, engagement, monkeypatch)
     base = f"/engagements/{engagement}/attack-assessments"
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
         first = uuid.UUID((await client.post(base)).json()["id"])
         async with factory() as db:
             await compute_snapshot(db, first, tenant)
@@ -410,7 +414,9 @@ async def test_comparison_is_scoped_completed_and_never_verifies_removal(databas
         assert compared.status_code == 200
         assert compared.headers["cache-control"] == "no-store"
         assert compared.json()["changes"][0]["verification_state"] == "not_verified"
-        assert (await client.get(f"{base}/{second}/compare/{uuid.uuid4()}")).status_code == 404
+        assert (
+            await client.get(f"{base}/{second}/compare/{uuid.uuid4()}")
+        ).status_code == 404
         assert (await client.get(f"{base}/{first}/compare/{second}")).status_code == 409
         state["role"] = "auditor"
         assert (await client.get(route)).status_code == 403
