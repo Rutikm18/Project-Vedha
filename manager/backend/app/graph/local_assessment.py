@@ -110,11 +110,21 @@ def evaluate_local_alternatives(
     routes = []
     signatures = set()
     seen_inputs = set()
+    canonical_by_identity = {}
+
+    def canonical_input(value):
+        # The retained immutable input tuple keeps identities stable for this
+        # evaluation. Avoid serializing the same object on every duplicate.
+        identity = id(value)
+        if identity not in canonical_by_identity:
+            canonical_by_identity[identity] = _input_signature(value)
+        return canonical_by_identity[identity]
+
     processed = 0
     for value in inputs:
         # Normalize order before deduplicating bundles; duplicates cannot consume
         # the frontier budget or inflate exposure counts.
-        canonical = _input_signature(value)
+        canonical = canonical_input(value)
         if canonical in seen_inputs:
             continue
         if processed == max_applications:
@@ -174,7 +184,7 @@ def evaluate_local_alternatives(
                 )
             )
     # A consumed budget with remaining unique inputs is explicitly truncated.
-    remaining = any(_input_signature(x) not in seen_inputs for x in inputs)
+    remaining = any(canonical_input(x) not in seen_inputs for x in inputs)
     goal = summarize_goal(
         tuple(r.status for r in routes),
         compute="truncated" if remaining else "complete",

@@ -11,6 +11,7 @@ from app.dependencies import AuthUser, DB
 from app.graph.access_policy import may_access_assessment
 from app.graph.finding_readiness import NORMALIZATION_VERSION
 from app.graph.local_rule import RULE_ARTIFACT_SHA256
+from app.graph.snapshot_comparison import compare_readiness
 from app.models.attack_assessment import AttackAssessmentSnapshot
 from app.models.engagement import Engagement
 from app.services.assessment_access import load_assessment_principal
@@ -219,3 +220,23 @@ async def finding_assessment(
         if item["finding_id"] == str(finding_id):
             return {"snapshot": _summary(row), "assessment": item}
     raise HTTPException(404, "Finding was not assessed in this snapshot")
+
+
+@router.get("/{snapshot_id}/compare/{baseline_id}")
+async def compare_assessments(
+    engagement_id: uuid.UUID,
+    snapshot_id: uuid.UUID,
+    baseline_id: uuid.UUID,
+    db: DB,
+    current_user: AuthUser,
+    response: Response,
+):
+    current_user = await _access(
+        db, current_user, response, "compare", engagement_id=engagement_id
+    )
+    current = await _snapshot(db, engagement_id, snapshot_id, current_user)
+    baseline = await _snapshot(db, engagement_id, baseline_id, current_user)
+    try:
+        return compare_readiness(baseline, current)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc

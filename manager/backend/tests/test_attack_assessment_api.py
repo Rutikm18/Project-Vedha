@@ -385,3 +385,32 @@ async def test_input_budget_rejection_preserves_previous_result(database, monkey
         assert (await client.post(base)).status_code == 413
         result = (await client.get(base)).json()
         assert result["last_completed"]["id"] == str(created)
+
+
+@pytest.mark.asyncio
+async def test_comparison_is_scoped_completed_and_never_verifies_removal(database, monkeypatch):
+    engine, tenant, engagement = database
+    finding = await add_finding(engine, engagement)
+    app, state, factory = _test_app(engine, tenant, engagement, monkeypatch)
+    base = f"/engagements/{engagement}/attack-assessments"
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        first = uuid.UUID((await client.post(base)).json()["id"])
+        async with factory() as db:
+            await compute_snapshot(db, first, tenant)
+            await db.commit()
+        async with engine.begin() as db:
+            await db.execute(text("DELETE FROM findings WHERE id=:id"), {"id": finding})
+        second = uuid.UUID((await client.post(base)).json()["id"])
+        route = f"{base}/{second}/compare/{first}"
+        assert (await client.get(route)).status_code == 409
+        async with factory() as db:
+            await compute_snapshot(db, second, tenant)
+            await db.commit()
+        compared = await client.get(route)
+        assert compared.status_code == 200
+        assert compared.headers["cache-control"] == "no-store"
+        assert compared.json()["changes"][0]["verification_state"] == "not_verified"
+        assert (await client.get(f"{base}/{second}/compare/{uuid.uuid4()}")).status_code == 404
+        assert (await client.get(f"{base}/{first}/compare/{second}")).status_code == 409
+        state["role"] = "auditor"
+        assert (await client.get(route)).status_code == 403

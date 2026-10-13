@@ -10,7 +10,7 @@ async function forward(req: Request, context: Context) {
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401, headers });
   const { id, path = [] } = await context.params;
   const validPath = path.length === 0 || (path.length === 1 && UUID.test(path[0])) ||
-    (path.length === 3 && UUID.test(path[0]) && path[1] === "findings" && UUID.test(path[2]));
+    (path.length === 3 && UUID.test(path[0]) && ["findings", "compare"].includes(path[1]) && UUID.test(path[2]));
   if (!UUID.test(id) || !validPath) return NextResponse.json({ error: "Unknown assessment route" }, { status: 404, headers });
   if (req.method === "POST" && path.length) return NextResponse.json({ error: "Method not allowed" }, { status: 405, headers });
   const query: Record<string, string> = {};
