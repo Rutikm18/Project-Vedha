@@ -45,8 +45,8 @@ function RoutePanel({current,previous}:{current:BusinessScan;previous?:BusinessS
   },[base,previews]);
   const analysis=useMemo(()=>analyse(scan,{showTheoretical}),[scan,showTheoretical]);
   const confirmedAnalysis=useMemo(()=>showTheoretical?analyse(scan,{showTheoretical:false}):analysis,[scan,showTheoretical,analysis]);
-  const positions=useMemo(()=>routeLayout({nodes:base.nodes,edges:base.edges}),[base.nodes,base.edges]); // preview fixes never move the map
   const normalized=useMemo(()=>validEdges(base).edges,[base]);
+  const positions=useMemo(()=>routeLayout({nodes:base.nodes,edges:normalized}),[base.nodes,normalized]); // preview fixes never move the map
   const nodeMap=useMemo(()=>new Map(base.nodes.map(n=>[n.id,n])),[base.nodes]);
   const delta=useMemo(()=>previous?compare(previous,current):null,[previous,current]);
   const defaultEdge=normalized.find(e=>analysis.edgeIds.has(e.id)&&scan.findings[e.findingId].severity==="critical")??normalized[0];
@@ -54,6 +54,7 @@ function RoutePanel({current,previous}:{current:BusinessScan;previous?:BusinessS
   const selectedEdge=selected?.kind==="edge"?normalized.find(e=>e.id===selected.id):null;
   const selectedNode=selected?.kind==="node"?nodeMap.get(selected.id):null;
   const finding=selectedEdge?scan.findings[selectedEdge.findingId]:null;
+  const connectionState=finding&&selectedEdge?(previews.has(`${base.id}:${finding.id}`)?"preview":base.findings[finding.id].fixed?"fixed":selectedEdge.stale?"stale":selectedEdge.status):null;
   const openDetails=useCallback((next:Selection)=>{
     setSelection(old=>old?.id===next?.id&&old?.kind===next?.kind?old:next);
     if(window.matchMedia("(max-width: 1299px)").matches) inspectorRef.current?.scrollIntoView({block:"nearest",behavior:"instant"});
@@ -68,13 +69,13 @@ function RoutePanel({current,previous}:{current:BusinessScan;previous?:BusinessS
     const fixed=scan.findings[e.findingId].fixed, onRoute=analysis.edgeIds.has(e.id);
     const status=e.status==="confirmed"?"Confirmed":"Theoretical";
     const inactiveLabel=base.findings[e.findingId].fixed?"Fixed by scan":"Fix preview";
-    const colour=fixed?"var(--route-inactive)":e.status==="confirmed"?"var(--route-confirmed)":"var(--route-possible)";
-    return {id:e.id,source:e.from,target:e.to,type:"smoothstep",label:selection?.id===e.id?(fixed?inactiveLabel:status):undefined,
+    const colour=fixed||e.stale?"var(--route-inactive)":e.status==="confirmed"?"var(--route-confirmed)":"var(--route-possible)";
+    return {id:e.id,source:e.from,target:e.to,type:"smoothstep",label:selection?.id===e.id?(fixed?inactiveLabel:e.stale?"Older connection":status):undefined,
       selected:selection?.kind==="edge"&&selection.id===e.id,className:`business-route-edge ${fixed?"is-fixed":e.status} ${onRoute?"on-route":""}`,
       markerEnd:{type:MarkerType.ArrowClosed,width:16,height:16,color:colour},
-      style:{stroke:colour,strokeWidth:selection?.id===e.id?3.5:onRoute?2.5:1.4,strokeDasharray:e.status==="theoretical"?"6 5":undefined,opacity:fixed?.55:1},
+      style:{stroke:colour,strokeWidth:selection?.id===e.id?3.5:onRoute?2.5:1.4,strokeDasharray:e.status==="theoretical"?"6 5":undefined,opacity:fixed||e.stale?.55:1},
       labelStyle:{fill:"var(--text-primary)",fontSize:11},labelBgStyle:{fill:"var(--bg-panel)"},labelBgPadding:[5,4],interactionWidth:28,
-      ariaLabel:`Route from ${nodeMap.get(e.from)?.label} to ${nodeMap.get(e.to)?.label}, ${status.toLowerCase()}, ${scan.findings[e.findingId].severity}${fixed?", removed from this view":""}`};
+      ariaLabel:`Route from ${nodeMap.get(e.from)?.label} to ${nodeMap.get(e.to)?.label}, ${status.toLowerCase()}, ${scan.findings[e.findingId].severity}${fixed?", removed from this view":e.stale?", older evidence excluded from counts":""}`};
   });
   const confirmedLabel=analysis.confirmedTruncated?`${analysis.confirmedPaths}+`:String(analysis.confirmedPaths);
   const fixedCount=Object.values(scan.findings).filter(f=>f.fixed).length;
@@ -91,12 +92,12 @@ function RoutePanel({current,previous}:{current:BusinessScan;previous?:BusinessS
 
   return <section className="business-routes" aria-labelledby="business-routes-title">
     <header className="business-routes-heading"><div><h2 id="business-routes-title">Routes to your critical assets</h2><p>See what could connect, why it matters, and which fix would break a route.</p></div><span>{base.source==="demo"?"Made-up example":"Captured environment"}</span></header>
-    {base.source==="demo"?<p className="business-route-notice" role="status">Made-up demonstration. These systems, findings and scans are not customer evidence.</p>:<p className="business-route-notice">Connections come from your stored route models. They remain possible until the full connection is confirmed. Entry locations are modelled; selecting engagements does not establish a shared network.</p>}
+    {base.source==="demo"?<p className="business-route-notice" role="status">Made-up demonstration. These systems, findings and scans are not customer evidence.</p>:<p className="business-route-notice">Based on recorded findings at the capture time below. Each connection must match its finding and destination system in the same engagement. Stored connections remain possible; selecting engagements does not establish a shared network.</p>}
     <dl className="business-route-metrics">
       <div><dt>Environment grade</dt><dd data-unavailable={!base.grade}>{base.grade??"Not available"}</dd></div>
       <div><dt>Confirmed routes</dt><dd data-tone={analysis.confirmedPaths>0?"risk":"neutral"}>{confirmedLabel}</dd></div>
       <div><dt>Critical assets reachable</dt><dd data-tone={confirmedAnalysis.reachableCrowns.size>0?"risk":analysis.reachableCrowns.size>0?"possible":"neutral"}>{analysis.reachableCrowns.size}<small>in this view</small></dd></div>
-      <div><dt>Open findings on a route</dt><dd data-tone={analysis.findingIds.size>0?"possible":"neutral"}>{analysis.findingIds.size}{analysis.truncated&&<small>partial count</small>}</dd></div>
+      <div><dt>Findings on counted routes</dt><dd data-tone={analysis.findingIds.size>0?"possible":"neutral"}>{analysis.findingIds.size}{analysis.truncated&&<small>partial count</small>}</dd></div>
       <div><dt>{previewCount?"Fixed in this preview":base.source==="demo"?"Findings fixed":"Findings fixed by scan"}</dt><dd data-tone={previewCount?"preview":fixedCount>0?"confirmed":"neutral"}>{fixedCount}</dd></div>
     </dl>
     <div className="business-route-toolbar">
@@ -120,23 +121,25 @@ function RoutePanel({current,previous}:{current:BusinessScan;previous?:BusinessS
             <Controls showInteractive={false}/>
           </ReactFlow>
         </div>}
-        <div className="business-route-legend" aria-label="Connection legend"><span><i data-state="confirmed"/>Confirmed</span><span><i data-state="theoretical"/>Theoretical (possible)</span><span><i data-state="fixed"/>Removed in preview / fixed</span></div>
-        <p className="business-route-caption">A route is confirmed only when every connection on it is confirmed. No route shown does not establish that the environment is safe.</p>
+        <div className="business-route-legend" aria-label="Connection legend"><span><i data-state="confirmed"/>Confirmed</span><span><i data-state="theoretical"/>Theoretical (possible)</span><span><i data-state="fixed"/>Excluded: preview, fixed or older</span></div>
+        <p className="business-route-caption">A route is confirmed only when every connection on it is confirmed. Dismissed findings and older connections do not contribute to these counts. No route shown does not establish that the environment is safe.</p>
       </div>
       <aside ref={inspectorRef} className="business-route-inspector" aria-label="Connection details">
         <header><h3>{selectedNode?"How this system is reached":"Finding behind this connection"}</h3></header>
         {finding&&selectedEdge?<>
-          <div className="business-route-status-row"><span className="business-route-status" data-status={previews.has(`${base.id}:${finding.id}`)?"preview":base.findings[finding.id].fixed?"fixed":selectedEdge.status}><span>{previews.has(`${base.id}:${finding.id}`)?<Undo2 size={14}/>:base.findings[finding.id].fixed||selectedEdge.status==="confirmed"?<CheckCircle2 size={14}/>:<Search size={14}/>}</span>{previews.has(`${base.id}:${finding.id}`)?"Fix preview":base.findings[finding.id].fixed?"Fixed by scan":selectedEdge.status==="confirmed"?"Confirmed":"Theoretical (possible)"}</span><span className="business-route-severity" data-severity={finding.severity}>{finding.severity}</span></div>
+          <div className="business-route-status-row"><span className="business-route-status" data-status={connectionState}><span>{connectionState==="preview"?<Undo2 size={14}/>:connectionState==="fixed"||connectionState==="confirmed"?<CheckCircle2 size={14}/>:<Search size={14}/>}</span>{connectionState==="preview"?"Fix preview":connectionState==="fixed"?"Fixed by scan":connectionState==="stale"?"Older connection":connectionState==="confirmed"?"Confirmed":"Theoretical (possible)"}</span><span className="business-route-severity" data-severity={finding.severity}>{finding.severity}</span></div>
           <h4>{finding.title}</h4><p className="business-route-direction">{nodeMap.get(selectedEdge.from)?.label}<ArrowRight size={14} aria-hidden="true"/>{nodeMap.get(selectedEdge.to)?.label}</p><p>{finding.plainReason}</p>
           {finding.findingConfirmed&&selectedEdge.status!=="confirmed"&&<p>The finding itself is confirmed. That does not confirm the full connection.</p>}
-          {selectedEdge.stale&&<p>This stored connection includes an older observation. Check it again before relying on it.</p>}
-          {finding.lifecycle==="remediated"&&!base.findings[finding.id].fixed&&<p>Remediation was reported manually; scan confirmation is still missing.</p>}
+          {selectedEdge.stale&&<p>This connection includes older evidence and is excluded from route counts. Check it again before relying on it.</p>}
+          {base.source==="stored_models"&&<p className="business-route-provenance">Finding verdict: {finding.verificationState??"not recorded"}. {finding.observedAt?<>Last observed <time dateTime={finding.observedAt}>{new Date(finding.observedAt).toLocaleString()}</time>.</>:"Observation time not recorded."}</p>}
+          {finding.lifecycle==="accepted"&&<p>The risk was accepted; acceptance does not remove the underlying weakness.</p>}
+          {finding.lifecycle==="remediated"&&!base.findings[finding.id].fixed&&<p>Remediation was reported, but a completed scan confirmation for this engagement is still missing. This connection remains possible.</p>}
           <h5>How to fix it</h5>{finding.fixSteps.length?<ol>{finding.fixSteps.map((step,i)=><li key={i}>{step}</li>)}</ol>:<p>No fix instructions were captured. Open the finding to review its remediation.</p>}
           {base.findings[finding.id].fixed?<p className="business-route-fixed">This capture records a scan-confirmed fix.</p>:<button type="button" className="btn btn-primary" onClick={()=>{setSelection({kind:"edge",id:selectedEdge.id});setPreviews(old=>{const next=new Set(old),key=`${base.id}:${finding.id}`;if(next.has(key))next.delete(key);else next.add(key);return next;});}}>{previews.has(`${base.id}:${finding.id}`)?<Undo2 size={15}/>:<Search size={15}/>} {previews.has(`${base.id}:${finding.id}`)?"Undo fix preview":"Preview this fix"}</button>}
           <p className="business-route-action-note">Preview only. Record the work in the finding, then use a fresh approved scan to confirm it.</p>{sourceLink&&<Link href={sourceLink}>Open finding and record remediation <ArrowRight size={12} aria-hidden="true"/></Link>}
         </>:selectedNode?<><h4>{selectedNode.label}</h4><p>{selectedNode.engagementName??"System in this captured view"}</p><p>{analysis.paths.filter(p=>p.nodes.includes(selectedNode.id)).length} displayed routes include this system.</p><ul>{normalized.filter(e=>e.to===selectedNode.id).map(e=><li key={e.id}><button type="button" onClick={()=>openDetails({kind:"edge",id:e.id})}>{nodeMap.get(e.from)?.label} → {scan.findings[e.findingId].title}</button></li>)}</ul>{!normalized.some(e=>e.to===selectedNode.id)&&<p>No incoming connection is recorded here. An entry location starts a modelled route; it is not an invented Internet hop.</p>}</>:<p>Select a connection or a system to inspect it. No connection data has been captured for this view yet.</p>}
       </aside>
     </div>
-    {delta&&<details className="business-route-comparison"><summary>What changed between these {base.source==="demo"?"scans":"captured views"}?</summary><p>{delta.fixed.length} findings fixed · {delta.new.length} new · {delta.stillOpen.length} still open · {delta.missing.length} no longer included</p><p>Comparison uses captured records, excluding fix previews. Missing records do not count as confirmed fixes.</p><ul>{delta.fixed.map(id=><li key={id}>Fixed: {current.findings[id].title}</li>)}{delta.new.map(id=><li key={id}>New: {current.findings[id].title}</li>)}{delta.missing.map(id=><li key={id}>No longer included: {previous!.findings[id].title}</li>)}</ul></details>}
+    {delta&&<details className="business-route-comparison"><summary>What changed between these {base.source==="demo"?"scans":"captured views"}?</summary><p>{delta.fixed.length} findings fixed · {delta.new.length} new · {delta.stillOpen.length} unresolved · {delta.awaitingConfirmation.length} awaiting scan confirmation · {delta.dismissed.length} dismissed · {delta.missing.length} no longer included</p><p>Comparison uses captured records, excluding fix previews. Missing or dismissed records do not count as confirmed fixes.</p><ul>{delta.fixed.map(id=><li key={id}>Fixed: {current.findings[id].title}</li>)}{delta.new.map(id=><li key={id}>New: {current.findings[id].title}</li>)}{delta.awaitingConfirmation.map(id=><li key={id}>Awaiting scan confirmation: {current.findings[id].title}</li>)}{delta.dismissed.map(id=><li key={id}>Dismissed: {current.findings[id].title}</li>)}{delta.missing.map(id=><li key={id}>No longer included: {previous!.findings[id].title}</li>)}</ul></details>}
   </section>;
 }

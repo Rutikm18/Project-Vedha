@@ -55,3 +55,55 @@ test("layout stays in four semantic columns and handles a 300-system/600-connect
   const analysis=analyse(scan,{showTheoretical:true,maxPaths:20,maxWork:5000});assert.equal(analysis.reachableCrowns.has("299"),true);
   console.log(`300/600 route layout: ${Math.round(laidOut)}ms; bounded enumeration reports truncated=${analysis.truncated}`);
 });
+
+test("critical entries require a non-zero simple route and critical assets may lead to other critical assets",()=>{
+  const scan:BusinessScan={...first,nodes:[{id:"a",label:"A",type:"crown",entry:true},{id:"b",label:"B",type:"crown"},{id:"c",label:"C",type:"crown"}],
+    edges:[{id:"ab",from:"a",to:"b",findingId:"f1",status:"confirmed"},{id:"bc",from:"b",to:"c",findingId:"f2",status:"confirmed"},{id:"ba",from:"b",to:"a",findingId:"f3",status:"confirmed"}]};
+  const result=analyse(scan,{showTheoretical:false});
+  assert.equal(result.totalPaths,2);assert.equal(result.confirmedPaths,2);
+  assert.deepEqual([...result.reachableCrowns].sort(),["b","c"]);
+  assert.equal(analyse({...scan,edges:[]},{showTheoretical:false}).reachableCrowns.size,0);
+  const limited=analyse(scan,{showTheoretical:false,maxPaths:1});
+  assert.equal(limited.totalPaths,1);assert.equal(limited.truncated,true);
+  assert.deepEqual([...limited.reachableCrowns].sort(),["b","c"]);
+  const secondEntry={...scan,nodes:scan.nodes.map(n=>n.id==="b"?{...n,entry:true}:n)};
+  assert.equal(analyse(secondEntry,{showTheoretical:false}).reachableCrowns.has("a"),true);
+});
+
+test("withdrawn findings and stale duplicate connections cannot contribute to counted routes",()=>{
+  for (const withdrawn of [{lifecycle:"fp"},{verificationState:"contradicted"}]) {
+    const scan={...first,findings:{...first.findings,f3:{...first.findings.f3,...withdrawn}}};
+    assert.equal(analyse(scan,{showTheoretical:false}).confirmedPaths,0);
+    assert.equal(analyse(scan,{showTheoretical:false}).reachableCrowns.size,0);
+    assert.equal(validEdges(scan).omitted,1);
+  }
+  const fresh=first.edges.find(e=>e.findingId==="f3")!;
+  for(const duplicates of [[{...fresh,id:"old",stale:true},fresh],[fresh,{...fresh,id:"old",stale:true}]]) {
+    const scan={...first,edges:[...first.edges.filter(e=>e.findingId!=="f3"),...duplicates]};
+    assert.equal(analyse(scan,{showTheoretical:false}).confirmedPaths,0);
+    assert.equal(validEdges(scan).edges.find(e=>e.findingId==="f3")?.stale,true);
+  }
+});
+
+test("actual stored-model bindings are checked and cannot promote a finding verdict into a confirmed route",()=>{
+  const scan:BusinessScan={id:"actual",source:"stored_models",takenAt:first.takenAt,grade:null,nodes:[
+    {id:"a:source",assetId:"source",engagementId:"a",label:"Source",type:"entry"},
+    {id:"a:target",assetId:"target",engagementId:"a",label:"Target",type:"crown"}],
+    findings:{"a:f":{...first.findings.f1,id:"a:f",findingId:"f",engagementId:"a",assetId:"target",findingConfirmed:true}},
+    edges:[{id:"edge",from:"a:source",to:"a:target",findingId:"a:f",status:"confirmed"}]};
+  const result=analyse(scan,{showTheoretical:true});
+  assert.equal(result.totalPaths,1);assert.equal(result.confirmedPaths,0);
+  assert.equal(analyse(scan,{showTheoretical:false}).totalPaths,0);
+  for(const patch of [{assetId:"source"},{engagementId:"b"},{findingId:"foreign"}]) {
+    assert.equal(analyse({...scan,findings:{"a:f":{...scan.findings["a:f"],...patch}}},{showTheoretical:true}).totalPaths,0);
+  }
+});
+
+test("comparison distinguishes dismissals and unverified closure from unresolved findings and scan fixes",()=>{
+  const scan={...first,findings:{...first.findings,f1:{...first.findings.f1,lifecycle:"fp"},f2:{...first.findings.f2,lifecycle:"remediated",fixed:false},f3:{...first.findings.f3,verificationState:"contradicted"},f4:{...first.findings.f4,lifecycle:"accepted"}}};
+  const delta=compare(first,scan);
+  assert.deepEqual(delta.dismissed.sort(),["f1","f3"]);
+  assert.deepEqual(delta.awaitingConfirmation,["f2"]);
+  assert.ok(!delta.stillOpen.includes("f1")&&!delta.stillOpen.includes("f2")&&!delta.stillOpen.includes("f3"));
+  assert.ok(delta.stillOpen.includes("f4"));assert.deepEqual(delta.fixed,[]);
+});

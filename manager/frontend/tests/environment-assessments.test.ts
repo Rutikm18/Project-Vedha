@@ -38,6 +38,9 @@ test("same system labels in two assessments remain separate recorded association
   assert.match(out,/No supported cross-assessment bridge/);
   assert.match(out,/Asset binding needed/);
   assert.ok(!out.includes("<script>"));
+  const dismissed=renderToStaticMarkup(createElement(EnvironmentSystemChart,{result:{...result,items:[{...item,lifecycle:"fp"}]},selectedId:null,onSelect:()=>{}}));
+  assert.match(dismissed,/Dismissed finding/);
+  assert.match(dismissed,/Recorded associations/);
 });
 
 test("saved selection reads forward only supported query fields; malformed writes are rejected",async()=>{

@@ -24,3 +24,18 @@ test("finding copy remains escaped and an unavailable remediation is stated plai
   const html=renderToStaticMarkup(createElement(BusinessRoutePanel,{current:scan}));
   assert.ok(!html.includes("<script>unsafe</script>"));assert.match(html,/No fix instructions were captured/);
 });
+
+test("actual finding provenance is visible while a confirmed finding remains only a possible connection",()=>{
+  const actual:BusinessScan={id:"capture",source:"stored_models",takenAt:first.takenAt,grade:null,nodes:[
+    {id:"a:entry",assetId:"entry",engagementId:"a",label:"Assessed entry",type:"entry"},
+    {id:"a:target",assetId:"target",engagementId:"a",label:"Critical system",type:"crown"}],
+    edges:[{id:"hop",from:"a:entry",to:"a:target",findingId:"a:f",status:"confirmed"}],
+    findings:{"a:f":{...first.findings.f3,id:"a:f",findingId:"f",engagementId:"a",assetId:"target",verificationState:"confirmed",findingConfirmed:true,observedAt:"2026-10-01T12:00:00Z",lifecycle:"remediated",fixed:false}}};
+  const html=renderToStaticMarkup(createElement(BusinessRoutePanel,{current:actual}));
+  assert.match(html,/Based on recorded findings/);assert.match(html,/Finding verdict: confirmed/);
+  assert.match(html,/Last observed/);assert.match(html,/completed scan confirmation/);
+  assert.match(html,/Theoretical \(possible\)/);assert.match(html,/Open finding and record remediation/);
+  assert.ok(!html.includes('data-certainty="confirmed"'));
+  const stale=renderToStaticMarkup(createElement(BusinessRoutePanel,{current:{...actual,edges:actual.edges.map(e=>({...e,stale:true}))}}));
+  assert.match(stale,/Older connection/);assert.match(stale,/excluded from route counts/);
+});

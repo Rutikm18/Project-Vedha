@@ -219,6 +219,8 @@ async def test_actual_stored_route_projection_is_sealed_scoped_and_always_possib
         async with factory() as db:
             target = await db.get(Finding, target_id)
             target.remediation = "Changed after the cut"
+            target.status = "fp"
+            target.verification_state = "contradicted"
             await db.commit()
             await compute_environment(db, created, tenant)
             await db.commit()
@@ -229,6 +231,8 @@ async def test_actual_stored_route_projection_is_sealed_scoped_and_always_possib
         assert graph["omittedConnections"] == 1
         finding = graph["findings"][f"{first}:{target_id}"]
         assert finding["findingConfirmed"] is True
+        assert finding["verificationState"] == "confirmed"
+        assert finding["lifecycle"] != "fp"
         assert finding["fixSteps"][0] == "Restrict access to approved services."
         assert result["snapshot"]["requires_reassessment"] is False
         repeated = uuid.UUID(
@@ -241,6 +245,9 @@ async def test_actual_stored_route_projection_is_sealed_scoped_and_always_possib
         async with factory() as db:
             await compute_environment(db, repeated, tenant)
             await db.commit()
+        refreshed = (await client.get(base + f"/{repeated}")).json()["route_graph"]
+        assert refreshed["edges"] == []
+        assert refreshed["findings"][f"{first}:{target_id}"]["verificationState"] == "contradicted"
         history = (
             await client.get(base, params={"engagement_ids": f"{second},{first}"})
         ).json()
@@ -248,6 +255,44 @@ async def test_actual_stored_route_projection_is_sealed_scoped_and_always_possib
             str(repeated),
             str(created),
         ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("run_status,foreign,expected", [
+    ("running", False, False),
+    ("failed", False, False),
+    ("completed", True, False),
+    ("completed", False, True),
+])
+async def test_scan_fix_requires_a_completed_run_for_the_same_engagement(
+    database, monkeypatch, run_status, foreign, expected
+):
+    from app.models.detection_run import DetectionRun
+    from app.models.finding import Finding
+
+    _engine, tenant, first = database
+    app, _state, factory, second = await app_for(database, monkeypatch)
+    async with factory() as db:
+        finding = (await db.execute(select(Finding).where(Finding.engagement_id == first))).scalar_one()
+        run = DetectionRun(id=uuid.uuid4(), engagement_id=second if foreign else first, status=run_status)
+        db.add(run)
+        await db.flush()
+        finding.status = "remediated"
+        finding.resolution_method = "auto"
+        finding.resolution_run_id = run.id
+        finding_id, run_id = finding.id, run.id
+        await db.commit()
+    base = "/attack-paths/environment-assessments"
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        captured = await client.post(base, json={"engagement_ids": [str(first)]})
+        assert captured.status_code == 202, captured.text
+        assessment = uuid.UUID(captured.json()["id"])
+        async with factory() as db:
+            await compute_environment(db, assessment, tenant)
+            await db.commit()
+        record = (await client.get(base + f"/{assessment}")).json()["route_graph"]["findings"][f"{first}:{finding_id}"]
+        assert record["fixed"] is expected
+        assert record["resolutionRunId"] == (str(run_id) if expected else None)
 
 
 @pytest.mark.asyncio

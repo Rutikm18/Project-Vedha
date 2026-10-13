@@ -94,4 +94,36 @@ def test_only_recorded_coverage_gated_auto_resolution_counts_as_a_scan_fix():
     findings[0].update(status="remediated", resolution_method="manual")
     assert not run(assets, findings, paths)["findings"]["a:f"]["fixed"]
     findings[0].update(resolution_method="auto", resolution_run_id="recorded-run")
+    assert not run(assets, findings, paths)["findings"]["a:f"]["fixed"]
+    findings[0]["resolution_run_valid"] = True
     assert run(assets, findings, paths)["findings"]["a:f"]["fixed"]
+
+
+def test_withdrawn_findings_do_not_support_connections_or_scan_fixes():
+    assets, findings, paths = fixtures()
+    findings[0]["status"] = "fp"
+    assert run(assets, findings, paths)["edges"] == []
+    findings[0].update(status="remediated", verification_state="contradicted",
+                       resolution_method="auto", resolution_run_id="run", resolution_run_valid=True)
+    graph = run(assets, findings, paths)
+    assert graph["edges"] == []
+    assert not graph["findings"]["a:f"]["fixed"]
+
+
+def test_duplicate_stale_evidence_is_order_independent_and_observation_time_is_preserved():
+    assets, findings, paths = fixtures()
+    observed = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    findings[0]["last_seen"] = observed
+    paths[0]["path_edges"] = [dict(paths[0]["path_edges"][0], stale=True),
+                              dict(paths[0]["path_edges"][1], stale=False)]
+    graph = run(assets, findings, paths)
+    assert graph["edges"][0]["stale"] is True
+    assert graph["findings"]["a:f"]["observedAt"] == observed.isoformat()
+    paths[0]["path_edges"].reverse()
+    assert run(assets, findings, paths)["edges"][0]["stale"] is True
+
+
+def test_a_connection_must_follow_the_recorded_model_order():
+    assets, findings, paths = fixtures()
+    paths[0]["path_nodes"].reverse()
+    assert run(assets, findings, paths)["edges"] == []

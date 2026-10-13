@@ -2,14 +2,15 @@
 
 import hashlib
 
-from sqlalchemy import String, case, cast, func, select
+from sqlalchemy import String, and_, case, cast, func, select
 
 from app.models.asset import Asset
 from app.models.attack_path import AttackPath
+from app.models.detection_run import DetectionRun, RUN_COMPLETED
 from app.models.engagement import Engagement
 from app.models.finding import Finding
 
-ROUTE_MAP_VERSION = "stored-environment-routes@1"
+ROUTE_MAP_VERSION = "stored-environment-routes@2"
 MAX_NODES, MAX_EDGES, MAX_FINDINGS, MAX_MODELS = 300, 600, 1000, 200
 
 
@@ -50,6 +51,8 @@ def project_routes(assets, findings, paths, *, as_of, names, truncated=False):
             "title": f["title"],
             "severity": value(f["severity"]),
             "lifecycle": value(f["status"]),
+            "verificationState": f.get("verification_state"),
+            "observedAt": f["last_seen"].isoformat() if f.get("last_seen") else None,
             "plainReason": "This finding supports a stored possible connection. The full connection has not been confirmed by a test.",
             "fixSteps": [
                 line.strip(" -*•\t")[:400]
@@ -58,13 +61,19 @@ def project_routes(assets, findings, paths, *, as_of, names, truncated=False):
             ][:6],
             "fixed": value(f["status"]) == "remediated"
             and f.get("resolution_method") == "auto"
-            and bool(f.get("resolution_run_id")),
+            and bool(f.get("resolution_run_id"))
+            and f.get("resolution_run_valid") is True
+            and f.get("verification_state") != "contradicted",
+            "resolutionRunId": str(f["resolution_run_id"])
+            if f.get("resolution_run_id") and f.get("resolution_run_valid") is True
+            else None,
             "findingConfirmed": f.get("verification_state") == "confirmed",
         }
     entries = set()
     for p in paths[:MAX_MODELS]:
         scope = str(p["engagement_id"])
         pnodes = [qualified(scope, n) for n in (p.get("path_nodes") or [])]
+        hops = set(zip(pnodes, pnodes[1:]))
         for raw in p.get("path_edges") or []:
             if not isinstance(raw, dict):
                 omitted += 1
@@ -80,9 +89,12 @@ def project_routes(assets, findings, paths, *, as_of, names, truncated=False):
                 or target not in nodes
                 or source not in pnodes
                 or target not in pnodes
+                or source == target
+                or (source, target) not in hops
                 or not finding
                 or finding["assetId"] != str(raw.get("target"))
                 or finding["lifecycle"] == "fp"
+                or finding["verificationState"] == "contradicted"
             ):
                 omitted += 1
                 continue
@@ -92,6 +104,8 @@ def project_routes(assets, findings, paths, *, as_of, names, truncated=False):
                 truncated = True
                 omitted += 1
                 continue
+            # Disagreeing duplicate freshness must never silently become fresh.
+            prior = edges.get(eid)
             edges[eid] = {
                 "id": eid,
                 "from": source,
@@ -100,7 +114,7 @@ def project_routes(assets, findings, paths, *, as_of, names, truncated=False):
                 "status": "theoretical",
                 "basis": str(raw.get("basis") or "unrecorded")[:80],
                 "sourcePathId": str(p["id"]),
-                "stale": bool(raw.get("stale")),
+                "stale": bool(raw.get("stale")) or bool(prior and prior["stale"]),
             }
             if pnodes and source == pnodes[0]:
                 entries.add(source)
@@ -149,10 +163,20 @@ async def capture_route_map(db, tenant_id, ids, as_of, names):
             Finding.status,
             func.substr(Finding.remediation, 1, 2400).label("remediation"),
             Finding.verification_state,
+            Finding.last_seen,
             Finding.resolution_method,
             Finding.resolution_run_id,
+            (DetectionRun.id.isnot(None)).label("resolution_run_valid"),
         )
         .join(Engagement, Finding.engagement_id == Engagement.id)
+        .outerjoin(
+            DetectionRun,
+            and_(
+                DetectionRun.id == Finding.resolution_run_id,
+                DetectionRun.engagement_id == Finding.engagement_id,
+                DetectionRun.status == RUN_COMPLETED,
+            ),
+        )
         .where(Engagement.tenant_id == tenant_id, Finding.engagement_id.in_(ids))
         .order_by(Finding.engagement_id, Finding.id)
         .limit(MAX_FINDINGS + 1)
