@@ -8,6 +8,7 @@ import { GET as analysisGet } from "../app/api/engagements/[id]/attack-path-anal
 import { GET as zonesGet } from "../app/api/engagements/[id]/attack-path-zones/route";
 import { GET as graphGet } from "../app/api/engagements/[id]/attack-graph/route";
 import { GET as blastGet } from "../app/api/engagements/[id]/blast-radius/[assetId]/route";
+import { POST as refreshPost } from "../app/api/engagements/[id]/attack-paths/refresh/route";
 
 const ENG = "11111111-1111-4111-8111-111111111111";
 const PATH = "22222222-2222-4222-8222-222222222222";
@@ -45,10 +46,22 @@ describe("attack-path BFF forwards to the real backend", () => {
     assert.equal(calls.length, 1);
     const url = new URL(calls[0].url);
     assert.equal(url.pathname, `/engagements/${ENG}/attack-paths`);
-    assert.equal(url.searchParams.get("refresh"), "true");
+    assert.equal(url.searchParams.get("refresh"), "false", "GET cannot cause a write");
     assert.equal(url.searchParams.get("page_size"), "50");
     assert.equal(url.searchParams.get("page"), "2");
     assert.equal(url.searchParams.get("evil"), null, "unlisted query keys never reach FastAPI");
+    assert.equal(calls[0].authorization, "Bearer operator-token");
+  });
+
+  test("explicit refresh preserves authorization errors and never sends client scope keys", async () => {
+    stubBackend({ detail: "Forbidden" }, 403);
+    const res = await refreshPost(req(`http://localhost/x?target_asset_id=${ASSET}&tenant_id=foreign`), ctx({ id: ENG }));
+    assert.equal(res.status, 403);
+    assert.equal(res.headers.get("cache-control"), "no-store");
+    const url = new URL(calls[0].url);
+    assert.equal(url.pathname, `/engagements/${ENG}/attack-paths/refresh`);
+    assert.equal(url.searchParams.get("target_asset_id"), ASSET);
+    assert.equal(url.searchParams.get("tenant_id"), null);
     assert.equal(calls[0].authorization, "Bearer operator-token");
   });
 

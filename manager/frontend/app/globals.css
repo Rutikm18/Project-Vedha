@@ -1305,6 +1305,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 }
 .engagement-toolbar nav::-webkit-scrollbar { display: none; }
 .engagement-toolbar nav button {
+  flex-shrink: 0;
   position: relative;
   min-height: 40px;
   padding: 0 12px;

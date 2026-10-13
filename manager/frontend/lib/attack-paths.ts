@@ -77,6 +77,8 @@ export interface Hop {
   /** What the final step of this hop lets the attacker do: foothold/lateral/priv_esc (P2). */
   capability?: string | null;
   explanation: string;
+  finding?: { id: string; title: string; severity: string; lifecycle: string; cve_ids: string[]; record_updated_at: string; metadata_basis: string } | null;
+  finding_reference_state?: "resolved" | "unavailable";
 }
 
 export interface PathDetail {

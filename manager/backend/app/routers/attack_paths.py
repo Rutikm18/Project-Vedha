@@ -45,8 +45,10 @@ from app.models.attack_path import AttackPath
 from app.models.attack_path_analysis import AttackPathAnalysis
 from app.models.attack_path_snapshot import AttackPathSnapshot
 from app.models.engagement import Engagement
+from app.models.finding import Finding
 from app.models.enums import AssetCriticality
 from app.models.probe_site import ProbeSite
+from app.services.assessment_access import load_assessment_principal
 from app.schemas.auth import CurrentUser
 from app.utils.db import get_or_404
 
@@ -80,6 +82,7 @@ async def attack_paths_overview(
     Every engagement of the tenant is ranked FIRST and the limit applied after, and
     `summary` counts all of them, so neither the ordering nor the totals depend on how
     many rows are shown."""
+    current_user = await load_assessment_principal(db, current_user)
     tenant_id = current_user.tenant_id
     a = AttackPathAnalysis.analysis
     picked = (await db.execute(
@@ -224,29 +227,26 @@ async def list_attack_paths(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ):
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
-    # "Never computed" is the absence of the stored analysis row, not of route rows: a
-    # computed engagement with zero routes (or only an exposed jewel) has an analysis
-    # and no routes, and reading it must not recompute and write on every open.
+    if refresh:
+        raise HTTPException(405, "Use POST /attack-paths/refresh for recomputation")
+    if target_asset_id:
+        await get_or_404(db, Asset, target_asset_id, engagement_id, tenant_field="engagement_id")
     stored = await db.get(AttackPathAnalysis, engagement_id)
-    diagnostics = None
-    if refresh or stored is None:
-        # First read of a never-computed engagement still produces a result;
-        # otherwise a read never recomputes (a computed engagement with zero
-        # routes has an analysis row and no routes — NF3).
-        diagnostics = await _recompute_and_store(db, engagement_id, target_asset_id)
+    diagnostics = (stored.analysis or {}).get("diagnostics") if stored else None
 
     q = select(AttackPath).where(AttackPath.engagement_id == engagement_id)
+    if target_asset_id:
+        q = q.where(AttackPath.path_nodes[func.array_length(AttackPath.path_nodes, 1)] == str(target_asset_id))
     q = q.order_by(AttackPath.risk_score.desc().nullslast(), AttackPath.id)
     rows = (await db.execute(q.offset((page - 1) * page_size).limit(page_size))).scalars().all()
-    total = (await db.execute(
-        select(func.count()).select_from(AttackPath)
-        .where(AttackPath.engagement_id == engagement_id)
-    )).scalar_one()
+    total = (await db.execute(select(func.count()).select_from(q.order_by(None).subquery()))).scalar_one()
 
     labels = await _asset_labels(db, engagement_id) if rows else {}
     body = {
+        "model_status": "legacy_heuristic", "coverage": "partial", "realization": "not_observed_chain",
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -264,7 +264,21 @@ async def list_attack_paths(
             analyzer, _graph = await _build_analyzer(db, engagement_id)
             diagnostics = analyzer.diagnose(await _target_ids(db, engagement_id, target_asset_id))
         body["why_empty"] = diagnostics
+    body["computed"] = stored is not None
     return body
+
+
+@router.post("/attack-paths/refresh", summary="Explicitly recompute legacy modeled routes")
+async def refresh_attack_paths(
+    engagement_id: uuid.UUID, db: DB, current_user: AuthUser,
+    target_asset_id: uuid.UUID | None = Query(default=None),
+):
+    current_user = await load_assessment_principal(db, current_user, "compute")
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    if target_asset_id:
+        await get_or_404(db, Asset, target_asset_id, engagement_id, tenant_field="engagement_id")
+    await _recompute_and_store(db, engagement_id, target_asset_id)
+    return await list_attack_paths(engagement_id, db, current_user, False, target_asset_id, 1, 100)
 
 
 # ── GET /attack-paths/{path_id} ───────────────────────────────────────────────
@@ -276,6 +290,7 @@ async def get_attack_path(
     db: DB,
     current_user: AuthUser,
 ):
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     path = (await db.execute(
         select(AttackPath).where(
@@ -288,8 +303,28 @@ async def get_attack_path(
 
     # Hydrate hop labels from assets for a readable explanation.
     labels = await _asset_labels(db, engagement_id)
+    referenced_ids = {
+        uuid.UUID(str(edge["finding"]))
+        for edge in (path.path_edges or [])
+        if _is_uuid(edge.get("finding"))
+    }
+    findings = {}
+    if referenced_ids:
+        rows = (await db.execute(select(
+            Finding.id, Finding.asset_id, Finding.title, Finding.severity,
+            Finding.status, Finding.cve_ids, Finding.updated_at,
+        ).where(
+            Finding.engagement_id == engagement_id,
+            Finding.id.in_(sorted(referenced_ids, key=str)[:100]),
+        ))).all()
+        findings = {str(row.id): row for row in rows}
     hops = []
     for edge in (path.path_edges or []):
+        finding = findings.get(str(edge.get("finding")))
+        # A stored ID alone cannot disclose another asset's finding or prove
+        # current applicability. Resolved metadata is current, not a sealed proof.
+        if finding and str(finding.asset_id) != str(edge.get("target")):
+            finding = None
         hops.append({
             "from": labels.get(str(edge.get("source")), edge.get("source")),
             "to": labels.get(str(edge.get("target")), edge.get("target")),
@@ -302,6 +337,16 @@ async def get_attack_path(
             "likelihood": edge.get("likelihood"),
             "stale": bool(edge.get("stale")),
             "capability": edge.get("capability"),       # P2: foothold/lateral/priv_esc for the final step
+            "finding": {
+                "id": str(finding.id),
+                "title": finding.title,
+                "severity": finding.severity.value,
+                "lifecycle": finding.status.value,
+                "cve_ids": finding.cve_ids or [],
+                "record_updated_at": finding.updated_at.isoformat(),
+                "metadata_basis": "current_scoped_finding_not_snapshot_proof",
+            } if finding else None,
+            "finding_reference_state": "resolved" if finding else "unavailable",
             "explanation": _explain_hop(edge, labels),
         })
 
@@ -326,6 +371,7 @@ async def list_chokepoints(
 ):
     """Reads the analysis stored by the last recompute. Only an engagement that was
     never computed is analysed on the spot (and not stored: a GET does not write)."""
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     stored = await db.get(AttackPathAnalysis, engagement_id)
     if stored is not None:
@@ -354,6 +400,7 @@ async def attack_path_analysis(
     """Everything about the engagement as a whole that the last recompute found.
     Read-only: an engagement that was never computed answers `computed: false`
     instead of computing on a GET."""
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     stored = await db.get(AttackPathAnalysis, engagement_id)
     if stored is None:
@@ -406,6 +453,7 @@ async def attack_path_zones(
     """Which subnets the stored routes start in, end in, cross and need fixing in, and on what
     basis each crossing rests. Read-only: it aggregates what is stored and never computes, so an
     engagement nobody computed answers `computed: false`."""
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     stored = await db.get(AttackPathAnalysis, engagement_id)
     if stored is None:
@@ -437,8 +485,10 @@ async def blast_radius(
     db: DB,
     current_user: AuthUser,
 ):
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     analyzer, _graph = await _build_analyzer(db, engagement_id)
+    await get_or_404(db, Asset, asset_id, engagement_id, tenant_field="engagement_id")
     result = analyzer.find_blast_radius(str(asset_id))
     labels = await _asset_labels(db, engagement_id)
     result["reachable_labels"] = [labels.get(str(a), a) for a in result["reachable"]]
@@ -454,10 +504,12 @@ async def attack_graph(
     current_user: AuthUser,
     target_asset_id: uuid.UUID | None = Query(default=None),
 ):
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     analyzer, graph = await _build_analyzer(db, engagement_id)
 
     if target_asset_id:
+        await get_or_404(db, Asset, target_asset_id, engagement_id, tenant_field="engagement_id")
         paths = analyzer.find_paths_to_target(str(target_asset_id))
     else:
         paths = _all_paths_to_critical(analyzer, await _critical_asset_ids(db, engagement_id))
@@ -580,7 +632,7 @@ async def _recompute_and_store(
             select(AttackPath).where(AttackPath.engagement_id == engagement_id)
         )).scalars().all()
     }
-    stale = [pid for pid in existing if pid not in wanted]
+    stale = [pid for pid, row in existing.items() if pid not in wanted and (target_asset_id is None or (row.path_nodes and str(row.path_nodes[-1]) == str(target_asset_id)))]
     if stale:
         await db.execute(delete(AttackPath).where(
             AttackPath.engagement_id == engagement_id, AttackPath.id.in_(stale)))
@@ -594,6 +646,11 @@ async def _recompute_and_store(
         row.risk_score = Decimal(str(p["risk_score"]))
         row.chokepoints = path_chokepoints(p["nodes"], choke)         # only the ones ON this path
     diagnostics = analyzer.diagnose(targets)
+    if target_asset_id is not None:
+        # Preserve the engagement-wide analysis/history during a selected-goal
+        # refresh; its denominator includes goals outside this request.
+        await db.flush()
+        return diagnostics
     payload = {
         "choke": choke, "diagnostics": diagnostics,
         "coverage": coverage_report(graph), "freshness": freshness_report(graph),

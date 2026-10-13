@@ -7,6 +7,8 @@ start and end, which step between subnets rests on an assumed link, and what it 
 """
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import asyncio
 import json
 import uuid
@@ -191,7 +193,8 @@ class _DB:
 
 def _call(db, eid=E1):
     user = SimpleNamespace(role="analyst", tenant_id=uuid.UUID(int=77))
-    return asyncio.run(R.attack_path_zones(engagement_id=eid, db=db, current_user=user))
+    with patch.object(R, "load_assessment_principal", new=AsyncMock(return_value=user)):
+        return asyncio.run(R.attack_path_zones(engagement_id=eid, db=db, current_user=user))
 
 
 @pytest.fixture

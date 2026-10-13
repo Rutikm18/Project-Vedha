@@ -15,6 +15,7 @@ import { PathMap } from "./PathMap";
 import { ZoneMap } from "./ZoneMap";
 import { BetaNotice, CoveragePanel, EmptyExplainer, ExposedCallout, FixFirstPanel, PathDetailPanel, PathTable, SuggestedTargetsNote } from "./Panels";
 import { ATTACK_PATH_STYLES } from "./styles";
+import { AttackPathModeNav } from "../../../../components/attack-paths/AttackPathModeNav";
 
 const PAGE_SIZE = 50;
 
@@ -83,6 +84,7 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
         <Link href={`/engagements/${encodeURIComponent(engagementId)}`} className="ap-back">
           <ArrowLeft size={14} /> Back to engagement
         </Link>
+        {process.env.NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED === "true" && <AttackPathModeNav engagementId={engagementId} mode="network" />}
 
         {/* Status: what was computed, when, and the standing caveat on every route. */}
         <section className="ap-card" aria-label="Attack path status">
@@ -240,7 +242,7 @@ export function AttackPathsWorkspace({ engagementId }: { engagementId: string })
                 onRetry={() => void detail.refetch()}
                 skeleton={<div className="ap-card-body"><SkeletonRows rows={3} height={56} /></div>}
               >
-                {detail.data && <PathDetailPanel detail={detail.data} />}
+                {detail.data && <PathDetailPanel detail={detail.data} engagementId={engagementId} />}
               </DataState>
             </section>
           </div>

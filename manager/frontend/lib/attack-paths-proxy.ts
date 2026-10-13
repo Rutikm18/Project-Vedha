@@ -47,9 +47,9 @@ export function engagementGet(spec: ProxySpec) {
       if (!valid(value)) {
         return NextResponse.json({ error: `Invalid ${key}` }, { status: 400 });
       }
-      query[key] = value;
+      query[key] = key === "refresh" ? "false" : value;
     }
     const data = await backend<unknown>(spec.path(p), { token, query });
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
   });
 }

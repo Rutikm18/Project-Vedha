@@ -155,12 +155,12 @@ describe("routes and steps", () => {
     ],
   };
 
-  test("each step states how it is known, how likely, and what it relies on", () => {
+  test("each step states its basis and dependency without implying success probability", () => {
     const out = html(createElement(PathDetailPanel, { detail }));
     assert.match(out, /Assumed route/);
     assert.match(out, /Across subnets/);
-    assert.match(out, /Likelihood 50%/);
-    assert.match(out, /Likelihood —/);               // no estimate renders a dash, never 0%
+    assert.doesNotMatch(out, /Likelihood 50%/); // ranking metadata is not an attack success probability
+    assert.doesNotMatch(out, /Likelihood —/);
     assert.match(out, /Exploits a finding · CVSS 9\.8/);
     assert.match(out, /Not seen recently/);
     assert.match(out, /Reachability is assumed/);
@@ -244,7 +244,8 @@ describe("attack paths is labelled Beta", () => {
     assert.match(page, /headerActions=\{<span className="badge badge-info"[^>]*>Beta<\/span>\}/);
     assert.match(page, /<BetaNotice \/>/);
     const toolbar = read("app/engagements/[id]/workspace.tsx");
-    assert.match(toolbar, /Attack paths <span className="badge badge-info">Beta<\/span>/);
+    assert.match(toolbar, /Expand chain workspace/);
+    assert.match(toolbar, /<span className="badge badge-info">Beta<\/span>/);
   });
 });
 

@@ -11,6 +11,7 @@ import {
 import { PageShell } from "../../../components/PageShell";
 import { PortalShell } from "../../../components/portal/PortalShell";
 import { DataState, EmptyState, SkeletonRows } from "../../../components/states/DataState";
+import { AttackAssessmentsPanel } from "../../../components/attack-paths/AttackAssessmentsPanel";
 import { isUnauthorized } from "../../../lib/fetcher";
 import { useToast } from "../../../hooks/useToast";
 import { EngagementStatusControl, STATUS_COLOR } from "../../../components/EngagementStatusControl";
@@ -22,7 +23,7 @@ import { AssetTagList, ManualTagEditor, TagFilterBar } from "../../../components
 import { RegulatoryProfilePanel } from "../../../components/intel/RegulatoryProfilePanel";
 import { filterAssetsByTags, fragileReasons, tagCounts, type TagsDoc } from "../../../lib/intel";
 
-type TabKey = "overview" | "findings" | "assets" | "activity";
+type TabKey = "overview" | "findings" | "assets" | "activity" | "attack-assessments";
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 
 interface Engagement {
@@ -505,12 +506,16 @@ function EditEngagementModal({ engagement, surface, onClose }: { engagement: Eng
 export function EngagementWorkspace({
   engagementId,
   surface = "manager",
+  initialSection = "overview",
+  initialFindingId,
 }: {
   engagementId?: string;
   surface?: EngagementWorkspaceSurface;
+  initialSection?: TabKey;
+  initialFindingId?: string;
 }) {
   const id = engagementId ?? "current";
-  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [activeTab, setActiveTab] = useState<TabKey>(initialSection);
   const [editing, setEditing] = useState(false);
   const api = useMemo(() => createEngagementWorkspaceApi(surface), [surface]);
   const query = useQuery({
@@ -532,8 +537,11 @@ export function EngagementWorkspace({
     { key: "overview" as const, label: "Overview", icon: Shield },
     { key: "findings" as const, label: "Findings", icon: AlertTriangle, count: engagement?.findingCount },
     { key: "assets" as const, label: "Attack surface", icon: Network, count: engagement?.assetCount },
+    ...(surface === "manager" && process.env.NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED === "true"
+      ? [{ key: "attack-assessments" as const, label: "Attack paths", icon: Target, count: undefined }]
+      : []),
     { key: "activity" as const, label: "Activity", icon: Activity, count: activity.length },
-  ], [activity.length, engagement?.assetCount, engagement?.findingCount]);
+  ], [activity.length, engagement?.assetCount, engagement?.findingCount, surface]);
 
   const Shell = surface === "portal" ? PortalShell : PageShell;
 
@@ -574,9 +582,20 @@ export function EngagementWorkspace({
                 id={`engagement-tab-${key}`}
                 role="tab"
                 aria-selected={activeTab === key}
+                tabIndex={activeTab === key ? 0 : -1}
                 aria-controls="engagement-tabpanel"
                 data-active={activeTab === key}
                 onClick={() => setActiveTab(key)}
+                onKeyDown={(event) => {
+                  const index = tabs.findIndex((tab) => tab.key === key);
+                  const next = event.key === "ArrowRight" ? (index + 1) % tabs.length
+                    : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length
+                    : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
+                  if (next < 0) return;
+                  event.preventDefault();
+                  setActiveTab(tabs[next].key);
+                  document.getElementById(`engagement-tab-${tabs[next].key}`)?.focus();
+                }}
               >
                 <Icon size={15} /> {label}{typeof count === "number" && <span>{count}</span>}
               </button>
@@ -584,7 +603,7 @@ export function EngagementWorkspace({
           </nav>
           <div className="engagement-toolbar-links">
             {surface === "manager" && (
-              <Link href={`/engagements/${encodeURIComponent(id)}/attack-paths`} className="engagement-attack-link"><Route size={15} /> Attack paths <span className="badge badge-info">Beta</span></Link>
+              <Link href={`/engagements/${encodeURIComponent(id)}/attack-paths`} className="engagement-attack-link"><Route size={15} /> {process.env.NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED === "true" ? "Expand chain workspace" : "Attack paths"} <span className="badge badge-info">Beta</span></Link>
             )}
             <Link href={surface === "portal" ? "/portal/reports" : "/reports"} className="engagement-report-link"><FileText size={15} /> Reports <span className="badge badge-info">Beta</span></Link>
           </div>
@@ -601,6 +620,7 @@ export function EngagementWorkspace({
           {engagement && activeTab === "overview" && <OverviewTab engagement={engagement} surface={surface} />}
           {engagement && activeTab === "findings" && <FindingsTab engagementId={id} surface={surface} />}
           {engagement && activeTab === "assets" && <AssetsTab engagementId={id} surface={surface} />}
+          {engagement && surface === "manager" && activeTab === "attack-assessments" && <AttackAssessmentsPanel engagementId={id} initialFindingId={initialFindingId} />}
           {engagement && activeTab === "activity" && <ActivityTab activity={activity} />}
         </div>
       </div>
@@ -610,7 +630,13 @@ export function EngagementWorkspace({
   );
 }
 
-export default function EngagementDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EngagementDetailPage({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ section?: string | string[]; finding?: string | string[] }>;
+}) {
   const { id } = use(params);
-  return <EngagementWorkspace engagementId={id} />;
+  const query = use(searchParams);
+  const section = query.section === "attack-assessments" && process.env.NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED === "true" ? "attack-assessments" : "overview";
+  const finding = typeof query.finding === "string" ? query.finding : undefined;
+  return <EngagementWorkspace key={`${id}:${section}:${finding ?? ""}`} engagementId={id} initialSection={section} initialFindingId={finding} />;
 }

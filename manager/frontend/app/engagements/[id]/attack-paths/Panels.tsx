@@ -3,7 +3,7 @@
 import { AlertTriangle, ArrowRight, CheckCircle2, Info, ShieldAlert, Target } from "lucide-react";
 import { SkeletonRows } from "../../../../components/states/DataState";
 import {
-  basisInfo, caveatSummary, capabilityLabel, emptyReasons, fixFirstSummary, freshnessInfo, percent, riskLabel, riskShare,
+  basisInfo, caveatSummary, capabilityLabel, emptyReasons, fixFirstSummary, freshnessInfo, riskLabel, riskShare,
   suggestedTargetsNote, techniqueLabel,
   type Analysis, type ChokeAnalysis, type ChokeTarget, type Diagnostics, type PathDetail, type PathSummary,
 } from "../../../../lib/attack-paths";
@@ -224,7 +224,7 @@ export function PathTable({
 
 // ── One route, step by step ──────────────────────────────────────────────────
 
-export function PathDetailPanel({ detail }: { detail: PathDetail }) {
+export function PathDetailPanel({ detail, engagementId }: { detail: PathDetail; engagementId?: string }) {
   const fresh = freshnessInfo(detail.freshness);
   return (
     <div className="ap-card-body">
@@ -252,10 +252,16 @@ export function PathDetailPanel({ detail }: { detail: PathDetail }) {
                 <span className="ap-chip">{techniqueLabel(h.technique)}</span>
                 {capabilityLabel(h.capability) && <span className="ap-chip" data-tone="neutral">{capabilityLabel(h.capability)}</span>}
                 <span className="ap-chip" data-tone={basis.tone} title={basis.caveat ?? undefined}>{basis.label}</span>
-                <span className="ap-chip" title="Ranks steps against each other. Not a prediction.">Likelihood {percent(h.likelihood)}</span>
                 {h.exploited && <span className="ap-chip" data-priority="high"><ShieldAlert size={11} aria-hidden="true" /> Exploits a finding{h.cvss != null ? ` · CVSS ${h.cvss}` : ""}</span>}
                 {h.stale && <span className="ap-chip" data-tone="weak"><AlertTriangle size={11} aria-hidden="true" /> Not seen recently</span>}
               </div>
+              {h.finding && <div className="ap-enabling-finding">
+                <strong>Enabling vulnerability</strong>
+                {engagementId ? <a href={`/findings?engagement=${encodeURIComponent(engagementId)}&finding=${encodeURIComponent(h.finding.id)}`}>{h.finding.title}</a> : <span>{h.finding.title}</span>}
+                <span>{h.finding.severity} · {h.finding.lifecycle}{h.finding.cve_ids.length ? ` · ${h.finding.cve_ids.join(", ")}` : ""}</span>
+                <p>Current finding metadata. This legacy modeled step does not establish an observed attack or a validated prerequisite bundle.</p>
+              </div>}
+              {!h.finding && h.finding_reference_state === "unavailable" && <p className="ap-fine">Enabling finding could not be resolved in this engagement. Inspect source evidence before using this step.</p>}
               {h.via.length > 0 && <p className="ap-fine">Via <span className="ap-host">{h.via.join(" → ")}</span></p>}
               <p className="ap-hop-text">{h.explanation}</p>
             </li>

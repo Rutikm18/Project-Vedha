@@ -11,6 +11,8 @@ Pure row/summary/focus builders first, then the two routes against a scripted da
 """
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import asyncio
 import copy
 import json
@@ -370,7 +372,8 @@ def _picked(eid, name, targets=None, fix=None, count=0, at=NOW, status="active",
 
 def _call(db, user=None, limit=50):
     user = user or SimpleNamespace(role="admin", tenant_id=uuid.UUID(int=77))
-    return asyncio.run(R.attack_paths_overview(db=db, current_user=user, limit=limit))
+    with patch.object(R, "load_assessment_principal", new=AsyncMock(return_value=user)):
+        return asyncio.run(R.attack_paths_overview(db=db, current_user=user, limit=limit))
 
 
 def test_handler_ranks_every_engagement_before_it_applies_the_limit():
@@ -441,7 +444,8 @@ def test_no_named_hosts_means_no_label_queries():
 
 def _focus(db, eid=E1, user=None):
     user = user or SimpleNamespace(role="analyst", tenant_id=uuid.UUID(int=77))
-    return asyncio.run(R.attack_paths_focus(engagement_id=eid, db=db, current_user=user))
+    with patch.object(R, "load_assessment_principal", new=AsyncMock(return_value=user)):
+        return asyncio.run(R.attack_paths_focus(engagement_id=eid, db=db, current_user=user))
 
 
 @pytest.fixture

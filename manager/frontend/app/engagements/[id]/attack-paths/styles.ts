@@ -111,6 +111,10 @@ export const ATTACK_PATH_STYLES = `
 .ap-hop-route { font-size: 12.5px; color: var(--text-primary); overflow-wrap: anywhere; }
 .ap-hop-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ap-hop-text { margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.55; }
+.ap-enabling-finding { display: grid; gap: 5px; padding: 12px 0; border-block: 1px solid var(--border-subtle); font-size: 12px; }
+.ap-enabling-finding strong { font-weight: 550; color: var(--text-secondary); }
+.ap-enabling-finding a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.ap-enabling-finding span, .ap-enabling-finding p { color: var(--text-secondary); font-size: 11px; line-height: 1.6; margin: 0; overflow-wrap: anywhere; }
 .ap-start { margin: 0 0 var(--space-3); font-size: 12.5px; color: var(--text-primary); }
 
 .ap-empty { display: grid; place-items: center; gap: var(--space-2); padding: var(--space-7) var(--space-4); text-align: center; color: var(--text-muted); font-size: 12.5px; }

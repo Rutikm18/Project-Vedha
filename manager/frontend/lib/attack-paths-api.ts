@@ -6,11 +6,10 @@ const base = (engagementId: string) => `/api/engagements/${encodeURIComponent(en
 /** Browser-side calls for the attack-paths page. Each goes through the BFF, which
  *  forwards to FastAPI with the operator's session. */
 export const attackPathsApi = {
-  /** The stored list. A never-computed engagement is computed once by the backend;
-   *  `refresh` forces a recompute (and rewrites the stored paths). */
-  list: (engagementId: string, opts: { refresh?: boolean; pageSize?: number } = {}) => {
+  /** Read stored routes; an explicit refresh first uses the write endpoint. */
+  list: async (engagementId: string, opts: { refresh?: boolean; pageSize?: number } = {}) => {
     const q = new URLSearchParams({ page_size: String(opts.pageSize ?? 50) });
-    if (opts.refresh) q.set("refresh", "true");
+    if (opts.refresh) await fetchJson(`${base(engagementId)}/attack-paths/refresh`, { method: "POST" });
     return fetchJson<PathList>(`${base(engagementId)}/attack-paths?${q}`);
   },
   detail: (engagementId: string, pathId: string) =>

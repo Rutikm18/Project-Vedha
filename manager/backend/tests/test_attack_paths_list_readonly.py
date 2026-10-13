@@ -48,6 +48,7 @@ async def _list(db, **kw):
     args = dict(refresh=False, target_asset_id=None, page=1, page_size=20)
     args.update(kw)
     with patch.object(R, "get_or_404", new=AsyncMock()), \
+         patch.object(R, "load_assessment_principal", new=AsyncMock(return_value=user)), \
          patch.object(R, "_recompute_and_store", new=AsyncMock(return_value=[])) as rc, \
          patch.object(R, "_build_analyzer", new=AsyncMock(
              return_value=(MagicMock(diagnose=MagicMock(return_value=["rebuilt"])), None))) as ba, \
@@ -78,13 +79,16 @@ async def test_zero_route_read_falls_back_to_rebuild_when_no_diagnostics_stored(
 
 
 @pytest.mark.asyncio
-async def test_a_never_computed_engagement_is_computed_once_on_first_read():
+async def test_a_never_computed_engagement_is_not_written_on_first_read():
     _, rc, ba = await _list(_DB(analysis=None))
-    rc.assert_awaited_once()
-    ba.assert_not_awaited()
+    rc.assert_not_awaited()
+    ba.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_refresh_still_recomputes_a_computed_engagement():
-    _, rc, _ba = await _list(_DB(_computed(["stored reason"])), refresh=True)
-    rc.assert_awaited_once()
+async def test_get_refresh_requires_the_explicit_write_endpoint():
+    from fastapi import HTTPException
+
+    with pytest.raises(HTTPException) as raised:
+        await _list(_DB(_computed(["stored reason"])), refresh=True)
+    assert raised.value.status_code == 405
