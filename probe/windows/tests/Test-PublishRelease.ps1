@@ -111,6 +111,84 @@ if ($env:OS -ne 'Windows_NT') {
   Assert-True ($r.Code -eq 1 -and $r.Out -match 'Run this on Windows') 'on a non-Windows machine it stops before doing anything'
 }
 
+# --- which Python the build may use (python-env.ps1) -----------------------------------
+Assert-Equal (ConvertFrom-VedhaPythonVersion 'Python 3.12.4')       '3.12' 'python version: 3.12'
+Assert-Equal (ConvertFrom-VedhaPythonVersion "Python 3.13.0`r`n")   '3.13' 'python version: trailing CRLF'
+Assert-Equal (ConvertFrom-VedhaPythonVersion 'Python 3.10.11')      '3.10' 'python version: two-digit minor'
+Assert-True  ($null -eq (ConvertFrom-VedhaPythonVersion ''))        'python version: empty is unreadable'
+Assert-True  ($null -eq (ConvertFrom-VedhaPythonVersion 'Python was not found; run without arguments to install from the Microsoft Store')) 'python version: the Store stub text is unreadable'
+
+foreach ($ok in '3.10', '3.11', '3.12') { Assert-True (Test-VedhaSupportedPython $ok) "supported python: $ok" }
+foreach ($bad in '3.9', '3.13', '3.14', '3.120', '3.1', '2.7', '', $null) { Assert-False (Test-VedhaSupportedPython $bad) "unsupported python: [$bad]" }
+
+function New-FakePython {
+  # A real executable that prints "Python <version>" and exits with $ExitCode, so the version is read
+  # (and a failing command fails) the way it does for real.
+  param([string]$Version, [int]$ExitCode = 0)
+  $dir = Join-Path ([System.IO.Path]::GetTempPath()) ('vedha-fakepy-' + [guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  if ($env:OS -eq 'Windows_NT') {
+    $p = Join-Path $dir 'python.cmd'
+    [System.IO.File]::WriteAllText($p, "@echo off`r`necho Python $Version`r`nexit /b $ExitCode`r`n")
+  } else {
+    $p = Join-Path $dir 'python'
+    [System.IO.File]::WriteAllText($p, "#!/bin/sh`necho 'Python $Version'`nexit $ExitCode`n")
+    & chmod +x $p
+  }
+  return $p
+}
+$py313 = New-FakePython '3.13.1'
+$py312 = New-FakePython '3.12.4'
+Assert-Equal (Get-VedhaPythonVersion $py312) '3.12' 'get version: runs the interpreter and parses it'
+Assert-Equal (Get-VedhaPythonVersion $py313) '3.13' 'get version: reports 3.13 as 3.13'
+Assert-True  ($null -eq (Get-VedhaPythonVersion (Join-Path ([System.IO.Path]::GetTempPath()) 'no-such-python-xyz'))) 'get version: a missing interpreter is $null, not an error'
+
+# The case that failed for real: a build environment that ALREADY exists, made with Python 3.13.
+Assert-Throws { Assert-VedhaBuildPython $py313 'C:\x\.venv-win' } '3\.10, 3\.11 or 3\.12'             'an existing Python 3.13 build environment is refused'
+Assert-Throws { Assert-VedhaBuildPython $py313 'C:\x\.venv-win' } 'Remove-Item -Recurse -Force'       'the refusal says how to fix it'
+$accepted = $true
+try { Assert-VedhaBuildPython $py312 'C:\x\.venv-win' } catch { $accepted = $false }
+Assert-True $accepted 'an existing Python 3.12 build environment is accepted'
+
+$found = Find-VedhaPython
+Assert-True (($null -eq $found) -or (Test-VedhaSupportedPython $found.Version)) 'find python: any result is a supported version'
+Assert-True ((Get-VedhaNoPythonMessage) -match '3\.12' -and (Get-VedhaNoPythonMessage) -match '3\.13') 'no-python message names 3.12 and says 3.13 cannot be used'
+
+# build-agent-exe.ps1: the two guards that were missing when it failed.
+$buildPath = Resolve-Path (Join-Path $PSScriptRoot '..\build-agent-exe.ps1')
+$buildText = [System.IO.File]::ReadAllText($buildPath)
+Assert-True  ($buildText -match 'Assert-VedhaBuildPython')                                  'build script checks the Python of an existing environment'
+Assert-Equal @([regex]::Matches($buildText, '&\s+\$py\s+-m\s+pip')).Count 1                  'build script runs pip in exactly one place'
+Assert-True  ($buildText -match '(?s)&\s+\$py\s+-m\s+pip\s+@PipArgs\s*\r?\n\s*if\s*\(\$LASTEXITCODE\s+-ne\s+0\)') 'that one place checks the exit code (a failed install must stop the build)'
+
+# And run the real Invoke-Pip from that script: a failing pip must throw (and name the likely cause),
+# a succeeding one must not. This is the behaviour that was missing when pip failed and the build went on.
+$buildAst = [System.Management.Automation.Language.Parser]::ParseFile($buildPath, [ref]$null, [ref]$null)
+$pipFn = $buildAst.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Invoke-Pip' }, $true)
+Assert-True ($null -ne $pipFn) 'build script defines Invoke-Pip'
+if ($pipFn) {
+  Invoke-Expression $pipFn.Extent.Text
+  $py = New-FakePython '3.12.4' -ExitCode 1         # Invoke-Pip runs "& $py -m pip ..."
+  Assert-Throws { Invoke-Pip @('install', 'impacket') 'Installing the build requirements' } 'Installing the build requirements failed \(pip exit code 1\)' 'a failing pip stops the build'
+  Assert-Throws { Invoke-Pip @('install', 'impacket') 'Installing the build requirements' } 'DumpNTLMInfo\.py'                                           'the failure names the antivirus cause'
+  $py = New-FakePython '3.12.4' -ExitCode 0
+  $pipOk = $true
+  try { Invoke-Pip @('install', 'impacket') 'Installing the build requirements' | Out-Null } catch { $pipOk = $false }
+  Assert-True $pipOk 'a succeeding pip does not stop the build'
+}
+
+# The same file hygiene as publish-release.ps1, for the files this change added or touched.
+foreach ($name in 'python-env.ps1', 'build-agent-exe.ps1') {
+  $p = Resolve-Path (Join-Path $PSScriptRoot "..\$name")
+  Assert-True (-not ([System.IO.File]::ReadAllBytes($p) | Where-Object { $_ -gt 127 })) "$name is ASCII only"
+  $perr = $null
+  $past = [System.Management.Automation.Language.Parser]::ParseFile($p, [ref]$null, [ref]$perr)
+  Assert-Equal $perr.Count 0 "$name parses"
+  $p7 = $past.FindAll({ param($n) $n.GetType().Name -in @('PipelineChainAst', 'TernaryExpressionAst', 'NullConditionalMemberExpressionAst') -or
+                        ($n -is [System.Management.Automation.Language.BinaryExpressionAst] -and "$($n.Operator)" -match 'QuestionQuestion') }, $true)
+  Assert-Equal @($p7).Count 0 "$name avoids PowerShell 7-only syntax"
+}
+
 # --- the file itself ------------------------------------------------------------
 $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path $script))
 Assert-True  (-not ($bytes | Where-Object { $_ -gt 127 })) 'file is ASCII only (Windows PowerShell 5.1 reads BOM-less files as ANSI)'

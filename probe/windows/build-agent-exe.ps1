@@ -30,12 +30,38 @@ $probeRoot = Split-Path $PSScriptRoot -Parent      # ...\probe
 Set-Location $probeRoot
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
+# Which Python the build may use (3.10-3.12; one rule, shared with publish-release.ps1).
+. (Join-Path $PSScriptRoot 'python-env.ps1')
+
 # Isolated build venv (kept inside probe\windows so .gitignore covers it).
+# Nuitka refuses --mingw64 on Python 3.13+, so the environment's Python is checked whether this script
+# just created it or it was already there (a 3.13 one used to get all the way to Nuitka and fail there).
 $venv = Join-Path $PSScriptRoot '.venv-win'
-if (-not (Test-Path (Join-Path $venv 'Scripts\python.exe'))) { python -m venv $venv }
 $py = Join-Path $venv 'Scripts\python.exe'
-& $py -m pip install --quiet --upgrade pip
-& $py -m pip install --quiet -r (Join-Path $probeRoot 'requirements-runtime.txt') nuitka
+if (Test-Path $py) {
+  Assert-VedhaBuildPython $py $venv
+} else {
+  $found = Find-VedhaPython
+  if (-not $found) { throw (Get-VedhaNoPythonMessage) }
+  $venvArgs = @($found.Arguments) + @('-m', 'venv', $venv)
+  & $found.File @venvArgs
+  if ($LASTEXITCODE -ne 0) { throw "creating the build environment failed (exit code $LASTEXITCODE)" }
+}
+
+# $ErrorActionPreference = 'Stop' does not stop on a failed native command, so every pip run is
+# checked here. An unchecked failed install used to fall through to Nuitka, which then failed with a
+# message about something else.
+function Invoke-Pip {
+  param([string[]]$PipArgs, [string]$What)
+  & $py -m pip @PipArgs
+  if ($LASTEXITCODE -ne 0) {
+    throw ("$What failed (pip exit code $LASTEXITCODE). If the messages above name a file in .venv-win\Scripts " +
+           "(for example DumpNTLMInfo.py) with 'Invalid argument' or 'Access is denied', antivirus is probably " +
+           "blocking impacket's example scripts: see 'When the build stops' in probe\windows\README.md.")
+  }
+}
+Invoke-Pip @('install', '--quiet', '--upgrade', 'pip') 'Updating pip'
+Invoke-Pip @('install', '--quiet', '-r', (Join-Path $probeRoot 'requirements-runtime.txt'), 'nuitka') 'Installing the build requirements'
 
 # 1) Only the agent's closure goes to the compiler. --check fails on a blocked
 #    module or a dynamic import (which a compiler cannot follow).

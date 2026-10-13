@@ -49,6 +49,9 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
+# Which Python the build may use (one rule, shared with build-agent-exe.ps1).
+. (Join-Path $PSScriptRoot 'python-env.ps1')
+
 # ---------------------------------------------------------------------------
 # Pure helpers (no side effects; unit-tested by tests\Test-PublishRelease.ps1)
 # ---------------------------------------------------------------------------
@@ -180,13 +183,16 @@ function Invoke-Main {
   if (-not $KeyDir) { $KeyDir = Join-Path $env:USERPROFILE '.vedha' }
   $venv = Join-Path $winDir '.venv-win'
   $py = Join-Path $venv 'Scripts\python.exe'
-  if (-not (Test-Path -LiteralPath $py)) {
-    $sys = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $sys) { throw 'Python was not found. Install Python 3.10 to 3.12 from python.org (tick "Add python.exe to PATH") and run this again.' }
-    $v = (& python -c 'import sys; print("%d.%d" % sys.version_info[:2])').Trim()
-    if ($v -notmatch '^3\.(10|11|12)$') { throw "Python $v found; the Windows build needs 3.10, 3.11 or 3.12." }
-    Write-Note 'creating the build environment (first time only)'
-    Invoke-Native 'python' @('-m', 'venv', $venv) 'Creating the build environment'
+  if (Test-Path -LiteralPath $py) {
+    # An EXISTING build environment is checked too. Only a new one used to be, so an environment made
+    # with Python 3.13 passed this step and failed an hour later inside Nuitka (it refuses --mingw64 there).
+    Assert-VedhaBuildPython $py $venv
+  } else {
+    # `py -3.12` is tried before `python`, so a newer Python on the PATH does not get in the way.
+    $found = Find-VedhaPython
+    if (-not $found) { throw (Get-VedhaNoPythonMessage) }
+    Write-Note "creating the build environment with Python $($found.Version) (first time only)"
+    Invoke-Native $found.File (@($found.Arguments) + @('-m', 'venv', $venv)) 'Creating the build environment'
   }
   Invoke-Native $py @('-m', 'pip', 'install', '--quiet', '--upgrade', 'pip', 'cryptography') 'Installing the signing library'
   Write-Ok 'Python and the signing library are ready'
