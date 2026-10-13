@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-NORMALIZATION_VERSION = "finding-readiness@1"
+NORMALIZATION_VERSION = "finding-readiness@2"
 
 
 def finding_readiness(
@@ -31,23 +31,29 @@ def finding_readiness(
             "key": "finding_asset_binding",
             "label": "Finding belongs to an assessed asset",
             "state": "supported" if asset else "missing",
-            "detail": "Scoped asset reference exists."
+            "detail": "The finding links to an asset in this engagement."
             if asset
             else "Resolve the finding's assessed asset.",
         },
         {
             "key": "finding_service_binding",
-            "label": "Exact datastore listener is identified",
+            "label": "Finding is linked to a recorded service",
             "state": "supported" if service else "missing",
-            "detail": "Explicit scoped service reference exists."
+            "detail": "The finding links to a service on the assessed asset."
             if service
-            else "Bind the finding to a service ID, protocol, port and observed instance.",
+            else "Identify the service and port affected by this finding.",
+        },
+        {
+            "key": "observed_service_instance",
+            "label": "The observed service instance is identified",
+            "state": "missing",
+            "detail": "Confirm which service instance was observed. The same address and port can be reused by another instance.",
         },
         {
             "key": "entry_context",
             "label": "Entry vantage and unauthenticated context are recorded",
             "state": "missing",
-            "detail": "Normalize source-backed entry, principal and scenario evidence.",
+            "detail": "Record where the access check starts and whether authentication is required.",
         },
         {
             "key": "service_reachable_from_declared_entry",
@@ -65,7 +71,7 @@ def finding_readiness(
             "key": "observation_validity",
             "label": "Source time, validity and lineage are known",
             "state": "missing",
-            "detail": "Normalize collection time and approved freshness policy; ingestion time is not a substitute.",
+            "detail": "Record when the check occurred and how long the observation remains valid. Receiving a report later does not establish the check time.",
         },
     ]
     service_name = (
@@ -95,6 +101,15 @@ def finding_readiness(
                 "detail": "This rule family has not been matched from explicit service evidence.",
             }
         ]
+    if finding.get("evidence_limited"):
+        prerequisites.append(
+            {
+                "key": "source_evidence_budget",
+                "label": "Source evidence is available for this assessment",
+                "state": "missing",
+                "detail": "The source evidence exceeded this assessment's input limit. Open the original finding to review it.",
+            }
+        )
     return {
         "finding_id": finding["id"],
         "title": finding["title"],
@@ -118,5 +133,5 @@ def finding_readiness(
         "rule_activation": "experimental_not_activated",
         "next_action": "Review missing evidence and confirm this rule applies to the finding.",
         "owner_ref": asset.get("owner") if asset else None,
-        "verification_required": "Reassess the same listener and entry scenario with source-backed evidence.",
+        "verification_required": "Recheck the same service, entry location and permissions using fresh evidence.",
     }

@@ -11,6 +11,7 @@ from sqlalchemy import (
     Identity,
     Index,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -21,6 +22,12 @@ from app.models.base import Base, TimestampMixin
 class AttackAssessmentSnapshot(Base, TimestampMixin):
     __tablename__ = "attack_assessment_snapshots"
     __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "engagement_id",
+            "idempotency_key",
+            name="uq_attack_assessment_request_key",
+        ),
         ForeignKeyConstraint(
             ["engagement_id", "tenant_id"],
             ["engagements.id", "engagements.tenant_id"],
@@ -53,6 +60,9 @@ class AttackAssessmentSnapshot(Base, TimestampMixin):
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     engagement_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    idempotency_key: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
     request_sequence: Mapped[int] = mapped_column(
         BigInteger, Identity(), nullable=False, unique=True
     )

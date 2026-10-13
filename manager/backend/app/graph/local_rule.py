@@ -7,6 +7,8 @@ goal absence, observed compromise, raw evidence truth or production readiness.
 from __future__ import annotations
 
 from datetime import datetime
+import hashlib
+from pathlib import Path
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -23,6 +25,7 @@ from pydantic import (
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 RULE_ID = "LOCAL-DATASTORE-READ"
 RULE_VERSION = "binding-contract@1"
+RULE_ARTIFACT_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
 class ContractModel(BaseModel):
@@ -130,6 +133,7 @@ class LocalRuleInput(ScopedRecord):
 class LocalProof(ScopedRecord):
     rule_id: Literal["LOCAL-DATASTORE-READ"] = RULE_ID
     rule_version: Literal["binding-contract@1"] = RULE_VERSION
+    rule_artifact_sha256: str = RULE_ARTIFACT_SHA256
     as_of: datetime
     actor_id: UUID
     context_ref: Text

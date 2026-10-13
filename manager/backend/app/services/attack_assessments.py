@@ -4,12 +4,12 @@ import hashlib
 import json
 import uuid
 from datetime import datetime
-from pathlib import Path
 
 from sqlalchemy import String, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.graph.finding_readiness import NORMALIZATION_VERSION, finding_readiness
+from app.graph.local_rule import RULE_ARTIFACT_SHA256
 from app.models.asset import Asset
 from app.models.attack_assessment import AttackAssessmentSnapshot
 from app.models.engagement import Engagement
@@ -38,11 +38,29 @@ def _record(row) -> dict:
 
 
 async def capture_snapshot(
-    db: AsyncSession, tenant_id: uuid.UUID, engagement_id: uuid.UUID
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    engagement_id: uuid.UUID,
+    idempotency_key: uuid.UUID | None = None,
 ) -> AttackAssessmentSnapshot:
     """Call before any other DB statement on this fresh request session."""
-    await db.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+    if not db.in_transaction():
+        await db.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+    if await (await db.connection()).get_isolation_level() != "REPEATABLE READ":
+        raise ValueError("capture_requires_repeatable_read")
     await get_or_404(db, Engagement, engagement_id, tenant_id)
+    if idempotency_key is not None:
+        previous = (
+            await db.execute(
+                select(AttackAssessmentSnapshot).where(
+                    AttackAssessmentSnapshot.tenant_id == tenant_id,
+                    AttackAssessmentSnapshot.engagement_id == engagement_id,
+                    AttackAssessmentSnapshot.idempotency_key == idempotency_key,
+                )
+            )
+        ).scalar_one_or_none()
+        if previous is not None:
+            return previous
     as_of = (await db.execute(select(func.now()))).scalar_one()
     evidence_length = func.octet_length(cast(Finding.evidence, String))
     fq = (
@@ -85,7 +103,19 @@ async def capture_snapshot(
         .order_by(Service.id)
         .limit(MAX_SERVICES + 1)
     )
-    findings = [_record(r) for r in (await db.execute(fq)).all()]
+    findings = []
+    finding_bytes = 0
+    stream = await db.stream(fq)
+    try:
+        async for partition in stream.partitions(32):
+            for row in partition:
+                record = _record(row)
+                finding_bytes += len(json.dumps(record, sort_keys=True).encode())
+                if finding_bytes > MAX_INPUT_BYTES:
+                    raise ValueError("snapshot_input_size_limit")
+                findings.append(record)
+    finally:
+        await stream.close()
     assets = [_record(r) for r in (await db.execute(aq)).all()]
     services = [_record(r) for r in (await db.execute(sq)).all()]
     total = (
@@ -116,18 +146,13 @@ async def capture_snapshot(
         "read_evidence_coverage": "not_normalized",
         "normalization_version": NORMALIZATION_VERSION,
         "rule_pack_version": "binding-contract@1",
-        "rule_artifact_sha256": hashlib.sha256(
-            Path(__file__)
-            .resolve()
-            .parents[1]
-            .joinpath("graph/local_rule.py")
-            .read_bytes()
-        ).hexdigest(),
+        "rule_artifact_sha256": RULE_ARTIFACT_SHA256,
     }
     encoded = json.dumps(document, sort_keys=True, separators=(",", ":"))
     if len(encoded.encode()) > MAX_INPUT_BYTES:
         raise ValueError("snapshot_input_size_limit")
     snapshot = AttackAssessmentSnapshot(
+        idempotency_key=idempotency_key,
         tenant_id=tenant_id,
         engagement_id=engagement_id,
         input_hash=hashlib.sha256(encoded.encode()).hexdigest(),

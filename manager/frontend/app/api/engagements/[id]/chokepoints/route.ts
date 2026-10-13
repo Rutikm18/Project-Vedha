@@ -1,8 +1,6 @@
-import { NextResponse } from "next/server";
-import { graphStore } from "../../../../../lib/graph-store";
+import { proxyAttackGraph } from "../../../../../lib/attack-graph-proxy";
 
-// GET /engagements/{id}/chokepoints
-export async function GET() {
-  const chokepoints = graphStore.getChokepoints();
-  return NextResponse.json({ chokepoints, total: chokepoints.length });
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return proxyAttackGraph(req, id, "chokepoints");
 }

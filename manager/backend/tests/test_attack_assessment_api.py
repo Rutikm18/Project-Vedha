@@ -1,6 +1,7 @@
 """API/outbox/capture integration against the isolated PostgreSQL database."""
 
 import os
+import asyncio
 import uuid
 from types import SimpleNamespace
 
@@ -34,15 +35,22 @@ pytestmark = [
 database = storage_database
 
 
-def _test_app(engine, tenant, monkeypatch, *, enabled=True):
+def _test_app(engine, tenant, engagement, monkeypatch, *, enabled=True):
     monkeypatch.setattr(
-        api, "get_settings", lambda: SimpleNamespace(attack_assessments_enabled=enabled)
+        api,
+        "get_settings",
+        lambda: SimpleNamespace(
+            attack_assessments_enabled=enabled,
+            attack_assessment_engagement_allowlist={engagement},
+        ),
     )
     factory = async_sessionmaker(engine, expire_on_commit=False)
     state = {"role": "analyst", "auth_type": "jwt"}
 
     def user():
-        return CurrentUser(user_id=uuid.uuid4(), tenant_id=tenant, **state)
+        return CurrentUser(
+            user_id=uuid.uuid5(tenant, "test-operator"), tenant_id=tenant, **state
+        )
 
     async def db():
         async with factory() as session:
@@ -88,7 +96,7 @@ async def add_finding(engine, engagement):
 async def test_capture_queue_compute_detail_and_read_only_get(database, monkeypatch):
     engine, tenant, engagement = database
     finding = await add_finding(engine, engagement)
-    app, _, factory = _test_app(engine, tenant, monkeypatch)
+    app, _, factory = _test_app(engine, tenant, engagement, monkeypatch)
     base = f"/engagements/{engagement}/attack-assessments"
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -146,7 +154,7 @@ async def test_capture_queue_compute_detail_and_read_only_get(database, monkeypa
 @pytest.mark.asyncio
 async def test_scope_role_flag_and_revocation(database, monkeypatch):
     engine, tenant, engagement = database
-    app, state, _ = _test_app(engine, tenant, monkeypatch)
+    app, state, _ = _test_app(engine, tenant, engagement, monkeypatch)
     base = f"/engagements/{engagement}/attack-assessments"
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -176,7 +184,7 @@ async def test_capture_is_frozen_retry_idempotent_and_failure_keeps_last_result(
 ):
     engine, tenant, engagement = database
     finding = await add_finding(engine, engagement)
-    app, _, factory = _test_app(engine, tenant, monkeypatch)
+    app, _, factory = _test_app(engine, tenant, engagement, monkeypatch)
     base = f"/engagements/{engagement}/attack-assessments"
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -216,7 +224,7 @@ async def test_capture_does_not_mix_concurrently_changed_source_rows(
     finding = await add_finding(engine, engagement)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as db:
-        execute = db.execute
+        execute = db.stream
         changed = False
 
         async def interleave(statement, *args, **kwargs):
@@ -237,7 +245,7 @@ async def test_capture_does_not_mix_concurrently_changed_source_rows(
                     )
             return result
 
-        monkeypatch.setattr(db, "execute", interleave)
+        monkeypatch.setattr(db, "stream", interleave)
         snapshot = await capture_snapshot(db, tenant, engagement)
         assert changed
         assert snapshot.input_document["findings"][0]["title"] == "scoped test finding"
@@ -276,3 +284,104 @@ async def test_real_outbox_handler_duplicate_delivery(database, monkeypatch):
         completed = await db.get(AttackAssessmentSnapshot, snapshot.id)
         assert completed.status == "completed"
         assert len(completed.result_document["assessments"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_live_demotion_disable_and_tenant_disable_override_old_token(
+    database, monkeypatch
+):
+    engine, tenant, engagement = database
+    app, _, _ = _test_app(engine, tenant, engagement, monkeypatch)
+    base = f"/engagements/{engagement}/attack-assessments"
+    user_id = uuid.uuid5(tenant, "test-operator")
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        assert (await client.get(base)).json()["can_compute"]
+        async with engine.begin() as db:
+            await db.execute(
+                text("UPDATE users SET role='auditor' WHERE id=:id"), {"id": user_id}
+            )
+        read_only = await client.get(base)
+        assert read_only.status_code == 200
+        assert read_only.json()["can_compute"] is False
+        assert (await client.post(base)).status_code == 403
+        async with engine.begin() as db:
+            await db.execute(
+                text("UPDATE users SET is_active=false WHERE id=:id"), {"id": user_id}
+            )
+        assert (await client.get(base)).status_code == 403
+        async with engine.begin() as db:
+            await db.execute(
+                text("UPDATE users SET is_active=true,role='analyst' WHERE id=:id"),
+                {"id": user_id},
+            )
+            await db.execute(
+                text("UPDATE tenants SET is_active=false WHERE id=:id"), {"id": tenant}
+            )
+        assert (await client.get(base)).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_capture_refuses_an_existing_inconsistent_transaction(database):
+    engine, tenant, engagement = database
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with factory() as db:
+        await db.execute(select(AttackAssessmentSnapshot.id).limit(1))
+        with pytest.raises(ValueError, match="capture_requires_repeatable_read"):
+            await capture_snapshot(db, tenant, engagement)
+
+
+@pytest.mark.asyncio
+async def test_repeated_and_concurrent_request_key_create_one_job(
+    database, monkeypatch
+):
+    engine, tenant, engagement = database
+    app, _, factory = _test_app(engine, tenant, engagement, monkeypatch)
+    base = f"/engagements/{engagement}/attack-assessments"
+    key = str(uuid.uuid4())
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        results = await asyncio.gather(
+            *(client.post(base, headers={"Idempotency-Key": key}) for _ in range(2))
+        )
+        assert all(r.status_code == 202 for r in results), [r.text for r in results]
+        assert results[0].json()["id"] == results[1].json()["id"]
+        repeated = await client.post(base, headers={"Idempotency-Key": key})
+        assert repeated.json()["id"] == results[0].json()["id"]
+    async with factory() as db:
+        events = (
+            (
+                await db.execute(
+                    select(OutboxEvent).where(
+                        OutboxEvent.engagement_id == engagement,
+                        OutboxEvent.topic == TOPIC_ATTACK_ASSESSMENT,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(events) == 1
+
+
+@pytest.mark.asyncio
+async def test_input_budget_rejection_preserves_previous_result(database, monkeypatch):
+    from app.services import attack_assessments as service
+
+    engine, tenant, engagement = database
+    await add_finding(engine, engagement)
+    app, _, factory = _test_app(engine, tenant, engagement, monkeypatch)
+    base = f"/engagements/{engagement}/attack-assessments"
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        created = uuid.UUID((await client.post(base)).json()["id"])
+        async with factory() as db:
+            await compute_snapshot(db, created, tenant)
+            await db.commit()
+        monkeypatch.setattr(service, "MAX_INPUT_BYTES", 16)
+        assert (await client.post(base)).status_code == 413
+        result = (await client.get(base)).json()
+        assert result["last_completed"]["id"] == str(created)

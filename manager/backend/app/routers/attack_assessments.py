@@ -2,14 +2,18 @@
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Header, HTTPException, Query, Response
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_, select
 
 from app.config import get_settings
 from app.dependencies import AuthUser, DB
 from app.graph.access_policy import may_access_assessment
+from app.graph.finding_readiness import NORMALIZATION_VERSION
+from app.graph.local_rule import RULE_ARTIFACT_SHA256
 from app.models.attack_assessment import AttackAssessmentSnapshot
 from app.models.engagement import Engagement
+from app.services.assessment_access import load_assessment_principal
 from app.services.attack_assessments import capture_snapshot
 from app.utils.db import get_or_404
 
@@ -19,7 +23,9 @@ router = APIRouter(
 )
 
 
-def _access(user, response: Response, operation="read"):
+async def _access(
+    db, user, response: Response, operation="read", *, engagement_id: uuid.UUID
+):
     response.headers["Cache-Control"] = "no-store"
     if not get_settings().attack_assessments_enabled:
         raise HTTPException(
@@ -27,12 +33,14 @@ def _access(user, response: Response, operation="read"):
             "Attack assessments are not enabled",
             headers={"Cache-Control": "no-store"},
         )
-    if not may_access_assessment(user, user.tenant_id, operation):
+    if operation == "compute":
+        await db.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+    effective = await load_assessment_principal(db, user, operation)
+    if engagement_id not in get_settings().attack_assessment_engagement_allowlist:
         raise HTTPException(
-            403,
-            "Attack assessment access is not permitted",
-            headers={"Cache-Control": "no-store"},
+            404, "Engagement not found", headers={"Cache-Control": "no-store"}
         )
+    return effective
 
 
 def _summary(row):
@@ -50,16 +58,41 @@ def _summary(row):
         "failure_code": row.failure_code,
         "coverage": "partial",
         "rule_activation": "experimental_not_activated",
+        "requires_reassessment": row.normalization_version != NORMALIZATION_VERSION
+        or row.rule_artifact_sha256 != RULE_ARTIFACT_SHA256,
     }
 
 
 @router.post("", status_code=202)
 async def create_assessment(
-    engagement_id: uuid.UUID, db: DB, current_user: AuthUser, response: Response
+    engagement_id: uuid.UUID,
+    db: DB,
+    current_user: AuthUser,
+    response: Response,
+    idempotency_key: uuid.UUID | None = Header(default=None, alias="Idempotency-Key"),
 ):
-    _access(current_user, response, "compute")
+    current_user = await _access(
+        db, current_user, response, "compute", engagement_id=engagement_id
+    )
     try:
-        snapshot = await capture_snapshot(db, current_user.tenant_id, engagement_id)
+        snapshot = await capture_snapshot(
+            db, current_user.tenant_id, engagement_id, idempotency_key
+        )
+    except IntegrityError:
+        if idempotency_key is None:
+            raise
+        await db.rollback()
+        snapshot = (
+            await db.execute(
+                select(AttackAssessmentSnapshot).where(
+                    AttackAssessmentSnapshot.tenant_id == current_user.tenant_id,
+                    AttackAssessmentSnapshot.engagement_id == engagement_id,
+                    AttackAssessmentSnapshot.idempotency_key == idempotency_key,
+                )
+            )
+        ).scalar_one_or_none()
+        if snapshot is None:
+            raise
     except ValueError as exc:
         if str(exc) == "snapshot_input_size_limit":
             raise HTTPException(
@@ -73,7 +106,9 @@ async def create_assessment(
 async def latest_assessment(
     engagement_id: uuid.UUID, db: DB, current_user: AuthUser, response: Response
 ):
-    _access(current_user, response)
+    current_user = await _access(
+        db, current_user, response, engagement_id=engagement_id
+    )
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     scope = (
         AttackAssessmentSnapshot.tenant_id == current_user.tenant_id,
@@ -113,6 +148,9 @@ async def latest_assessment(
     latest = rows[0] if rows else None
     completed = next((r for r in rows if r.status == "completed"), None)
     return {
+        "can_compute": may_access_assessment(
+            current_user, current_user.tenant_id, "compute"
+        ),
         "latest_request": _summary(latest),
         "last_completed": _summary(completed),
         "state": "not_evaluated" if latest is None else latest.status,
@@ -145,7 +183,9 @@ async def assessment_detail(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    _access(current_user, response)
+    current_user = await _access(
+        db, current_user, response, engagement_id=engagement_id
+    )
     row = await _snapshot(db, engagement_id, snapshot_id, current_user)
     result = row.result_document or {}
     items = result.get("assessments", [])
@@ -171,7 +211,9 @@ async def finding_assessment(
     current_user: AuthUser,
     response: Response,
 ):
-    _access(current_user, response)
+    current_user = await _access(
+        db, current_user, response, engagement_id=engagement_id
+    )
     row = await _snapshot(db, engagement_id, snapshot_id, current_user)
     for item in (row.result_document or {}).get("assessments", []):
         if item["finding_id"] == str(finding_id):

@@ -1,12 +1,6 @@
-import { NextResponse } from "next/server";
-import { graphStore } from "../../../../../../lib/graph-store";
+import { proxyAttackGraph } from "../../../../../../lib/attack-graph-proxy";
 
-// GET /engagements/{id}/blast-radius/{assetId}
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string; assetId: string }> }
-) {
-  const { assetId } = await params;
-  const result = graphStore.getBlastRadius(assetId);
-  return NextResponse.json(result);
+export async function GET(req: Request, { params }: { params: Promise<{ id: string; assetId: string }> }) {
+  const { id, assetId } = await params;
+  return proxyAttackGraph(req, id, "blast-radius", assetId);
 }

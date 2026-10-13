@@ -19,7 +19,7 @@ from decimal import Decimal
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import DB, AuthUser
@@ -31,6 +31,7 @@ from app.models.attack_path import AttackPath
 from app.models.engagement import Engagement
 from app.models.enums import AssetCriticality
 from app.utils.db import get_or_404
+from app.services.assessment_access import load_assessment_principal
 
 router = APIRouter(prefix="/engagements/{engagement_id}", tags=["attack-paths"])
 logger = structlog.get_logger()
@@ -43,24 +44,28 @@ async def list_attack_paths(
     engagement_id: uuid.UUID,
     db: DB,
     current_user: AuthUser,
-    refresh: bool = Query(default=True, description="Recompute paths from current data"),
+    refresh: bool = Query(default=False, description="Deprecated; use POST /attack-paths/refresh"),
     target_asset_id: uuid.UUID | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ):
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
     if refresh:
-        await _recompute_and_store(db, engagement_id, target_asset_id)
+        raise HTTPException(405, "Use POST /attack-paths/refresh for recomputation")
+    if target_asset_id:
+        await get_or_404(db, Asset, target_asset_id, engagement_id, tenant_field="engagement_id")
 
     q = select(AttackPath).where(AttackPath.engagement_id == engagement_id)
+    if target_asset_id:
+        q = q.where(AttackPath.path_nodes[func.array_length(AttackPath.path_nodes, 1)] == str(target_asset_id))
     q = q.order_by(AttackPath.risk_score.desc().nullslast())
     rows = (await db.execute(q.offset((page - 1) * page_size).limit(page_size))).scalars().all()
-    total = len((await db.execute(
-        select(AttackPath.id).where(AttackPath.engagement_id == engagement_id)
-    )).all())
+    total = (await db.execute(select(func.count()).select_from(q.order_by(None).subquery()))).scalar_one()
 
     return {
+        "model_status": "legacy_heuristic", "coverage": "partial", "realization": "not_observed_chain",
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -77,6 +82,7 @@ async def get_attack_path(
     db: DB,
     current_user: AuthUser,
 ):
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     path = (await db.execute(
         select(AttackPath).where(
@@ -102,6 +108,7 @@ async def get_attack_path(
         })
 
     return {
+        "model_status": "legacy_heuristic", "coverage": "partial", "realization": "not_observed_chain",
         "id": str(path.id),
         "risk_score": float(path.risk_score) if path.risk_score is not None else None,
         "node_count": len(path.path_nodes or []),
@@ -119,6 +126,7 @@ async def list_chokepoints(
     db: DB,
     current_user: AuthUser,
 ):
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     analyzer, _graph = await _build_analyzer(db, engagement_id)
 
@@ -127,7 +135,7 @@ async def list_chokepoints(
     labels = await _asset_labels(db, engagement_id)
     for c in chokepoints:
         c["label"] = labels.get(str(c["asset_id"]), c["asset_id"])
-    return {"count": len(chokepoints), "chokepoints": chokepoints}
+    return {"count": len(chokepoints), "chokepoints": chokepoints, "model_status": "legacy_heuristic", "coverage": "partial", "realization": "not_observed_chain"}
 
 
 # ── GET /blast-radius/{asset_id} ──────────────────────────────────────────────
@@ -139,11 +147,14 @@ async def blast_radius(
     db: DB,
     current_user: AuthUser,
 ):
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Asset, asset_id, engagement_id, tenant_field="engagement_id")
     analyzer, _graph = await _build_analyzer(db, engagement_id)
     result = analyzer.find_blast_radius(str(asset_id))
     labels = await _asset_labels(db, engagement_id)
     result["reachable_labels"] = [labels.get(str(a), a) for a in result["reachable"]]
+    result.update(model_status="legacy_heuristic", coverage="partial", realization="not_observed_chain")
     return result
 
 
@@ -156,7 +167,10 @@ async def attack_graph(
     current_user: AuthUser,
     target_asset_id: uuid.UUID | None = Query(default=None),
 ):
+    current_user = await load_assessment_principal(db, current_user)
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    if target_asset_id:
+        await get_or_404(db, Asset, target_asset_id, engagement_id, tenant_field="engagement_id")
     analyzer, graph = await _build_analyzer(db, engagement_id)
 
     if target_asset_id:
@@ -166,7 +180,32 @@ async def attack_graph(
     for i, p in enumerate(paths):
         p["id"] = f"path-{i}"
 
-    return GraphVisualizer(graph).to_d3(paths)
+    result = GraphVisualizer(graph).to_d3(paths)
+    result.update(model_status="legacy_heuristic", coverage="partial", realization="not_observed_chain")
+    return result
+
+
+@router.post(
+    "/attack-paths/refresh", summary="Explicitly refresh legacy heuristic paths"
+)
+async def refresh_legacy_paths(
+    engagement_id: uuid.UUID,
+    db: DB,
+    current_user: AuthUser,
+    target_asset_id: uuid.UUID | None = Query(default=None),
+):
+    current_user = await load_assessment_principal(db, current_user, "compute")
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    if target_asset_id:
+        await get_or_404(
+            db, Asset, target_asset_id, engagement_id, tenant_field="engagement_id"
+        )
+    await _recompute_and_store(db, engagement_id, target_asset_id)
+    return {
+        "model_status": "legacy_heuristic",
+        "coverage": "partial",
+        "realization": "not_observed_chain",
+    }
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -208,8 +247,10 @@ async def _recompute_and_store(
     chokepoints = analyzer.identify_chokepoints(paths)
     choke_ids = [c["asset_id"] for c in chokepoints]
 
-    # Refresh: replace existing computed paths for this engagement.
-    await db.execute(delete(AttackPath).where(AttackPath.engagement_id == engagement_id))
+    replacement = delete(AttackPath).where(AttackPath.engagement_id == engagement_id)
+    if target_asset_id:
+        replacement = replacement.where(AttackPath.path_nodes[func.array_length(AttackPath.path_nodes, 1)] == str(target_asset_id))
+    await db.execute(replacement)
     for p in paths:
         db.add(AttackPath(
             engagement_id=engagement_id,

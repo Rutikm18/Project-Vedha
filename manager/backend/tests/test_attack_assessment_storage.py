@@ -39,6 +39,12 @@ async def database():
             ),
             {"id": engagement, "tenant": tenant},
         )
+        await db.execute(
+            text(
+                "INSERT INTO users (id,tenant_id,email,hashed_password,role) VALUES (:id,:tenant,'operator@example.invalid','test-only','analyst')"
+            ),
+            {"id": uuid.uuid5(tenant, "test-operator"), "tenant": tenant},
+        )
     try:
         yield engine, tenant, engagement
     finally:

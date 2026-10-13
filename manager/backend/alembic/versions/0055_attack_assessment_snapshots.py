@@ -23,6 +23,7 @@ def upgrade():
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("engagement_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("idempotency_key", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column(
             "request_sequence",
             sa.BigInteger(),
@@ -57,6 +58,12 @@ def upgrade():
             ["engagements.id", "engagements.tenant_id"],
             ondelete="CASCADE",
         ),
+        sa.UniqueConstraint(
+            "tenant_id",
+            "engagement_id",
+            "idempotency_key",
+            name="uq_attack_assessment_request_key",
+        ),
         sa.CheckConstraint(
             "status IN ('queued','running','completed','failed')",
             name="ck_attack_assessment_status",
@@ -79,11 +86,11 @@ def upgrade():
     op.execute("""
         CREATE FUNCTION protect_attack_assessment_snapshot() RETURNS trigger AS $$
         BEGIN
-          IF (NEW.id, NEW.created_at, NEW.tenant_id, NEW.engagement_id, NEW.request_sequence, NEW.input_hash,
+          IF (NEW.id, NEW.created_at, NEW.tenant_id, NEW.engagement_id, NEW.idempotency_key, NEW.request_sequence, NEW.input_hash,
               NEW.effective_as_of, NEW.known_at_cutoff, NEW.normalization_version,
               NEW.rule_pack_version, NEW.rule_artifact_sha256, NEW.input_document)
              IS DISTINCT FROM
-             (OLD.id, OLD.created_at, OLD.tenant_id, OLD.engagement_id, OLD.request_sequence, OLD.input_hash,
+             (OLD.id, OLD.created_at, OLD.tenant_id, OLD.engagement_id, OLD.idempotency_key, OLD.request_sequence, OLD.input_hash,
               OLD.effective_as_of, OLD.known_at_cutoff, OLD.normalization_version,
               OLD.rule_pack_version, OLD.rule_artifact_sha256, OLD.input_document) THEN
             RAISE EXCEPTION 'attack assessment inputs are immutable';

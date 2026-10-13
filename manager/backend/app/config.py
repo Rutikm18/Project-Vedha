@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from uuid import UUID
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -54,6 +55,7 @@ class Settings(BaseSettings):
 
     # Experimental finding-driven assessments: opt in after evidence/role review.
     attack_assessments_enabled: bool = False
+    attack_assessment_engagement_allowlist: set[UUID] = Field(default_factory=set)
 
     # P2 — passive verification (deterministic verdict always; LLM/LangGraph optional)
     verification_enabled: bool = True
