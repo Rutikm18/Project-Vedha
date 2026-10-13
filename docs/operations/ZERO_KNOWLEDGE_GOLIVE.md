@@ -186,5 +186,28 @@ on Windows (4a).
   the single highest-value hardening. See the code-signing research in the chat / pipeline X1.
 - **Authenticode thumbprint in the release** — the installer already enforces it when the
   manifest pins one; it is a no-op until you sign.
-- **Approach #1 (air-gapped zip)** — one script that emits a self-contained zip for clients
-  that can't reach the manager. Deferred by choice; the `-Token` flow, not `-Code`.
+## Approach #1 — the air-gapped / download-averse zip (built)
+
+For a client that cannot, or will not, run the download one-liner, hand them a
+self-contained zip instead. It's built once on Windows (the compiled agent) and
+**repackaged on the Mac in one command** — no Windows box needed to repackage:
+
+```bash
+# reuse the vedha-agent-win.zip from the one-time Windows build (step 4a)
+make agent-airgap AGENT=/path/to/vedha-agent-win.zip MANAGER=https://get.vedhasec.com
+# → dist/vedha-agent-airgap.zip  (+ .sha256 and .release.json)
+```
+
+Send the client the zip + its SHA-256, and a one-time `vet_` token (created in
+Fleet → Add agent) on a **different** channel. They run, offline-of-download:
+
+```
+install.cmd -Token vet_XXXXXXXX
+```
+
+The facade URL is baked in, so the client is still never given a manager IP, key
+or internal name — only the generic facade and a single-use token. This uses the
+`-Token` flow (not the zero-knowledge `-Code`), because a self-contained zip skips
+the redeem step. The package is byte-compatible with the Windows `package-zip.ps1`
+output and the installer verifies every file against `SHA256SUMS.txt` before it
+installs. Builder + tests: `scripts/airgap_package.py`, `probe/tests/test_airgap_package.py`.
