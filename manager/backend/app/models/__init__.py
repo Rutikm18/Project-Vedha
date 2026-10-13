@@ -6,6 +6,7 @@ from app.models.finding import Finding
 from app.models.finding_event import FindingEvent
 from app.models.attack_path import AttackPath
 from app.models.attack_assessment import AttackAssessmentSnapshot
+from app.models.environment_assessment import EnvironmentAssessment
 from app.models.attack_path_analysis import AttackPathAnalysis
 from app.models.attack_path_snapshot import AttackPathSnapshot
 from app.models.detection import DetectionResult

@@ -241,6 +241,25 @@ async def _handle_attack_assessment(event: Event) -> None:
         raise
 
 
+@register("environment_assessment.compute")
+async def _handle_environment_assessment(event: Event) -> None:
+    import uuid
+    from app.models.environment_assessment import EnvironmentAssessment
+    from app.services.environment_assessments import compute_environment
+    from sqlalchemy import update
+    payload = event.payload or {}
+    assessment_id, tenant_id = uuid.UUID(payload["assessment_id"]), uuid.UUID(payload["tenant_id"])
+    try:
+        async with AsyncSessionLocal() as db:
+            await compute_environment(db, assessment_id, tenant_id)
+            await db.commit()
+    except Exception:
+        async with AsyncSessionLocal() as db:
+            await db.execute(update(EnvironmentAssessment).where(EnvironmentAssessment.id == assessment_id, EnvironmentAssessment.tenant_id == tenant_id, EnvironmentAssessment.status != "completed").values(status="failed", failure_code="environment_compute_failed"))
+            await db.commit()
+        raise
+
+
 @register(TOPIC_NOTIFY)
 async def _handle_notify(event: Event) -> None:
     """Fan a notification out to the tenant's enabled email/Slack/Jira integrations."""

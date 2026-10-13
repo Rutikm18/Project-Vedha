@@ -11,7 +11,7 @@ const GROUPS = [
   ["unauthenticated_datastore_data_read_supported", "observation_validity"],
 ];
 
-export function FindingChainExplorer({ finding, engagementId }: { finding: FindingAssessment; engagementId: string }) {
+export function FindingChainExplorer({ finding, engagementId, stacked = false }: { finding: FindingAssessment; engagementId: string; stacked?: boolean }) {
   const [step, setStep] = useState(1);
   const [conditionKey, setConditionKey] = useState<string | null>(null);
   const inspectorRef = useRef<HTMLElement>(null);
@@ -23,7 +23,7 @@ export function FindingChainExplorer({ finding, engagementId }: { finding: Findi
   const missing = finding.prerequisites.filter((p) => p.state === "missing");
   const showStep = (index: number) => { setStep(index); setConditionKey(null); };
   const revealInspector = () => {
-    if (window.matchMedia("(max-width: 1150px)").matches) inspectorRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+    if (stacked || window.matchMedia("(max-width: 1150px)").matches) inspectorRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
   };
 
   return <article className="finding-investigation" id="attack-assessment-proof" aria-label="Selected finding assessment">

@@ -27,6 +27,7 @@ from app.routers.ai import router as ai_router
 from app.routers.attack_paths import overview_router as attack_paths_overview_router
 from app.routers.attack_paths import router as attack_paths_router
 from app.routers.attack_assessments import router as attack_assessments_router
+from app.routers.environment_assessments import router as environment_assessments_router
 from app.routers.detection import router as detection_router
 from app.routers.detection_runs import router as detection_runs_router
 from app.routers.changes import router as changes_router
@@ -288,6 +289,7 @@ app.include_router(validation_router)
 app.include_router(ad_router)
 app.include_router(attack_paths_router)
 app.include_router(attack_assessments_router)
+app.include_router(environment_assessments_router)
 app.include_router(attack_paths_overview_router)
 app.include_router(detection_router)
 app.include_router(detection_runs_router)

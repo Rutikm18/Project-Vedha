@@ -1,6 +1,9 @@
 "use client";
 
+import { use } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { EnvironmentAttackWorkspace } from "../../components/attack-paths/EnvironmentAttackWorkspace";
 import { Route as RouteIcon } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { DataState, EmptyState, SkeletonRows } from "../../components/states/DataState";
@@ -14,7 +17,7 @@ import { overviewSummary, type Overview } from "../../lib/attack-paths";
 
 /** Every engagement's stored attack-path result in one place (operators). Each row
  *  opens that engagement's Attack paths page, where the routes are computed and read. */
-export default function AttackPathsOverviewPage() {
+function LegacyAttackPathsOverviewPage() {
   const query = useQuery({
     queryKey: ["attack-paths-overview"],
     queryFn: () => fetchJson<Overview>("/api/attack-paths/overview?limit=200"),
@@ -28,6 +31,7 @@ export default function AttackPathsOverviewPage() {
       headerActions={<span className="badge badge-info" title="Attack paths is in beta">Beta</span>}
       subtitle="How an attacker could reach your crown jewels, per engagement"
     >
+      {process.env.NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED === "true" && <nav className="attack-path-modes" aria-label="Attack-path scope"><Link href="/attack-paths">Environment chains</Link><Link href="/attack-paths?mode=overview" aria-current="page">Engagement overview</Link></nav>}
       <div style={{ display: "grid", gap: "var(--space-4)", padding: "var(--space-4)", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
         <section className="panel apxp" aria-label="Attack paths, all engagements">
           <AttackPathStyles />
@@ -53,4 +57,9 @@ export default function AttackPathsOverviewPage() {
       </div>
     </PageShell>
   );
+}
+
+export default function AttackPathsOverviewPage({ searchParams }: { searchParams: Promise<{mode?:string|string[]}> }) {
+  const query=use(searchParams);
+  return process.env.NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED === "true" && query.mode!=="overview" ? <EnvironmentAttackWorkspace/> : <LegacyAttackPathsOverviewPage/>;
 }
