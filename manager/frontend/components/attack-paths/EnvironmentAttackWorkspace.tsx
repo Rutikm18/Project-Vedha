@@ -12,7 +12,10 @@ import { PageShell } from "../PageShell";
 import { EmptyState, ErrorState, SkeletonRows, Unauthorized } from "../states/DataState";
 import { FindingChainExplorer } from "./FindingChainExplorer";
 import { EnvironmentSystemChart } from "./EnvironmentSystemChart";
+import { BusinessRoutePanel } from "./BusinessRoutePanel";
 import "./attack-assessments.css";
+import "@xyflow/react/dist/style.css";
+import "./business-routes.css";
 
 export function EnvironmentAttackWorkspace() {
   const [selection, setSelection] = useState<string[] | null>(null);
@@ -29,8 +32,10 @@ export function EnvironmentAttackWorkspace() {
   const completedId = history.data?.last_completed?.id;
   const completedQuery = useQuery({queryKey:["environment-assessment",completedId,page],queryFn:()=>assessmentRequest<EnvironmentResult>(`${environmentBase}/${completedId}?page=${page}&page_size=20`),enabled:!!completedId && completedId!==activeRequestId && !options.error && !history.error,gcTime:0,retry:false,refetchInterval:15000});
   const result = resultQuery.data?.snapshot.status === "completed" ? resultQuery.data : completedQuery.data ?? previous;
+  const baselineId=[...(result?.snapshot.engagement_ids??[])].sort().join(",")===scopeKey?history.data?.completed_history?.find(row=>row.id!==result?.snapshot.id&&!row.requires_reassessment)?.id:undefined;
+  const baselineQuery=useQuery({queryKey:["environment-route-baseline",baselineId],queryFn:()=>assessmentRequest<EnvironmentResult>(`${environmentBase}/${baselineId}?page_size=1`),enabled:!!result?.route_graph&&!!baselineId&&!options.error&&!history.error,gcTime:0,retry:false,refetchInterval:15000});
   const compute = useMutation({mutationFn:(ids:string[])=>assessmentRequest<EnvironmentSnapshot>(environmentBase,{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":newId()},body:JSON.stringify({engagement_ids:ids})}),onSuccess:row=>{setPrevious(result ?? null);setRequestId(row.id);setPage(1);setFindingId(null);void history.refetch();}});
-  const error=options.error ?? history.error ?? resultQuery.error ?? completedQuery.error;
+  const error=options.error ?? history.error ?? resultQuery.error ?? completedQuery.error ?? baselineQuery.error;
   const denied=error instanceof ApiError && [401,403,404].includes(error.status);
   const loadingSaved=(selected.length>0 && history.isPending) || (!!activeRequestId && resultQuery.isPending) || (!!completedId && completedId!==activeRequestId && completedQuery.isPending);
   const pending=compute.isPending || ["queued","running"].includes(resultQuery.data?.snapshot.status ?? "");
@@ -48,7 +53,7 @@ export function EnvironmentAttackWorkspace() {
         <details><summary>How assessments are combined</summary><p>Findings retain their original engagement and system identity. Selecting assessments does not establish common customer ownership, connectivity or an attack.</p></details>
       </aside>
       <div className="environment-results">
-        <header className="assessment-heading"><div><h2>From findings to attack chains</h2><p>See the affected systems, inspect enabling weaknesses, and identify the missing connections.</p></div></header>
+        <header className="assessment-heading"><div><h2>Your environment view</h2><p>Review the selected systems and the findings behind their possible connections.</p></div><Link href="/attack-paths/demo">View made-up example</Link></header>
         {compute.error && <p role="alert" className="assessment-notice">{compute.error.message}</p>}
         {pending && <p role="status" className="assessment-notice">Capturing a coherent selection and evaluating its evidence. {result?"The previous completed result remains below.":"Results will appear when computation finishes."}</p>}
         {resultQuery.data?.snapshot.status==="failed" && <p role="alert" className="assessment-notice">The latest analysis failed. {result?"The previous completed result is retained.":"Retry the selection."}</p>}
@@ -57,6 +62,7 @@ export function EnvironmentAttackWorkspace() {
           {result.snapshot.requires_reassessment && <p role="status" className="assessment-notice">The analysis model has changed. Analyze this selection again to use the current model.</p>}
           <div className="assessment-context"><span>{result.snapshot.engagement_ids.length} engagements analyzed</span><span>{result.total} of {result.total_findings} findings included</span><span>Evidence coverage: incomplete</span><span>Snapshot: {new Date(result.snapshot.effective_as_of).toLocaleString()}</span></div>
           <p className="assessment-qualification">{result.compute==="truncated"?"Only part of the selected records could be included. ":""}Findings show where weaknesses were recorded. Cross-system attack paths remain unconfirmed until their connection evidence is available.</p>
+          {result.route_graph&&<BusinessRoutePanel current={result.route_graph} previous={baselineQuery.data?.route_graph}/>}
           {result.items.length ? <><EnvironmentSystemChart result={result} selectedId={active?.finding_id ?? null} onSelect={item=>{setFindingId(item.finding_id);document.getElementById("environment-selected-chain")?.scrollIntoView({block:"start",behavior:"instant"});}}/>
             <nav className="assessment-pagination" aria-label="Environment finding pages"><button type="button" className="btn btn-secondary" aria-label="Previous environment finding page" disabled={pending||loadingSaved||page===1} onClick={()=>changePage(page-1)}><ChevronLeft size={16}/></button><span>Page {result.page} of {Math.max(1,Math.ceil(result.total/20))}</span><button type="button" className="btn btn-secondary" aria-label="Next environment finding page" disabled={pending||loadingSaved||page*20>=result.total} onClick={()=>changePage(page+1)}><ChevronRight size={16}/></button></nav>
             {active && <section id="environment-selected-chain" className="environment-selected-chain"><header><h3>Selected finding chain</h3><span>{active.engagement_name}</span><Link href={`/engagements/${encodeURIComponent(active.engagement_id)}/attack-paths?finding=${encodeURIComponent(active.finding_id)}`}>Open source assessment</Link></header><FindingChainExplorer key={`${result.snapshot.id}:${active.finding_id}`} finding={active} engagementId={active.engagement_id} stacked/></section>}</> : <EmptyState title="No findings were captured" hint="This result does not establish that the selected environment is safe."/>}

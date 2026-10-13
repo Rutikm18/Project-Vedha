@@ -3,6 +3,7 @@
 import hashlib
 import json
 import uuid
+from pathlib import Path
 
 from sqlalchemy import select
 
@@ -16,10 +17,15 @@ from app.models.attack_assessment import AttackAssessmentSnapshot
 from app.models.engagement import Engagement
 from app.models.environment_assessment import EnvironmentAssessment
 from app.services.attack_assessments import capture_snapshot, compute_readiness
+from app.services.environment_route_map import ROUTE_MAP_VERSION, capture_route_map
 
 TOPIC = "environment_assessment.compute"
 MAX_SELECTED_INPUT_BYTES = 4 * 1024 * 1024
 MAX_ITEMS = 1000
+ASSEMBLY_DIGEST = hashlib.sha256(
+    Path(__file__).read_bytes()
+    + Path(__file__).with_name("environment_route_map.py").read_bytes()
+).hexdigest()
 
 
 def digest(document):
@@ -75,6 +81,9 @@ async def capture_environment(db, tenant_id, engagement_ids, key):
                 "input_hash": source.input_hash,
             }
         )
+    route_map = await capture_route_map(db, tenant_id, ids, as_of, names)
+    if size + len(json.dumps(route_map).encode()) > MAX_SELECTED_INPUT_BYTES:
+        raise ValueError("selection_input_size_limit")
     document = {
         "tenant_id": str(tenant_id),
         "engagement_ids": [str(i) for i in ids],
@@ -83,6 +92,9 @@ async def capture_environment(db, tenant_id, engagement_ids, key):
         "engine_version": ENGINE_VERSION,
         "engine_digest": ENGINE_DIGEST,
         "normalization_version": NORMALIZATION_VERSION,
+        "route_map_version": ROUTE_MAP_VERSION,
+        "assembly_digest": ASSEMBLY_DIGEST,
+        "route_graph": route_map,
         "capture_protocol": "materialized_repeatable_read",
     }
     row = EnvironmentAssessment(
@@ -124,6 +136,8 @@ async def compute_environment(db, assessment_id, tenant_id):
         digest(manifest) != row.input_hash
         or manifest["engine_digest"] != ENGINE_DIGEST
         or manifest.get("normalization_version") != NORMALIZATION_VERSION
+        or manifest.get("route_map_version") != ROUTE_MAP_VERSION
+        or manifest.get("assembly_digest") != ASSEMBLY_DIGEST
     ):
         raise ValueError("environment_input_or_model_mismatch")
     items, systems, total = [], [], 0
@@ -202,6 +216,11 @@ async def compute_environment(db, assessment_id, tenant_id):
             "valid_observation_lineage",
             "explicit_environment_membership",
         ],
+        "route_graph": {
+            **manifest["route_graph"],
+            "id": str(row.id),
+            "engagementIds": [str(i) for i in row.engagement_ids],
+        },
     }
     row.status = "completed"
     row.failure_code = None

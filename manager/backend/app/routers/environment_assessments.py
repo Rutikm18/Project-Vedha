@@ -16,7 +16,8 @@ from app.graph.local_rule import ContractModel
 from app.models.engagement import Engagement
 from app.models.environment_assessment import EnvironmentAssessment
 from app.services.assessment_access import load_assessment_principal
-from app.services.environment_assessments import capture_environment
+from app.services.environment_assessments import ASSEMBLY_DIGEST, capture_environment
+from app.services.environment_route_map import ROUTE_MAP_VERSION
 
 router = APIRouter(
     prefix="/attack-paths/environment-assessments", tags=["environment-assessments"]
@@ -75,6 +76,12 @@ def summary(row):
         "requires_reassessment": (
             row.input_document["engine_digest"] != ENGINE_DIGEST
             or row.input_document.get("normalization_version") != NORMALIZATION_VERSION
+            or row.input_document.get("route_map_version") != ROUTE_MAP_VERSION
+            or row.input_document.get("assembly_digest") != ASSEMBLY_DIGEST
+            or (
+                row.status == "completed"
+                and not (row.result_document or {}).get("route_graph")
+            )
         ),
     }
 
@@ -176,8 +183,7 @@ async def latest(
         select(EnvironmentAssessment.request_sequence)
         .where(*scope, EnvironmentAssessment.status == "completed")
         .order_by(EnvironmentAssessment.request_sequence.desc())
-        .limit(1)
-        .scalar_subquery()
+        .limit(2)
     )
     rows = (
         (
@@ -187,7 +193,7 @@ async def latest(
                     *scope,
                     or_(
                         EnvironmentAssessment.request_sequence == newest,
-                        EnvironmentAssessment.request_sequence == completed,
+                        EnvironmentAssessment.request_sequence.in_(completed),
                     ),
                 )
                 .order_by(EnvironmentAssessment.request_sequence.desc())
@@ -201,6 +207,9 @@ async def latest(
         "last_completed": next(
             (summary(row) for row in rows if row.status == "completed"), None
         ),
+        "completed_history": [
+            summary(row) for row in rows if row.status == "completed"
+        ],
     }
 
 

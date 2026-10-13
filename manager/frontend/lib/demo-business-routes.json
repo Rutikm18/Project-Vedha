@@ -1,0 +1,740 @@
+{
+  "notice": "Made-up demonstration only. Never evidence about a customer environment.",
+  "scans": [
+    {
+      "id": "made-up-scan-one",
+      "takenAt": "2026-10-01T09:00:00Z",
+      "grade": null,
+      "source": "demo",
+      "coverage": "made_up_example",
+      "version": "demo@1",
+      "engagementIds": [
+        "made-up-example"
+      ],
+      "nodes": [
+        {
+          "id": "internet",
+          "label": "Internet",
+          "type": "entry",
+          "column": 0
+        },
+        {
+          "id": "vpn",
+          "label": "VPN gateway",
+          "type": "asset",
+          "column": 1
+        },
+        {
+          "id": "web",
+          "label": "Public website",
+          "type": "asset",
+          "column": 1
+        },
+        {
+          "id": "mail",
+          "label": "Mail gateway",
+          "type": "asset",
+          "column": 1
+        },
+        {
+          "id": "files",
+          "label": "File service",
+          "type": "asset",
+          "column": 2
+        },
+        {
+          "id": "admin",
+          "label": "Admin console",
+          "type": "asset",
+          "column": 2
+        },
+        {
+          "id": "database",
+          "label": "Database server",
+          "type": "asset",
+          "column": 2
+        },
+        {
+          "id": "backup-server",
+          "label": "Backup server",
+          "type": "asset",
+          "column": 2
+        },
+        {
+          "id": "jump",
+          "label": "Management host",
+          "type": "asset",
+          "column": 2
+        },
+        {
+          "id": "customer",
+          "label": "Customer data",
+          "type": "crown",
+          "column": 3
+        },
+        {
+          "id": "business",
+          "label": "Business system",
+          "type": "crown",
+          "column": 3
+        },
+        {
+          "id": "backups",
+          "label": "Backups",
+          "type": "crown",
+          "column": 3
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "from": "internet",
+          "to": "vpn",
+          "findingId": "f1",
+          "status": "confirmed"
+        },
+        {
+          "id": "e2",
+          "from": "vpn",
+          "to": "jump",
+          "findingId": "f2",
+          "status": "confirmed"
+        },
+        {
+          "id": "e3",
+          "from": "jump",
+          "to": "customer",
+          "findingId": "f3",
+          "status": "confirmed"
+        },
+        {
+          "id": "e4",
+          "from": "internet",
+          "to": "web",
+          "findingId": "f4",
+          "status": "theoretical"
+        },
+        {
+          "id": "e5",
+          "from": "web",
+          "to": "database",
+          "findingId": "f5",
+          "status": "theoretical"
+        },
+        {
+          "id": "e6",
+          "from": "database",
+          "to": "customer",
+          "findingId": "f6",
+          "status": "theoretical"
+        },
+        {
+          "id": "e7",
+          "from": "web",
+          "to": "admin",
+          "findingId": "f7",
+          "status": "theoretical"
+        },
+        {
+          "id": "e8",
+          "from": "admin",
+          "to": "business",
+          "findingId": "f8",
+          "status": "theoretical"
+        },
+        {
+          "id": "e9",
+          "from": "vpn",
+          "to": "files",
+          "findingId": "f9",
+          "status": "theoretical"
+        },
+        {
+          "id": "e10",
+          "from": "files",
+          "to": "backups",
+          "findingId": "f10",
+          "status": "theoretical"
+        },
+        {
+          "id": "e11",
+          "from": "internet",
+          "to": "mail",
+          "findingId": "f11",
+          "status": "theoretical"
+        },
+        {
+          "id": "e12",
+          "from": "mail",
+          "to": "files",
+          "findingId": "f12",
+          "status": "theoretical"
+        },
+        {
+          "id": "e13",
+          "from": "jump",
+          "to": "business",
+          "findingId": "f13",
+          "status": "theoretical"
+        },
+        {
+          "id": "e14",
+          "from": "files",
+          "to": "backup-server",
+          "findingId": "f14",
+          "status": "theoretical"
+        },
+        {
+          "id": "e15",
+          "from": "backup-server",
+          "to": "backups",
+          "findingId": "f15",
+          "status": "theoretical"
+        }
+      ],
+      "findings": {
+        "f1": {
+          "id": "f1",
+          "title": "VPN gateway access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Restrict gateway access to approved users.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f2": {
+          "id": "f2",
+          "title": "Management host access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Require a separate account for management access.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f3": {
+          "id": "f3",
+          "title": "Customer data access needs review",
+          "severity": "critical",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Remove management-host access to customer records.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f4": {
+          "id": "f4",
+          "title": "Public website access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Update the public application to its supported version.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f5": {
+          "id": "f5",
+          "title": "Database server access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Use a dedicated least-privilege application account.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f6": {
+          "id": "f6",
+          "title": "Customer data access needs review",
+          "severity": "critical",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Restrict database access to approved services.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f7": {
+          "id": "f7",
+          "title": "Admin console access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Remove public access to the administration console.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f8": {
+          "id": "f8",
+          "title": "Business system access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Require strong authentication for the business application.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f9": {
+          "id": "f9",
+          "title": "File service access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Separate gateway and file-service access.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f10": {
+          "id": "f10",
+          "title": "Backups access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Restrict file-service permissions on backups.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f11": {
+          "id": "f11",
+          "title": "Mail gateway access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Update the mail gateway to a supported version.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f12": {
+          "id": "f12",
+          "title": "File service access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Restrict mail-service access to file shares.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f13": {
+          "id": "f13",
+          "title": "Business system access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Remove unnecessary management-host permissions.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f14": {
+          "id": "f14",
+          "title": "Backup server access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Limit access to the backup server.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f15": {
+          "id": "f15",
+          "title": "Backups access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Separate backup storage permissions.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        }
+      }
+    },
+    {
+      "id": "made-up-scan-two",
+      "takenAt": "2026-10-02T09:00:00Z",
+      "grade": null,
+      "source": "demo",
+      "coverage": "made_up_example",
+      "version": "demo@1",
+      "engagementIds": [
+        "made-up-example"
+      ],
+      "nodes": [
+        {
+          "id": "internet",
+          "label": "Internet",
+          "type": "entry",
+          "column": 0
+        },
+        {
+          "id": "vpn",
+          "label": "VPN gateway",
+          "type": "asset",
+          "column": 1
+        },
+        {
+          "id": "web",
+          "label": "Public website",
+          "type": "asset",
+          "column": 1
+        },
+        {
+          "id": "mail",
+          "label": "Mail gateway",
+          "type": "asset",
+          "column": 1
+        },
+        {
+          "id": "files",
+          "label": "File service",
+          "type": "asset",
+          "column": 2
+        },
+        {
+          "id": "admin",
+          "label": "Admin console",
+          "type": "asset",
+          "column": 2
+        },
+        {
+          "id": "database",
+          "label": "Database server",
+          "type": "asset",
+          "column": 2
+        },
+        {
+          "id": "backup-server",
+          "label": "Backup server",
+          "type": "asset",
+          "column": 2
+        },
+        {
+          "id": "jump",
+          "label": "Management host",
+          "type": "asset",
+          "column": 2
+        },
+        {
+          "id": "customer",
+          "label": "Customer data",
+          "type": "crown",
+          "column": 3
+        },
+        {
+          "id": "business",
+          "label": "Business system",
+          "type": "crown",
+          "column": 3
+        },
+        {
+          "id": "backups",
+          "label": "Backups",
+          "type": "crown",
+          "column": 3
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "from": "internet",
+          "to": "vpn",
+          "findingId": "f1",
+          "status": "confirmed"
+        },
+        {
+          "id": "e2",
+          "from": "vpn",
+          "to": "jump",
+          "findingId": "f2",
+          "status": "confirmed"
+        },
+        {
+          "id": "e3",
+          "from": "jump",
+          "to": "customer",
+          "findingId": "f3",
+          "status": "confirmed"
+        },
+        {
+          "id": "e4",
+          "from": "internet",
+          "to": "web",
+          "findingId": "f4",
+          "status": "theoretical"
+        },
+        {
+          "id": "e5",
+          "from": "web",
+          "to": "database",
+          "findingId": "f5",
+          "status": "theoretical"
+        },
+        {
+          "id": "e6",
+          "from": "database",
+          "to": "customer",
+          "findingId": "f6",
+          "status": "theoretical"
+        },
+        {
+          "id": "e7",
+          "from": "web",
+          "to": "admin",
+          "findingId": "f7",
+          "status": "theoretical"
+        },
+        {
+          "id": "e8",
+          "from": "admin",
+          "to": "business",
+          "findingId": "f8",
+          "status": "theoretical"
+        },
+        {
+          "id": "e9",
+          "from": "vpn",
+          "to": "files",
+          "findingId": "f9",
+          "status": "theoretical"
+        },
+        {
+          "id": "e10",
+          "from": "files",
+          "to": "backups",
+          "findingId": "f10",
+          "status": "theoretical"
+        },
+        {
+          "id": "e11",
+          "from": "internet",
+          "to": "mail",
+          "findingId": "f11",
+          "status": "theoretical"
+        },
+        {
+          "id": "e12",
+          "from": "mail",
+          "to": "files",
+          "findingId": "f12",
+          "status": "theoretical"
+        },
+        {
+          "id": "e13",
+          "from": "jump",
+          "to": "business",
+          "findingId": "f13",
+          "status": "theoretical"
+        },
+        {
+          "id": "e14",
+          "from": "files",
+          "to": "backup-server",
+          "findingId": "f14",
+          "status": "theoretical"
+        },
+        {
+          "id": "e15",
+          "from": "backup-server",
+          "to": "backups",
+          "findingId": "f15",
+          "status": "theoretical"
+        },
+        {
+          "id": "e16",
+          "from": "mail",
+          "to": "admin",
+          "findingId": "f16",
+          "status": "theoretical"
+        }
+      ],
+      "findings": {
+        "f1": {
+          "id": "f1",
+          "title": "VPN gateway access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Restrict gateway access to approved users.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f2": {
+          "id": "f2",
+          "title": "Management host access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Require a separate account for management access.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f3": {
+          "id": "f3",
+          "title": "Customer data access needs review",
+          "severity": "critical",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Remove management-host access to customer records.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": true
+        },
+        "f4": {
+          "id": "f4",
+          "title": "Public website access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Update the public application to its supported version.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": true
+        },
+        "f5": {
+          "id": "f5",
+          "title": "Database server access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Use a dedicated least-privilege application account.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f6": {
+          "id": "f6",
+          "title": "Customer data access needs review",
+          "severity": "critical",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Restrict database access to approved services.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f7": {
+          "id": "f7",
+          "title": "Admin console access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Remove public access to the administration console.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f8": {
+          "id": "f8",
+          "title": "Business system access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Require strong authentication for the business application.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f9": {
+          "id": "f9",
+          "title": "File service access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Separate gateway and file-service access.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f10": {
+          "id": "f10",
+          "title": "Backups access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Restrict file-service permissions on backups.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f11": {
+          "id": "f11",
+          "title": "Mail gateway access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Update the mail gateway to a supported version.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f12": {
+          "id": "f12",
+          "title": "File service access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Restrict mail-service access to file shares.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f13": {
+          "id": "f13",
+          "title": "Business system access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Remove unnecessary management-host permissions.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f14": {
+          "id": "f14",
+          "title": "Backup server access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Limit access to the backup server.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f15": {
+          "id": "f15",
+          "title": "Backups access needs review",
+          "severity": "high",
+          "plainReason": "Made-up example: this weakness could allow this connection. It is not evidence about your environment.",
+          "fixSteps": [
+            "Separate backup storage permissions.",
+            "Repeat the approved check to confirm the change."
+          ],
+          "fixed": false
+        },
+        "f16": {
+          "id": "f16",
+          "title": "New administration connection",
+          "severity": "high",
+          "plainReason": "Made-up example of a newly observed possible connection.",
+          "fixSteps": [
+            "Remove unnecessary administration access."
+          ],
+          "fixed": false
+        }
+      }
+    }
+  ]
+}

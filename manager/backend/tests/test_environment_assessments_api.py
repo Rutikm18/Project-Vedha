@@ -108,6 +108,7 @@ async def test_combined_cut_worker_retry_and_current_selection(database, monkeyp
         ).json() == {
             "latest_request": None,
             "last_completed": None,
+            "completed_history": [],
         }
         assert (
             await client.get(base, params={"engagement_ids": f"{first},{first}"})
@@ -161,6 +162,120 @@ async def test_latest_failed_selection_retains_completed_result(database, monkey
         assert result["latest_request"]["id"] == str(failed)
         assert result["latest_request"]["status"] == "failed"
         assert result["last_completed"]["id"] == str(completed)
+
+
+@pytest.mark.asyncio
+async def test_actual_stored_route_projection_is_sealed_scoped_and_always_possible(
+    database, monkeypatch
+):
+    from app.models.finding import Finding
+    from app.models.asset import Asset
+    from app.models.attack_path import AttackPath
+
+    engine, tenant, first = database
+    app, _state, factory, second = await app_for(database, monkeypatch)
+    entry = uuid.uuid4()
+    async with factory() as db:
+        target = (
+            await db.execute(select(Finding).where(Finding.engagement_id == first))
+        ).scalar_one()
+        foreign = (
+            await db.execute(select(Finding).where(Finding.engagement_id == second))
+        ).scalar_one()
+        asset = await db.get(Asset, target.asset_id)
+        asset.criticality = "critical"
+        target.verification_state = "confirmed"
+        target.remediation = (
+            "Restrict access to approved services.\nRecheck the same listener."
+        )
+        db.add(Asset(id=entry, engagement_id=first, hostname="entry-location"))
+        edge = {
+            "source": str(entry),
+            "target": str(target.asset_id),
+            "finding": str(target.id),
+            "basis": "observed",
+            "exploited": True,
+        }
+        db.add(
+            AttackPath(
+                engagement_id=first,
+                path_nodes=[str(entry), str(target.asset_id)],
+                path_edges=[edge, edge, {**edge, "finding": str(foreign.id)}],
+            )
+        )
+        target_id = target.id
+        await db.commit()
+    base = "/attack-paths/environment-assessments"
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        created = uuid.UUID(
+            (
+                await client.post(
+                    base, json={"engagement_ids": [str(first), str(second)]}
+                )
+            ).json()["id"]
+        )
+        async with factory() as db:
+            target = await db.get(Finding, target_id)
+            target.remediation = "Changed after the cut"
+            await db.commit()
+            await compute_environment(db, created, tenant)
+            await db.commit()
+        result = (await client.get(base + f"/{created}")).json()
+        graph = result["route_graph"]
+        assert len(graph["edges"]) == 1
+        assert graph["edges"][0]["status"] == "theoretical"
+        assert graph["omittedConnections"] == 1
+        finding = graph["findings"][f"{first}:{target_id}"]
+        assert finding["findingConfirmed"] is True
+        assert finding["fixSteps"][0] == "Restrict access to approved services."
+        assert result["snapshot"]["requires_reassessment"] is False
+        repeated = uuid.UUID(
+            (
+                await client.post(
+                    base, json={"engagement_ids": [str(second), str(first)]}
+                )
+            ).json()["id"]
+        )
+        async with factory() as db:
+            await compute_environment(db, repeated, tenant)
+            await db.commit()
+        history = (
+            await client.get(base, params={"engagement_ids": f"{second},{first}"})
+        ).json()
+        assert [r["id"] for r in history["completed_history"]] == [
+            str(repeated),
+            str(created),
+        ]
+
+
+@pytest.mark.asyncio
+async def test_different_worker_assembly_cannot_publish_a_mixed_model_result(
+    database, monkeypatch
+):
+    from app.services import environment_assessments as service
+
+    _engine, tenant, first = database
+    app, _state, factory, second = await app_for(database, monkeypatch)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        created = uuid.UUID(
+            (
+                await client.post(
+                    "/attack-paths/environment-assessments",
+                    json={"engagement_ids": [str(first), str(second)]},
+                )
+            ).json()["id"]
+        )
+        monkeypatch.setattr(service, "ASSEMBLY_DIGEST", "0" * 64)
+        async with factory() as db:
+            with pytest.raises(ValueError, match="model_mismatch"):
+                await service.compute_environment(db, created, tenant)
+            await db.rollback()
+            row = await db.get(EnvironmentAssessment, created)
+            assert row.status == "queued" and row.result_document is None
 
 
 @pytest.mark.asyncio

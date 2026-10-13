@@ -146,3 +146,12 @@
 @media (max-width: 900px) { .assessment-workspace { grid-template-columns: minmax(0, 1fr); } .assessment-queue { border-right: 0; border-bottom: 1px solid var(--border-subtle); } }
 @media (max-width: 600px) { .assessment-heading { align-items: stretch; flex-direction: column; gap: 14px; } .assessment-proof { padding: 18px; } .assessment-context { flex-direction: column; gap: 6px; } .assessment-handoff div { grid-template-columns: minmax(0, 1fr); gap: 4px; } .chain-title, .chain-canvas, .chain-gates, .chain-inspector { padding: 18px; } .chain-node { padding: 12px; gap: 8px; } .chain-severity { display: none; } .attack-path-modes a { padding-inline: 9px; } }
 .environment-selected-chain .chain-back { display: block; }
+.environment-workspace { grid-template-columns: minmax(0,1fr); }
+.environment-selector { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 20px; }
+.environment-selector > h2, .environment-selector > p, .environment-selector > fieldset { grid-column: 1; }
+.environment-selector > fieldset { max-height: 150px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.environment-selector > fieldset label { min-width: min(240px,100%); max-width: 100%; border: 0; padding: 8px 0; }
+.environment-selector > .btn { grid-column: 2; grid-row: 2; align-self: start; }
+.environment-selector > .environment-selection-count { grid-column: 2; grid-row: 3; }
+.environment-selector > details { grid-column: 1 / -1; }
+@media(max-width:600px) { .environment-selector { grid-template-columns:minmax(0,1fr); } .environment-selector > .btn,.environment-selector > .environment-selection-count { grid-column:1; grid-row:auto; } }

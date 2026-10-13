@@ -14,7 +14,7 @@ from pydantic import Field, field_validator
 
 from app.graph.local_rule import ContractModel
 
-ENGINE_VERSION = "environment-data-read@1"
+ENGINE_VERSION = "environment-data-read@2"
 ENGINE_DIGEST = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
