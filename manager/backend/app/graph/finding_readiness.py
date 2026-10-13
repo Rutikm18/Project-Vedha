@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-NORMALIZATION_VERSION = "finding-readiness@2"
+NORMALIZATION_VERSION = "finding-readiness@3"
 
 
 def finding_readiness(
@@ -117,6 +117,9 @@ def finding_readiness(
         "lifecycle": finding["status"],
         "asset_id": asset["id"] if asset else None,
         "service_id": service["id"] if service else None,
+        "service_endpoint": f"{service['protocol']}:{service['port']}"
+        if service and service.get("protocol") and service.get("port") is not None
+        else None,
         "asset_label": (asset.get("hostname") or asset.get("ip_address") or asset["id"])
         if asset
         else "Asset binding unavailable",

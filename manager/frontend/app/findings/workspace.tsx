@@ -1723,7 +1723,7 @@ function FindingDetail({
           <div className="finding-cve-list">{cveIds.map((cve) => <code key={cve}>{cve}</code>)}</div>
         )}
         {surface === "manager" && f.engagementId && process.env.NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED === "true" && (
-          <Link className="btn btn-secondary" href={`/engagements/${encodeURIComponent(f.engagementId)}?section=attack-assessments&finding=${encodeURIComponent(f.id)}`}>
+          <Link className="btn btn-secondary" href={`/engagements/${encodeURIComponent(f.engagementId)}/attack-paths?finding=${encodeURIComponent(f.id)}`}>
             Review attack-path evidence
           </Link>
         )}

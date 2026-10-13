@@ -97,3 +97,17 @@ Post-merge frontend: **723 tests passed**, production build, regenerated full ty
 | T43 | Disabled flag plus explicit engagement allowlist | Analyst/owner shadow pilot |
 | T44 | Local migration rollback and enablement boundaries | Reviewed release/rollback rehearsal with real data |
 | X01–X08 | No organization/AD/cloud/incremental claims | Independent later extension gates |
+
+## Vulnerability-linked interface implementation
+
+The canonical engagement `/attack-paths` route now defaults to **Finding chains** when the opt-in frontend flag is enabled, with **Network overview** retaining the legacy model. Finding links open this same workspace; the engagement toolbar distinguishes the expanded workspace from its inline tab.
+
+The selected finding has a directional candidate chain: entry context → affected listener/enabling finding → potential consequence. Every connection explicitly states that reachability/access is unestablished. Selectable nodes, all-required condition controls and a synchronized evidence inspector expose gaps, bindings, the original finding, rule reference, owner and verification. On mobile, selecting a node/gap reveals the inspector and a return control leads back to the chain. Keyboard arrows/Home/End select chain steps. Branding, fonts and light/dark tokens remain intact.
+
+Legacy hop details now retain and resolve their enabling finding ID. Resolution requires both the current engagement and matching destination asset; foreign and wrong-asset records remain unavailable and their IDs/titles are not returned. Resolved metadata is labeled **current scoped finding, not snapshot proof**. The UI links the actual finding and removes misleading likelihood percentages from the step explanation. This traceability improvement does not validate legacy movement assumptions.
+
+Readiness normalization advances to `finding-readiness@3` to include the explicitly bound recorded service endpoint. Historical results remain immutable and require reassessment under the new model. No production positive rule or multi-host inference was activated.
+
+Validation: **726 frontend tests passed**, full production build/type check and changed-component lint passed; **19 backend integration/readiness tests passed**; the wider collectable backend suite passed **3,445 tests**, nine skipped. The same two unchanged baseline collection failures remain explicitly excluded. After the single grouped desktop/mobile correction, 34 affected frontend tests passed again. Design detector output was empty. Browser confirmation covered actual scoped reassessment into version 3, inspector selection, arrow navigation, existing light/dark styling and 320-pixel layout without horizontal overflow. The preview is synthetic; it remains evidence-incomplete and makes no supported attack-chain claim.
+
+Local dashboard remains running on `http://127.0.0.1:3114`, API on 18081 and only the assessment worker is active against this task's isolated PostgreSQL/Redis containers. Current synthetic engagement: `56f3edf8-aa59-455f-83df-d3a2c4e63031`. No scan or notification jobs are run for this preview.

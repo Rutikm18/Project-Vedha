@@ -45,6 +45,7 @@ from app.models.attack_path import AttackPath
 from app.models.attack_path_analysis import AttackPathAnalysis
 from app.models.attack_path_snapshot import AttackPathSnapshot
 from app.models.engagement import Engagement
+from app.models.finding import Finding
 from app.models.enums import AssetCriticality
 from app.models.probe_site import ProbeSite
 from app.services.assessment_access import load_assessment_principal
@@ -302,8 +303,28 @@ async def get_attack_path(
 
     # Hydrate hop labels from assets for a readable explanation.
     labels = await _asset_labels(db, engagement_id)
+    referenced_ids = {
+        uuid.UUID(str(edge["finding"]))
+        for edge in (path.path_edges or [])
+        if _is_uuid(edge.get("finding"))
+    }
+    findings = {}
+    if referenced_ids:
+        rows = (await db.execute(select(
+            Finding.id, Finding.asset_id, Finding.title, Finding.severity,
+            Finding.status, Finding.cve_ids, Finding.updated_at,
+        ).where(
+            Finding.engagement_id == engagement_id,
+            Finding.id.in_(sorted(referenced_ids, key=str)[:100]),
+        ))).all()
+        findings = {str(row.id): row for row in rows}
     hops = []
     for edge in (path.path_edges or []):
+        finding = findings.get(str(edge.get("finding")))
+        # A stored ID alone cannot disclose another asset's finding or prove
+        # current applicability. Resolved metadata is current, not a sealed proof.
+        if finding and str(finding.asset_id) != str(edge.get("target")):
+            finding = None
         hops.append({
             "from": labels.get(str(edge.get("source")), edge.get("source")),
             "to": labels.get(str(edge.get("target")), edge.get("target")),
@@ -316,6 +337,16 @@ async def get_attack_path(
             "likelihood": edge.get("likelihood"),
             "stale": bool(edge.get("stale")),
             "capability": edge.get("capability"),       # P2: foothold/lateral/priv_esc for the final step
+            "finding": {
+                "id": str(finding.id),
+                "title": finding.title,
+                "severity": finding.severity.value,
+                "lifecycle": finding.status.value,
+                "cve_ids": finding.cve_ids or [],
+                "record_updated_at": finding.updated_at.isoformat(),
+                "metadata_basis": "current_scoped_finding_not_snapshot_proof",
+            } if finding else None,
+            "finding_reference_state": "resolved" if finding else "unavailable",
             "explanation": _explain_hop(edge, labels),
         })
 

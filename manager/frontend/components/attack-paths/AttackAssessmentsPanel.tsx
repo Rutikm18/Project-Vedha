@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, Lock, RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Lock, RefreshCw, Search } from "lucide-react";
 import { ApiError } from "../../lib/fetcher";
 import { newId } from "../../lib/uuid";
 import { assessmentBase, assessmentRequest, type AssessmentLatest, type AssessmentPage, type AssessmentSnapshot, type FindingAssessment } from "../../lib/attack-assessments";
 import { EmptyState, ErrorState, SkeletonRows, Unauthorized } from "../states/DataState";
+import { FindingChainExplorer } from "./FindingChainExplorer";
 import "./attack-assessments.css";
 
 export function AttackAssessmentsPanel({ engagementId, initialFindingId }: { engagementId: string; initialFindingId?: string }) {
@@ -54,7 +54,7 @@ export function AttackAssessmentsPanel({ engagementId, initialFindingId }: { eng
 
   return <section className="attack-assessments" aria-label="Finding-driven attack-path assessments">
     <header className="assessment-heading">
-      <div><h2>Attack-path assessments</h2><p>Inspect the consequence, required evidence and next action for each finding.</p></div>
+      <div><h2>Finding-driven attack chains</h2><p>See which weakness enables each step and what evidence is missing.</p></div>
       <button type="button" className="btn btn-primary" disabled={pending || create.isPending || !latest.data?.can_compute} title={!latest.data?.can_compute ? "Your role can view assessments but cannot request them." : undefined} onClick={() => create.mutate()}>
         <RefreshCw size={15} aria-hidden="true" />{pending ? "Assessment queued" : create.isPending ? "Requesting assessment…" : completed ? "Reassess findings" : "Assess findings"}
       </button>
@@ -66,7 +66,7 @@ export function AttackAssessmentsPanel({ engagementId, initialFindingId }: { eng
     {completed?.requires_reassessment && <p role="status" className="assessment-notice">The assessment model has changed. Reassess before using these historical results.</p>}
     {!completed ? <EmptyState icon={Search} title={pending ? "Preparing the first assessment" : "No assessment has been run"} hint={latest.data?.can_compute ? "An empty result does not establish safety. Start an assessment to review findings and evidence gaps." : "An empty result does not establish safety. Ask an analyst to run an assessment."} /> : <>
       <div className="assessment-context"><span>Snapshot: {new Date(completed.effective_as_of).toLocaleString()}</span><span>Evidence coverage: incomplete</span><span>Attack chain: not observed</span></div>
-      <p className="assessment-qualification">This pilot checks evidence readiness. Missing data and unmapped rules cannot establish a supported path or an all-clear.</p>
+      <details className="assessment-model-note"><summary>Candidate chains · how to interpret this view</summary><p className="assessment-qualification">This pilot checks evidence readiness. Missing data and unmapped rules cannot establish a supported path or an all-clear. Solid entity boxes show recorded context; interrupted connections remain unconfirmed.</p></details>
       {records.isPending ? <SkeletonRows rows={4} height={68} /> : total === 0 ? <EmptyState title="No findings were included in this snapshot" hint="Review the engagement's findings and capture a fresh assessment. This is not an all-clear." /> : <>
         <p className="assessment-count">{total} {total === 1 ? "finding" : "findings"} assessed from {records.data?.total_findings ?? total} recorded {(records.data?.total_findings ?? total) === 1 ? "finding" : "findings"}{records.data?.compute === "truncated" ? " · Input limit reached; assessment incomplete" : ""}</p>
         <div className="assessment-workspace">
@@ -84,18 +84,7 @@ export function AttackAssessmentsPanel({ engagementId, initialFindingId }: { eng
             </nav>
           </div>
           {!selected && selectedId && focused.isPending && <SkeletonRows rows={4} height={80} />}
-          {selected && <article className="assessment-proof" id="attack-assessment-proof" aria-label="Selected finding assessment">
-            <div className="assessment-proof-heading"><h3>{selected.title}</h3><Link href={`/findings?engagement=${encodeURIComponent(engagementId)}&finding=${encodeURIComponent(selected.finding_id)}`} className="assessment-link">Open finding <ArrowUpRight size={14} aria-hidden="true" /></Link></div>
-            <p className="assessment-verdict" aria-live="polite">{selected.goal_state === "not_evaluated" ? "Not evaluated: no reviewed rule has been mapped." : "Incomplete: required evidence is missing."}</p>
-            <p>{selected.goal}</p>
-            <h4>Prerequisites and evidence</h4>
-            <ul className="assessment-prerequisites">{selected.prerequisites.map((condition) => <li key={condition.key}>
-              {condition.state === "supported" ? <CheckCircle2 size={17} aria-hidden="true" /> : <Search size={17} aria-hidden="true" />}
-              <div><strong>{condition.label}</strong><span>{condition.state === "supported" ? "Binding recorded" : "Evidence missing"}</span><p>{condition.detail}</p></div>
-            </li>)}</ul>
-            <h4>Next action</h4><p>{selected.next_action}</p>
-            <dl className="assessment-handoff"><div><dt>Owner</dt><dd>{selected.owner_ref || "Not assigned"}</dd></div><div><dt>Verification</dt><dd>{selected.verification_required}</dd></div></dl>
-          </article>}
+          {selected && <FindingChainExplorer key={`${completed.id}:${selected.finding_id}`} finding={selected} engagementId={engagementId} />}
         </div>
       </>}
     </>}

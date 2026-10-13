@@ -19,6 +19,8 @@ export interface FindingAssessment {
   severity: string;
   lifecycle: string;
   asset_label: string;
+  service_endpoint?: string | null;
+  rule_version?: string;
   goal: string;
   goal_state: "indeterminate" | "not_evaluated";
   rule_applicability: "candidate" | "unmapped";
