@@ -31,6 +31,7 @@ from app.dependencies import DB, AuthUser
 from app.models.engagement import Engagement
 from app.models.scan_schedule import ScanSchedule
 from app.routers.agents import _USE_CASES
+from app.services.audit import record_audit
 from app.services.project_time import project_now
 
 router = APIRouter(prefix="/scan-schedules", tags=["scheduling"])
@@ -120,6 +121,11 @@ async def create_schedule(
     )
     db.add(row)
     await db.flush()
+    record_audit(db, actor_id=current_user.user_id, action="scan_schedule.created",
+                 engagement_id=body.engagement_id, resource_type="scan_schedule", resource_id=row.id,
+                 detail={"use_case_id": body.use_case_id, "intensity": body.intensity,
+                         "interval_hours": body.interval_hours})
+    await db.flush()
     return _out(row)
 
 
@@ -153,6 +159,9 @@ async def update_schedule(
         row.interval_hours = body.interval_hours
     if body.intensity is not None:
         row.intensity = body.intensity
+    record_audit(db, actor_id=current_user.user_id, action="scan_schedule.updated",
+                 engagement_id=row.engagement_id, resource_type="scan_schedule", resource_id=row.id,
+                 detail=body.model_dump(exclude_unset=True))
     await db.flush()
     return _out(row)
 
@@ -165,5 +174,7 @@ async def delete_schedule(
     current_user: Annotated[AuthUser, _OPERATOR],
 ):
     row = await _schedule_or_404(db, schedule_id, current_user.tenant_id)
+    record_audit(db, actor_id=current_user.user_id, action="scan_schedule.deleted",
+                 engagement_id=row.engagement_id, resource_type="scan_schedule", resource_id=row.id)
     await db.delete(row)
     return None

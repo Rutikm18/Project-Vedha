@@ -46,3 +46,16 @@ def _fresh_ai_kv():
         yield
     finally:
         set_default_kv(None)
+
+
+@pytest.fixture(autouse=True)
+def _outbound_dns_stub(monkeypatch):
+    """The SSRF guard resolves hostnames; unit tests use made-up ones (and the
+    sandbox may be offline). Resolve every name to a public address; tests of the
+    guard itself override this."""
+    import socket
+
+    from app.utils import outbound
+
+    monkeypatch.setattr(outbound, "_getaddrinfo", lambda host, port: [
+        (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port or 0))])

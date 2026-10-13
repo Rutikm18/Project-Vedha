@@ -21,6 +21,7 @@ from app.dependencies import DB, AuthUser
 from app.models.engagement import Engagement
 from app.models.sla_policy import SlaPolicy
 from app.services import deadlines, sla
+from app.services.audit import record_audit
 
 router = APIRouter(prefix="/sla-policy", tags=["sla"])
 _OPERATOR = require_role(["admin", "manager"])
@@ -93,6 +94,9 @@ async def put_sla_policy(body: SlaPolicyIn, db: DB,
     else:
         for key, value in body.model_dump().items():
             setattr(row, key, value)
+    await db.flush()
+    record_audit(db, actor_id=current_user.user_id, action="sla_policy.updated",
+                 resource_type="sla_policy", resource_id=row.id, detail=body.model_dump())
     await db.flush()
     return _out(row)
 

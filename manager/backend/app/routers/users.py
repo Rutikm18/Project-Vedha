@@ -17,9 +17,11 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.auth.rbac import require_role
-from app.dependencies import DB, AuthUser
+from app.dependencies import DB, AuthUser, RedisConn
+from app.auth import refresh_store
 from app.models.enums import UserRole
 from app.models.user import User
+from app.services.audit import record_audit
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -92,6 +94,7 @@ async def get_user(
 async def deactivate_user(
     user_id: uuid.UUID,
     db: DB,
+    redis: RedisConn,
     current_user: Annotated[AuthUser, _ADMINS],
 ):
     if user_id == current_user.user_id:
@@ -110,7 +113,12 @@ async def deactivate_user(
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
     row.is_active = False
+    record_audit(db, actor_id=current_user.user_id, action="user.deactivated",
+                 resource_type="user", resource_id=user_id,
+                 detail={"email": row.email, "role": str(getattr(row.role, "value", row.role))})
     await db.flush()
+    # End the user's refresh sessions now; the refresh route also rejects inactive users.
+    await refresh_store.revoke_all(redis, str(user_id))
     return {"ok": True, "user_id": str(user_id), "is_active": False}
 
 
@@ -131,5 +139,7 @@ async def activate_user(
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
     row.is_active = True
+    record_audit(db, actor_id=current_user.user_id, action="user.activated",
+                 resource_type="user", resource_id=user_id, detail={"email": row.email})
     await db.flush()
     return {"ok": True, "user_id": str(user_id), "is_active": True}

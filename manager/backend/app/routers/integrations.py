@@ -8,6 +8,7 @@ delivery (via the outbox) consumes these rows; that wiring is a separate step.
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, status
@@ -21,6 +22,7 @@ from app.models.integration import Integration
 from app.services.audit import record_audit
 from app.services.credential_crypto import decrypt_credential, encrypt_credential
 from app.services.notifications import enqueue_notification
+from app.utils.outbound import UnsafeOutboundURL, validate_outbound_url
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 _OPERATOR = require_role(["admin", "manager"])
@@ -67,6 +69,17 @@ async def put_integration(kind: str, body: IntegrationIn, db: DB,
     if kind not in _KINDS:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             f"Unknown integration kind '{kind}'")
+    # The manager will POST to these addresses: refuse internal / metadata targets now
+    # (delivery re-checks, since DNS can change after save).
+    target = {"slack": body.secret, "jira": body.config.get("JIRA_URL"),
+              "servicenow": body.config.get("SERVICENOW_URL")}.get(kind)
+    if target:
+        try:
+            await asyncio.to_thread(validate_outbound_url, target,
+                                    allow_private=kind != "slack")
+        except UnsafeOutboundURL as exc:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                f"Unsafe {kind} URL: {exc}") from exc
     row = await _row(db, current_user.tenant_id, kind)
     if row is None:
         row = Integration(

@@ -100,8 +100,9 @@ class TestCreate:
         a daily scan expects today's, not tomorrow's."""
         db = _db()
         out = await ss.create_schedule(_body(interval_hours=24), db, _user())
-        db.add.assert_called_once()
-        created = db.add.call_args[0][0]
+        # the schedule plus its audit row
+        created, audit = (c[0][0] for c in db.add.call_args_list)
+        assert audit.action == "scan_schedule.created"
         assert created.use_case_id == "uc_network_va"
         assert created.enabled is True
         assert created.next_run_at is not None
@@ -112,7 +113,7 @@ class TestCreate:
         user = _user()
         db = _db()
         await ss.create_schedule(_body(), db, user)
-        assert db.add.call_args[0][0].created_by == user.user_id
+        assert db.add.call_args_list[0][0][0].created_by == user.user_id
 
 
 class TestListAndDelete:

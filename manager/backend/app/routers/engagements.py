@@ -52,6 +52,7 @@ from app.schemas.engagement import (
     validate_engagement_dates, validate_scope_entries,
 )
 from app.utils.csv_parser import parse_csv_assets
+from app.services.audit import record_audit
 from app.services.port_coverage import port_state_at, ranges_from_facts, summarize_coverage
 from app.utils.db import get_or_404
 from app.utils.pagination import paginate_query
@@ -184,6 +185,13 @@ async def re_detect(
 # otherwise be buffered into memory by file.read(). Tune via env if huge scans
 # ever need more headroom.
 _MAX_IMPORT_BYTES = int(os.environ.get("IMPORT_MAX_BYTES", str(50 * 1024 * 1024)))
+
+
+_MAX_ASSET_UPLOAD_BYTES = 5 * 1024 * 1024
+_ASSET_UPLOAD_TYPES = {
+    "text/csv", "application/csv", "application/vnd.ms-excel",   # browsers label .csv as Excel on Windows
+    "application/json", "text/json", "application/octet-stream",
+}
 
 
 async def _read_capped(file: UploadFile, limit: int) -> bytes:
@@ -388,6 +396,10 @@ async def create_engagement(
     db.add(eng)
     await db.flush()
     await db.refresh(eng)
+    record_audit(db, actor_id=current_user.user_id, action="engagement.created",
+                 engagement_id=eng.id, resource_type="engagement", resource_id=eng.id,
+                 detail={"name": eng.name})
+    await db.flush()
     await _refresh_overview_cache(db, current_user.tenant_id)
     logger.info("engagement.created", id=str(eng.id), tenant=str(current_user.tenant_id))
     return eng
@@ -564,6 +576,10 @@ async def update_engagement(
 
     await db.flush()
     await db.refresh(eng)
+    record_audit(db, actor_id=current_user.user_id, action="engagement.updated",
+                 engagement_id=engagement_id, resource_type="engagement", resource_id=engagement_id,
+                 detail={"fields": sorted(updates) + (["rules_of_engagement"] if roe_patch else [])})
+    await db.flush()
     await _refresh_overview_cache(db, current_user.tenant_id)
     logger.info("engagement.patched", id=str(engagement_id), fields=sorted(updates) + (["roe"] if roe_patch else []))
     return eng
@@ -590,8 +606,21 @@ async def bulk_import_assets(
     parse_errors: list[str] = []
 
     if file is not None:
-        content = (await file.read()).decode("utf-8")
-        if file.content_type in ("text/csv", "application/csv") or file.filename.endswith(".csv"):
+        # Only CSV or JSON, by extension AND declared type (a client can lie about
+        # either, so the content must still parse), and never an unbounded read.
+        name = (file.filename or "").lower()
+        is_csv = name.endswith(".csv")
+        if not (is_csv or name.endswith(".json")) or (
+            file.content_type
+            and file.content_type not in _ASSET_UPLOAD_TYPES
+        ):
+            raise HTTPException(status_code=415, detail="Upload a .csv or .json file")
+        raw_bytes = await _read_capped(file, _MAX_ASSET_UPLOAD_BYTES)
+        try:
+            content = raw_bytes.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            raise HTTPException(status_code=400, detail="File must be UTF-8 text")
+        if is_csv:
             assets_in, parse_errors = parse_csv_assets(content)
         else:
             try:

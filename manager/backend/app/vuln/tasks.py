@@ -10,6 +10,7 @@ Pipeline:
 """
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import Any
 
@@ -24,6 +25,7 @@ from app.models.engagement import Engagement
 from app.models.enums import FindingSeverity, FindingStatus
 from app.models.finding import Finding
 from app.utils.hash import dedup_hash
+from app.utils.outbound import validate_outbound_url
 from app.vuln.enrichment import VulnEnrichmentService
 
 logger = structlog.get_logger()
@@ -150,6 +152,12 @@ async def _fire_critical_webhook(
         logger.debug("enrichment.webhook.skip", reason="no webhook URL in RoE")
         return
 
+    try:
+        await asyncio.to_thread(validate_outbound_url, webhook_url)
+    except ValueError as exc:
+        logger.warning("enrichment.webhook.blocked", error=str(exc))
+        return
+
     payload = {
         "event": "critical_findings_found",
         "engagement_id": engagement_id,
@@ -159,7 +167,7 @@ async def _fire_critical_webhook(
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(webhook_url, json=payload)
-            logger.info("enrichment.webhook.sent", status=resp.status_code, url=webhook_url)
+            logger.info("enrichment.webhook.sent", status=resp.status_code)  # the URL may carry a secret token
     except Exception as exc:
         logger.warning("enrichment.webhook.failed", error=str(exc))
 

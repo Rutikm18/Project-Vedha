@@ -26,6 +26,9 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: "base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'",
   },
+  // Browsers ignore HSTS on plain HTTP, so lab/on-prem HTTP installs are unaffected;
+  // it only takes effect once the site is served over TLS.
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

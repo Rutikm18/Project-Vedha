@@ -45,6 +45,7 @@ from app.ratelimit import (
     client_ip,
     login_rate_limit,
     mfa_rate_limit,
+    refresh_rate_limit,
     record_login_failure,
 )
 from app.auth import mfa as mfa_lib
@@ -329,7 +330,8 @@ def _session_store_unavailable(exc: Exception) -> HTTPException:
     )
 
 
-@router.post("/refresh", response_model=TokenResponse, summary="Rotate access token using refresh token")
+@router.post("/refresh", response_model=TokenResponse, summary="Rotate access token using refresh token",
+             dependencies=[Depends(refresh_rate_limit)])
 async def refresh(
     body: RefreshRequest,
     request: Request,

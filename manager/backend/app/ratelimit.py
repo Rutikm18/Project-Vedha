@@ -106,6 +106,10 @@ login_rate_limit = rate_limit("login", limit=5, window_sec=60)
 # allowance. Guessing is bounded anyway: each challenge allows five codes and
 # needs the password to obtain.
 mfa_rate_limit = rate_limit("mfa", limit=10, window_sec=60)
+# /auth/refresh is unauthenticated (the refresh token is the credential). Sessions
+# rotate every ~15 minutes, so 60 a minute per address is far above any real use
+# (even a large office behind one NAT) yet caps a replay/guessing flood.
+refresh_rate_limit = rate_limit("refresh", limit=60, window_sec=60)
 
 
 def user_rate_limit(scope: str, limit: int, window_sec: int):

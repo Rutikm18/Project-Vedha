@@ -20,6 +20,7 @@ from sqlalchemy import select
 
 from app.models.integration import Integration
 from app.services.credential_crypto import decrypt_credential
+from app.utils.outbound import validate_outbound_url
 
 logger = structlog.get_logger()
 
@@ -46,6 +47,7 @@ def _send_email(config: dict, secret: str | None, subject: str, body: str) -> No
 def _send_slack(config: dict, secret: str | None, subject: str, body: str) -> None:
     if not secret:
         raise ValueError("slack integration missing webhook URL")
+    validate_outbound_url(secret)
     resp = httpx.post(secret, json={"text": f"*{subject}*\n{body}"}, timeout=15)
     resp.raise_for_status()
 
@@ -56,6 +58,7 @@ def _send_jira(config: dict, secret: str | None, subject: str, body: str) -> Non
     project = config.get("JIRA_PROJECT_KEY")
     if not (url and email and secret and project):
         raise ValueError("jira integration missing URL/EMAIL/token/PROJECT_KEY")
+    validate_outbound_url(url, allow_private=True)   # self-hosted Jira is often on a LAN
     resp = httpx.post(
         f"{url}/rest/api/2/issue", auth=(email, secret),
         json={"fields": {"project": {"key": project}, "summary": subject,
@@ -86,6 +89,7 @@ def _send_servicenow(config: dict, secret: str | None, subject: str, body: str) 
     table = config.get("SERVICENOW_TABLE") or "incident"
     if not (url and user and secret):
         raise ValueError("servicenow integration missing URL/USERNAME/token")
+    validate_outbound_url(url, allow_private=True)
     resp = httpx.post(
         f"{url}/api/now/table/{table}",
         auth=(user, secret),

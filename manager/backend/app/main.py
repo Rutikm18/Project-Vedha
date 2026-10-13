@@ -15,6 +15,7 @@ from app.auth.router import router as auth_router
 from app.auth.startup import StartupAbortError, run_startup_diagnostics
 from app.config import get_settings
 from app.dependencies import close_redis
+from app.security_headers import SecurityHeadersMiddleware
 from app.routers.activity import router as activity_router
 from app.routers.users import router as users_router
 from app.routers.analytics import router as analytics_router
@@ -228,6 +229,8 @@ app.add_middleware(
 
 app.add_middleware(TenantIsolationMiddleware)
 app.add_middleware(GzipRequestMiddleware)
+# Outermost: every response, including 401/403 from the auth layer, carries the headers.
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 # ── Global exception handlers ─────────────────────────────────────────────────
