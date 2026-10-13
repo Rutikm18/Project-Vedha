@@ -33,6 +33,15 @@ test("unmapped finding never invents a data-read consequence", () => {
   assert.doesNotMatch(out, /Application data read/);
 });
 
+test("compact investigation leads with required evidence and keeps the speculative chain secondary",()=>{
+  const out=renderToStaticMarkup(createElement(FindingChainExplorer,{finding:candidate,engagementId:"eng-1",compact:true}));
+  assert.ok(out.indexOf("Review missing evidence")<out.indexOf("All required conditions"));
+  assert.ok(out.indexOf("All required conditions")<out.indexOf("View the candidate chain"));
+  assert.match(out,/Open finding and source evidence/);
+  assert.match(out,/No supported transition is established/);
+  assert.match(out,/Finding lifecycle: accepted/);
+});
+
 test("legacy chain links the actual enabling finding while preserving model limitations", () => {
   const out = renderToStaticMarkup(createElement(PathDetailPanel, {engagementId:"eng-1",detail:{id:"route-1", risk_score: 10, freshness:"fresh",node_count:2,nodes:["entry","target"],chokepoints:[],hops:[{from:"entry",to:"target",technique:"SAME_SUBNET",weight:1,exploited:true,cvss:9.8,via:[],basis:"assumed",likelihood:0.9,stale:false,explanation:"Modeled transition",finding:{id:"finding-1",title:"Actual enabling finding",severity:"high",lifecycle:"open",cve_ids:[],record_updated_at:"2026-10-13T00:00:00Z",metadata_basis:"current_scoped_finding_not_snapshot_proof"}}]}}));
   assert.match(out, /Actual enabling finding/);

@@ -18,6 +18,15 @@ test("actual empty graph cannot substitute demo assets, a grade or confirmed con
   const html=renderToStaticMarkup(createElement(BusinessRoutePanel,{current:actual}));
   assert.match(html,/Not available/);assert.match(html,/No routes shown/);
   assert.ok(!html.includes("VPN gateway"));assert.ok(!html.includes("Made-up demonstration"));
+  assert.ok(!html.includes('class="business-route-canvas"'),"an empty result should teach the next step rather than draw a blank map");
+  const review=renderToStaticMarkup(createElement(BusinessRoutePanel,{current:actual,onReviewFindings:()=>{}}));
+  assert.match(review,/Review finding evidence/);assert.match(review,/Critical assets marked/);
+});
+
+test("possible routes are counted from possible paths rather than the confirmed-route total",()=>{
+  const html=renderToStaticMarkup(createElement(BusinessRoutePanel,{current:first}));
+  assert.match(html,/<dt>Possible routes<\/dt><dd[^>]*>7<\/dd>/);
+  assert.match(html,/<dt>Confirmed routes<\/dt><dd[^>]*>1<\/dd>/);
 });
 test("finding copy remains escaped and an unavailable remediation is stated plainly",()=>{
   const scan:BusinessScan={...first,findings:Object.fromEntries(Object.entries(first.findings).map(([id,f])=>[id,{...f,title:"<script>unsafe</script>",fixSteps:[]}]))};

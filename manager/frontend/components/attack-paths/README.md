@@ -7,6 +7,7 @@ The actual global route view is `/attack-paths`, behind the existing assessment 
 | File | Responsibility |
 | --- | --- |
 | `BusinessRoutePanel.tsx`, `business-routes.css` | React Flow map, accessible route list, finding inspector, in-memory fix preview and captured-view comparison |
+| `EnvironmentScopeSelector.tsx`, `EnvironmentSystemChart.tsx`, `FindingChainExplorer.tsx` | Compact searchable scope, captured-finding queue and progressive evidence investigation |
 | `lib/business-routes.ts` | Pure bounded `analyse`, `previewFix`, `compare`, identity validation and duplicate handling |
 | `lib/business-route-layout.ts` | Memoized dagre ordering within four stable semantic lanes |
 | `lib/demo-business-routes.json` | 12 systems, 15 connections and two made-up scans; isolated example/test fixture |
@@ -18,6 +19,12 @@ The actual global route view is `/attack-paths`, behind the existing assessment 
 Use this project's normal backend, database and outbox-worker setup. Apply migrations through 0064. Enable `ATTACK_ASSESSMENTS_ENABLED` with an explicit `ATTACK_ASSESSMENT_ENGAGEMENT_ALLOWLIST` for the intended engagement IDs. In the frontend, run `npm install`, then `NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED=true npm run dev`. Set `BACKEND_INTERNAL_URL` to the intended backend. Sign in with an existing operator account. Select the actual engagement(s) and rebuild the view; ordinary GET requests do not generate routes or run scans.
 
 `npm test` runs the repository's existing Node/TypeScript test runner, including `tests/business-routes.test.ts`. Keeping that runner avoids an unrelated Jest/Vitest migration. `npm run build` and `npx tsc --noEmit` verify the Next.js integration. The framework stays Next.js/React 19; React Flow and dagre are the graph libraries requested in the brief.
+
+## Investigation layout
+
+The page follows scope → captured result → selected evidence. Scope selection expands inline rather than occupying the whole first viewport. Paths and Findings & evidence have separate keyboard-accessible tabs; recorded connections lead with the map, while a capture without connections leads with its available findings. Both panels remain mounted so switching tabs retains local inspection and fix previews. Selection, capture age, incomplete coverage and source identity remain explicit.
+
+The path view prioritizes four measures: confirmed routes, possible routes, critical assets reached and findings on counted routes. Fix totals remain capture metadata; simulation counts stay in the preview notice. Unavailable grades move into the reading guide. Empty connection data presents the recorded inventory/finding counts and a working evidence-review action instead of a blank graph. The map inspector sits beside the map on wide containers; the finding queue, required-evidence checklist and selected inspector form the evidence workbench. Smaller containers stack those regions with explicit return controls. See `docs/planning/2026-10-13-attack-path-information-layout.md` for placement and responsive decisions.
 
 ## Colour roles
 
