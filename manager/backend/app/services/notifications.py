@@ -9,6 +9,7 @@ raised, so one broken integration can't block the others.
 """
 from __future__ import annotations
 
+import asyncio
 import smtplib
 from email.mime.text import MIMEText
 from typing import Any, Callable
@@ -115,23 +116,39 @@ def deliver(kind: str, config: dict, secret: str | None, subject: str, body: str
 
 
 async def notify_tenant(db: Any, tenant_id: Any, subject: str, body: str, *,
-                        senders: dict[str, Sender] | None = None) -> int:
-    """Deliver to every ENABLED integration for the tenant. Returns the count sent."""
+                        senders: dict[str, Sender] | None = None,
+                        channels: list[str] | None = None) -> int:
+    """Deliver to the tenant's ENABLED integrations. `channels` (a notification
+    rule's choice) narrows that to those kinds; None means all of them, as the
+    integration test does. Returns the count sent."""
     rows = (await db.execute(
         select(Integration).where(Integration.tenant_id == tenant_id,
                                   Integration.enabled.is_(True))
     )).scalars().all()
-    sent = 0
-    for row in rows:
-        if deliver(row.kind, dict(row.config or {}), decrypt_credential(row.secret_enc),
-                   subject, body, senders=senders):
-            sent += 1
-    return sent
+    # deliver() is blocking network I/O (smtplib, sync httpx, 15 s timeouts), so
+    # it runs in worker threads, all channels at once. The outbox worker shares
+    # its event loop with the reaper and the SLA watcher: one unreachable SMTP
+    # host used to freeze all three for the full timeout, per channel.
+    deliveries = [
+        asyncio.to_thread(deliver, row.kind, dict(row.config or {}),
+                          decrypt_credential(row.secret_enc), subject, body,
+                          senders=senders)
+        for row in rows
+        if channels is None or row.kind in channels
+    ]
+    return sum(await asyncio.gather(*deliveries))
 
 
-def enqueue_notification(db: Any, tenant_id: Any, subject: str, body: str):
-    """Producer API: enqueue a durable notify event (commits with the caller's txn)."""
+def enqueue_notification(db: Any, tenant_id: Any, subject: str, body: str, *,
+                         channels: list[str] | None = None, event: str | None = None):
+    """Producer API: enqueue a durable notify event (commits with the caller's txn).
+    Most producers should call notification_rules.notify_event, which applies the
+    tenant's rule and passes the channels it allows."""
     from app.models.outbox import TOPIC_NOTIFY
     from app.workers.outbox import enqueue
-    return enqueue(db, TOPIC_NOTIFY,
-                   payload={"tenant_id": str(tenant_id), "subject": subject, "body": body})
+    payload: dict[str, Any] = {"tenant_id": str(tenant_id), "subject": subject, "body": body}
+    if channels is not None:
+        payload["channels"] = list(channels)
+    if event:
+        payload["event"] = event
+    return enqueue(db, TOPIC_NOTIFY, payload=payload)

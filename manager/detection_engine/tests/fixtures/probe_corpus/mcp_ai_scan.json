@@ -1,0 +1,4 @@
+[
+  {"scanner": "mcp_ai_scan", "target": "192.168.1.92", "timestamp": "2026-09-01T00:00:00Z", "port": 11434, "proto": "tcp", "status": "open",
+   "data": {"kind": "ollama", "path": "/api/tags", "http_status": 200, "content_type": "application/json", "auth_enforced": false, "unauthenticated_access": true, "confidence": 95, "evidence_reason": "2xx response body matched signature", "model_count": 3}}
+]

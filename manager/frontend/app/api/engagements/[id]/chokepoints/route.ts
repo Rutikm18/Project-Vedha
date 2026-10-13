@@ -1,6 +1,7 @@
-import { proxyAttackGraph } from "../../../../../lib/attack-graph-proxy";
+import { engagementGet } from "../../../../../lib/attack-paths-proxy";
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  return proxyAttackGraph(req, id, "chokepoints");
-}
+/** GET /api/engagements/{id}/chokepoints → hosts to fix first and the smallest cutting set. */
+export const GET = engagementGet({
+  uuids: ["id"],
+  path: (p) => `/engagements/${p.id}/chokepoints`,
+});

@@ -354,6 +354,13 @@ class UDPScanner(BaseScanner):
         result_data: dict = {"service": svc, "responded": True,
                              "reply_bytes": len(data),
                              "reply_hex_head": data[:48].hex()}
+        if payload:
+            # MEASURED, not assumed: the response/request size ratio of the probe we actually
+            # sent. The manager compares it with the TA14-017A factor for the protocol, so a
+            # service that merely answers a normal query (ratio ~1-3) is never called an
+            # amplifier. It is a lower bound: only the first datagram of a reply is counted.
+            result_data["request_bytes"] = len(payload)
+            result_data["amplification_factor"] = round(len(data) / len(payload), 2)
 
         if svc == "ntp":
             await self.limiter.wait()
@@ -362,6 +369,12 @@ class UDPScanner(BaseScanner):
                     target, port, _ntp_monlist_probe(), self.timeout)
             mon_bytes = mon if isinstance(mon, (bytes, bytearray)) else b""
             result_data["monlist_enabled"] = interpret_ntp_monlist(mon_bytes)
+            if mon_bytes:
+                mon_req = len(_ntp_monlist_probe())
+                result_data["monlist_request_bytes"] = mon_req
+                result_data["monlist_reply_bytes"] = len(mon_bytes)
+                # The mode-7 probe, not the mode-3 time query, is what shows amplification.
+                result_data["amplification_factor"] = round(len(mon_bytes) / mon_req, 2)
         elif svc == "dns":
             result_data.update(interpret_dns_recursion(data))
         elif svc == "memcached":

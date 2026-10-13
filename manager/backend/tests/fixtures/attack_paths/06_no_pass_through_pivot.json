@@ -1,0 +1,57 @@
+{
+  "name": "a host the attacker cannot own is not a stepping stone",
+  "description": "FM-05. B cannot be compromised, so no path may go through it even though it sits between A and C.",
+  "scope": [
+    "10.0.1.0/24",
+    "10.0.2.0/24",
+    "10.0.3.0/24"
+  ],
+  "posture": "flat",
+  "assets": [
+    {
+      "id": "A",
+      "ip": "10.0.1.5",
+      "environment": "dmz"
+    },
+    {
+      "id": "B",
+      "ip": "10.0.2.5"
+    },
+    {
+      "id": "C",
+      "ip": "10.0.3.5",
+      "criticality": "critical"
+    }
+  ],
+  "exploitable": [
+    "A",
+    "C"
+  ],
+  "targets": [
+    "C"
+  ],
+  "truth": {
+    "valid_hops": [
+      [
+        "A",
+        "C"
+      ]
+    ],
+    "forbidden_hops": [
+      [
+        "A",
+        "B"
+      ],
+      [
+        "B",
+        "C"
+      ]
+    ],
+    "expected_paths": [
+      [
+        "A",
+        "C"
+      ]
+    ]
+  }
+}

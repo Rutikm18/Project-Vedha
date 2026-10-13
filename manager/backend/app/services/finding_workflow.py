@@ -14,9 +14,10 @@ from app.models.engagement import Engagement
 from app.models.enums import FindingStatus
 from app.models.finding import Finding
 from app.models.user import User
-from app.schemas.finding import FindingClosurePacket, FindingPatch
+from app.schemas.finding import FindingClosurePacket, FindingPatch, FindingRiskAcceptance
 from app.services import finding_events
 from app.services.audit import record_audit
+from app.services.notification_rules import notify_event_safe
 
 
 def _closure_event_detail(packet: FindingClosurePacket) -> dict[str, object]:
@@ -28,6 +29,56 @@ def _closure_event_detail(packet: FindingClosurePacket) -> dict[str, object]:
         "before_evidence": retest["before_evidence"],
         "post_fix_evidence": retest["after_evidence"],
         "retest": retest,
+    }
+
+
+_OWNER_TAG_KEYS = ("owner", "business_owner", "risk_owner", "team", "department")
+
+
+def suggest_risk_owner(asset: Asset | None) -> str | None:
+    """A starting point for the accountable owner, from what the asset already records
+    (its owner field, then an owner/team tag). A suggestion only — never applied silently."""
+    if asset is None:
+        return None
+    if asset.owner and asset.owner.strip():
+        return asset.owner.strip()
+    tags = asset.tags if isinstance(asset.tags, dict) else {}
+    for key in _OWNER_TAG_KEYS:
+        value = tags.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+async def _require_risk_acceptance(db: AsyncSession, finding: Finding,
+                                   acceptance: FindingRiskAcceptance | None) -> dict[str, object]:
+    """Accepting a risk needs an owner, an expiry in the future and a compensating
+    control. Refused (422) otherwise, with the asset's owner suggested when known."""
+    if acceptance is None:
+        asset = None
+        if finding.asset_id is not None:
+            asset = (await db.execute(
+                select(Asset).where(Asset.id == finding.asset_id)
+            )).scalar_one_or_none()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "message": "Accepting a risk requires a risk owner, an expiry date and a "
+                           "compensating control.",
+                "required": ["risk_acceptance.risk_owner", "risk_acceptance.expires_at",
+                             "risk_acceptance.compensating_controls"],
+                "suggested_owner": suggest_risk_owner(asset),
+            },
+        )
+    if acceptance.expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The risk-acceptance expiry must be in the future.",
+        )
+    return {
+        "risk_owner": acceptance.risk_owner,
+        "expires_at": acceptance.expires_at.isoformat(),
+        "compensating_controls": acceptance.compensating_controls,
     }
 
 
@@ -49,6 +100,24 @@ async def get_finding_for_action(
     if finding is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
     return finding
+
+
+async def _announce_status_change(db, finding, tenant_id, previous_status, reason) -> None:
+    """Queue the "finding status changed" notification. Building the message and
+    queueing it are both guarded: a notification problem must never fail the
+    status change that triggered it."""
+    try:
+        old = getattr(previous_status, "value", previous_status)
+        new = getattr(finding.status, "value", finding.status)
+        title = " ".join(str(getattr(finding, "title", "")).split())[:200]
+        severity = getattr(getattr(finding, "severity", None), "value", getattr(finding, "severity", ""))
+        why = f". Reason: {' '.join(str(reason).split())[:300]}" if reason else "."
+        await notify_event_safe(
+            db, tenant_id, "finding_status_changed",
+            f"Vedha: finding moved from {old} to {new}",
+            f"'{title}' ({severity}) changed status from {old} to {new}{why}")
+    except Exception:  # noqa: BLE001 — see docstring
+        pass
 
 
 async def patch_finding(
@@ -79,6 +148,13 @@ async def patch_finding(
         "remediation" in patch and patch["remediation"] != finding.remediation
     )
     previous_assignee = getattr(finding, "assigned_to", None)
+
+    acceptance_detail: dict[str, object] = {}
+    patch.pop("risk_acceptance", None)
+    renewal = (target_status == FindingStatus.accepted and previous_status == FindingStatus.accepted
+               and body.risk_acceptance is not None)
+    if (target_status == FindingStatus.accepted and previous_status != FindingStatus.accepted) or renewal:
+        acceptance_detail = await _require_risk_acceptance(db, finding, body.risk_acceptance)
 
     if target_status is None:
         patch.pop("status", None)
@@ -173,6 +249,8 @@ async def patch_finding(
             detail["resolution_method"] = "manual"
             if closure_packet is not None:
                 detail.update(_closure_event_detail(closure_packet))
+        if finding.status == FindingStatus.accepted:
+            detail.update(acceptance_detail)
         if finding.status == FindingStatus.open and previous_status == FindingStatus.remediated:
             detail["reopened_count"] = finding.reopened_count
         await finding_events.record_event(
@@ -181,6 +259,14 @@ async def patch_finding(
             from_status=previous_status, to_status=finding.status,
             detail=detail,
         )
+    elif renewal:
+        # Same status, new terms: an extension is a decision and gets its own immutable event,
+        # so the expiry watcher and the report read the CURRENT terms.
+        await finding_events.record_event(
+            db, finding, "accepted", actor=actor, actor_type=actor_type,
+            from_status=previous_status, to_status=finding.status,
+            detail={"origin": origin, "renewal": True, **({"reason": action_reason} if action_reason else {}),
+                    **acceptance_detail})
     elif closure_packet is not None:
         await finding_events.record_event(
             db,
@@ -210,6 +296,9 @@ async def patch_finding(
                 "risk_to": float(finding.risk_score) if finding.risk_score is not None else None,
             },
         )
+
+    if status_changed:
+        await _announce_status_change(db, finding, tenant_id, previous_status, action_reason)
 
     record_audit(
         db,

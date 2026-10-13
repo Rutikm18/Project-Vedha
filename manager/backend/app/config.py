@@ -28,9 +28,20 @@ class Settings(BaseSettings):
     # offloading the dashboard's aggregate reads from the primary. Unset →
     # reads fall back to the primary, so this is a no-op until a replica exists.
     database_read_url: str | None = None
+    # F1: Postgres row-level security as defense-in-depth for tenant isolation.
+    # OFF by default — RLS policies ship dormant (permissive when the per-request
+    # app.tenant_id GUC is unset). Turning this on makes get_db set that GUC so
+    # Postgres restricts every protected table to the request's tenant, catching
+    # a forgotten hand-written tenant filter. Requires the app to connect as a
+    # NON-superuser role (superusers bypass RLS). See app/db_rls.py.
+    db_rls_enabled: bool = False
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
+    # Optional separate Redis for disposable caches (the AI answer cache). The
+    # main Redis holds sessions, lockouts and sign-in codes and must never evict
+    # them; a cache instance may. Empty = use REDIS_URL for the cache too.
+    redis_cache_url: str = ""
 
     # Database connection pool — these are per-process (each uvicorn worker has its
     # own pool). Keep pool_size small on shared EC2 to avoid exhausting Postgres
@@ -46,6 +57,11 @@ class Settings(BaseSettings):
     # exceed the probe heartbeat interval (~30s); reaper runs on its own cadence.
     job_lease_seconds: int = 300
     reaper_interval_seconds: int = 60
+    # How often the worker checks open findings for SLA transitions to announce
+    # (0 disables the watcher).
+    sla_watch_interval_seconds: int = 900
+    # How often accepted findings whose acceptance expired are reopened (0 disables it).
+    acceptance_watch_interval_seconds: int = 3600
 
     # Neo4j (attack-path graph store — optional; engine falls back to in-memory NetworkX)
     neo4j_uri: str = "bolt://localhost:7687"
@@ -176,6 +192,15 @@ class Settings(BaseSettings):
     # default: leaving it off means every probe needs a pre-authorized token or a
     # dashboard approval. Every auto-enrollment is written to the audit log.
     probe_auto_enroll: bool = False
+    # Tokenless install (OFF by default). When on, the agent package can be downloaded without an
+    # install token, so the one-line installer needs no `vet_` secret: the machine installs, connects,
+    # shows a pairing code, and an operator approves it in Fleet by typing that code (the manager then
+    # issues the agent its credentials by itself). Turning it on makes the signed agent package
+    # downloadable by anyone who can reach this manager, so approval then REQUIRES the code shown on
+    # the machine, and pending requests are capped.
+    agent_allow_tokenless_install: bool = False
+    # Most pairing requests that may wait for approval at once (flood guard for the open endpoint).
+    probe_pending_enrollment_cap: int = 100
     # Coarse authorized scope stamped on the auto-enroll Site policy (the probe
     # still enforces its own local ceiling, and jobs carry per-engagement scope).
     probe_auto_enroll_cidrs: str = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
@@ -188,6 +213,10 @@ class Settings(BaseSettings):
     # AGENT_RELEASE_REQUIRE_SIGNATURE=true.
     agent_release_dir: str = "/var/lib/vedha/agent-releases"
     agent_release_public_key: str = ""
+    # Base64 DER SubjectPublicKeyInfo of the P-256 key (printed by
+    # `agent_release.py keygen --p256-out`). Windows installs verify the manifest
+    # against it; unset, Linux is served and the Windows package is withheld.
+    agent_release_p256_public_key: str = ""
     agent_release_require_signature: bool = False
     # Public base URL of this API (https://api.example.com) — what a customer's
     # host dials. Used to build the install command shown in Fleet.

@@ -222,13 +222,15 @@ Start-ScheduledTask -TaskName VedhaAgent
 > exclusions for the venv, `C:\ProgramData\vedha-agent`, and `python.exe`.
 > Also: pass a real `-Manager` (the default is a baked-in IP) and a `-Scope`.
 
-### 6B. Sealed-exe mode (no Python on the host)
+### 6B. Compiled agent for customers (no Python on the host)
 
-```powershell
-cd probe\windows
-powershell -ExecutionPolicy Bypass -File build-agent-exe.ps1   # build the .exe (on a build box)
-powershell -ExecutionPolicy Bypass -File install.ps1           # install the packaged agent
-```
+This is the supported Windows path for customers. CI builds the compiled agent and packages it as a zip
+with a one-command installer; the customer runs `install.cmd -Token vet_...` as administrator. Build,
+hand-over, troubleshooting and limits: [Sending the Windows agent to a customer](WINDOWS_AGENT_INSTALL.md);
+files, settings and commands: [Windows agent reference](WINDOWS_AGENT_REFERENCE.md).
+
+(`build-agent-exe.ps1` builds the folder on a Windows build machine and `package-zip.ps1` makes the zip.
+`install.ps1` is the installer **inside that zip**; do not run it from a source checkout.)
 
 ---
 

@@ -298,7 +298,8 @@ The **only value you must supply for AI features** is at least one cloud LLM key
 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`, or
 `OPENROUTER_API_KEY`. Any keys present join the automatic premium-first fallback
 chain (`anthropic → openai → gemini → groq → openrouter`); with no key the stack
-still runs, AI features just stay inert.
+still runs, AI features just stay inert. Step-by-step key setup, network checks, a live
+verification and the symptom → fix table are in [AI on AWS](aws-ai-setup.md).
 
 ### Option A — `.env` file (simplest; no AWS IAM needed)
 
@@ -466,7 +467,7 @@ open 8443**, or the dashboard loads while every API call fails.
 
 | Port | Destination | Why |
 |------|-------------|-----|
-| 443 | `api.openai.com` / `api.anthropic.com` / `openrouter.ai` / etc. | cloud LLM calls |
+| 443 | `api.anthropic.com` / `api.openai.com` / `generativelanguage.googleapis.com` / `api.groq.com` / `openrouter.ai` (only the providers you configured) | cloud LLM calls |
 | 443 | GitHub + container registries | clone/pull during install & redeploy |
 | 80 + 443 | `*.letsencrypt.org` | certificate issuance (Mode A only) |
 | 53 | DNS resolver | name resolution |

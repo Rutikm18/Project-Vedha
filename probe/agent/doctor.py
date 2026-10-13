@@ -76,6 +76,28 @@ def check_privilege(is_privileged: bool) -> Check:
                  "run with sudo/admin only if you need raw-socket depth")
 
 
+def check_connect_fast_fail(result: dict | None) -> Check | None:
+    """Windows only: does a closed port report at network speed?
+
+    Windows re-sends the SYN after an RST unless the scan socket opts out
+    (scanner/win_fast_connect.py). If the opt-out did not take, every closed
+    port costs ~2 s and connect scans read closed ports as filtered.
+    """
+    if result is None:
+        return None
+    fast, default = result.get("fast_fail_s"), result.get("default_s")
+    seen = (f"closed port reports in {fast:.3f}s" if fast is not None
+            else "closed-port timing could not be measured")
+    if default is not None:
+        seen += f" (Windows default {default:.1f}s)"
+    if result.get("effective"):
+        return Check("connect_fast_fail", "pass", seen)
+    return Check("connect_fast_fail", "warn", seen,
+                 "port scans from this agent will be slow and may report closed "
+                 "ports as filtered; use Windows 10 1709 or later, or run full-port "
+                 "sweeps from a native Linux agent run as root")
+
+
 def exit_code(checks: list[Check]) -> int:
     return 1 if any(c.status == "fail" for c in checks) else 0
 
@@ -139,6 +161,14 @@ def _server_date_offset(url: str, timeout: float = 5.0) -> float | None:
 
 def run(manager_url: str, is_privileged: bool, state_dir: str = ".") -> list[Check]:
     checks = [check_python(sys.version_info), check_privilege(is_privileged)]
+    try:
+        from scanner import win_fast_connect
+        fast_fail = check_connect_fast_fail(
+            win_fast_connect.self_check(include_default=True))
+    except Exception:  # noqa: BLE001 — a diagnostic must never break doctor
+        fast_fail = None
+    if fast_fail is not None:
+        checks.append(fast_fail)
     try:
         free = shutil.disk_usage(state_dir).free
         checks.append(check_disk(free))

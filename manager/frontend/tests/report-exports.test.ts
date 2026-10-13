@@ -5,8 +5,8 @@ import { describe, it } from "node:test";
 import {
   buildReportExport,
   exportFilename,
-  reportLines,
 } from "../lib/report/export-files";
+import { renderReportPdf } from "../lib/report/export-pdf";
 import { canonicalReport } from "./fixtures/canonical-report";
 
 function zipEntry(bytes: Buffer, wanted: string): Buffer {
@@ -82,6 +82,32 @@ describe("canonical report exports", () => {
     assert.match(text, /\"'=WEBSERVICE\(\"\"https:\/\/example\.invalid\"\"\)\"/);
   });
 
+  it("adds a Coverage sheet that separates evaluated-clean from not-checked rules", async () => {
+    const report = {
+      ...canonicalReport,
+      coverage_sheet: {
+        run_id: "run-1", run_finished_at: "2026-09-26T08:00:00Z", vuln_db_version: "db-1",
+        scan_reference: "SCAN-1", scan_use_case: "internal_vuln", scan_intensity: "normal",
+        ports_scanned: [22, 443], ports_scanned_note: null,
+        rules_total: 2, rules_evaluated_clean: 1, rules_with_finding: 0, rules_not_checked: 1, rules_could_not_assess: 0,
+        rules: [
+          { rule_id: "POSTURE-A", title: "A", verdict: "evaluated_clean", reasons: [] },
+          { rule_id: "POSTURE-B", title: "B", verdict: "no_evidence_collected", reasons: [] },
+        ],
+        interpretation: "evaluated_clean means the check ran.",
+      },
+    } as typeof canonicalReport;
+    const file = await buildReportExport("xlsx", report);
+    const workbook = zipEntry(file.bytes, "xl/workbook.xml").toString("utf8");
+    assert.match(workbook, /name="Coverage"/);
+    const sheet = zipEntry(file.bytes, "xl/worksheets/sheet11.xml").toString("utf8");
+    assert.match(sheet, /no_evidence_collected/);
+    assert.match(sheet, /ports scanned: 22, 443/);
+    assert.doesNotMatch(
+      zipEntry((await buildReportExport("xlsx", canonicalReport)).bytes, "xl/workbook.xml").toString("utf8"),
+      /name="Coverage"/);
+  });
+
   it("creates a multi-sheet workbook with canonical metadata and detailed registers", async () => {
     const file = await buildReportExport("xlsx", canonicalReport);
     const workbook = zipEntry(file.bytes, "xl/workbook.xml").toString("utf8");
@@ -138,27 +164,38 @@ describe("canonical report exports", () => {
     assert.doesNotMatch(file.bytes.toString("latin1"), /evidence-secret-report-value/);
   });
 
-  it("creates a readable PDF carrying all canonical reporting sections", async () => {
+  it("creates a designed PDF report carrying every canonical section, masked", async () => {
     const file = await buildReportExport("pdf", canonicalReport);
-    const text = file.bytes.toString("latin1");
-    const sourceText = reportLines(canonicalReport).map((line) => line.text).join("\n");
+    const bytes = file.bytes.toString("latin1");
+    const { text: trace } = await renderReportPdf(canonicalReport);
+    const text = trace.join("\n");
 
     assert.equal(file.contentType, "application/pdf");
     assert.equal(file.bytes.subarray(0, 8).toString("ascii"), "%PDF-1.4");
     for (const marker of [
-      "DRAFT / NOT APPROVED",
-      "DOCUMENT CONTROL, METHODOLOGY, RISK AND LIMITATIONS",
+      "Vulnerability Assessment Report",
+      "DRAFT / NOT APPROVED — HUMAN REVIEW REQUIRED",
+      "Document control",
+      "Contents",
+      "1  Executive summary",
+      "OVERALL RISK",
+      "2  Scope and methodology",
       "External perimeter assessment",
+      "CVSS plus recorded business context",
+      "3  Findings overview",
+      "4  Detailed findings",
       "TLSv1 accepted",
       "Disable TLS 1.0",
       "TLSv1 negotiation was rejected",
-      "Structured recommendation records",
-      "human_reviewed_plan",
+      "Recommendations:",
       "Retest evidence integrity",
       "after_evidence_hash_mismatch",
+      "5  Remediation roadmap",
+      "6  Retest and closure register",
+      "7  Compliance context",
       "mapping_review_required",
-      "DERIVED REGIONAL COMPLIANCE CONTEXT — NOT ASSESSED",
-      "recorded_engagement_profile",
+      "Derived regional compliance context — not assessed",
+      "Recorded engagement profile",
       "RBI Cyber Security Framework in Banks",
       "RBI circular 2 Jun 2016 — report within 2–6 hours",
       "Derived compliance context — not assessed",
@@ -168,17 +205,41 @@ describe("canonical report exports", () => {
       "SOC 2 (TSC)",
       "HIPAA Security Rule",
       "Generic fallback warning",
-      "COMPLIANCE CONTROL ROLLUP",
-      "REPORT READINESS",
-    ]) assert.match(sourceText, new RegExp(marker.replace(/[.*+?^{}()|[\]\\]/g, "\\$&")));
-    assert.match(text, /\/Subtype\s*\/Type0/);
-    assert.match(text, /\/FontFile3\s+\d+\s+0\s+R/);
-    assert.match(text, /\/ToUnicode\s+\d+\s+0\s+R/);
-    const pageCount = Number(text.match(/\/Type\s*\/Pages[\s\S]*?\/Count\s+(\d+)/)?.[1]);
-    assert.ok(pageCount > 0 && pageCount <= 10, `unexpected PDF page count: ${pageCount}`);
-    assert.doesNotMatch(sourceText, /evidence-secret-report-value/);
-    assert.doesNotMatch(sourceText, /mapping-raw-must-not-render/);
-    assert.match(text, /%%EOF\s*$/);
+      "Appendix A — Risk rating",
+      "Appendix D — Record readiness",
+      "closure_review_metadata_absent",
+      "repeatable_read",
+    ]) assert.ok(text.includes(marker), `PDF is missing: ${marker}`);
+    // Recorded values read as prose and tables, never as JSON dumps.
+    assert.doesNotMatch(text, /\{"[a-z_]+":/);
+    assert.doesNotMatch(text, /evidence-secret-report-value/);
+    assert.doesNotMatch(text, /description-secret-report-value/);
+    assert.doesNotMatch(text, /must-not-render/);
+    assert.match(bytes, /\/Subtype\s*\/Type0/);
+    assert.match(bytes, /\/FontFile2\s+\d+\s+0\s+R/);
+    assert.match(bytes, /\/ToUnicode\s+\d+\s+0\s+R/);
+    assert.match(bytes, /\/Outlines\s+\d+\s+0\s+R/);
+    const pageCount = Number(bytes.match(/\/Type\s*\/Pages[\s\S]*?\/Count\s+(\d+)/)?.[1]);
+    assert.ok(pageCount > 8 && pageCount <= 30, `unexpected PDF page count: ${pageCount}`);
+    assert.match(bytes, /%%EOF\s*$/);
+  });
+
+  it("reports an issue found on many assets once, with its affected assets", async () => {
+    const many = structuredClone(canonicalReport);
+    const base = many.findings[0]!;
+    many.findings = Array.from({ length: 40 }, (_, i) => ({
+      ...structuredClone(base),
+      id: `aaaaaaaa-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      title: "SMB signing not required",
+      status: "open",
+      asset: { ...base.asset!, id: `asset-${i}`, ip_address: `192.0.2.${i + 1}`, hostname: null, fqdn: null },
+    }));
+    const { text } = await renderReportPdf(many);
+    const joined = text.join("\n");
+    assert.ok(joined.includes("F001–F040"), "the issue is referenced as one range");
+    assert.ok(joined.includes("40 affected assets"), "the asset count is stated");
+    assert.ok(joined.includes("192.0.2.40"), "every affected asset is listed");
+    assert.equal(text.filter((t) => t === "SMB signing not required").length <= 6, true, "the issue title is not repeated per asset");
   });
 
   it("preserves Unicode report text in the PDF instead of replacing it with question marks", async () => {
@@ -190,15 +251,20 @@ describe("canonical report exports", () => {
     const streams = decodedPdfStreams(file.bytes);
 
     assert.match(bytes, /\/ToUnicode\s+\d+\s+0\s+R/);
+    // Plex draws the Latin text; the bundled Unifont draws what Plex lacks.
+    assert.match(bytes, /\/FontFile3\s+\d+\s+0\s+R/);
     assert.match(streams, /<00fc>/i);
     assert.match(streams, /<6771>/i);
     assert.match(streams, /<4eac>/i);
     assert.doesNotMatch(bytes, /M\?nchen \?\?/);
   });
 
-  it("creates a Word document with canonical control, evidence, closure and compliance detail", async () => {
+  it("creates a styled Word document with contents, header, footer and every canonical section", async () => {
     const file = await buildReportExport("docx", canonicalReport);
     const document = zipEntry(file.bytes, "word/document.xml").toString("utf8");
+    const styles = zipEntry(file.bytes, "word/styles.xml").toString("utf8");
+    const footer = zipEntry(file.bytes, "word/footer1.xml").toString("utf8");
+    const header = zipEntry(file.bytes, "word/header1.xml").toString("utf8");
     const core = zipEntry(file.bytes, "docProps/core.xml").toString("utf8");
 
     for (const marker of [
@@ -207,13 +273,12 @@ describe("canonical report exports", () => {
       "TLSv1 accepted",
       "Disable TLS 1.0",
       "Retest actual result",
-      "Structured recommendation records",
-      "human_reviewed_plan",
+      "Recommendations:",
       "Retest evidence integrity",
       "after_evidence_hash_mismatch",
       "mapping_review_required",
       "Weak protocol affects the recorded control objective",
-      "DERIVED REGIONAL COMPLIANCE CONTEXT — NOT ASSESSED",
+      "Derived regional compliance context — not assessed",
       "RBI Cyber Security Framework in Banks",
       "CERT-In Directions 2022",
       "DPDP Rules 2025 — breach intimation",
@@ -225,7 +290,16 @@ describe("canonical report exports", () => {
       "HIPAA Security Rule",
       "Generic fallback warning",
       "closure_review_metadata_absent",
-    ]) assert.match(document, new RegExp(marker.replace(/[.*+?^{}()|[\]\\]/g, "\\$&")));
+    ]) assert.ok(document.includes(marker), `Word document is missing: ${marker}`);
+    for (const style of ["Heading1", "Heading2", "Heading3", "VedhaTable", "Code", "NoteCaution", "TOC1"]) {
+      assert.match(styles, new RegExp(`w:styleId="${style}"`));
+    }
+    assert.match(document, /<w:pStyle w:val="Heading1"\/>/);
+    assert.match(document, /TOC \\o/);
+    assert.match(document, /<w:tblHeader\/>/);
+    assert.match(footer, /NUMPAGES/);
+    assert.match(header, /CONFIDENTIAL/);
+    assert.doesNotMatch(document, /\{&quot;[a-z_]+&quot;:/);
     assert.match(core, /2026-09-26T08:30:00\.000Z/);
     assert.doesNotMatch(document, /evidence-secret-report-value/);
     assert.doesNotMatch(document, /must-not-render/);

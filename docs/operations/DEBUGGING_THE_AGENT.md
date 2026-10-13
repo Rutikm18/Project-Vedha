@@ -123,6 +123,11 @@ binary**: **hardware binding** and **license** (`_startup_gauntlet`). Debug from
 | Component `failed` / `degraded` / `partial` | A coverage gap, **not** a clean scan | Read the job `outcome`, `issues`, `scanner_runs`, `error_code` — see [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) |
 | Throughput collapses on long scans | AIMD ratchet reading RST-suppression as congestion | Fixed via delivery-rate signal; if seen, capture `PROBE_DEBUG=1` transport logs |
 | Silent probe, nothing in logs | Log level too low / logs not persisted for this mode | See §1 (raise level) + §2 (log location for your mode) |
+| Probe busy, other jobs `pending` for hours | It runs one job at a time; a long scan (or a job no one cancelled) holds it | Check `agents.status`/`current_job_id` and the job's `started_at`; cancel it from the campaign page if it is not wanted |
+| **Windows agent:** port scan slow, `cleanup pass resolved N/N ambiguous ports (were reported filtered)` with N ≈ all ports | Windows re-sends the SYN after an RST (~2.2 s per closed port), so closed ports time out and read as filtered | `doctor` → `connect_fast_fail` must be `pass` (closed port in ms). The startup log says `✓ Port scans: closed ports report in N ms`. If it warns: Windows 10 1709+ needed, or run full-port sweeps from a Linux agent |
+| Port-scan summary shows `filtered_unverified > 0` | The cleanup pass ran out of capacity or time before re-checking those ports | They are not firewall evidence. A WARNING says when the host's own re-checks showed its silence means closed |
+| Deep scan (Deep Port Sweep) runs for hours | Every one of the 65,535 ports is swept; the job ceiling grows with the sweep (up to `PROBE_MAX_FULL_SCAN_SECONDS`, default 24 h) | The job log's `full coverage:` line gives the sweep size and ceiling; if it warns, it names the `rate` that would cover every port in time |
+| `Exception in callback _ProactorBasePipeTransport._call_connection_lost … WinError 10054` | A scanned host hung up while asyncio closed the socket — not an agent fault | Logged at DEBUG only since 2026-10-09 |
 
 **Probe error codes** (`error_code` on a failed component) — full list with operator
 actions is in [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md): `scope_empty`,
@@ -152,7 +157,7 @@ hardened-agent unit suite on `windows-latest` alongside Linux and macOS.
 |---|---|---|---|
 | **Foreground (source)** | `probe\windows\setup.ps1 -Foreground` | No | Quick test / live console debugging |
 | **Persistent task (source)** | `probe\windows\setup.ps1` | **Yes** | Real deployment (survives reboot) |
-| **Packaged .exe** | `probe\windows\build-agent-exe.ps1` → `install.ps1` | Yes | Sealed distribution (no Python on host) |
+| **Packaged .exe (customers)** | the zip from CI: `install.cmd -Token vet_...` ([guide](../probe/WINDOWS_AGENT_INSTALL.md)) | Yes | Customer distribution (no Python on host). Diagnose with `vedha-agent.exe status` / `doctor` / `support-bundle` ([reference](../probe/WINDOWS_AGENT_REFERENCE.md)) |
 | **Bootstrap one-liner** | `probe\install.ps1` | — | Download-then-run bootstrap |
 
 ```powershell

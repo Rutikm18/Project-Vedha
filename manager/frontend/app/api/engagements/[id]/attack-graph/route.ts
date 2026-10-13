@@ -1,6 +1,8 @@
-import { proxyAttackGraph } from "../../../../../lib/attack-graph-proxy";
+import { engagementGet, QUERY } from "../../../../../lib/attack-paths-proxy";
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  return proxyAttackGraph(req, id, "attack-graph");
-}
+/** GET /api/engagements/{id}/attack-graph → D3-compatible graph JSON. */
+export const GET = engagementGet({
+  uuids: ["id"],
+  path: (p) => `/engagements/${p.id}/attack-graph`,
+  query: { target_asset_id: QUERY.uuid },
+});

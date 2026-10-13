@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func, select
 
-from app import agent_access
+from app import agent_access, agent_release
 from app.auth.jwt import create_access_token
 from app.auth.rbac import require_role
 from app.config import get_settings
@@ -27,6 +27,7 @@ from app.models.scan_job_attempt import ScanJobAttempt
 from app.models.service import Service as Service  # re-exported for tests (ag.Service)
 from app.services.job_result_service import _promote_assets as _promote_assets
 from app.services.scope_targets import validate_targets_in_scope
+from app.services import portal_scan_policy
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 logger = structlog.get_logger()
@@ -244,6 +245,9 @@ class HeartbeatRequest(BaseModel):
     attempt_id: uuid.UUID | None = None
     fence: int | None = Field(default=None, ge=1)
     status: str = "online"
+    # The version the agent is actually running, so Fleet stays right after an
+    # upgrade. Optional: older agents do not send it.
+    agent_version: str | None = Field(default=None, max_length=64)
 
     @model_validator(mode="after")
     def require_fence_for_running_job(self):
@@ -432,10 +436,10 @@ _USE_CASES = {
     },
     "uc_rescan_delta": {
         "display_name": "Re-scan & Change Detection",
-        "status": "coming_soon",
         "description": (
-            "Re-runs a full assessment and highlights what changed since the last "
-            "run — new hosts, newly opened ports, and configuration drift."
+            "Re-runs a full assessment and reports what changed since the previous "
+            "completed scan — new hosts, newly observed services, and findings that "
+            "opened, resolved or reopened."
         ),
         "scan_type": "assessment",
         "profile": "it",
@@ -589,17 +593,17 @@ _USE_CASES = {
         "expected_runtime_hint": "5–15 min per /24",
     },
     "uc_deep_port_sweep": {
-        "display_name": "Deep Port Sweep (all 65,535, few hosts)",
+        "display_name": "Deep Port Sweep (all 65,535 ports)",
         "description": (
-            "The thorough single-host scan: every TCP port PLUS the full "
-            "assessment (banners, OS, TLS/SMB/DB/RDP and the rest) on up to a few "
-            "critical hosts. Full-port coverage is capped to a small host count so "
-            "it always finishes; use Aggressive network_va for a whole subnet."
+            "The thorough scan: every TCP port PLUS the full assessment (banners, "
+            "OS, TLS/SMB/DB/RDP and the rest). High-value ports are assessed "
+            "first, then the rest of the range; the job runs as long as the "
+            "sweep needs. Use Aggressive network_va for a faster ~2,500-port sweep."
         ),
         "scan_type": "deep_port_sweep",
         "profile": "it",
         "intensity": "deep",
-        "expected_runtime_hint": "20–90 min per host (≤3 hosts)",
+        "expected_runtime_hint": "minutes per host on Linux; longer from Windows",
     },
 }
 
@@ -928,6 +932,85 @@ async def set_agent_access_expiry(
     }
 
 
+class AgentRevoke(BaseModel):
+    """Why the agent is being revoked. Kept in the audit log; the agent is told only that it was revoked."""
+    reason: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/{agent_id}/revoke", summary="Revoke an agent: it can never connect or refresh again (Fleet)")
+async def revoke_agent(
+    agent_id: uuid.UUID,
+    body: AgentRevoke,
+    db: DB,
+    redis: RedisConn,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
+):
+    """Cut an agent off for good: a lost laptop, a decommissioned host, a compromised machine.
+
+    Nothing is deleted. The agent's row, its jobs, results and findings stay, so history and reports are
+    unchanged; the agent simply stops being accepted. What changes:
+      * lifecycle_status becomes `revoked` (the HTTP middleware and the WebSocket endpoint already refuse
+        any agent that is not `active`) and the credential generation moves on, so tokens it holds are stale;
+      * its stored credentials are revoked, so it cannot mint a new access token;
+      * it is shown offline and its live WebSocket, if any, is closed;
+      * engagements assigned to it are released so a replacement agent can be enrolled.
+    A job it was running is NOT touched here: it stops renewing its lease, and the manager's reaper puts the
+    job back in the queue (or fails it once its attempts are used) exactly as for any dead agent.
+    Not reversible: to use that machine again, install the agent afresh (a new identity).
+    Repeating the call is harmless."""
+    from app.models.probe_enrollment import AgentCredential
+    from app.services.audit import record_audit
+    from app.websocket.manager import agent_ws_manager
+    from sqlalchemy import update
+
+    agent = (await db.execute(
+        select(Agent).where(Agent.id == agent_id, Agent.tenant_id == current_user.tenant_id)
+        .with_for_update()
+    )).scalar_one_or_none()
+    if agent is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Agent not found")
+    if agent.lifecycle_status == "revoked":
+        return {"id": str(agent.id), "lifecycle_status": "revoked", "already_revoked": True,
+                "disconnected": False, "released_engagements": []}
+
+    now = datetime.now(timezone.utc)
+    previous = {"lifecycle_status": agent.lifecycle_status,
+                "status": agent.status.value if hasattr(agent.status, "value") else str(agent.status),
+                "current_job_id": str(agent.current_job_id) if agent.current_job_id else None}
+    agent.lifecycle_status = "revoked"
+    agent.credential_generation = int(agent.credential_generation or 0) + 1
+    agent.status = AgentStatus.offline
+    agent.current_job_id = None
+    await db.execute(
+        update(AgentCredential)
+        .where(AgentCredential.agent_id == agent.id, AgentCredential.revoked_at.is_(None))
+        .values(revoked_at=now)
+    )
+    released = (await db.execute(
+        select(Engagement.id).where(Engagement.tenant_id == current_user.tenant_id,
+                                    Engagement.assigned_agent_id == agent.id)
+    )).scalars().all()
+    if released:
+        await db.execute(
+            update(Engagement).where(Engagement.id.in_(released)).values(assigned_agent_id=None)
+        )
+    record_audit(
+        db, actor_id=current_user.user_id, action="agent.revoked",
+        resource_type="agent", resource_id=agent.id,
+        detail={"reason": (body.reason or "").strip() or None, "previous": previous,
+                "released_engagements": [str(e) for e in released]},
+    )
+    await db.flush()
+    await db.commit()
+    logger.warning("agent.revoked", agent_id=str(agent.id), by=str(current_user.user_id),
+                   released_engagements=len(released))
+
+    disconnected = await agent_ws_manager.revoke_connection(
+        redis, str(agent.id), "This agent was revoked in Fleet.")
+    return {"id": str(agent.id), "lifecycle_status": "revoked", "already_revoked": False,
+            "disconnected": disconnected, "released_engagements": [str(e) for e in released]}
+
+
 @router.post("/heartbeat", summary="Agent sends health ping every 30s")
 async def heartbeat(body: HeartbeatRequest, db: DB, request: Request):
     # Verify the agent sending the heartbeat owns this agent_id (auth gap fix)
@@ -941,6 +1024,9 @@ async def heartbeat(body: HeartbeatRequest, db: DB, request: Request):
 
     now = datetime.now(timezone.utc)
     agent.last_heartbeat = now
+    reported = agent_release.clean_agent_version(body.agent_version)
+    if reported and agent.agent_version != reported:
+        agent.agent_version = reported
     try:
         agent.status = AgentStatus(body.status)
     except ValueError:
@@ -968,6 +1054,79 @@ async def heartbeat(body: HeartbeatRequest, db: DB, request: Request):
 
     await db.flush()
     return {"ok": True, "lease_valid": True}
+
+
+class UpdateCheckRequest(BaseModel):
+    agent_id: str
+    agent_version: str = Field(..., min_length=1, max_length=64)
+    platform: str = Field(default="", max_length=32)
+    architecture: str = Field(default="", max_length=32)
+
+
+@router.post("/update-check", summary="Agent asks whether a newer agent version exists")
+async def update_check(body: UpdateCheckRequest, db: DB, request: Request):
+    """Version management only: tells the agent what this manager would serve.
+    Nothing is downloaded here. Behind the same agent authentication as the
+    heartbeat, so an expired or revoked agent is refused before reaching it."""
+    _agent_ownership_check(request, body.agent_id)
+    agent = (await db.execute(
+        select(Agent).where(Agent.id == uuid.UUID(body.agent_id))
+    )).scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    reported = agent_release.clean_agent_version(body.agent_version)
+    if reported and agent.agent_version != reported:
+        agent.agent_version = reported
+
+    from app.routers.agent_distribution import load_current_release  # avoid an import cycle
+    try:
+        release = load_current_release()
+    except agent_release.ReleaseUnavailable:
+        release = None
+    await db.flush()
+    return agent_release.update_offer(release, body.agent_version)
+
+
+@router.post("/update-ticket", summary="Agent asks for a one-time download ticket for the update the manager offers it")
+async def update_ticket(body: UpdateCheckRequest, db: DB, request: Request):
+    """The authorised download route for an enrolled agent (the missing half of update-check).
+
+    The manager, not the agent, decides: a ticket is issued only when the current release
+    states an agent version strictly newer than the one this agent reported AND carries a
+    package this agent can install. The ticket is short-lived and single-use (see
+    services/agent_update_ticket.py). Otherwise a normal 200 with `update_available: false`."""
+    _agent_ownership_check(request, body.agent_id)
+    agent = (await db.execute(
+        select(Agent).where(Agent.id == uuid.UUID(body.agent_id))
+    )).scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    if getattr(agent, "lifecycle_status", "active") != "active":
+        raise HTTPException(403, "Agent is not active")
+
+    reported = agent_release.clean_agent_version(body.agent_version)
+    if reported and agent.agent_version != reported:
+        agent.agent_version = reported
+
+    from app.routers.agent_distribution import load_current_release  # avoid an import cycle
+    from app.services import agent_update_ticket
+    try:
+        release = load_current_release()
+    except agent_release.ReleaseUnavailable:
+        release = None
+    offer = agent_release.update_offer(release, body.agent_version)
+    if not offer["update_available"]:
+        return {**offer, "ticket": None}
+    platform = (body.platform or "").lower()
+    # Only the Windows package can be applied by the agent today.
+    if not platform.startswith("win") or release is None or not release.windows_available:
+        return {**offer, "update_available": False, "ticket": None,
+                "message": "A newer agent exists, but this manager cannot update this kind of agent automatically yet."}
+    ticket = agent_update_ticket.issue(str(agent.id), str(agent.tenant_id), offer["latest"])
+    logger.info("agent.update_ticket.issued", agent_id=str(agent.id),
+                from_version=body.agent_version, to_version=offer["latest"])
+    return {**offer, "ticket": ticket, "ticket_expires_in_seconds": agent_update_ticket.TTL_SECONDS}
 
 
 @router.post(
@@ -1513,6 +1672,21 @@ async def enqueue_agent_job(
 
     scan_profile = (eng.rules_of_engagement or {}).get("scan_profile", "it")
 
+    # A full-port (all 65,535) scan covers exactly ONE host. The portal already
+    # enforces this for customers; the same rule holds for operators and raw API
+    # callers, so a range, a list or an empty target (= the whole scope) is
+    # refused here rather than silently turning into thousands of full sweeps.
+    deep_host: str | None = None
+    if resolved_use_case_id in portal_scan_policy.FULL_PORT_USE_CASES:
+        requested = body.params.get("targets")
+        if requested is None:
+            requested = body.params.get("target")
+        if isinstance(requested, str):
+            requested = [requested]
+        deep_host = portal_scan_policy.validate_deep_target(
+            requested, getattr(eng, "scope_cidrs", None) or [],
+            getattr(eng, "excluded_cidrs", None) or [])
+
     # When a use-case is given, resolve the scan_type from the library so
     # OT-profile enforcement can check it.
     if resolved_use_case_id:
@@ -1538,6 +1712,21 @@ async def enqueue_agent_job(
             f"if this is not actually an OT/ICS segment.",
         )
 
+    # Organisation scan policy. A blackout window pauses scanning (an admin may
+    # override it when the policy allows, and that override is audited below).
+    from app.services import org_settings
+    scan_policy = await org_settings.get_section(db, current_user.tenant_id, "scan")
+    blackout = org_settings.active_blackout(scan_policy)
+    blackout_override = None
+    if blackout is not None:
+        if scan_policy.admin_override and current_user.role == "admin":
+            blackout_override = {"window": blackout.name}
+        else:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Scanning is paused by the blackout window '{blackout.name}'."
+                + (" An admin can override it." if scan_policy.admin_override else ""))
+
     # Merge use_case_id into params so the probe can read it from the job payload.
     # Also embed the engagement's scope so the probe has it without a second round-trip
     # (the probe still independently fetches /scope for re-validation — this is
@@ -1554,6 +1743,12 @@ async def enqueue_agent_job(
         raise HTTPException(400, str(exc))
 
     job_params = {**body.params}
+    if deep_host is not None and not (
+            isinstance(job_params.get("targets"), list) and len(job_params["targets"]) == 1):
+        # Validated to one host, but sent as `target` or a bare string: hand the
+        # probe the one-element list it reads.
+        job_params["targets"] = [deep_host]
+        job_params.pop("target", None)
     # Wire the compact numeric protocol to the probe: uc + intensity as NUMBERS.
     # use_case_id (string) rides along for provenance/allowlisting — the probe
     # resolves either and gets the same pipeline.
@@ -1613,6 +1808,16 @@ async def enqueue_agent_job(
                                                            fragile_plan.cidrs)
             job_params["_fragile_excluded"] = fragile_plan.hosts
 
+    # Organisation-wide exclusions ride the same field the probe's ScopeGuard
+    # enforces. A scan whose every target is excluded would do nothing: say so.
+    if scan_policy.global_exclusions:
+        if org_settings.entirely_excluded(requested_scope, scan_policy.global_exclusions):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Every requested target is covered by the organisation's global exclusions.")
+        job_params["_excluded_cidrs"] = org_settings.merge_global_exclusions(
+            job_params.get("_excluded_cidrs"), scan_policy)
+
     job = ScanJob(
         engagement_id=body.engagement_id,
         job_type=body.job_type,
@@ -1626,6 +1831,11 @@ async def enqueue_agent_job(
     db.add(job)
     await db.flush()
     await db.refresh(job)
+    if blackout_override is not None:
+        from app.services.audit import record_audit
+        record_audit(db, actor_id=current_user.user_id, action="scan.blackout_override",
+                     engagement_id=eng.id, resource_type="scan_job", resource_id=job.id,
+                     detail={**blackout_override, "scan_type": resolved_scan_type})
     if fragile_override is not None:
         from app.services.audit import record_audit
         record_audit(db, actor_id=current_user.user_id, action="scan.fragile_override",

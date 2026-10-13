@@ -30,6 +30,7 @@ from app.auth.portal_scope import (
     finding_lock_gate, remediation_gate, written_reports_gate,
 )
 from app.services import portal_locks
+from app.ratelimit import ai_rate_limit
 from app.dependencies import DB, RedisConn
 from app.models.agent import Agent, AgentStatus
 from app.models.asset import Asset
@@ -83,7 +84,14 @@ _OPEN_STATES = (FindingStatus.open, FindingStatus.confirmed)
 # queue (they don't block at one), but a cap keeps a customer from flooding the
 # operator inbox.
 _MAX_PENDING_REQUESTS = 5
-_VALID_SCAN_TYPES = {t.value for t in ScanJobType}
+# RC-FIX-4 (manager-level stuck): Only allow probe-executable scan types on the
+# portal path. Server-side-only types (vuln_scan, detection, ai_report, exploit,
+# ad_enum) create ScanJobs that are invisible to probe HTTP polling because the
+# poll query requires job_type IN AGENT_EXECUTABLE_TYPES. A customer who requests
+# "vuln_scan" would get a job stuck in pending forever (burning a queue cap slot).
+# The correct vocabulary for direct scan_type use (no use_case_id) is the set of
+# types a probe can actually claim; for richer workflows customers use use_case_id.
+_VALID_SCAN_TYPES = {"discovery", "lateral", "cloud_scan"}
 
 # The capability use-cases a customer may request — a curated subset of the
 # operator use-case catalog (agents._USE_CASES), so the portal never offers a
@@ -150,8 +158,10 @@ async def portal_me(user: ClientUser, db: DB):
 @router.get("/entitlement", response_model=EntitlementOut,
             summary="Your plan: POC or licence, scans left, days left")
 async def portal_entitlement(user: ClientUser, db: DB):
+    from app.services import org_settings
     view = await entitlements.view_for(db, assert_client(user))
-    return EntitlementOut(**entitlements.view_dict(view))
+    defaults = await org_settings.get_section(db, user.tenant_id, "customer-defaults")
+    return EntitlementOut(**entitlements.view_dict(view), support_contact=defaults.support_contact or None)
 
 
 @router.get("/findings", response_model=list[ClientFindingOut],
@@ -662,7 +672,7 @@ def _assistant_finding_view(f: Finding) -> dict:
     }
 
 
-@router.post("/assistant/chat", dependencies=[Depends(ai_assistant_gate)], response_model=ClientAssistantReply,
+@router.post("/assistant/chat", dependencies=[Depends(ai_assistant_gate), Depends(ai_rate_limit)], response_model=ClientAssistantReply,
              summary="Ask about your own assessment (security topics only)")
 async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: DB):
     eng_id = assert_client(user)

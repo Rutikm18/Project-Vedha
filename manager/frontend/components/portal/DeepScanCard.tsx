@@ -1,7 +1,8 @@
 "use client";
 
-/* Deep scan — every TCP port plus the full assessment, on exactly ONE asset.
-   Shown on both Scanners. On the portal the customer enters a single IP and the
+/* Deep scan — every TCP port plus the full assessment, on exactly ONE host.
+   This is the ONLY way to run an all-ports scan from either Scanner (there is
+   no multi-host full-port option). Shown on both Scanners. On the portal the customer enters a single IP and the
    card explains the plan's rules before they spend a scan (one asset only, in
    scope, repeat policy, what's left). On the operator Scanner there is no plan
    (`plan={null}`): operators are unlimited and the card says the scan is not
@@ -62,10 +63,10 @@ export function deepScanCopy(plan: Entitlement | null): DeepScanCopy {
     return {
       badge: "Operator · not counted",
       rules: [
-        `Exactly one asset per deep scan — a single IP inside ${scopeLabel}.`,
+        `Exactly one host per deep scan — a single IP inside ${scopeLabel}.`,
         "Operator scans don't use the customer's Deep allowance and can repeat an asset.",
       ],
-      footer: "Runs on the engagement's scope and doesn't use the customer's Deep allowance.",
+      footer: "Runs on the one host you enter and doesn't use the customer's Deep allowance.",
       scopeLabel,
     };
   }
@@ -74,7 +75,7 @@ export function deepScanCopy(plan: Entitlement | null): DeepScanCopy {
   return {
     badge: left == null ? "Unlimited" : `${left} left`,
     rules: [
-      `Exactly one asset per deep scan — a single IP inside ${scopeLabel}.`,
+      `Exactly one host per deep scan — a single IP inside ${scopeLabel}.`,
       plan.deep_repeat_policy === "distinct"
         ? "Each deep scan must be a different asset."
         : "You may deep-scan the same asset again.",
@@ -101,18 +102,29 @@ export function DeepScanCard({ plan, scope, probeReady, launching, onLaunch }: {
   const blocked = plan && !plan.modes.deep.can_scan ? plan.modes.deep.reason : !probeReady
     ? "No online vedha-agent can run a deep scan right now." : null;
 
+  const scopeHint = scope.length
+    ? `${copy.scopeLabel[0].toUpperCase()}${copy.scopeLabel.slice(1)}: ${scope.slice(0, 3).join(", ")}${scope.length > 3 ? ` +${scope.length - 3} more` : ""}`
+    : null;
+
   return (
     <section className="dsc" aria-labelledby="deep-scan-title">
       <style>{STYLES}</style>
       <header>
         <span className="dsc-icon"><Crosshair size={17} /></span>
         <div>
-          <h3 id="deep-scan-title">Deep scan · one asset</h3>
-          <p>Every one of the 65,535 TCP ports plus the full assessment (banners, OS, TLS/SMB/DB/RDP)
-            on a single host. Takes 20–90 minutes.</p>
+          <h3 id="deep-scan-title">Deep scan · one host</h3>
+          <p>Checks all 65,535 TCP ports on a single host, then runs the full assessment
+            (banners, OS, TLS / SMB / database / RDP) on whatever it finds.</p>
         </div>
         <span className="dsc-left">{copy.badge}</span>
       </header>
+
+      <dl className="dsc-facts" aria-label="What a deep scan covers">
+        <div><dt>Hosts</dt><dd>1</dd></div>
+        <div><dt>TCP ports</dt><dd>65,535</dd></div>
+        <div><dt>Assessment</dt><dd>Full</dd></div>
+        <div><dt>Typical time</dt><dd>20–90 min</dd></div>
+      </dl>
 
       <ul className="dsc-rules">
         {copy.rules.map((rule) => <li key={rule}>{rule}</li>)}
@@ -129,15 +141,16 @@ export function DeepScanCard({ plan, scope, probeReady, launching, onLaunch }: {
         if (!problem && !blocked) onLaunch(ip.trim().replace(/\/(32|128)$/, ""));
       }}>
         <label>
-          <span>Asset IP</span>
+          <span>Host to deep-scan <em>(one IP address)</em></span>
           <input value={ip} onChange={(e) => setIp(e.target.value)} onBlur={() => setTouched(true)}
             placeholder={scope[0] ? `e.g. ${exampleHost(scope[0])}` : "e.g. 10.0.0.5"}
             aria-invalid={touched && !!problem} aria-describedby="deep-scan-msg"
             inputMode="decimal" autoComplete="off" spellCheck={false} />
+          {scopeHint && <small>{scopeHint}</small>}
         </label>
         <button type="submit" disabled={launching || !!blocked || (touched && !!problem)}>
           {launching ? <><Loader size={14} className="scn-spin" /> Dispatching…</>
-            : <><Play size={14} fill="currentColor" /> Deep-scan this asset</>}
+            : <><Play size={14} fill="currentColor" /> Deep-scan this host</>}
         </button>
       </form>
       <p id="deep-scan-msg" className="dsc-msg" role={blocked || (touched && problem) ? "alert" : undefined}>
@@ -162,10 +175,16 @@ const STYLES = `
 .dsc h3 { margin: 0; font-size: 14px; color: var(--text-primary); }
 .dsc header p { margin: 3px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; max-width: 640px; }
 .dsc-left { margin-left: auto; white-space: nowrap; font: 700 11px var(--font-mono); color: var(--text-secondary); border: 0.5px solid var(--border-subtle); border-radius: 99px; padding: 3px 10px; }
+.dsc-facts { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.dsc-facts div { padding: 8px 10px; border-radius: 9px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); }
+.dsc-facts dt { font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+.dsc-facts dd { margin: 3px 0 0; font: 700 14px var(--font-mono); color: var(--text-primary); }
 .dsc-rules { margin: 0; padding-left: 18px; color: var(--text-secondary); font-size: 12px; line-height: 1.7; }
 .dsc-rules code { font-family: var(--font-mono); font-size: 11px; margin-left: 6px; padding: 1px 6px; border-radius: 5px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); }
 .dsc-form { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
 .dsc-form label { display: grid; gap: 6px; flex: 1 1 240px; max-width: 360px; }
+.dsc-form label small { color: var(--text-faint); font: 10.5px var(--font-mono); }
+.dsc-form label em { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-muted); }
 .dsc-form label span { color: var(--text-secondary); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 .dsc-form input { min-height: 40px; padding: 8px 11px; border-radius: 8px; border: 0.5px solid var(--border-default); background: var(--bg-surface); color: var(--text-primary); font: 12.5px var(--font-mono); outline: none; }
 .dsc-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ghost); }
@@ -174,5 +193,5 @@ const STYLES = `
 .dsc-form button:disabled { opacity: 0.45; cursor: not-allowed; }
 .dsc-msg { margin: 0; font-size: 11.5px; color: var(--text-muted); }
 .dsc-msg[role="alert"] { color: var(--sev-high-color); }
-@media (max-width: 640px) { .dsc header { flex-wrap: wrap; } .dsc-left { margin-left: 0; } }
+@media (max-width: 640px) { .dsc header { flex-wrap: wrap; } .dsc-left { margin-left: 0; } .dsc-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 `;

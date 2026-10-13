@@ -1,8 +1,10 @@
 from collections.abc import AsyncGenerator
 
+from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import get_settings
+from app.db_rls import mark_session_tenant
 
 settings = get_settings()
 
@@ -48,9 +50,19 @@ ReadSessionLocal = async_sessionmaker(
 )
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+# Whether each engine speaks Postgres (RLS and the tenant GUC are Postgres-only;
+# SQLite unit tests are a no-op). Computed once at import.
+_PRIMARY_IS_PG = engine.dialect.name == "postgresql"
+_READ_IS_PG = read_engine.dialect.name == "postgresql"
+
+
+async def get_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         try:
+            # F1: opt this request's session into the tenant RLS GUC (dormant
+            # unless DB_RLS_ENABLED and a tenant is present). No-op otherwise.
+            mark_session_tenant(session, getattr(request.state, "tenant_id", None),
+                                enabled=settings.db_rls_enabled, is_postgres=_PRIMARY_IS_PG)
             yield session
             await session.commit()
         except Exception:
@@ -60,11 +72,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-async def get_read_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_read_db(request: Request) -> AsyncGenerator[AsyncSession, None]:
     """Read-only session (no commit) routed to the replica when configured.
     For SELECT-only endpoints; never write through this."""
     async with ReadSessionLocal() as session:
         try:
+            mark_session_tenant(session, getattr(request.state, "tenant_id", None),
+                                enabled=settings.db_rls_enabled, is_postgres=_READ_IS_PG)
             yield session
         finally:
             await session.close()

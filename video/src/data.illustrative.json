@@ -1,0 +1,39 @@
+{
+  "_note": "Illustrative data only. Addresses are RFC 5737 documentation ranges; hostnames are .example. Finding 1 mirrors a real probe run in probe/scans (rule SVC-RDP-EXPOSED, medium, corroborated by tls_scan on 3389); no real hostnames, MACs or IPs are used.",
+  "findings": [
+    {
+      "title": "Accounts PC: remote desktop exposed",
+      "host": "accounts-pc.example · 192.0.2.24",
+      "sev": "MEDIUM",
+      "evidence": [
+        "3389/tcp open from the scan vantage",
+        "TLS handshake answered on 3389 (RDP)"
+      ],
+      "closed": "Accounts PC: remote desktop behind VPN",
+      "check": "SVC-RDP-EXPOSED (seen in probe/scans) + tls_scan corroboration; fix per the rule's own recommendation"
+    },
+    {
+      "title": "Client files: open to anyone",
+      "host": "fileserver.example · 192.0.2.10",
+      "sev": "HIGH",
+      "closed": "Client file share restricted",
+      "check": "SMB null session / NFS world-readable export (posture rules)"
+    },
+    {
+      "title": "Billing data: no password needed",
+      "host": "billing-db.example · 192.0.2.40",
+      "sev": "CRITICAL",
+      "closed": "Billing database password set",
+      "check": "Unauthenticated database read (posture rule)"
+    }
+  ],
+  "fixItem": "Partner: RDP behind VPN, NLA + MFA on",
+  "evidencePlain": [
+    "Remote desktop answers from outside",
+    "Confirmed by two independent checks"
+  ],
+  "verifiedPlain": [
+    "Re-checked: 3389 closed from outside",
+    "Remote access now via VPN + MFA"
+  ]
+}

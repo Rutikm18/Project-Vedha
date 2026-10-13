@@ -1,0 +1,6 @@
+# Baked into the API image: ship the engine and its pinned snapshots, not its tests.
+tests/
+**/__pycache__/
+*.py[cod]
+*.md
+.pytest_cache/

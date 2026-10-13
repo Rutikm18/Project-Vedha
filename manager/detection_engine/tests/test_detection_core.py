@@ -356,77 +356,96 @@ class TestVersionInRanges:
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "1.0"}, {"fixed": "2.0"}
         ]}]
-        matched, desc = _version_in_ranges("1.5", ranges)
+        matched, desc, kind = _version_in_ranges("1.5", ranges)
         assert matched is True
         assert "1.0" in desc and "2.0" in desc
+        assert kind == "bounded"
 
     def test_version_before_introduced(self):
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "2.0"}, {"fixed": "3.0"}
         ]}]
-        matched, _ = _version_in_ranges("1.0", ranges)
+        matched, _, kind = _version_in_ranges("1.0", ranges)
         assert matched is False
+        assert kind is None
 
     def test_version_at_fixed(self):
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "1.0"}, {"fixed": "2.0"}
         ]}]
-        matched, _ = _version_in_ranges("2.0", ranges)
+        matched, _, _ = _version_in_ranges("2.0", ranges)
         assert matched is False
 
     def test_last_affected(self):
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "1.0"}, {"last_affected": "2.0"}
         ]}]
-        matched, desc = _version_in_ranges("2.0", ranges)
+        matched, desc, kind = _version_in_ranges("2.0", ranges)
         assert matched is True
         assert "2.0" in desc
+        assert kind == "capped"
 
     def test_unbounded_introduced(self):
+        # OSV convention: still vulnerable from `introduced` onward — the match
+        # stands, but it is tagged "open" (no upper bound) so the caller can
+        # demote an inferred-source match (gap #4 false-positive fix).
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "1.0"}
         ]}]
-        matched, desc = _version_in_ranges("99.0", ranges)
+        matched, desc, kind = _version_in_ranges("99.0", ranges)
         assert matched is True
         assert "unbounded" in desc
+        assert kind == "open"
+
+    def test_unbounded_introduced_zero_matches_everything(self):
+        # The exact snapshot shape behind the reported FPs (openssh/vsftpd):
+        # `introduced:"0"` with no fixed matches literally every version.
+        ranges = [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}]
+        matched, _, kind = _version_in_ranges("3.0.3", ranges)
+        assert matched is True
+        assert kind == "open"
 
     def test_ignores_unknown_type(self):
         ranges = [{"type": "GIT", "events": [
             {"introduced": "1.0"}, {"fixed": "2.0"}
         ]}]
-        matched, _ = _version_in_ranges("1.5", ranges)
+        matched, _, _ = _version_in_ranges("1.5", ranges)
         assert matched is False
 
     def test_semver_type_included(self):
         ranges = [{"type": "SEMVER", "events": [
             {"introduced": "1.0.0"}, {"fixed": "2.0.0"}
         ]}]
-        matched, _ = _version_in_ranges("1.5.0", ranges)
+        matched, _, kind = _version_in_ranges("1.5.0", ranges)
         assert matched is True
+        assert kind == "bounded"
 
     def test_no_match_returns_false_none(self):
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "5.0"}, {"fixed": "6.0"}
         ]}]
-        matched, desc = _version_in_ranges("1.0", ranges)
+        matched, desc, kind = _version_in_ranges("1.0", ranges)
         assert matched is False
         assert desc is None
+        assert kind is None
 
     def test_empty_ranges(self):
-        matched, desc = _version_in_ranges("1.0", [])
+        matched, desc, kind = _version_in_ranges("1.0", [])
         assert matched is False
         assert desc is None
+        assert kind is None
 
     def test_regression_sequence(self):
         ranges = [{"type": "ECOSYSTEM", "events": [
             {"introduced": "1.0"}, {"fixed": "2.0"},
             {"introduced": "3.0"}, {"fixed": "4.0"},
         ]}]
-        matched, _ = _version_in_ranges("1.5", ranges)
+        matched, _, kind = _version_in_ranges("1.5", ranges)
         assert matched is True
-        matched2, _ = _version_in_ranges("2.5", ranges)
+        assert kind == "bounded"
+        matched2, _, _ = _version_in_ranges("2.5", ranges)
         assert matched2 is False
-        matched3, _ = _version_in_ranges("3.5", ranges)
+        matched3, _, _ = _version_in_ranges("3.5", ranges)
         assert matched3 is True
 
 
@@ -487,6 +506,141 @@ class TestMatchCandidate:
         c = _candidate(version="1.5", lookup_key="nginx", product="nginx")
         findings = match_candidate("10.0.0.1", c, db)
         assert any("backport-possible" in n for n in findings[0].notes)
+
+    def test_inferred_open_ended_demoted_to_potential(self):
+        # gap #4: an open-ended `[introduced:"0"]` range matches every version.
+        # From an inferred (banner) source it must NOT be a suspected version
+        # match — it is demoted to `potential` under the `range-open` basis.
+        records = {"openssh": [{
+            "id": "DEBIAN-CVE-2007-2243", "upstream": ["CVE-2007-2243"],
+            "affected": [{"package": {"name": "openssh"}, "ranges": [
+                {"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}
+            ]}]
+        }]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="9.5", lookup_key="openssh")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 1
+        f = findings[0]
+        assert f.state == FindingState.potential
+        assert f.match_basis == "range-open"
+        assert any("open-ended range" in n for n in f.notes)
+        assert f.fixed_version is None
+
+    def test_authoritative_open_ended_stays_confirmed(self):
+        # The same open-ended range from a credentialed (dpkg) source is a real
+        # "no fix released yet" fact — it keeps its confirmed state, only annotated.
+        records = {"openssh": [{
+            "id": "DEBIAN-CVE-2007-2243", "upstream": ["CVE-2007-2243"],
+            "affected": [{"package": {"name": "openssh"}, "ranges": [
+                {"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}
+            ]}]
+        }]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="1:9.2p1-2", lookup_key="openssh",
+                        source_confidence=SourceConfidence.authoritative)
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 1
+        f = findings[0]
+        assert f.state == FindingState.confirmed
+        assert f.match_basis == "range"
+        assert any("no fixed release" in n for n in f.notes)
+
+    def test_inferred_bounded_stays_suspected_range(self):
+        # A bounded match from an inferred source is still a real version signal —
+        # it stays `suspected` under the normal `range` basis (not demoted).
+        records = {"nginx": [{
+            "id": "OSV-9", "upstream": ["CVE-2023-0009"],
+            "affected": [{"package": {"name": "nginx"}, "ranges": [
+                {"type": "ECOSYSTEM", "events": [{"introduced": "1.0"}, {"fixed": "2.0"}]}
+            ]}]
+        }]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="1.5", lookup_key="nginx", product="nginx")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert findings[0].state == FindingState.suspected
+        assert findings[0].match_basis == "range"
+
+    def test_bounded_match_beats_open_ended_for_same_cve(self):
+        # The same CVE has both an open-ended Debian range (matches all) and a
+        # bounded range that includes the version. The bounded (real version
+        # signal) must win: one suspected finding, not a potential duplicate.
+        records = {"vsftpd": [
+            {"id": "DEBIAN-CVE-2021-3618", "upstream": ["CVE-2021-3618"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "0"}]}]}]},
+            {"id": "OSV-B", "upstream": ["CVE-2021-3618"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "2.0"}, {"fixed": "4.0"}]}]}]},
+        ]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="3.0.3", lookup_key="vsftpd", product="vsftpd")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 1
+        assert findings[0].cve_id == "CVE-2021-3618"
+        assert findings[0].state == FindingState.suspected
+        assert findings[0].match_basis == "range"
+
+    def test_nvd_upstream_bound_suppresses_open_ended(self):
+        # Open-ended Debian record says "all versions", but the upstream NVD/CPE
+        # companion bounds the CVE to < 2.0 — the banner version 3.0.3 is past the
+        # fix, so the host is NOT vulnerable and the CVE is suppressed entirely.
+        records = {"vsftpd": [
+            {"id": "DEBIAN-CVE-2020-9999", "upstream": ["CVE-2020-9999"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "0"}]}]}]},
+            {"id": "CVE-2020-9999",
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "NVD/CPE"},
+                           "ranges": [{"type": "SEMVER",
+                                       "events": [{"introduced": "0"}, {"fixed": "2.0"}]}]}]},
+        ]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="3.0.3", lookup_key="vsftpd", product="vsftpd")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert findings == []
+
+    def test_nvd_upstream_bound_keeps_vulnerable_version(self):
+        # Same shape, but the banner version is BELOW the upstream fix → it really
+        # is vulnerable → a bounded suspected finding, not suppressed.
+        records = {"vsftpd": [
+            {"id": "DEBIAN-CVE-2020-9999", "upstream": ["CVE-2020-9999"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "0"}]}]}]},
+            {"id": "CVE-2020-9999",
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "NVD/CPE"},
+                           "ranges": [{"type": "SEMVER",
+                                       "events": [{"introduced": "0"}, {"fixed": "2.0"}]}]}]},
+        ]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="1.5", lookup_key="vsftpd", product="vsftpd")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 1
+        assert findings[0].state == FindingState.suspected
+        assert findings[0].match_basis == "range"
+
+    def test_authoritative_open_ended_not_suppressed_by_nvd(self):
+        # An NVD bound that would suppress an inferred finding must NOT suppress an
+        # authoritative (dpkg) one — the distro's "no fix released" verdict wins.
+        records = {"vsftpd": [
+            {"id": "DEBIAN-CVE-2020-9999", "upstream": ["CVE-2020-9999"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "0"}]}]}]},
+            {"id": "CVE-2020-9999",
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "NVD/CPE"},
+                           "ranges": [{"type": "SEMVER",
+                                       "events": [{"introduced": "0"}, {"fixed": "2.0"}]}]}]},
+        ]}
+        db = _mock_vuln_db(records)
+        c = _candidate(version="3:3.0.3-13", lookup_key="vsftpd", product="vsftpd",
+                        source_confidence=SourceConfidence.authoritative)
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 1
+        assert findings[0].state == FindingState.confirmed
 
     def test_no_match_returns_empty(self):
         records = {"nginx": [{
@@ -805,6 +959,29 @@ class TestVerify:
         result = verify(f)
         assert result.state == FindingState.potential  # 50 - 20 = 30 < 40
 
+    def test_open_ended_range_penalty(self):
+        # gap #4: a range-open finding (open-ended match) is penalized so its
+        # confidence reflects that it carries no version discrimination.
+        f = _finding(state=FindingState.potential,
+                     source_confidence=SourceConfidence.inferred,
+                     match_basis="range-open",
+                     notes=["open-ended range (no fixed release) — product-presence only"],
+                     evidence_refs=["a:1"])
+        result = verify(f)
+        assert result.checks.get("open_ended_range") is True
+        assert result.confidence == 25  # 50 base - 25 open-ended
+        assert result.state == FindingState.potential
+
+    def test_bounded_range_not_penalized_as_open(self):
+        # A normal bounded `range` finding must NOT get the open-ended penalty.
+        f = _finding(state=FindingState.suspected,
+                     source_confidence=SourceConfidence.inferred,
+                     match_basis="range",
+                     notes=["banner | matched range [1.0, 2.0)"],
+                     evidence_refs=["a:1", "b:2"])
+        result = verify(f)
+        assert "open_ended_range" not in result.checks
+
     def test_confirmed_never_downgraded(self):
         f = _finding(state=FindingState.confirmed,
                      source_confidence=SourceConfidence.authoritative)
@@ -850,12 +1027,46 @@ class TestComputePriority:
         tier, reason = _compute_priority(f)
         assert tier == "critical"
 
-    def test_high_epss_critical(self):
-        f = _finding()
+    def test_high_epss_critical_requires_impact_and_confidence(self):
+        # gap #6: a high EPSS mints critical ONLY with serious impact AND a
+        # confirmed match. C:H + confirmed/authoritative qualifies.
+        f = _finding(state=FindingState.confirmed,
+                     source_confidence=SourceConfidence.authoritative)
         f.epss_score = 0.6
+        f.cvss_vector = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
         tier, reason = _compute_priority(f)
         assert tier == "critical"
         assert "EPSS" in reason
+
+    def test_high_epss_dos_capped_to_high(self):
+        # A DoS (C:N/I:N/A:H) with high EPSS is HIGH, not critical — even confirmed.
+        f = _finding(state=FindingState.confirmed,
+                     source_confidence=SourceConfidence.authoritative)
+        f.epss_score = 0.6
+        f.cvss_vector = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+        tier, reason = _compute_priority(f)
+        assert tier == "high"
+        assert "capped to high" in reason
+        assert "DoS" in reason
+
+    def test_high_epss_inferred_match_capped_to_high(self):
+        # High impact but a banner-inferred (suspected) match → capped to high:
+        # EPSS is wild-exploitation probability, not proof this host has the CVE.
+        f = _finding(state=FindingState.suspected,
+                     source_confidence=SourceConfidence.inferred)
+        f.epss_score = 0.6
+        f.cvss_vector = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+        tier, reason = _compute_priority(f)
+        assert tier == "high"
+        assert "not confirmed" in reason
+
+    def test_high_epss_no_vector_capped_to_high(self):
+        # No impact evidence at all → EPSS cannot mint a critical.
+        f = _finding(state=FindingState.confirmed,
+                     source_confidence=SourceConfidence.authoritative)
+        f.epss_score = 0.6
+        tier, _ = _compute_priority(f)
+        assert tier == "high"
 
     def test_elevated_epss_high(self):
         f = _finding()
@@ -924,6 +1135,43 @@ class TestEnrichFinding:
         f = _finding(cve_id="CVE-2023-0001")
         result = enrich_finding(f, db, kev, epss)
         assert result.epss_score == 0.5
+
+    def test_e2e_dos_high_epss_is_high_not_critical(self):
+        # gap #6 end-to-end: a DoS CVE (A:H only) with high EPSS, even confirmed,
+        # enriches to priority HIGH — not critical.
+        records = {"nginx": [{
+            "id": "OSV-D", "upstream": ["CVE-2023-DOS"],
+            "severity": [{"type": "CVSS_V3",
+                          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"}]}]}
+        db = _mock_vuln_db(records)
+        epss = _mock_epss_db(scores={"CVE-2023-DOS": {"epss": 0.6, "percentile": 0.99}})
+        f = _finding(cve_id="CVE-2023-DOS", state=FindingState.confirmed,
+                     source_confidence=SourceConfidence.authoritative)
+        result = enrich_finding(f, db, _mock_kev_db(), epss)
+        assert result.priority == "high"
+
+    def test_e2e_high_impact_confirmed_high_epss_is_critical(self):
+        records = {"nginx": [{
+            "id": "OSV-R", "upstream": ["CVE-2023-RCE"],
+            "severity": [{"type": "CVSS_V3",
+                          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]}]}
+        db = _mock_vuln_db(records)
+        epss = _mock_epss_db(scores={"CVE-2023-RCE": {"epss": 0.6, "percentile": 0.99}})
+        f = _finding(cve_id="CVE-2023-RCE", state=FindingState.confirmed,
+                     source_confidence=SourceConfidence.authoritative)
+        result = enrich_finding(f, db, _mock_kev_db(), epss)
+        assert result.priority == "critical"
+
+    def test_e2e_high_impact_inferred_high_epss_capped_to_high(self):
+        records = {"nginx": [{
+            "id": "OSV-R", "upstream": ["CVE-2023-RCE"],
+            "severity": [{"type": "CVSS_V3",
+                          "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]}]}
+        db = _mock_vuln_db(records)
+        epss = _mock_epss_db(scores={"CVE-2023-RCE": {"epss": 0.6, "percentile": 0.99}})
+        f = _finding(cve_id="CVE-2023-RCE")  # default: suspected / inferred
+        result = enrich_finding(f, db, _mock_kev_db(), epss)
+        assert result.priority == "high"
 
     def test_no_data_still_sets_priority(self):
         db = _mock_vuln_db()
@@ -1188,3 +1436,56 @@ class TestAggregate:
         f2 = _finding(finding_id=fid, cve_id="CVE-1")
         report = aggregate([[f1, f2]])
         assert report.findings[0].appearances == 1  # counted once per run
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# gap #4 regression — version→CVE false positives (matcher + verifier together)
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestGap4VersionCveFalsePositives:
+    """Regression guard: an inferred banner version must not flood with
+    open-ended CVE matches; upstream NVD bounds must suppress not-vulnerable
+    versions; authoritative (dpkg) findings must stay intact."""
+
+    def _openssh_open_ended_db(self, n=5):
+        recs = [{"id": f"DEBIAN-CVE-2007-{i:04d}", "upstream": [f"CVE-2007-{i:04d}"],
+                 "affected": [{"package": {"name": "openssh", "ecosystem": "Debian:12"},
+                               "ranges": [{"type": "ECOSYSTEM",
+                                           "events": [{"introduced": "0"}]}]}]}
+                for i in range(n)]
+        return _mock_vuln_db({"openssh": recs})
+
+    def test_banner_openssh_no_suspected_flood(self):
+        db = self._openssh_open_ended_db(5)
+        c = _candidate(version="9.5", lookup_key="openssh")
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 5
+        assert all(f.state == FindingState.potential for f in findings)
+        assert all(f.match_basis == "range-open" for f in findings)
+        # none is suspected/confirmed, and after verification each is low-confidence
+        for f in findings:
+            verify(f)
+            assert f.state == FindingState.potential
+            assert f.confidence <= 30
+
+    def test_authoritative_openssh_still_confirmed(self):
+        db = self._openssh_open_ended_db(5)
+        c = _candidate(version="1:9.2p1-2", lookup_key="openssh",
+                       source_confidence=SourceConfidence.authoritative)
+        findings = match_candidate("10.0.0.1", c, db)
+        assert len(findings) == 5
+        assert all(f.state == FindingState.confirmed for f in findings)
+
+    def test_nvd_bound_suppresses_patched_banner(self):
+        # open-ended Debian record + upstream NVD fix at 2.0; banner 3.0 is patched
+        db = _mock_vuln_db({"vsftpd": [
+            {"id": "DEBIAN-CVE-2020-1", "upstream": ["CVE-2020-1"],
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}]}]},
+            {"id": "CVE-2020-1",
+             "affected": [{"package": {"name": "vsftpd", "ecosystem": "NVD/CPE"},
+                           "ranges": [{"type": "SEMVER",
+                                       "events": [{"introduced": "0"}, {"fixed": "2.0"}]}]}]},
+        ]})
+        c = _candidate(version="3.0", lookup_key="vsftpd", product="vsftpd")
+        assert match_candidate("10.0.0.1", c, db) == []

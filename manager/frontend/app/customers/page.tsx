@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   UserPlus, KeyRound, Power, Loader2, RefreshCw, Users, Clipboard, Globe, Eye, EyeOff, Link2,
   SlidersHorizontal, ChevronDown,
@@ -8,6 +9,7 @@ import {
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
 import { copyText } from "../../lib/clipboard";
+import { applyCustomerDefaults, type CustomerDefaults } from "../../lib/org-settings";
 import {
   type Entitlement, type EntitlementAdmin, MODE_META, PLAN_LABEL, SCAN_MODES, STATE_LABEL,
   daysText, friendlyError, modeShort, stateColor,
@@ -58,7 +60,17 @@ export default function CustomersPage() {
   const [revealed, setRevealed] = useState<Record<string, string | null>>({});
   const [revealing, setRevealing] = useState<string | null>(null);
   // New customers are created WITH a plan: configure it, then issue the login.
-  const [plan, setPlan] = useState<PlanDraft>(defaultDraft);
+  // Until the operator edits the form, it shows the organisation's defaults.
+  const [edited, setEdited] = useState<PlanDraft | null>(null);
+  const orgDefaults = useQuery({
+    queryKey: ["org-settings", "customer-defaults"],
+    queryFn: () => fetchJson<CustomerDefaults>("/api/org-settings/customer-defaults"),
+    retry: false,
+    staleTime: 60 * 1000,
+  });
+  const plan: PlanDraft = edited ?? (orgDefaults.data
+    ? applyCustomerDefaults(defaultDraft(), orgDefaults.data) : defaultDraft());
+  const setPlan = setEdited;
   const [openPlan, setOpenPlan] = useState<string | null>(null);
 
   const reveal = useCallback(async (c: Customer) => {
@@ -131,7 +143,7 @@ export default function CustomersPage() {
       setIssued({ email: r.email, slug: r.portal_slug, password: r.temp_password ?? "" });
       setEmail("");
       setEngId("");
-      setPlan(defaultDraft());
+      setEdited(null);
       toast.success("Plan activated and customer login created");
       await load();
     } catch (e) {

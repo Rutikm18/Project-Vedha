@@ -21,7 +21,10 @@ from app.models.engagement import Engagement
 from app.models.enums import FindingStatus, ScanJobStatus, ScanJobType
 from app.models.finding import Finding
 from app.models.scan_job import ScanJob
-from app.services.finding_scan_provenance import record_scan_observation
+from app.services.finding_scan_provenance import (
+    CUSTODY_CAPTURED_BY_MANAGER,
+    record_scan_observation,
+)
 from app.utils.db import get_or_404
 from app.vuln.nessus import NessusScanner
 from app.vuln.nuclei import NucleiRunReport, NucleiScanError, NucleiScanner
@@ -486,6 +489,9 @@ def _import_finding(
         tool=None,
         recorded_at=recorded_at,
         initial=True,
+        # The external tool captured the raw evidence; the manager is the
+        # custodian from the point it ingested and digested it.
+        captured_by=CUSTODY_CAPTURED_BY_MANAGER,
     )
     return Finding(
         engagement_id=engagement_id,
@@ -529,6 +535,10 @@ def _nuclei_finding(
         tool="nuclei",
         recorded_at=observed_at,
         initial=True,
+        # The manager runs nuclei directly, so it is the custodian; the matched
+        # host is the scanned host.
+        source_host=item.get("host") or item.get("target") or item.get("matched_at"),
+        captured_by=CUSTODY_CAPTURED_BY_MANAGER,
     )
     return Finding(
         engagement_id=engagement_id,

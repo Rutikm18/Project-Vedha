@@ -34,6 +34,7 @@ from app.services.finding_metrics import compute_mttr
 from app.services import finding_workflow
 from app.services import sla as sla_service
 from app.services.finding_enrichment import detail_enrichment
+from app.services.finding_workflow import suggest_risk_owner
 from app.services.finding_groups import GroupRow, build_groups
 from app.services.finding_priority import severity_order_case
 from app.services.risk_rank import compute_risk_rank
@@ -257,6 +258,7 @@ async def _finding_detail_out(db: AsyncSession, finding: Finding) -> FindingOut:
                 criticality=getattr(asset.criticality, "value", asset.criticality),
                 owner=asset.owner,
                 environment=asset.environment,
+                suggested_risk_owner=suggest_risk_owner(asset),
             )
     scan_refs = await _scan_refs(db, [finding])
     update: dict = {

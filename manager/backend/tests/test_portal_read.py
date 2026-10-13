@@ -334,11 +334,11 @@ class TestCreateScanRequest:
         eng = _engagement(user.client_engagement_id, scope=["10.0.0.0/24"])
         db = _db_for_create(eng, pending_count=0)
         out = asyncio.run(portal.create_scan_request(
-            ScanRequestCreate(scan_type="vuln_scan", targets=["10.0.0.5"],
+            ScanRequestCreate(scan_type="discovery", targets=["10.0.0.5"],
                               intensity="normal", note="please rescan"), user, db))
         assert out.status == "pending"
         sr = _added(db, ScanRequest)
-        assert sr is not None and sr.scan_type == "vuln_scan"
+        assert sr is not None and sr.scan_type == "discovery"
         # target normalized to a /32 and persisted; intensity carried through
         assert sr.targets == ["10.0.0.5/32"]
         assert sr.intensity == "standard"      # UI alias stored as the probe preset
@@ -366,7 +366,7 @@ class TestCreateScanRequest:
         eng = _engagement(user.client_engagement_id, scope=["10.0.0.0/24"])
         with pytest.raises(HTTPException) as e:
             asyncio.run(portal.create_scan_request(
-                ScanRequestCreate(scan_type="vuln_scan", targets=["192.0.2.9"]),
+                ScanRequestCreate(scan_type="discovery", targets=["192.0.2.9"]),
                 user, _db_for_create(eng)))
         assert e.value.status_code == 422
 
@@ -376,7 +376,7 @@ class TestCreateScanRequest:
                           scope=["10.0.0.0/24"], excluded=["10.0.0.0/28"])
         with pytest.raises(HTTPException) as e:
             asyncio.run(portal.create_scan_request(
-                ScanRequestCreate(scan_type="vuln_scan", targets=["10.0.0.5"]),
+                ScanRequestCreate(scan_type="discovery", targets=["10.0.0.5"]),
                 user, _db_for_create(eng)))
         assert e.value.status_code == 422
 
@@ -386,7 +386,7 @@ class TestCreateScanRequest:
         db = _db_for_create(eng, pending_count=5)         # already at the cap
         with pytest.raises(HTTPException) as e:
             asyncio.run(portal.create_scan_request(
-                ScanRequestCreate(scan_type="vuln_scan"), user, db))
+                ScanRequestCreate(scan_type="discovery"), user, db))
         assert e.value.status_code == 409
 
     @pytest.mark.parametrize("given", [{"intensity": "deep"}, {"intensity": "aggressive"},
@@ -395,7 +395,7 @@ class TestCreateScanRequest:
         user = _client()
         db = _db_for_create(_engagement(user.client_engagement_id))
         asyncio.run(portal.create_scan_request(
-            ScanRequestCreate(scan_type="vuln_scan", **given), user, db))
+            ScanRequestCreate(scan_type="discovery", **given), user, db))
         assert self.consume.await_args.args[2] == "aggressive"
         assert _added(db, ScanRequest).intensity == "deep"
 

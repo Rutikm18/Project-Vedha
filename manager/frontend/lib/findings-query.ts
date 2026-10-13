@@ -79,3 +79,27 @@ export function backendQueryString(query: string): string {
   if (sort && VALID_SORTS.has(sort)) out.set("sort", sort);
   return out.toString();
 }
+
+/** Browser queue state is shareable; API parameters remain a separate contract. */
+export function findingChoice<T extends string>(value: string | null, choices: readonly T[], fallback: T): T {
+  const normalized = value?.toUpperCase();
+  return choices.find((choice) => choice.toUpperCase() === normalized) ?? fallback;
+}
+
+export function findingPage(value: string | null): number {
+  const page = Number(value);
+  return Number.isSafeInteger(page) && page > 0 ? page : 1;
+}
+
+export function findingFlag(value: string | null): boolean {
+  return value === "true" || value === "1";
+}
+
+export function writeFindingParam(key: string, value: string | null) {
+  const url = new URL(window.location.href);
+  if (value === null || value === "") url.searchParams.delete(key);
+  else url.searchParams.set(key, value);
+  // Preserve Next's history metadata and publish to the existing external store.
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}

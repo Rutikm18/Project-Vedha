@@ -1,0 +1,62 @@
+{
+  "hook": "Every office has one door nobody remembers.",
+  "list": [
+    "The accounts PC: remote login left open.",
+    "Client files: open to anyone on the Wi-Fi.",
+    "Billing data: readable without a password."
+  ],
+  "name": "Vedha",
+  "gloss": "TO PIERCE THROUGH",
+  "devanagari": "वेधा",
+  "what": "A 7-day network health check.",
+  "partner": "Delivered by a partner you already trust.",
+  "partnerNodeLabel": "YOUR IT PARTNER",
+  "find": "Find what's open.",
+  "prove": "Prove what's real.",
+  "fix": "Show the fix worked.",
+  "report": "A plain-language report. With proof.",
+  "cta": "Book your 7-day check",
+  "url": "vedhasec.com",
+  "scope": "For office networks. Not cloud networks.",
+  "illustrative": "Illustrative data",
+  "chips": {
+    "proven": "Proven",
+    "verified": "Verified"
+  },
+  "devices": [
+    "ACCOUNTS PC",
+    "FILE SERVER",
+    "BILLING DB",
+    "LAPTOPS"
+  ],
+  "ui": {
+    "tabs": [
+      "Overview",
+      "Findings",
+      "Attack use cases",
+      "Report"
+    ],
+    "findingsTitle": "FINDINGS",
+    "gradeLabel": "GRADE",
+    "reportTitle": "Network health check report",
+    "verifiedOn": "Verified 03 Oct 2026",
+    "holdToVerify": "Hold to verify",
+    "evidence": "EVIDENCE",
+    "verifiedLabel": "VERIFIED"
+  },
+  "checks": "It checks what your business runs on.",
+  "checkpoints": [
+    "Everything on your network",
+    "Remote logins",
+    "Accounts & file servers",
+    "What the internet can reach"
+  ],
+  "checkpointNotes": [
+    "EVERY DEVICE · EVERY OPEN PORT",
+    "RDP · VNC · REMOTE ADMIN",
+    "FILE SHARES · DATABASES",
+    "SEEN FROM OUTSIDE"
+  ],
+  "internetLabel": "INTERNET",
+  "devicesFound": "DEVICES FOUND"
+}

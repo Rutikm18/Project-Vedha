@@ -168,6 +168,19 @@ BRANCHES: tuple[BranchSpec, ...] = (
     BranchSpec("printer", "printer_scan", "PrinterScanner", frozenset(PRINTER_PORTS),
                "Printer Service",
                "Confirm a printer through a real PJL handshake, not the port number."),
+    # Host-level IoT / mobile collectors (added 2026-10-10). Both scanners existed
+    # with rules reading their facts, and nothing ran them. Each probes its own
+    # fixed protocol set per host, so they are host-level and gated on their
+    # trigger ports (gates.IOT_SERVICE_PORTS / MOBILE_SERVICE_PORTS): an ordinary
+    # server that shows none of those ports is never handshaked.
+    BranchSpec("iot", "iot_scan", "IoTScanner", None,
+               "IoT / Embedded Survey",
+               "Read-only RTSP, MQTT, CWMP, SSDP, mDNS and CoAP exposure and auth facts.",
+               kwargs=_no_kwargs),
+    BranchSpec("mobile", "mobile_scan", "MobileScanner", None,
+               "Mobile Device Exposure",
+               "ADB handshake (no command is run) and iOS lockdownd presence facts.",
+               kwargs=_no_kwargs),
     # Datagram branches: the probe is a UDP read sent straight at the authorized
     # target, so the port set comes from the table — an open TCP port is neither
     # required nor meaningful. SNMPScanner probes 161 itself and takes no `ports`.

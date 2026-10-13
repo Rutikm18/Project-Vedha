@@ -258,3 +258,54 @@ def test_probe_limits_never_raises_on_this_platform():
     limits = kl.probe_limits()
     assert isinstance(limits, kl.KernelLimits)
     assert isinstance(limits.syn_capable, bool)
+
+
+# ── the advice must fit the platform (it once told a Windows agent to grant
+#    NET_RAW and run docker network_mode: host) ─────────────────────────────
+
+def test_linux_advice_is_unchanged():
+    warn = kl.check_syn_capability(False, port_count=65535, platform="linux")
+    assert "NET_RAW" in warn.remediation and "CAP_NET_RAW" in warn.detail
+
+
+def test_windows_advice_names_what_windows_can_do():
+    warn = kl.check_syn_capability(False, port_count=65535, platform="win32")
+    assert warn.status == "warn" and "connect" in warn.detail.lower()
+    assert "NET_RAW" not in warn.remediation and "network_mode" not in warn.remediation
+    assert "Linux agent" in warn.remediation and "connect_fast_fail" in warn.remediation
+
+
+def test_macos_advice_names_the_real_limit():
+    warn = kl.check_syn_capability(False, port_count=65535, platform="darwin")
+    assert "NET_RAW" not in warn.remediation and "Linux agent" in warn.remediation
+
+
+def test_narrow_sweeps_stay_quiet_everywhere():
+    for plat in ("linux", "win32", "darwin"):
+        assert kl.check_syn_capability(False, port_count=15, platform=plat) is None
+
+
+# ── "use a Linux agent" must not promise SYN scanning the Docker agent cannot do ──────────────
+# install.sh runs the agent with --cap-drop ALL as a non-root user, so its log says "SYN scan: no". Telling a
+# Windows or macOS operator to "use a Linux agent" for a fast full-port sweep sent them to exactly that agent.
+
+def test_advice_to_use_linux_says_native_and_root_and_warns_about_the_docker_agent():
+    from agent import kernel_limits as kl
+    for platform in ("win32", "darwin"):
+        check = kl.check_syn_capability(False, 65535, platform=platform)
+        advice = check.remediation
+        assert "NATIVE Linux agent" in advice and "root" in advice, (platform, advice)
+        assert "Docker" in advice, (platform, advice)
+
+
+def test_linux_without_raw_sockets_is_told_the_container_install_cannot_do_it():
+    from agent import kernel_limits as kl
+    check = kl.check_syn_capability(False, 65535, platform="linux")
+    assert "drops every capability" in check.remediation
+    assert "natively as root" in check.remediation
+
+
+def test_a_capable_host_and_a_narrow_sweep_are_unchanged():
+    from agent import kernel_limits as kl
+    assert kl.check_syn_capability(True, 65535, platform="linux").status == "pass"
+    assert kl.check_syn_capability(False, 100, platform="win32") is None

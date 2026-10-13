@@ -81,6 +81,8 @@ class EntitlementOut(BaseModel):
     # "repeat" = the same asset may be deep-scanned again.
     deep_repeat_policy: Literal["distinct", "repeat"] = "distinct"
     deep_scanned_targets: list[str] = []
+    # Who to contact for more (set by the organisation; portal only). None = generic wording.
+    support_contact: str | None = None
     # Portal locks (see app/services/portal_locks.py). A locked severity's
     # findings appear only as teaser rows; a locked feature answers "available on
     # a licensed plan". Written reports are withheld while any severity is locked.
@@ -142,9 +144,11 @@ class ScanRequestCreate(BaseModel):
     """A customer's rich scan request. The customer may ask for any active scan
     type, at a chosen intensity, over specific in-scope targets — an operator
     still approves every request before anything runs (the safety gate)."""
-    # Validated against ScanJobType in the route so the vocabulary can't drift
-    # from the enum; kept as a plain str here to avoid a second source of truth.
-    scan_type: str = "vuln_scan"
+    # Validated against the probe-executable subset in the route. Customers should
+    # prefer use_case_id (richer workflow); scan_type is for direct/legacy calls.
+    # RC-FIX-4: default was "vuln_scan" (server-side only); changed to "discovery"
+    # so an omitted scan_type doesn't silently create an undispatchable job.
+    scan_type: str = "discovery"
     # Preferred: a capability use-case id from the portal catalog (GET
     # /portal/use-cases). When set, it drives scan_type + the probe's use case.
     use_case_id: str | None = None

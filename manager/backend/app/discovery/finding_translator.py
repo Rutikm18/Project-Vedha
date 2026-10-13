@@ -25,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.asset import Asset
-from app.models.enums import AssetType, FindingSeverity, FindingStatus
+from app.models.enums import FindingSeverity, FindingStatus
 from app.models.finding import Finding
 from app.models.service import Service
 from app.services.finding_scan_provenance import record_scan_observation
@@ -52,37 +52,42 @@ def _map_severity(raw: str | None) -> FindingSeverity:
         return FindingSeverity.info
 
 
+# The asset-resolution policy and its per-run cache live in ONE place
+# (services/asset_resolution.py). They are re-exported under the names the
+# detection pipeline and its tests have always imported from here.
+from app.services.asset_resolution import AssetCache, host_of as _host_of  # noqa: E402,F401
+
+
+async def prime_asset_cache(db: AsyncSession, engagement_id: uuid.UUID,
+                            targets, cache: dict, identity=None) -> int:
+    """Fill `cache` with the engagement's existing assets for `targets` in ONE query
+    per 1,000 hosts (see services/asset_resolution.prime_asset_cache). `identity`
+    is the submission's IdentityContext; None = global."""
+    from app.services.asset_resolution import prime_asset_cache as _prime
+    return await _prime(db, engagement_id, targets, cache, identity=identity)
+
+
 async def _resolve_asset(db: AsyncSession, engagement_id: uuid.UUID, target: str | None,
-                         *, cache: dict | None = None) -> Asset | None:
+                         *, cache: dict | None = None, identity=None) -> Asset | None:
     """Find the Asset for a probe-reported target IP, creating a minimal one if needed.
 
     A probe's tls_scan/smb_enum/etc. can run standalone (no prior discovery job
     promoted this host yet), so the asset may not exist — create a bare-bones
     row rather than dropping the finding for lack of somewhere to attach it.
 
-    `cache` (a caller-owned {host: Asset} dict for one detection run) eliminates the
-    N+1 where every finding on the same host re-queried/re-created the asset — a
-    host with 20 findings did 20 identical lookups; with the cache it does one.
+    Delegates to services/asset_resolution.resolve_asset, the single identity
+    policy (global by default; per-site for private IPs when the engagement opts
+    in). `identity` is the submission's IdentityContext; None = global.
+
+    `cache` (a caller-owned AssetCache for one detection run) eliminates the N+1
+    where every finding on the same host re-queried/re-created the asset: a host
+    with 20 findings does one lookup, and a caller that knows the hosts up front
+    primes it with prime_asset_cache so that becomes one query per 1,000 hosts for
+    the whole run. New assets get their id here (not from the database), so
+    creating one costs no flush and a run's new assets go out in one batched INSERT.
     """
-    if not target:
-        return None
-    host = target.split(":", 1)[0] if target.count(":") == 1 else target
-    if cache is not None and host in cache:
-        return cache[host]
-    existing = (await db.execute(
-        select(Asset).where(Asset.engagement_id == engagement_id, Asset.ip_address == host)
-    )).scalar_one_or_none()
-    if existing:
-        if cache is not None:
-            cache[host] = existing
-        return existing
-    asset = Asset(engagement_id=engagement_id, ip_address=host,
-                  asset_type=AssetType.server, last_seen=datetime.now(timezone.utc))
-    db.add(asset)
-    await db.flush()
-    if cache is not None:
-        cache[host] = asset
-    return asset
+    from app.services.asset_resolution import resolve_asset
+    return await resolve_asset(db, engagement_id, target, identity=identity, cache=cache)
 
 
 def _finding_port(f: dict) -> int | None:
@@ -130,10 +135,53 @@ async def _escalate_by_exposure(
     return escalate_for_exposure(severity, svc.exposure), svc.exposure
 
 
+# Gap #2 — cross-producer dedup. Several producers (the detection-engine posture
+# track, the probe self-assessment, legacy bridges) can each raise a finding for
+# the SAME underlying condition on the same (host, port) but with DIFFERENT
+# titles, and the dedup key is (asset, title) — so they never merged, giving 3-6
+# rows for one service. A producer may therefore stamp a stable, title-independent
+# CONDITION key into evidence[_DEDUP_KEY] (e.g. "exposed:23"); dedup then matches
+# on (asset, condition) across producers, regardless of title, in addition to the
+# (asset, title) match.
+DEDUP_KEY = "dedup_key"
+_COND = "\x00cond\x00"   # sentinel so a condition key can't collide with a title
+
+# Probe self-assessed finding categories that describe an EXPOSED SERVICE on a
+# port (one finding per (asset, port), whatever producer/title). Kept narrow so a
+# per-port condition key never merges two genuinely different findings that share
+# a port (e.g. weak-crypto vs a web issue on 443).
+_EXPOSED_CATEGORIES = {"cleartext_protocol", "exposure", "amplification"}
+
+
+def _condition_of(evidence) -> str | None:
+    if isinstance(evidence, dict):
+        v = evidence.get(DEDUP_KEY)
+        if isinstance(v, str) and v:
+            return v
+    return None
+
+
+def condition_index_key(asset_id, condition: str) -> tuple:
+    """The in-memory dedup-index key for a cross-producer condition (gap #2).
+    Callers that maintain an index must register a created finding under this key
+    (in addition to (asset_id, title)) when it carries a condition."""
+    return (asset_id, _COND, condition)
+
+
+def probe_finding_condition(finding: dict) -> str | None:
+    """The cross-producer condition for a probe self-assessed finding, or None —
+    only for the exposed-service class, keyed by port (gap #2)."""
+    if isinstance(finding, dict) and finding.get("category") in _EXPOSED_CATEGORIES:
+        return exposed_service_condition(finding.get("port"), finding.get("proto"))
+    return None
+
+
 async def load_finding_index(
     db: AsyncSession, engagement_id: uuid.UUID, statuses,
-) -> dict[tuple[uuid.UUID | None, str], Finding]:
-    """{(asset_id, title): Finding} for one engagement, in ONE query.
+) -> dict[tuple, Finding]:
+    """{(asset_id, title): Finding} for one engagement, in ONE query — plus a
+    (asset_id, _COND, condition) entry for any finding carrying a condition key,
+    so cross-producer dedup (gap #2) can look up by condition too.
 
     Detection asks "have I seen this finding before?" once per finding, which is
     thousands of sequential round trips on a large engagement. This is the same
@@ -148,9 +196,12 @@ async def load_finding_index(
             Finding.status.in_(statuses),
         )
     )).scalars().all()
-    index: dict[tuple[uuid.UUID | None, str], Finding] = {}
+    index: dict[tuple, Finding] = {}
     for row in rows:
         index.setdefault((row.asset_id, row.title), row)
+        cond = _condition_of(row.evidence)
+        if cond:
+            index.setdefault((row.asset_id, _COND, cond), row)
     return index
 
 
@@ -164,9 +215,14 @@ async def load_open_finding_index(
 
 async def _find_open_duplicate(
     db: AsyncSession, engagement_id: uuid.UUID, asset_id: uuid.UUID | None, title: str,
-    *, index: dict | None = None,
+    *, condition: str | None = None, index: dict | None = None,
 ) -> Finding | None:
-    """A still-relevant Finding with the same (engagement, asset, title), if any.
+    """A still-relevant Finding that is the same issue, if any.
+
+    Matches on the cross-producer CONDITION key first (gap #2) — so a finding
+    another producer already raised for the same (asset, condition) is reaffirmed
+    instead of duplicated under a different title — then falls back to the classic
+    (asset, title) match. `condition` None → title-only (prior behaviour).
 
     Re-running the same probe scan weekly must not pile up duplicate rows for
     an unchanged issue — but a finding the operator already remediated/marked
@@ -179,7 +235,23 @@ async def _find_open_duplicate(
     two findings with the same identity in one run would both be created.
     """
     if index is not None:
+        if condition:
+            hit = index.get((asset_id, _COND, condition))
+            if hit is not None:
+                return hit
         return index.get((asset_id, title))
+
+    if condition:
+        qc = select(Finding).where(
+            Finding.engagement_id == engagement_id,
+            Finding.evidence[_DEDUP_KEY].astext == condition,
+            Finding.status.in_(_DEDUP_SUPPRESSING_STATUSES),
+        )
+        qc = qc.where(Finding.asset_id == asset_id) if asset_id else qc.where(Finding.asset_id.is_(None))
+        hit = (await db.execute(qc.limit(1))).scalar_one_or_none()
+        if hit is not None:
+            return hit
+
     q = select(Finding).where(
         Finding.engagement_id == engagement_id,
         Finding.title == title,
@@ -189,12 +261,82 @@ async def _find_open_duplicate(
     return (await db.execute(q.limit(1))).scalar_one_or_none()
 
 
+def exposed_service_condition(port: int | None, proto: str | None = None) -> str | None:
+    """The cross-producer condition key for an exposed-service finding (gap #2):
+    one such finding per (asset, port), whatever producer raised it or how it is
+    titled. None when there is no port to key on. UDP gets its own `/udp` key so
+    UDP/161 and TCP/161 stay two services (spelling shared with the engine's
+    `posture_rules.condition_key`, which is the canonical definition)."""
+    if not isinstance(port, int):
+        return None
+    return f"exposed:{port}/udp" if str(proto or "").lower() == "udp" else f"exposed:{port}"
+
+
+_SEVERITY_ORDER = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
+_MAX_SIGNALS = 12
+
+
+def stronger_severity(current, incoming):
+    """The higher of two FindingSeverity values (merging two signals into one finding
+    must never LOWER what the strongest signal said)."""
+    cur = _SEVERITY_ORDER.get(getattr(current, "value", current), -1)
+    inc = _SEVERITY_ORDER.get(getattr(incoming, "value", incoming), -1)
+    return incoming if inc > cur else current
+
+
+def merge_signals(previous_evidence, *, existing_rule_id=None, existing_title=None,
+                  existing_severity=None, existing_run_id=None, incoming: dict | None = None,
+                  run_id=None) -> list[dict]:
+    """The signals (producer rows) that collapsed into one finding, for the report's
+    roll-up: one `{rule_id, title, severity, run_id}` per distinct rule/title, bounded.
+
+    The finding's own first signal is seeded from the stored row so it is not lost when a
+    later producer's evidence replaces the evidence body. `run_id` stamps the signals the
+    CURRENT run observed; `prune_stale_signals` drops the rest at the end of the run, so a
+    producer that stopped matching disappears instead of lingering."""
+    prev = previous_evidence if isinstance(previous_evidence, dict) else {}
+    signals: list[dict] = [dict(s) for s in (prev.get("signals") or []) if isinstance(s, dict)]
+    stamp = str(run_id) if run_id is not None else None
+
+    def _add(rule_id, title, severity, run):
+        sev = getattr(severity, "value", severity)
+        ident = rule_id or title
+        for s in signals:
+            if (s.get("rule_id") or s.get("title")) == ident:
+                s.update({"title": title, "severity": sev, "run_id": run})
+                return
+        signals.append({"rule_id": rule_id, "title": title, "severity": sev, "run_id": run})
+
+    if not signals and (existing_rule_id or existing_title):
+        _add(existing_rule_id or prev.get("rule_id"), existing_title, existing_severity,
+             str(existing_run_id) if existing_run_id is not None else None)
+    if incoming:
+        _add(incoming.get("rule_id"), incoming.get("title"), incoming.get("severity"), stamp)
+    return signals[:_MAX_SIGNALS]
+
+
+def prune_stale_signals(findings, run_id) -> None:
+    """After a run: keep only the signals this run observed. A finding left with a single
+    signal is no longer a merge, so its `signals` key is removed. Best-effort and in place."""
+    stamp = str(run_id)
+    for f in findings:
+        ev = f.evidence if isinstance(f.evidence, dict) else None
+        if not ev or not ev.get("signals"):
+            continue
+        fresh = [s for s in ev["signals"] if isinstance(s, dict) and s.get("run_id") == stamp]
+        new_ev = {k: v for k, v in ev.items() if k != "signals"}
+        if len(fresh) > 1:
+            new_ev["signals"] = fresh
+        f.evidence = new_ev
+
+
 async def create_findings_from_probe_result(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
     *,
     scan_result_id: uuid.UUID | None = None,
     scan_job_id: uuid.UUID | None = None,
     recorded_at: datetime | None = None,
+    identity=None,
 ) -> int:
     """Convert a probe's self-assessed `findings` list into persisted Finding rows.
 
@@ -216,18 +358,34 @@ async def create_findings_from_probe_result(
         if not isinstance(f, dict):
             continue
         try:
-            asset = await _resolve_asset(db, engagement_id, f.get("target"))
+            asset = await _resolve_asset(db, engagement_id, f.get("target"), identity=identity)
             title = (f.get("title") or f"{scan_type} finding")[:500]
             asset_id = asset.id if asset else None
+            # gap #2: an exposed-service probe finding carries a per-port condition
+            # key so it merges with the posture engine's finding for the same
+            # service instead of adding a second, differently-titled row.
+            condition = probe_finding_condition(f)
 
-            dup = await _find_open_duplicate(db, engagement_id, asset_id, title)
+            dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
+                                             condition=condition)
             if dup is not None:
                 # Still relevant and still present — touch evidence (bumps
                 # updated_at) and advance last_seen rather than creating a
                 # literal duplicate row. (No detection_run: this is the probe's
                 # own self-assessed path, not the detection engine.)
+                merged_signals = None
+                if condition and dup.title != title:
+                    # A different producer for the same condition: the merged finding must not
+                    # LOWER what the strongest signal said, and remembers who else reported it.
+                    dup.severity = stronger_severity(dup.severity, _map_severity(f.get("severity")))
+                    merged_signals = merge_signals(
+                        dup.evidence, existing_rule_id=(dup.evidence or {}).get("rule_id"),
+                        existing_title=dup.title, existing_severity=dup.severity,
+                        incoming={"rule_id": f.get("rule_id"), "title": title,
+                                  "severity": f.get("severity")})
                 dup.evidence = record_scan_observation(
-                    {**f, "scan_type": scan_type, "engine": result.get("engine")},
+                    {**f, "scan_type": scan_type, "engine": result.get("engine"),
+                     **({DEDUP_KEY: condition} if condition else {})},
                     scan_result_id=scan_result_id,
                     scan_job_id=scan_job_id,
                     scan_type=scan_type,
@@ -236,13 +394,18 @@ async def create_findings_from_probe_result(
                     recorded_at=now,
                     initial=False,
                     previous_evidence=dup.evidence,
+                    source_host=f.get("target"),
                 )
+                if merged_signals:
+                    dup.evidence = {**dup.evidence, "signals": merged_signals}
                 dup.last_seen = now
                 continue
 
             severity = _map_severity(f.get("severity"))
             severity, exposure = await _escalate_by_exposure(db, asset_id, f, severity)
             evidence = {**f, "scan_type": scan_type, "engine": result.get("engine")}
+            if condition:
+                evidence[DEDUP_KEY] = condition
             if exposure == "external":
                 evidence["exposure_escalated"] = True
                 evidence["exposure"] = exposure
@@ -255,6 +418,7 @@ async def create_findings_from_probe_result(
                 tool=result.get("engine") or result.get("scanner"),
                 recorded_at=now,
                 initial=True,
+                source_host=f.get("target"),
             )
             db.add(Finding(
                 engagement_id=engagement_id,

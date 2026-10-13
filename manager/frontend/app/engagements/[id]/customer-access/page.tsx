@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, UserPlus, KeyRound, ServerCog, Loader2, Check, X } from "lucide-react";
+import { ArrowLeft, UserPlus, KeyRound, ServerCog, Loader2, Check, ShieldOff, X } from "lucide-react";
 import { RefreshButton } from "../../../../components/RefreshButton";
 
 async function ca<T>(id: string, path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
@@ -22,7 +22,7 @@ interface ScanReq {
   id: string; scan_type: string; status: string; note: string | null;
   requested_at: string; reviewed_by: string | null;
 }
-interface ClientUser { id: string; email: string; is_active: boolean; temp_password?: string | null }
+interface ClientUser { id: string; email: string; is_active: boolean; mfa_enabled?: boolean; temp_password?: string | null }
 
 export default function CustomerAccessPage() {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +49,21 @@ export default function CustomerAccessPage() {
   const resetPw = useMutation({
     mutationFn: () => ca<ClientUser>(id, "/client-user", { method: "PATCH", body: { reset_password: true } }),
     onSuccess: (u) => { setTempPw(u.temp_password ?? null); setNote("Password reset."); },
+    onError: (e: Error) => setNote(e.message),
+  });
+  // Lost phone and recovery codes: clear the customer's two-step sign-in
+  // (admin only; the server refuses anyone else and the note says so).
+  const resetMfa = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch(`/api/users/${userId}/mfa-reset`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (res.status === 403) throw new Error("Only an administrator can reset two-step sign-in.");
+      if (!res.ok) throw new Error((data && (data.error || data.detail)) || res.statusText);
+    },
+    onSuccess: () => {
+      setNote("Two-step sign-in cleared. The customer signs in with their password and sets it up again if your policy requires it.");
+      qc.invalidateQueries({ queryKey: ["ca", id, "client-user"] });
+    },
     onError: (e: Error) => setNote(e.message),
   });
   const assign = useMutation({
@@ -94,10 +109,20 @@ export default function CustomerAccessPage() {
             <div className="space-y-2 text-sm">
               <div>Email: <span className="font-medium">{u.email}</span></div>
               <div>Status: {u.is_active ? "active" : "disabled"}</div>
-              <button onClick={() => resetPw.mutate()} disabled={resetPw.isPending}
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
-                {resetPw.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />} Reset password
-              </button>
+              <div>Two-step sign-in: {u.mfa_enabled ? "on" : "off"}</div>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => resetPw.mutate()} disabled={resetPw.isPending}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+                  {resetPw.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />} Reset password
+                </button>
+                {u.mfa_enabled && (
+                  <button onClick={() => { if (window.confirm(`Clear two-step sign-in for ${u.email}? Use this only when they have lost their phone and recovery codes.`)) resetMfa.mutate(u.id); }}
+                    disabled={resetMfa.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+                    {resetMfa.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />} Reset two-step sign-in
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="space-y-2">

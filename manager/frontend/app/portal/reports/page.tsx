@@ -1,8 +1,7 @@
 "use client";
 
-import { ReportsWorkspace } from "../../reports/page";
+import { ReportsWorkspace } from "../../reports/workspace";
 
-export { PortalReportTabContent } from "./workspace";
 
 export default function PortalReportsPage() {
   return <ReportsWorkspace surface="portal" />;

@@ -69,6 +69,22 @@ export interface ReportAsset {
   environment: string | null;
   tags: Record<string, unknown>;
   last_seen: string | null;
+  /** The probe classifier's role, and that claim checked against the OS fingerprint. */
+  device_role?: string | null;
+  role_confidence?: number | null;
+  resolved_role?: string | null;
+  role_basis?: string | null;
+  role_trusted?: boolean | null;
+}
+
+/** One line for a reader: "server (classifier said network_device; OS says otherwise) — low confidence". */
+export function roleSummary(asset: ReportAsset): string | null {
+  if (!asset.device_role) return null;
+  const pct = asset.role_confidence == null ? "confidence not recorded" : `${Math.round(asset.role_confidence * 100)}% confidence`;
+  const resolved = asset.resolved_role ?? asset.device_role;
+  const overruled = resolved !== asset.device_role ? ` (classifier said ${asset.device_role}; the OS fingerprint disagrees)` : "";
+  const trust = asset.role_trusted === false ? " — too uncertain to drive severity or routing" : "";
+  return `${resolved}${overruled}, ${pct}${trust}`;
 }
 
 export interface ReportEvidenceArtifact {
@@ -247,14 +263,15 @@ export interface ReportRemediationPlan {
 
 export interface ReportRecommendation {
   text: string;
-  source_type: "finding_evidence" | "reviewed_remediation_plan";
+  source_type: "finding_evidence" | "reviewed_remediation_plan" | "knowledge_base_recipe";
   source_id: string | null;
   author: string | null;
   reviewer: string | null;
   recorded_at: string | null;
   generated_at: string | null;
   reviewed_at: string | null;
-  review_state: "unreviewed_recorded" | "recorded_as_reviewed" | "human_reviewed_plan";
+  review_state:
+    | "unreviewed_recorded" | "recorded_as_reviewed" | "human_reviewed_plan" | "unreviewed_knowledge_base";
 }
 
 export interface ReportRemediation {
@@ -265,7 +282,33 @@ export interface ReportRemediation {
   reviewed_plans: ReportRemediationPlan[];
   recommendations: ReportRecommendation[];
   recorded_recommendations: string[];
+  /** The rule-keyed recipe rendered for this finding (standard knowledge-base content, not a reviewed plan). */
+  fix_plan?: ReportFixPlan | null;
   gaps: string[];
+}
+
+export interface ReportFixPlanStep {
+  step: number;
+  tier?: string;
+  title: string;
+  description?: string;
+  commands_for_os?: string[];
+  downtime?: string;
+  rollback?: string;
+  risk?: string;
+}
+
+export interface ReportFixPlan {
+  source: string;
+  recipe_id?: string;
+  title?: string;
+  summary?: string;
+  effort?: string;
+  remediation_risk?: string;
+  steps: ReportFixPlanStep[];
+  verification_check?: { check?: string; expected?: string; manual_command?: string };
+  long_term_recommendations?: string[];
+  compensating_controls?: string;
 }
 
 export interface ReportComplianceMapping {
@@ -380,6 +423,13 @@ export interface ReportFinding {
   reproduction_steps: unknown;
   root_cause: unknown;
   preconditions: unknown;
+  /** Why the platform flagged this (rule, evidence basis, false-positive caveat). */
+  detection_rationale?: string | null;
+  service_port?: number | null;
+  /** Why CVE / CVSS / EPSS / CWE are legitimately empty (recorded, or derived for configuration findings). */
+  not_applicable_reasons?: Record<string, string>;
+  /** Per narrative field: "recorded" or "knowledge_base" (standard text). */
+  narrative_sources?: Record<string, string>;
   severity: string;
   status: string;
   asset: ReportAsset | null;
@@ -414,7 +464,23 @@ export interface ReportFinding {
   readiness_gaps: string[];
 }
 
+export interface ReportIssueGroup {
+  key: string;
+  asset_id: string | null;
+  asset_label: string | null;
+  port: number | null;
+  title: string;
+  severity: string;
+  open: boolean;
+  finding_count: number;
+  finding_ids: string[];
+  signals: string[];
+}
+
 export interface ReportSummary {
+  /** Findings roll up to issues (one per asset + service port). */
+  issue_count?: number;
+  issue_groups?: ReportIssueGroup[];
   total_findings: number;
   by_severity: Record<string, number>;
   by_status: Record<string, number>;
@@ -459,11 +525,39 @@ export interface ReportReadiness {
   report_gaps: string[];
 }
 
+export interface ReportCoverageRule {
+  rule_id: string;
+  title: string | null;
+  /** finding_exists | evaluated_clean | no_evidence_collected | schema_drift | rule_error */
+  verdict: string;
+  reasons: string[];
+}
+
+/** What was checked, so "not detected" can be told from "not checked". */
+export interface ReportCoverageSheet {
+  run_id: string;
+  run_finished_at: string | null;
+  vuln_db_version: string | null;
+  scan_reference: string | null;
+  scan_use_case: string | null;
+  scan_intensity: string | null;
+  ports_scanned: number[] | string | null;
+  ports_scanned_note: string | null;
+  rules_total: number;
+  rules_evaluated_clean: number;
+  rules_with_finding: number;
+  rules_not_checked: number;
+  rules_could_not_assess: number;
+  rules: ReportCoverageRule[];
+  interpretation: string;
+}
+
 export interface ReportDocument {
   document: ReportDocumentControl;
   engagement: ReportEngagement;
   summary: ReportSummary;
   findings: ReportFinding[];
+  coverage_sheet?: ReportCoverageSheet | null;
   compliance_rollup: ReportComplianceRollup;
   derived_regional_compliance: ReportDerivedRegionalCompliance;
   readiness: ReportReadiness;

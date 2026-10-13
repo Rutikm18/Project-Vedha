@@ -80,6 +80,10 @@ OpenRouter model (with `openrouter/free` available), or the configured Anthropic
 model. Cloud keys belong in the Manager deployment secret store, never in the
 frontend environment.
 
+On AWS, put the keys in the host's `.env` (or SSM for `deploy/aws/install.sh`) and re-create
+`api` and `worker`; the full guide, verification and troubleshooting are in
+[`docs/deployment/aws-ai-setup.md`](docs/deployment/aws-ai-setup.md).
+
 ### Make targets
 
 ```

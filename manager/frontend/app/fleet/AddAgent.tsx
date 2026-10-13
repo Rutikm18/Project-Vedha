@@ -18,7 +18,7 @@ import { useToast } from "../../hooks/useToast";
 import { copyText } from "../../lib/clipboard";
 import { INSTALL_LIFETIMES } from "../../lib/fleet-workspace-api";
 import type {
-  AgentInstallInfo, FleetEngagementOption, FleetWorkspaceSurface, InstallToken,
+  AgentInstallInfo, FleetEngagementOption, FleetWorkspaceSurface, InstallCommands, InstallToken,
   createFleetWorkspaceApi,
 } from "../../lib/fleet-workspace-api";
 
@@ -37,6 +37,48 @@ const STATE_LABEL: Record<InstallToken["state"], string> = {
   expired: "expired",
   revoked: "revoked",
 };
+
+export type InstallOs = "linux" | "windows";
+
+/** Whether the published release can be installed on Windows (and the manager says so). */
+export function windowsOffered(info: AgentInstallInfo | null): boolean {
+  return Boolean(info?.available && info.windows?.available);
+}
+
+/** The Windows one-liners worth showing, in the order to prefer them. */
+export function windowsCommands(commands: InstallCommands | undefined): { key: string; label: string; command: string }[] {
+  const out: { key: string; label: string; command: string }[] = [];
+  if (commands?.windows_powershell) {
+    out.push({ key: "powershell", label: "Paste into any Command Prompt or PowerShell window — Windows asks for administrator permission itself", command: commands.windows_powershell });
+  }
+  if (commands?.windows_cmd) {
+    out.push({ key: "cmd", label: "Alternative for Command Prompt (also asks for administrator rights itself)", command: commands.windows_cmd });
+  }
+  return out;
+}
+
+/** The Windows commands for an install with NO token (approval install), or [] while the manager does not allow it. */
+export function tokenlessWindowsCommands(info: AgentInstallInfo | null): { key: string; label: string; command: string }[] {
+  if (!info?.available || !info.tokenless?.enabled || !windowsOffered(info)) return [];
+  return windowsCommands(info.tokenless.commands as InstallCommands);
+}
+
+/** What an operator should do when no release is published yet. Windows first, because that is the common case. */
+export function publishAdvice(): { windows: string; linux: string } {
+  return {
+    windows: "powershell -ExecutionPolicy Bypass -File probe\\windows\\publish-release.ps1 -Server user@your-server -ManagerUrl https://api.your-domain -ConfigureManager",
+    linux: "make agent-release   then   make agent-publish TO=user@your-server:/opt/Project-Vedha/manager/agent-releases",
+  };
+}
+
+/** One honest sentence on what protects the Windows download. */
+export function windowsIntegrity(info: AgentInstallInfo | null): string {
+  const windows = info?.windows;
+  if (!windows?.available) return "";
+  return windows.authenticode_thumbprint
+    ? `vedha-agent.exe is Authenticode-signed (certificate ${windows.authenticode_thumbprint.slice(0, 8)}…) and the installer checks it`
+    : "not Authenticode-signed yet — the installer still verifies the signed release manifest and the package checksum";
+}
 
 /** Host the agent dials, for the requirement line ("outbound HTTPS to …"). */
 export function managerHost(url: string): string {
@@ -61,6 +103,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
   const [showInspect, setShowInspect] = useState(false);
   const [showReqs, setShowReqs] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [os, setOs] = useState<InstallOs>("linux");
 
   const loadTokens = useCallback(async () => {
     try {
@@ -140,6 +183,10 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
   }
 
   const host = managerHost(info?.manager_url ?? "");
+  const hasWindows = windowsOffered(info);
+  const target: InstallOs = hasWindows ? os : "linux";
+  const winCommands = windowsCommands(created?.commands);
+  const noTokenCommands = tokenlessWindowsCommands(info);
   const blocked = surface === "portal" && info?.can_add_agent === false;
   const canGenerate = Boolean(info?.available) && !blocked && (surface === "portal" || Boolean(engagementId));
   const recent = tokens.filter((t) => t.id !== created?.id).slice(0, 6);
@@ -151,7 +198,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
         <div>
           <strong id="add-agent-title" className="flt-head-title">Add a vedha-agent</strong>
           <div className="flt-head-sub">
-            Runs on a Linux host with Docker inside the network you want assessed. It only connects
+            Runs on a Linux host with Docker{hasWindows ? " or on a Windows host" : ""} inside the network you want assessed. It only connects
             out to <span className="flt-mono">{host}</span> over HTTPS — no inbound ports.
           </div>
         </div>
@@ -166,10 +213,20 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
             <strong>The agent installer is not available yet.</strong>
             {surface === "manager" ? (
               <>
-                {" "}{info.reason}. Publish a signed release from the build machine:{" "}
-                <span className="flt-mono">make agent-release</span> then{" "}
-                <span className="flt-mono">make agent-publish TO=…</span> and set{" "}
-                <span className="flt-mono">AGENT_RELEASE_PUBLIC_KEY</span> on the manager.
+                {" "}{info.reason}. Nothing can be installed until one signed release is published. One command does the
+                whole job (build, sign, upload, set the keys on the manager, restart it):
+                <div className="flt-install" style={{ marginTop: 6 }}>
+                  <code className="flt-code">{publishAdvice().windows}</code>
+                  <button className="flt-icon-btn" aria-label="Copy the publish command" onClick={() => copy(publishAdvice().windows)}>
+                    <Clipboard size={15} />
+                  </button>
+                </div>
+                <span className="aa-small">
+                  Run it on your Windows PC (steps and what it does: docs/operations/ONE_COMMAND_INSTALL.md). On Linux or macOS use{" "}
+                  <span className="flt-mono">{publishAdvice().linux}</span>, then set{" "}
+                  <span className="flt-mono">AGENT_RELEASE_PUBLIC_KEY</span> (and, for Windows,{" "}
+                  <span className="flt-mono">AGENT_RELEASE_P256_PUBLIC_KEY</span>) on the manager.
+                </span>
               </>
             ) : " Your Vedha team needs to publish it — contact them, then come back to this page."}
           </div>
@@ -179,7 +236,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
           <CheckCircle2 size={13} color="var(--nominal-color)" />
           <span>Agent <strong className="flt-mono">{info.version}</strong></span>
           <span className="aa-dot">·</span>
-          <span>{(info.arches ?? []).join(", ")}</span>
+          <span>{[...(info.arches ?? []).map((a) => `linux/${a}`), ...(hasWindows ? ["windows/amd64"] : [])].join(", ")}</span>
           <span className="aa-dot">·</span>
           <span>{info.signed ? <>signed <span className="flt-mono">({info.signing_key_id})</span></> : "unsigned (development)"}</span>
         </div>
@@ -190,6 +247,33 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
       )}
       {blocked && info?.blocker && (
         <div className="aa-note" role="status"><AlertTriangle size={14} /><div>{info.blocker}.</div></div>
+      )}
+
+      {noTokenCommands.length > 0 && (
+        <div className="aa-result" aria-label="Install without a token">
+          <div className="aa-result-head">
+            <span className="flt-cmd-label">Windows — no token needed (approve it here afterwards)</span>
+          </div>
+          <div className="flt-cmds">
+            {noTokenCommands.map((c) => (
+              <div className="flt-cmd" key={c.key}>
+                <span className="flt-cmd-label">{c.label}</span>
+                <div className="flt-install">
+                  <code className="flt-code">{c.command}</code>
+                  <button className="flt-icon-btn" aria-label={`Copy ${c.key} command without a token`} onClick={() => copy(c.command)}>
+                    <Clipboard size={15} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="aa-small">
+            The command holds no secret, so it can be reused on any number of machines. Each machine installs, connects to
+            this manager and shows a short <strong>pairing code</strong>. Find it under <strong>Pending requests</strong> below
+            (check the host name and IP address), type the code, and approve: the manager then gives that agent its
+            credentials by itself. Nothing is scanned until you approve, and the request expires after 15 minutes.
+          </p>
+        </div>
       )}
 
       <form className="aa-form" onSubmit={generate}>
@@ -244,19 +328,58 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
 
       {created?.commands && (
         <div className="aa-result" aria-live="polite">
+          {hasWindows && (
+            <div className="aa-os" role="tablist" aria-label="Operating system of the host">
+              {(["linux", "windows"] as const).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={target === id}
+                  className="aa-os-tab"
+                  data-active={target === id}
+                  onClick={() => setOs(id)}
+                >
+                  {id === "linux" ? "Linux" : "Windows"}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="aa-result-head">
-            <span className="flt-cmd-label">Run on the Linux host (as root)</span>
+            <span className="flt-cmd-label">
+              {target === "windows" ? "Run on the Windows host (one command, any window)" : "Run on the Linux host (as root)"}
+            </span>
             <span className="flt-state" style={{ color: STATE_COLOR[createdState ?? "active"] }}>
               <span className="flt-dot" style={{ background: STATE_COLOR[createdState ?? "active"] }} />
               {STATE_LABEL[createdState ?? "active"]}
             </span>
           </div>
-          <div className="flt-install">
-            <code className="flt-code">{created.commands.one_line}</code>
-            <button className="flt-icon-btn" aria-label="Copy install command" onClick={() => copy(created.commands!.one_line)}>
-              <Clipboard size={15} />
-            </button>
-          </div>
+          {target === "windows" ? (
+            <div className="flt-cmds">
+              {winCommands.length === 0 && (
+                <p className="aa-small">This manager address cannot be embedded safely in a Windows command. Use the https:// address of the manager.</p>
+              )}
+              {winCommands.map((c) => (
+                <div className="flt-cmd" key={c.key}>
+                  <span className="flt-cmd-label">{c.label}</span>
+                  <div className="flt-install">
+                    <code className="flt-code">{c.command}</code>
+                    <button className="flt-icon-btn" aria-label={`Copy ${c.key} install command`} onClick={() => copy(c.command)}>
+                      <Clipboard size={15} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <p className="aa-small">{windowsIntegrity(info)}.</p>
+            </div>
+          ) : (
+            <div className="flt-install">
+              <code className="flt-code">{created.commands.one_line}</code>
+              <button className="flt-icon-btn" aria-label="Copy install command" onClick={() => copy(created.commands!.one_line)}>
+                <Clipboard size={15} />
+              </button>
+            </div>
+          )}
           <p className="aa-small">
             Works once, until {formatExact(created.expires_at)}. Anyone holding it can add an agent to
             this engagement until then — share it only with the person installing, or revoke it below.
@@ -265,7 +388,14 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
           <button type="button" className="aa-link" onClick={() => setShowInspect((v) => !v)} aria-expanded={showInspect}>
             <ChevronDown size={12} className="flt-chev" data-open={showInspect} /> Prefer to read the installer first?
           </button>
-          {showInspect && (
+          {showInspect && target === "windows" && (
+            <p className="aa-small">
+              The installer is plain text: open <a className="flt-mono" href={`${info?.manager_url ?? ""}/agent/install.ps1`} target="_blank" rel="noreferrer">{host}/agent/install.ps1</a> and
+              read it before running the command. It verifies the signed release before it installs anything
+              (add <span className="flt-mono">-VerifyOnly</span> to check a release without installing it).
+            </p>
+          )}
+          {showInspect && target === "linux" && (
             <div className="flt-cmds">
               {(["download", "run"] as const).map((key, index) => (
                 <div className="flt-cmd" key={key}>
@@ -286,7 +416,17 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
       <button type="button" className="aa-link" onClick={() => setShowReqs((v) => !v)} aria-expanded={showReqs}>
         <ChevronDown size={12} className="flt-chev" data-open={showReqs} /> Host requirements and network checklist
       </button>
-      {showReqs && (
+      {showReqs && target === "windows" && (
+        <ul className="aa-reqs">
+          <li><strong>Host:</strong> 64-bit Windows 10 / 11 or Windows Server 2016+, Windows PowerShell 5.1 or later, an account that can approve the administrator prompt (UAC). The manager must be reachable over https.</li>
+          <li><strong>Placement:</strong> on the same network segment as the systems in scope, with a fixed IP (DHCP reservation).</li>
+          <li><strong>Network:</strong> outbound HTTPS (443) to <span className="flt-mono">{host}</span>; working time sync. No inbound ports.</li>
+          <li><strong>Security tools:</strong> a network scanner can look like malware to antivirus/EDR. Allow-list <span className="flt-mono">vedha-agent.exe</span> with your security team before installing.</li>
+          <li><strong>Where it lives:</strong> a background task named VedhaAgent running as SYSTEM; its identity key is in <span className="flt-mono">C:\ProgramData\vedha-agent</span>, readable by administrators only. Remove it with <span className="flt-mono">C:\ProgramData\vedha-agent\tools\uninstall.cmd -Purge</span>.</li>
+          <li><strong>Integrity:</strong> the installer verifies the signed release manifest, the package checksum and (when the release pins one) the Authenticode signature before installing.</li>
+        </ul>
+      )}
+      {showReqs && target === "linux" && (
         <ul className="aa-reqs">
           <li><strong>Host:</strong> Linux VM or server (Ubuntu 22.04+, Debian 12, RHEL 9, Amazon Linux 2023), amd64 or arm64, 2 vCPU · 4 GB RAM · 20 GB disk, Docker Engine.</li>
           <li><strong>Placement:</strong> on the same network segment as the systems in scope, with a fixed IP (DHCP reservation).</li>
@@ -331,6 +471,8 @@ export const ADD_AGENT_STYLES = `
 .aa-dot { color: var(--text-faint); }
 .aa-note { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); color: var(--text-secondary); font-size: 11.5px; line-height: 1.5; margin-bottom: 12px; }
 .aa-note svg { flex-shrink: 0; margin-top: 2px; color: var(--sev-medium-color); }
+/* A long command must scroll inside its box, never widen the page: every flex/grid parent above it needs min-width: 0. */
+.flt-card, .aa-note > div, .aa-result > *, .aa-result .flt-cmds, .aa-result .flt-cmd { min-width: 0; }
 .aa-warn { border-color: var(--sev-medium-color); }
 .aa-form + .aa-note { margin: 12px 0 0; }
 .aa-form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; }
@@ -338,6 +480,9 @@ export const ADD_AGENT_STYLES = `
 .aa-result { margin-top: 14px; display: grid; gap: 8px; padding: 12px; border-radius: 10px; border: 0.5px solid var(--border-accent); background: var(--accent-ghost); }
 .aa-result-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .aa-small { margin: 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.aa-os { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; border: 0.5px solid var(--border-subtle); background: var(--bg-surface); width: fit-content; }
+.aa-os-tab { padding: 4px 14px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 11.5px; cursor: pointer; }
+.aa-os-tab[data-active="true"] { background: var(--accent-ghost); color: var(--accent); font-weight: 600; }
 .aa-link { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; padding: 0; border: 0; background: none; color: var(--text-secondary); font-size: 11.5px; cursor: pointer; }
 .aa-link:hover { color: var(--accent); }
 .aa-reqs { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; color: var(--text-muted); font-size: 11.5px; line-height: 1.5; }

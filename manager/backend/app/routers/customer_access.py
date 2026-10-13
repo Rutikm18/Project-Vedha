@@ -27,7 +27,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.auth.password import hash_password
 from app.auth.rbac import require_role
-from app.dependencies import DB, AuthUser
+from app.dependencies import DB, AuthUser, RedisConn
 from app.models.agent import Agent
 from app.models.customer_entitlement import (
     DEFAULT_POC_LOCKED_SEVERITIES, LOCKABLE_FEATURES, LOCKABLE_SEVERITIES, PLAN_LICENSED,
@@ -72,6 +72,8 @@ class ClientUserOut(BaseModel):
     engagement_id: uuid.UUID
     portal_slug: str | None = None    # the customer's stable handle / future subdomain
     temp_password: str | None = None  # returned ONCE on create/reset
+    # Two-step sign-in is set up (an admin can reset it: POST /auth/mfa/reset/{id}).
+    mfa_enabled: bool = False
 
 
 class AssignAgentBody(BaseModel):
@@ -182,19 +184,50 @@ def build_scan_job(scan_request: ScanRequest, engagement: Engagement) -> ScanJob
 
     The customer's chosen targets + intensity ride into ``result`` so the existing
     dispatch-time scope gate (agents.py) and the probe consume them. Targets were
-    already validated ⊆ scope at request time; the dispatch gate re-validates."""
+    already validated ⊆ scope at request time; the dispatch gate re-validates.
+
+    RC-FIX-1 (job_type): Use-case scan types (deep_port_sweep, full_port_audit, …)
+    are NOT ScanJobType enum values — they live in params["scan_type"]. Falling back
+    to ScanJobType.vuln_scan was wrong: vuln_scan is excluded from
+    AGENT_EXECUTABLE_TYPES, so the job was invisible to every probe's HTTP poll.
+    The correct fallback is ScanJobType.discovery — the generic probe-executable type
+    for all network/port scans. The probe reads params["use_case_id"] / params["scan_type"]
+    to determine exactly what workflow to run.
+
+    RC-FIX-2 (agent_id): Pre-assigning agent_id to the DB column at creation time
+    blocked HTTP polling because the poll query requires agent_id IS NULL.
+    Instead, the preferred probe is stored in params["preferred_agent_id"] where the
+    poll's existing pin logic (agents.py:1135–1141) picks it up — respecting the pin
+    when the agent is live and falling back to any compatible probe when it is stale.
+    """
     if engagement.assigned_agent_id is None:
         raise ValueError("engagement has no assigned agent")
+    # RC-FIX-1 + RC-FIX-4 (manager-level stuck): resolve job_type conservatively.
+    # Two cases where the resolved type must fall back to discovery:
+    #   (a) use-case scan types ("deep_port_sweep", etc.) are NOT ScanJobType enum
+    #       values → ValueError → fallback (RC-FIX-1).
+    #   (b) scan_type IS a valid ScanJobType but is server-side only ("vuln_scan",
+    #       "detection", "ai_report" …) → not in AGENT_EXECUTABLE_TYPES → the
+    #       probe's HTTP poll never sees it and the job is stuck forever (RC-FIX-4).
+    # The hard guard below covers both: any type that is not probe-executable is
+    # remapped to discovery so the job is always claimable.
+    from app.routers.agents import AGENT_EXECUTABLE_TYPES
     try:
         job_type = ScanJobType(scan_request.scan_type)
     except ValueError:
-        job_type = ScanJobType.vuln_scan
+        job_type = ScanJobType.discovery
+    if job_type not in AGENT_EXECUTABLE_TYPES:
+        job_type = ScanJobType.discovery
     result: dict = {
         "mode": "scan",
         "scan_request_id": str(scan_request.id),
         "requested_by": (str(scan_request.requested_by)
                          if scan_request.requested_by else None),
         "scope_cidrs": list(engagement.scope_cidrs or []),
+        # RC-FIX-2: preferred probe is in params, not hard-coded on the DB column.
+        # The HTTP poll's pin logic respects this when the agent is live and ignores
+        # it when stale — giving any compatible probe a chance to claim it.
+        "preferred_agent_id": str(engagement.assigned_agent_id),
     }
     if getattr(scan_request, "targets", None):
         result["targets"] = list(scan_request.targets)
@@ -217,7 +250,8 @@ def build_scan_job(scan_request: ScanRequest, engagement: Engagement) -> ScanJob
         engagement_id=engagement.id,
         job_type=job_type,
         status=ScanJobStatus.pending,
-        agent_id=str(engagement.assigned_agent_id),
+        # RC-FIX-2: agent_id NOT pre-assigned. The DB column stays NULL so the
+        # HTTP poll can find this job. Preferred probe is in params above.
         result=result,
     )
 
@@ -253,8 +287,32 @@ async def _apply_fragile_guard(db, engagement: Engagement, job: ScanJob) -> None
                   "_fragile_excluded": plan.hosts}
 
 
+async def _apply_scan_policy(db, tenant_id: uuid.UUID, role: str, job: ScanJob) -> dict | None:
+    """The organisation's scan policy for a job built outside the normal enqueue
+    path: refuse during a blackout (an admin may override when the policy allows,
+    returned so the caller can audit it) and merge the global exclusions."""
+    from app.services import org_settings
+
+    policy = await org_settings.get_section(db, tenant_id, "scan")
+    window = org_settings.active_blackout(policy)
+    override = None
+    if window is not None:
+        if policy.admin_override and role == "admin":
+            override = {"window": window.name}
+        else:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Scanning is paused by the blackout window '{window.name}'."
+                + (" An admin can override it." if policy.admin_override else ""))
+    if policy.global_exclusions:
+        params = job.result or {}
+        job.result = {**params, "_excluded_cidrs": org_settings.merge_global_exclusions(
+            params.get("_excluded_cidrs"), policy)}
+    return override
+
+
 def apply_entitlement_config(row: CustomerEntitlement, body: EntitlementConfig,
-                             *, now: datetime) -> None:
+                             *, now: datetime, defaults=None) -> None:
     """Pure: write a configuration onto a (new or existing) entitlement row.
     Usage (scans_used) is kept — re-configuring a plan never hands back scans
     silently; that's what ``reset_usage`` on /adjust is for."""
@@ -275,25 +333,28 @@ def apply_entitlement_config(row: CustomerEntitlement, body: EntitlementConfig,
         setattr(row, f"{mode}_quota", getattr(body, f"{mode}_quota"))
     row.deep_repeat_policy = body.deep_repeat_policy
     row.notes = body.notes
-    _apply_locks(row, body)
+    _apply_locks(row, body, defaults)
     if body.plan_type == PLAN_LICENSED and not row.license_key:
         row.license_key = entitlements.generate_license_key()
 
 
-def _apply_locks(row: CustomerEntitlement, body: EntitlementConfig) -> None:
+def _apply_locks(row: CustomerEntitlement, body: EntitlementConfig, defaults=None) -> None:
     """Locks are never taken away or added implicitly on an existing plan: an
     omitted list keeps the current one. A brand-new row (attributes still None
-    before its first flush) gets the plan type's defaults."""
+    before its first flush) gets the organisation's new-customer defaults, or the
+    built-in ones when none are set."""
+    poc_severities = list(defaults.poc_locked_severities) if defaults else list(DEFAULT_POC_LOCKED_SEVERITIES)
+    poc_features = list(defaults.poc_locked_features) if defaults else []
     if body.locked_severities is not None:
         chosen = set(body.locked_severities)
         row.locked_severities = [s for s in LOCKABLE_SEVERITIES if s in chosen]
     elif row.locked_severities is None:
-        row.locked_severities = list(DEFAULT_POC_LOCKED_SEVERITIES) if body.plan_type == PLAN_POC else []
+        row.locked_severities = [s for s in LOCKABLE_SEVERITIES if s in poc_severities] if body.plan_type == PLAN_POC else []
     if body.locked_features is not None:
         chosen = set(body.locked_features)
         row.locked_features = [f for f in LOCKABLE_FEATURES if f in chosen]
     elif row.locked_features is None:
-        row.locked_features = []
+        row.locked_features = [f for f in LOCKABLE_FEATURES if f in poc_features] if body.plan_type == PLAN_POC else []
 
 
 def _admin_view(row: CustomerEntitlement | None) -> EntitlementAdminOut:
@@ -368,6 +429,7 @@ async def provision_client_user(
     logger.info("client_user.provisioned", engagement_id=str(engagement_id),
                 user_id=str(user.id), portal_slug=slug, by=str(current_user.user_id))
     return ClientUserOut(id=user.id, email=user.email, is_active=user.is_active,
+                         mfa_enabled=bool(user.mfa_enabled and user.mfa_secret_enc),
                          engagement_id=engagement_id, portal_slug=slug, temp_password=temp)
 
 
@@ -383,6 +445,7 @@ async def get_client_user(
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No customer login provisioned")
     return ClientUserOut(id=user.id, email=user.email, is_active=user.is_active,
+                         mfa_enabled=bool(user.mfa_enabled and user.mfa_secret_enc),
                          engagement_id=engagement_id, portal_slug=user.portal_slug)
 
 
@@ -410,6 +473,7 @@ async def patch_client_user(
                  detail={"reset_password": body.reset_password, "is_active": body.is_active})
     await db.flush()
     return ClientUserOut(id=user.id, email=user.email, is_active=user.is_active,
+                         mfa_enabled=bool(user.mfa_enabled and user.mfa_secret_enc),
                          engagement_id=engagement_id, portal_slug=user.portal_slug,
                          temp_password=temp)
 
@@ -452,7 +516,9 @@ async def put_entitlement(
                 "locked_severities": list(r.locked_severities or []),
                 "locked_features": list(r.locked_features or [])}
     before = None if created else _snapshot(row)
-    apply_entitlement_config(row, body, now=datetime.now(timezone.utc))
+    from app.services import org_settings
+    defaults = await org_settings.get_section(db, current_user.tenant_id, "customer-defaults") if created else None
+    apply_entitlement_config(row, body, now=datetime.now(timezone.utc), defaults=defaults)
     row.updated_by = current_user.user_id
     await db.flush()
     await db.refresh(row)
@@ -565,6 +631,7 @@ async def approve_scan_request(
     engagement_id: uuid.UUID,
     request_id: uuid.UUID,
     db: DB,
+    redis: RedisConn,
     current_user: Annotated[AuthUser, _OPERATOR],
 ):
     eng = await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
@@ -577,9 +644,14 @@ async def approve_scan_request(
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "Assign an agent to this engagement before approving scans")
     await _apply_fragile_guard(db, eng, job)
+    blackout_override = await _apply_scan_policy(db, current_user.tenant_id, current_user.role, job)
     db.add(job)
     await db.flush()
     await db.refresh(job)
+    if blackout_override is not None:
+        record_audit(db, actor_id=current_user.user_id, action="scan.blackout_override",
+                     engagement_id=engagement_id, resource_type="scan_job", resource_id=job.id,
+                     detail=blackout_override)
     sr.status = SR_APPROVED
     sr.reviewed_by = current_user.user_id
     sr.reviewed_at = datetime.now(timezone.utc)
@@ -590,6 +662,51 @@ async def approve_scan_request(
     await db.flush()
     logger.info("scan_request.approved", request_id=str(request_id),
                 job_id=str(job.id), by=str(current_user.user_id))
+
+    # RC-FIX-3: push job to connected probes via WebSocket immediately after commit.
+    # Without this, probes only discover the job on the next HTTP poll cycle (≤2s).
+    # Mirrors what the operator enqueue_agent_job path does (agents.py:1709-1777).
+    # Best-effort: WS push failure must never fail the approval.
+    try:
+        from app.routers.agents import _agent_can_execute_job, _encrypt_scope_for_agent
+        from app.websocket.manager import agent_ws_manager
+        job_params = job.result or {}
+        online_agents = (await db.execute(
+            select(Agent).where(
+                Agent.tenant_id == current_user.tenant_id,
+                Agent.status == "online",
+            )
+        )).scalars().all()
+        eligible = [a for a in online_agents
+                    if _agent_can_execute_job(a, job.job_type, job_params,
+                                              eng.scope_cidrs or [])]
+        if eligible:
+            payload = {
+                "job_id": str(job.id),
+                "engagement_id": str(job.engagement_id),
+                "job_type": job.job_type.value,
+                "params": job_params,
+            }
+            for candidate in eligible:
+                try:
+                    encrypted = await _encrypt_scope_for_agent(db, str(candidate.id), job_params)
+                    per_agent = {**payload}
+                    if encrypted:
+                        per_agent["encrypted_scope"] = encrypted
+                    delivered = await agent_ws_manager.deliver_job(
+                        redis, str(candidate.id), per_agent,
+                        required_feature="atomic_job_claim_v1")
+                    logger.info("scan_request.job_pushed", job_id=str(job.id),
+                                agent_id=str(candidate.id), delivered=delivered)
+                    break  # one push is enough; HTTP poll covers any miss
+                except Exception:
+                    pass
+        elif online_agents:
+            logger.warning("scan_request.no_eligible_probe",
+                           job_id=str(job.id), online=len(online_agents))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("scan_request.ws_push_failed", job_id=str(job.id), error=str(exc))
+
     return {"approved": True, "request_id": str(request_id), "job_id": str(job.id)}
 
 

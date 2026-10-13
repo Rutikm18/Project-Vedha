@@ -26,7 +26,7 @@ import structlog
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
-from app import agent_access
+from app import agent_access, agent_release
 from app.auth.jwt import decode_token
 from app.database import AsyncSessionLocal
 from app.models.agent import Agent, AgentStatus
@@ -237,6 +237,18 @@ async def agent_websocket_endpoint(websocket: WebSocket):
                     ag = (await db.execute(
                         select(Agent).where(Agent.id == agent_id)
                     )).scalar_one_or_none()
+                    if ag and ag.lifecycle_status != "active":
+                        # Revoked in Fleet. The immediate disconnect travels over Redis and can be missed;
+                        # this check makes sure a revoked agent is dropped within one heartbeat regardless.
+                        ag.status = AgentStatus.offline
+                        ag.current_job_id = None
+                        await db.commit()
+                        await websocket.send_json({
+                            "type": "revoked",
+                            "message": "This agent was revoked in Fleet.",
+                        })
+                        await websocket.close(code=4003, reason="Device credential revoked, disabled, or stale")
+                        break
                     if ag and agent_access.is_expired(ag.access_expires_at) and not current_job:
                         # Expired and idle: tell the agent why and drop the link.
                         # A job already running keeps its connection (and may still
@@ -252,6 +264,9 @@ async def agent_websocket_endpoint(websocket: WebSocket):
                         break
                     if ag:
                         ag.last_heartbeat = datetime.now(timezone.utc)
+                        reported = agent_release.clean_agent_version(data.get("agent_version"))
+                        if reported and ag.agent_version != reported:
+                            ag.agent_version = reported
                         try:
                             ag.status = AgentStatus(status)
                         except ValueError:

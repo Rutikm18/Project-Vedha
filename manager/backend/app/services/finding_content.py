@@ -177,6 +177,376 @@ _CONTENT: dict[str, dict[str, str]] = {
             "privileged sessions or direct compromise of the host."
         ),
     },
+    "vnc_no_auth": {
+        "technical": (
+            "The VNC server accepts connections without authentication (security type None) "
+            "or with a trivially weak scheme. Anyone who can reach the port gets the "
+            "graphical console of the machine."
+        ),
+        "impact": (
+            "An attacker with network access gets full interactive control of the desktop as "
+            "the logged-in user: they can read data on screen, run commands and install "
+            "persistence, with no credential to steal or guess."
+        ),
+        "business": (
+            "unauthenticated remote control of a workstation or server exposes every system "
+            "and dataset that machine can reach."
+        ),
+    },
+    "unauth_datastore": {
+        "technical": (
+            "A database or cache service accepts clients without authentication, or is "
+            "reachable from networks that should never talk to it. Such stores (Redis, "
+            "MongoDB, Elasticsearch, memcached and similar) typically ship with open access "
+            "unless it is explicitly closed."
+        ),
+        "impact": (
+            "A network-adjacent attacker can read, modify or delete the stored data, and on "
+            "several engines can turn write access into code execution on the host."
+        ),
+        "business": (
+            "customer, session or application data held in the store can be exfiltrated, "
+            "tampered with or destroyed, with direct data-protection and availability "
+            "consequences."
+        ),
+    },
+    "nfs_export": {
+        "technical": (
+            "The NFS server exports a filesystem that is readable by any client (a wildcard "
+            "or overly broad client list), and NFS authenticates the client host, not the "
+            "user. Any machine that can reach the portmapper/NFS ports can mount it."
+        ),
+        "impact": (
+            "Anyone on the network can mount the share and read its files; if it is also "
+            "writable they can plant files or, with root squashing off, take over ownership."
+        ),
+        "business": (
+            "documents, backups, source code or credentials stored on the export are "
+            "exposed to every host on the network."
+        ),
+    },
+    "rsync_module": {
+        "technical": (
+            "The rsync daemon serves one or more modules without a password, so any client "
+            "can list and download (and, if the module is writable, upload) files."
+        ),
+        "impact": (
+            "An unauthenticated client can copy the module's contents, and a writable module "
+            "lets an attacker replace files that the host or other systems later trust."
+        ),
+        "business": (
+            "backup and deployment data shared through rsync leaves the organisation, or is "
+            "silently altered, without any credential being involved."
+        ),
+    },
+    "snmp_exposure": {
+        "technical": (
+            "The SNMP agent answers to a default community string (public/private). SNMP v1/v2c "
+            "uses that string as its only credential and sends it in clear text, so a default "
+            "value is equivalent to no authentication."
+        ),
+        "impact": (
+            "An attacker can read the device's configuration, interface, routing and "
+            "connection tables, and with a writable (private) community can change settings."
+        ),
+        "business": (
+            "network topology and device configuration are disclosed, which accelerates "
+            "targeted attacks, and write access can disrupt connectivity."
+        ),
+    },
+    "amplification": {
+        "technical": (
+            "The service answers small spoofable UDP requests with much larger responses "
+            "(for example DNS open recursion, NTP monlist, SNMP GETBULK, memcached), so it "
+            "can be used as a reflector in distributed denial-of-service attacks."
+        ),
+        "impact": (
+            "An attacker spoofing a victim's address can make this host send amplified "
+            "traffic to the victim, consuming your bandwidth and getting your address "
+            "blocklisted."
+        ),
+        "business": (
+            "the organisation's address space is abused to attack third parties, with "
+            "bandwidth cost, reputational damage and possible upstream throttling."
+        ),
+    },
+    "ipmi_cipher_zero": {
+        "technical": (
+            "The BMC's IPMI 2.0 (RMCP+) interface accepts cipher suite 0, which performs no "
+            "authentication or encryption of the session (CVE-2013-4782 class)."
+        ),
+        "impact": (
+            "An attacker who can reach UDP/623 can authenticate with any password and issue "
+            "management commands: power control, console access and credential disclosure."
+        ),
+        "business": (
+            "out-of-band management of the server is open to anyone on the network, "
+            "bypassing the operating system's access controls entirely."
+        ),
+    },
+    "mqtt_unauth": {
+        "technical": (
+            "The MQTT broker accepts anonymous CONNECT requests (CONNACK return code 0), so "
+            "any client can subscribe to topics, including the wildcard '#', and publish."
+        ),
+        "impact": (
+            "An attacker can read all telemetry and commands flowing through the broker and "
+            "inject messages that devices will act on."
+        ),
+        "business": (
+            "operational data is exposed and connected devices or processes can be "
+            "manipulated by an unauthenticated party."
+        ),
+    },
+    "ai_endpoint": {
+        "technical": (
+            "An AI/LLM or MCP endpoint answers requests without authentication, exposing the "
+            "model, its tools and any data or actions those tools can reach."
+        ),
+        "impact": (
+            "An attacker can run the model at your cost, invoke its tools, and use prompt "
+            "injection to read data or trigger actions the endpoint is connected to."
+        ),
+        "business": (
+            "compute spend, proprietary data and any systems the agent can act on are "
+            "available to anyone who finds the endpoint."
+        ),
+    },
+    "cleartext_protocol": {
+        "technical": (
+            "The service carries credentials or data over an unencrypted protocol (FTP, "
+            "Telnet, POP3/IMAP, plain HTTP login, SMTP without STARTTLS, and similar)."
+        ),
+        "impact": (
+            "Anyone able to observe the traffic on the path (shared network, compromised "
+            "switch, rogue access point) can read passwords and content directly."
+        ),
+        "business": (
+            "credentials and business data in transit can be harvested passively, and "
+            "cleartext transport fails common audit baselines (PCI DSS, ISO 27001)."
+        ),
+    },
+    "suspicious_listener": {
+        "technical": (
+            "A listener is open on a port commonly associated with backdoors, remote-access "
+            "tools or command-and-control, with no legitimate service identified on it."
+        ),
+        "impact": (
+            "If it is not an approved service it may indicate a compromise or an unapproved "
+            "tool giving someone remote access to the host."
+        ),
+        "business": (
+            "an unexplained remote-access listener is either a sign of intrusion or an "
+            "unmanaged risk; both need an owner to confirm what it is."
+        ),
+    },
+    "sip_exposure": {
+        "technical": (
+            "A SIP service answers on the network and can be probed for extensions, "
+            "registrations and supported methods; SIP is also a common target for "
+            "credential brute force and toll fraud."
+        ),
+        "impact": (
+            "An attacker can enumerate extensions, attempt to register, and abuse the PBX "
+            "for premium-rate calls if credentials are weak."
+        ),
+        "business": (
+            "telephony fraud generates direct costs, and call systems can be disrupted or "
+            "eavesdropped."
+        ),
+    },
+    "netbios_exposure": {
+        "technical": (
+            "The NetBIOS name service (UDP/137) answered a node-status query, disclosing the "
+            "host's NetBIOS names, workgroup or domain and hardware address to any client that "
+            "can reach it."
+        ),
+        "impact": (
+            "An attacker learns host and domain names for targeting, and NetBIOS/LLMNR name "
+            "resolution can be poisoned to capture credentials."
+        ),
+        "business": (
+            "internal naming and domain details leak beyond the network that needs them, "
+            "easing reconnaissance and credential-relay attacks."
+        ),
+    },
+    "mdns_exposure": {
+        "technical": (
+            "The multicast-DNS responder answered a unicast query from outside its local link, "
+            "disclosing hostnames and advertised services."
+        ),
+        "impact": (
+            "An attacker can enumerate hosts and services from a distance, and an open mDNS "
+            "responder can be used as a reflection source in denial-of-service attacks."
+        ),
+        "business": (
+            "service and device inventory is exposed, and the host can be abused against third "
+            "parties."
+        ),
+    },
+    "ike_aggressive": {
+        "technical": (
+            "The VPN gateway answered in IKEv1 aggressive mode. With a pre-shared key, "
+            "aggressive mode sends the peer identity and a key-derived hash before the channel "
+            "is protected."
+        ),
+        "impact": (
+            "An attacker can capture the hash and crack the pre-shared key offline, then "
+            "authenticate to the VPN."
+        ),
+        "business": (
+            "a cracked VPN key gives a remote attacker a foothold inside the network perimeter."
+        ),
+    },
+    "unidentified_service": {
+        "technical": (
+            "A TCP port accepted a connection but no probe identified the protocol behind it: "
+            "no recognizable banner, no HTTP-shaped reply and no completed TLS handshake."
+        ),
+        "impact": (
+            "Unknown listeners are where unmanaged management interfaces, forgotten test "
+            "services and implants live; without knowing what it is, its exposure cannot be judged."
+        ),
+        "business": (
+            "an unowned listening service is an unmanaged risk until someone confirms what it is "
+            "and whether it should be reachable."
+        ),
+    },
+    "snmpv3_noauth": {
+        "technical": (
+            "An SNMPv3 user is configured at security level noAuthNoPriv: the agent answers reads "
+            "for that user with no authentication and no encryption, which makes it the SNMPv3 "
+            "equivalent of a default community string."
+        ),
+        "impact": (
+            "Anyone who can reach UDP/161 can read the device's configuration, interface, routing "
+            "and connection tables, and learn the topology around it."
+        ),
+        "business": (
+            "network and device details leak to any host on the path, easing targeted attacks, "
+            "while the deployment looks secure because it runs SNMPv3."
+        ),
+    },
+    "ftp_anonymous_write": {
+        "technical": (
+            "The FTP server lets the anonymous account upload files. Anonymous read access is a "
+            "disclosure risk; anonymous write turns the server into a place anyone can store and "
+            "serve content from."
+        ),
+        "impact": (
+            "An attacker can upload tools, malware or web shells (especially when the FTP root is "
+            "also served by a web server), host stolen data, or overwrite files other systems trust."
+        ),
+        "business": (
+            "the server can be used to stage attacks and distribute illegal or malicious content "
+            "under the organisation's address, with legal and reputational consequences."
+        ),
+    },
+    "smbv1": {
+        "technical": ("The server still negotiates the SMBv1 dialect, a 1980s-era protocol with no "
+                      "pre-authentication integrity and a long record of remote-code-execution flaws."),
+        "impact": ("An attacker with network access can attack the SMBv1 stack directly (the "
+                   "EternalBlue/WannaCry class) and downgrade other SMB sessions to it."),
+        "business": ("a single unpatched SMBv1 host has repeatedly been the entry point for "
+                     "ransomware that then spreads across the whole Windows estate."),
+    },
+    "smb_null_session": {
+        "technical": ("The SMB server accepted a null (anonymous) session and answered enumeration "
+                      "requests for shares, users or groups without credentials."),
+        "impact": ("An unauthenticated attacker can map accounts and shares, which feeds password "
+                   "guessing and targeted attacks."),
+        "business": "directory and file-share structure is disclosed to anyone on the network.",
+    },
+    "tls_certificate": {
+        "technical": ("The certificate presented by the service is expired, self-signed, or uses a "
+                      "weak key or signature algorithm, so clients cannot rely on it to authenticate "
+                      "the server."),
+        "impact": ("Clients either reject the service or learn to click through warnings, which "
+                   "makes an active man-in-the-middle attack indistinguishable from normal use."),
+        "business": ("trust in the service erodes, and expired or weak certificates fail audits and "
+                     "can cause outages when strict clients refuse them."),
+    },
+    "msrpc_exposed": {
+        "technical": ("The Windows RPC endpoint mapper answers anonymous queries and lists the "
+                      "services running on the host and the dynamic ports they use."),
+        "impact": ("An attacker can enumerate the host's RPC services and plan attacks against any "
+                   "that are exposed or vulnerable."),
+        "business": "internal service layout is disclosed beyond the segment that needs it.",
+    },
+    "eol_os": {
+        "technical": ("The operating system release is past its vendor end-of-support date, so it no "
+                      "longer receives security updates."),
+        "impact": ("Every vulnerability disclosed after end of support stays exploitable "
+                   "permanently; the host cannot be brought to a safe state by patching alone."),
+        "business": ("an unsupported platform is a standing, growing risk and typically fails "
+                     "compliance baselines that require supported software."),
+    },
+    "dns_zone_transfer": {
+        "technical": ("The DNS server answered a full zone transfer (AXFR) to an arbitrary client, "
+                      "returning every record in the zone."),
+        "impact": ("An attacker obtains a complete map of internal and external hostnames, "
+                   "including systems that were never meant to be public."),
+        "business": "the organisation's network inventory is handed to anyone who asks.",
+    },
+    "ldap_anonymous": {
+        "technical": ("The directory service accepts anonymous binds or searches and returns "
+                      "directory entries without credentials."),
+        "impact": ("An unauthenticated attacker can enumerate users, groups and computers, which "
+                   "supports password spraying and targeted phishing."),
+        "business": "staff and system details from the directory are exposed to the network.",
+    },
+    "smtp_enumeration": {
+        "technical": ("The mail server answers VRFY/EXPN or RCPT probes in a way that confirms which "
+                      "mailbox names exist."),
+        "impact": "An attacker can build a valid user list for phishing and password attacks.",
+        "business": "the staff address list leaks without authentication.",
+    },
+    "web_methods": {
+        "technical": ("The web server allows HTTP methods that change or expose content (PUT, DELETE, "
+                      "TRACE, CONNECT) where only read methods are expected."),
+        "impact": ("Depending on configuration an attacker may upload or remove content, or abuse "
+                   "TRACE/CONNECT to steal credentials or pivot."),
+        "business": "the integrity of a public website can be altered without exploiting a bug.",
+    },
+    "web_hsts": {
+        "technical": ("The HTTPS site does not send the Strict-Transport-Security header, so "
+                      "browsers are not told to refuse plain-HTTP connections to it."),
+        "impact": ("A network attacker can strip HTTPS on a user's first or later visit and capture "
+                   "the session."),
+        "business": "customer sessions on untrusted networks are easier to hijack.",
+    },
+    "dns_disclosure": {
+        "technical": "The DNS server reveals its software and version in response to a version query.",
+        "impact": "Attackers can match the version to known flaws and choose an exploit.",
+        "business": "a small disclosure that shortens an attacker's reconnaissance.",
+    },
+    "rtsp_exposed": {
+        "technical": ("An RTSP streaming endpoint (cameras and media servers) answers requests from "
+                      "the network, often with weak or no authentication."),
+        "impact": "Anyone who can reach it may view live video or probe the device for known flaws.",
+        "business": "physical-security footage and privacy exposure, plus a foothold on an embedded device.",
+    },
+    "adb_unauth": {
+        "technical": ("The Android Debug Bridge is listening over the network and accepted a shell "
+                      "without authentication."),
+        "impact": ("An attacker gets a command shell on the device: install apps, read data, and "
+                   "use it as a pivot."),
+        "business": "a device with full remote control by anyone on the network, typically a managed endpoint or kiosk.",
+    },
+    "mgmt_plane": {
+        "technical": ("An out-of-band or remote-administration interface (IPMI/BMC, WinRM, RDP) is "
+                      "reachable from the network, in a state that skips or weakens authentication."),
+        "impact": ("Control of the management plane is control of the machine beneath its operating "
+                   "system: power, console, firmware and credentials."),
+        "business": "one reachable management interface can undo every control on the host it manages.",
+    },
+    "container_api": {
+        "technical": ("A container or orchestration API (Docker, registry, Kubernetes, etcd) is "
+                      "reachable and may accept commands without authentication."),
+        "impact": ("Control of the API usually means running arbitrary containers, which equals "
+                   "root on the host and access to every workload secret."),
+        "business": "compromise of the container platform exposes every application and credential it runs.",
+    },
     "generic": {
         "technical": (
             "The service exhibits a security weakness in its exposure or configuration. Review "
@@ -253,6 +623,161 @@ def _float_or_none(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+# Exact rule -> content category. A posture rule id is a precise identity, so it beats
+# the keyword guess in remediation_kb.classify_finding; rules not listed here (and every
+# non-posture finding) still go through that classifier. The fix plan is rule-keyed too
+# (app/remediation/recipes.py), so the explanation and the fix describe the same problem.
+_RULE_CATEGORY: dict[str, str] = {
+    "POSTURE-SMB-V1-ENABLED": "smbv1", "POSTURE-SMB-NULL-SESSION": "smb_null_session",
+    "POSTURE-SMB-SIGNING-OFF": "smb_signing",
+    "POSTURE-TLS-DEPRECATED-VERSION": "weak_tls", "POSTURE-TLS-WEAK-CIPHER": "weak_tls",
+    "POSTURE-TLS-EXPIRED-CERT": "tls_certificate", "POSTURE-TLS-SELF-SIGNED": "tls_certificate",
+    "POSTURE-TLS-WEAK-KEY": "tls_certificate", "POSTURE-TLS-WEAK-SIGNATURE": "tls_certificate",
+    "POSTURE-RDP-NO-NLA": "exposed_rdp", "POSTURE-RDP-NO-TLS": "exposed_rdp", "POSTURE-RDP-EXPOSED": "exposed_rdp",
+    "POSTURE-MSRPC-EPMAP-EXPOSED": "msrpc_exposed", "POSTURE-OS-END-OF-LIFE": "eol_os",
+    "POSTURE-SSH-TERRAPIN": "outdated_ssh", "POSTURE-SSH-WEAK-ALGORITHMS": "outdated_ssh",
+    "POSTURE-SSH-LEGACY-ALGORITHMS": "outdated_ssh",
+    "POSTURE-DNS-ZONE-TRANSFER": "dns_zone_transfer", "POSTURE-DNS-VERSION-DISCLOSURE": "dns_disclosure",
+    "POSTURE-LDAP-ANONYMOUS-BIND": "ldap_anonymous", "POSTURE-LDAP-ANONYMOUS-SEARCH": "ldap_anonymous",
+    "POSTURE-SMTP-USER-ENUMERATION": "smtp_enumeration",
+    "POSTURE-WEB-DANGEROUS-METHODS": "web_methods", "POSTURE-WEB-NO-HSTS": "web_hsts",
+    "POSTURE-RTSP-EXPOSED": "rtsp_exposed", "POSTURE-ADB-UNAUTHENTICATED": "adb_unauth",
+    "POSTURE-CWMP-EXPOSED": "open_mgmt_port", "POSTURE-DEFAULT-CRED-CANDIDATE": "default_credentials",
+    "POSTURE-FTP-ANONYMOUS-LOGIN": "anon_ftp",
+    "POSTURE-EXPOSED-CONTAINER": "container_api", "POSTURE-EXPOSED-REMOTE_ACCESS": "open_mgmt_port",
+    "POSTURE-EXPOSED-ADMIN_UI": "open_mgmt_port",
+    "CORR-NTLM-RELAY-PATH": "smb_signing", "CORR-LEGACY-WINDOWS-SURFACE": "smbv1",
+    "CORR-CLEARTEXT-CLUSTER": "cleartext_protocol", "CORR-DB-UNAUTH-EXPOSED": "unauth_datastore",
+    "CORR-SNMP-PUBLIC-LATERAL": "snmp_exposure", "CORR-AD-EXPOSURE": "ldap_anonymous",
+    "CORR-MGMT-PLANE-EXPOSED": "mgmt_plane",
+    "POSTURE-VNC-NO-AUTH": "vnc_no_auth", "POSTURE-VNC-WEAK-AUTH": "vnc_no_auth",
+    "POSTURE-DB-UNAUTHENTICATED-ACCESS": "unauth_datastore",
+    "POSTURE-EXPOSED-DATASTORE": "unauth_datastore", "POSTURE-EXPOSED-DATABASE": "unauth_datastore",
+    "POSTURE-NFS-WORLD-READABLE-EXPORT": "nfs_export",
+    "POSTURE-RSYNC-ANONYMOUS-MODULE": "rsync_module",
+    "POSTURE-SNMP-DEFAULT-COMMUNITY": "snmp_exposure",
+    "POSTURE-SNMP-AMPLIFIER": "amplification", "POSTURE-UDP-AMPLIFIER": "amplification",
+    "POSTURE-IPMI-CIPHER-ZERO": "ipmi_cipher_zero",
+    "POSTURE-MQTT-UNAUTHENTICATED": "mqtt_unauth",
+    "POSTURE-AI-ENDPOINT-UNAUTHENTICATED": "ai_endpoint",
+    "POSTURE-EXPOSED-CLEARTEXT": "cleartext_protocol", "POSTURE-SMTP-NO-STARTTLS": "cleartext_protocol",
+    "POSTURE-DB-CLEARTEXT-TRANSPORT": "cleartext_protocol",
+    "POSTURE-EXPOSED-BACKDOOR": "suspicious_listener",
+    "POSTURE-SIP-EXPOSED": "sip_exposure",
+    "POSTURE-SNMPV3-NOAUTH-USER": "snmpv3_noauth",
+    "POSTURE-FTP-ANONYMOUS-WRITE": "ftp_anonymous_write",
+    "POSTURE-UNIDENTIFIED-SERVICE": "unidentified_service",
+    "POSTURE-NETBIOS-EXPOSED": "netbios_exposure",
+    "POSTURE-MDNS-EXPOSED": "mdns_exposure",
+    "POSTURE-IKE-AGGRESSIVE-MODE": "ike_aggressive",
+}
+
+
+def content_category(finding: Any) -> str:
+    """The content category for a finding: its exact rule id when known, else the
+    shared keyword classifier."""
+    rule_id = _evidence(finding).get("rule_id")
+    if isinstance(rule_id, str) and rule_id in _RULE_CATEGORY:
+        return _RULE_CATEGORY[rule_id]
+    return classify_finding(finding)
+
+
+# Root cause and preconditions per category: what normally leads to this weakness, and what an
+# attacker needs for it to matter. Standard text about the CLASS of weakness (never a claim about
+# this specific host); the report labels it as knowledge-base content.
+_CAUSE: dict[str, dict[str, Any]] = {
+    "weak_tls": {"root_cause": "The TLS configuration still permits legacy protocol versions or weak ciphers, usually inherited defaults or a compatibility setting nobody revisited.",
+                 "preconditions": ["Network position that can observe or modify traffic to the service", "A client that can be made to negotiate the weak option"]},
+    "smb_signing": {"root_cause": "SMB message signing is not required by the server policy; on non-domain-controller Windows hosts this is the default.",
+                    "preconditions": ["Network access to the SMB port", "A way to coerce or capture an NTLM authentication from a victim"]},
+    "exposed_rdp": {"root_cause": "Remote Desktop is reachable from networks that do not need it, often without network-level authentication.",
+                    "preconditions": ["Network access to the RDP port", "Valid or guessable credentials, or an unpatched RDP flaw"]},
+    "default_credentials": {"root_cause": "A vendor-default or well-known credential was never changed at deployment.",
+                            "preconditions": ["Network access to the login surface", "The vendor's published default credential"]},
+    "missing_patch": {"root_cause": "The software version in use is older than the release that fixes the issue.",
+                      "preconditions": ["Network access to the vulnerable component", "A public or reproducible exploit for the version"]},
+    "open_mgmt_port": {"root_cause": "A management or legacy service is exposed beyond the administrative network.",
+                       "preconditions": ["Network access to the service port"]},
+    "anon_ftp": {"root_cause": "The FTP server keeps its built-in anonymous account enabled.",
+                 "preconditions": ["Network access to the FTP port"]},
+    "outdated_ssh": {"root_cause": "The SSH server offers older algorithms or runs an old release because the configuration was never hardened.",
+                     "preconditions": ["Network access to the SSH port", "A client able to negotiate the weak algorithm"]},
+    "vnc_no_auth": {"root_cause": "The VNC server was configured without a password, or with the None security type.",
+                    "preconditions": ["Network access to the VNC port"]},
+    "unauth_datastore": {"root_cause": "The data store ships with open access and was not given authentication or network restrictions.",
+                         "preconditions": ["Network access to the data store port"]},
+    "nfs_export": {"root_cause": "The export lists a wildcard or very broad client set, and NFS trusts the client host rather than a user.",
+                   "preconditions": ["Network access to the NFS and portmapper ports", "A client that can mount the export"]},
+    "rsync_module": {"root_cause": "The rsync daemon module has no authentication configured.",
+                     "preconditions": ["Network access to the rsync port"]},
+    "snmp_exposure": {"root_cause": "The SNMP agent still uses a default community string, which is its only credential in v1/v2c.",
+                      "preconditions": ["Network access to UDP/161", "Knowledge of the default community name"]},
+    "amplification": {"root_cause": "The UDP service answers small unauthenticated requests with large responses and is reachable from networks that can spoof source addresses.",
+                      "preconditions": ["Ability to send spoofed UDP packets to the service", "A victim address to reflect to"]},
+    "ipmi_cipher_zero": {"root_cause": "The BMC firmware enables IPMI 2.0 cipher suite 0, which skips authentication.",
+                         "preconditions": ["Network access to UDP/623"]},
+    "mqtt_unauth": {"root_cause": "The MQTT broker allows anonymous connections.",
+                    "preconditions": ["Network access to the broker port"]},
+    "ai_endpoint": {"root_cause": "The AI or MCP endpoint was published without an authentication layer.",
+                    "preconditions": ["Network access to the endpoint"]},
+    "cleartext_protocol": {"root_cause": "A legacy protocol without transport encryption is in use where an encrypted alternative exists.",
+                           "preconditions": ["A network position that can observe the traffic"]},
+    "suspicious_listener": {"root_cause": "A listener is bound on a port used by remote-access tooling or malware, with no recorded owner.",
+                            "preconditions": ["Network access to the port"]},
+    "sip_exposure": {"root_cause": "The SIP service is reachable from networks other than the trunks and phones that need it.",
+                     "preconditions": ["Network access to the SIP port"]},
+    "netbios_exposure": {"root_cause": "NetBIOS over TCP/IP is enabled and reachable beyond the segment that needs Windows name resolution.",
+                         "preconditions": ["Network access to UDP/137"]},
+    "mdns_exposure": {"root_cause": "The multicast-DNS responder answers queries that did not originate on its local link.",
+                      "preconditions": ["Network access to UDP/5353"]},
+    "ike_aggressive": {"root_cause": "The VPN gateway accepts IKEv1 aggressive mode, often left enabled for compatibility with pre-shared-key peers.",
+                       "preconditions": ["Network access to UDP/500", "A weak or guessable pre-shared key for the offline attack to succeed"]},
+    "unidentified_service": {"root_cause": "A service listens on a port that no probe could identify; its owner and purpose are not recorded.",
+                             "preconditions": ["Network access to the port"]},
+    "snmpv3_noauth": {"root_cause": "An SNMPv3 user was created at security level noAuthNoPriv.",
+                      "preconditions": ["Network access to UDP/161", "Knowledge of the user name (often a documented default)"]},
+    "ftp_anonymous_write": {"root_cause": "The anonymous FTP account has write permission on at least one directory.",
+                            "preconditions": ["Network access to the FTP port"]},
+    "smbv1": {"root_cause": "SMBv1 was never disabled on a server that still carries the legacy feature.",
+              "preconditions": ["Network access to the SMB port", "An exploit for an unpatched SMBv1 flaw"]},
+    "smb_null_session": {"root_cause": "The host allows anonymous enumeration (restrict-anonymous not set).",
+                         "preconditions": ["Network access to the SMB port"]},
+    "tls_certificate": {"root_cause": "The certificate was not renewed, was issued internally without trust distribution, or was generated with a weak key or signature algorithm.",
+                        "preconditions": ["A client connecting to the service", "For interception: a network position between client and server"]},
+    "msrpc_exposed": {"root_cause": "The RPC endpoint mapper is reachable from segments that do not need it.",
+                      "preconditions": ["Network access to TCP/135"]},
+    "eol_os": {"root_cause": "The platform was not upgraded before its vendor support ended.",
+               "preconditions": ["Network access to any vulnerable service on the host"]},
+    "dns_zone_transfer": {"root_cause": "Zone transfers are not restricted to the authorised secondary servers.",
+                          "preconditions": ["Network access to the DNS service"]},
+    "ldap_anonymous": {"root_cause": "The directory permits anonymous bind or search.",
+                       "preconditions": ["Network access to the directory port"]},
+    "smtp_enumeration": {"root_cause": "The mail server answers address-verification commands.",
+                         "preconditions": ["Network access to the SMTP port"]},
+    "web_methods": {"root_cause": "The server or application permits more HTTP methods than the site needs.",
+                    "preconditions": ["Network access to the web service"]},
+    "web_hsts": {"root_cause": "The site does not send an HSTS header.",
+                 "preconditions": ["A victim on a network the attacker controls", "A request made over plain HTTP"]},
+    "dns_disclosure": {"root_cause": "The DNS software answers version queries with its real banner.",
+                       "preconditions": ["Network access to the DNS service"]},
+    "rtsp_exposed": {"root_cause": "A camera or media service is reachable from networks that do not need it.",
+                     "preconditions": ["Network access to the RTSP port"]},
+    "adb_unauth": {"root_cause": "ADB over TCP was enabled and left without an authorised-key requirement.",
+                   "preconditions": ["Network access to the ADB port"]},
+    "mgmt_plane": {"root_cause": "Management interfaces were left reachable from general networks instead of a dedicated management segment.",
+                   "preconditions": ["Network access to the management interface"]},
+    "container_api": {"root_cause": "The container or orchestration API is bound to a network interface without authentication or TLS.",
+                      "preconditions": ["Network access to the API port"]},
+    "generic": {"root_cause": "The service is exposed or configured beyond what its role requires.",
+                "preconditions": ["Network access to the affected service"]},
+}
+
+
+def cause_for(finding: Any) -> dict[str, Any]:
+    """Standard root cause and preconditions for the finding's category."""
+    return _CAUSE.get(content_category(finding), _CAUSE["generic"])
 
 
 def exploitation_signals(finding: Any) -> dict[str, Any]:
@@ -393,7 +918,7 @@ def finding_content(finding: Any, *, asset_criticality: str | None = None,
     — the ``generic`` category guarantees no empty states.
     """
     overrides = overrides or {}
-    category = classify_finding(finding)
+    category = content_category(finding)
     base = _CONTENT.get(category, _CONTENT["generic"])
 
     signals = exploitation_signals(finding)

@@ -1,0 +1,45 @@
+{
+  "name": "the jewel was last seen three months ago",
+  "description": "FM-16/32. The path is still reported (the weakness may remain) but flagged stale so it is not trusted like a fresh one.",
+  "scope": [
+    "10.0.1.0/24"
+  ],
+  "posture": "flat",
+  "assets": [
+    {
+      "id": "entry",
+      "ip": "10.0.1.5",
+      "environment": "dmz"
+    },
+    {
+      "id": "jewel",
+      "ip": "10.0.1.9",
+      "criticality": "critical",
+      "last_seen_days_ago": 90
+    }
+  ],
+  "exploitable": [
+    "entry",
+    "jewel"
+  ],
+  "targets": [
+    "jewel"
+  ],
+  "truth": {
+    "valid_hops": [
+      [
+        "entry",
+        "jewel"
+      ]
+    ],
+    "expected_paths": [
+      [
+        "entry",
+        "jewel"
+      ]
+    ],
+    "expected_freshness": {
+      "entry>jewel": "stale"
+    }
+  }
+}

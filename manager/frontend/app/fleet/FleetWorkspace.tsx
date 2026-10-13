@@ -22,6 +22,7 @@ interface EnrollmentRequest {
   agent_version: string;
   capabilities: string[];
   fingerprint: string;
+  source_ip?: string | null;
   expires_at: string;
 }
 
@@ -55,6 +56,7 @@ interface Probe {
   agent_version: string | null;
   access_expires_at: string | null;
   access_expired: boolean;
+  lifecycle_status?: string;   // active | revoked
 }
 
 // One scan job dispatched to a probe (backend GET /agents/{id}/job-history).
@@ -83,6 +85,7 @@ function jobBadge(status: string): { color: string; Icon: typeof CheckCircle2; s
 // Live status is fused from `online` (heartbeat freshness) + `status` (what the
 // probe reported). Never color-only — the word + aria-label always accompany it.
 function agentStatus(a: Probe): { color: string; label: string } {
+  if (a.lifecycle_status === "revoked") return { color: "var(--sev-high-color)", label: "revoked" };
   if (a.online && a.status === "busy") return { color: "var(--sev-medium-color)", label: "scanning" };
   if (a.online) return { color: "var(--nominal-color)", label: "online" };
   return { color: "var(--text-faint)", label: "offline" };
@@ -184,6 +187,25 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
     }
   }
 
+  // Operator: cut an agent off for good. Nothing is deleted; its history stays.
+  async function revokeAgent(agent: Probe) {
+    const name = agent.name || "this vedha-agent";
+    if (!window.confirm(
+      `Revoke ${name}?\n\nIt is disconnected now and can never connect again. Its jobs, results and findings are kept. `
+      + "To use that computer again you must install the agent afresh. This cannot be undone.",
+    )) return;
+    try {
+      const out = await api.revokeAgent(agent.id);
+      toast.success(out.already_revoked ? `${name} was already revoked`
+        : out.released_engagements.length
+          ? `${name} revoked; ${out.released_engagements.length} engagement(s) can take a new agent`
+          : `${name} revoked`);
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not revoke the agent");
+    }
+  }
+
   async function approve(event: React.FormEvent) {
     event.preventDefault();
     if (surface === "manager" && !request) return;
@@ -278,7 +300,12 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
                         <span className="flt-agent-idle">idle</span>
                       ) : null}
                     </div>
-                    {api.canSetExpiry && (
+                    {a.lifecycle_status === "revoked" && (
+                      <div className="flt-revoked-note">
+                        Revoked: this agent can never connect again. Its history is kept. To use that computer, install the agent afresh.
+                      </div>
+                    )}
+                    {api.canSetExpiry && a.lifecycle_status !== "revoked" && (
                       <div className="flt-expiry-ctl">
                         <span className="flt-expiry-label">Access expiry:</span>
                         {[7, 30, 90].map((days) => (
@@ -288,6 +315,12 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
                         {(a.access_expires_at || a.access_expired) && (
                           <button type="button" className="flt-expiry-btn" onClick={() => void setExpiry(a.id, null)}>
                             Clear
+                          </button>
+                        )}
+                        {api.canRevokeAgent && (
+                          <button type="button" className="flt-expiry-btn flt-revoke-btn"
+                            aria-label={`Revoke ${a.name || "vedha-agent"}`} onClick={() => void revokeAgent(a)}>
+                            Revoke…
                           </button>
                         )}
                       </div>
@@ -371,6 +404,7 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
                   <div className="flt-req-meta">
                     <span><Laptop size={11} /> {row.platform} / {row.architecture} · agent {row.agent_version}</span>
                     <span className="flt-mono"><Fingerprint size={11} /> {row.fingerprint.slice(0, 16)}…</span>
+                    {row.source_ip && <span className="flt-mono"><Network size={11} /> from {row.source_ip}</span>}
                     <span className="flt-mono"><Clock3 size={11} /> expires {new Date(row.expires_at).toLocaleString()}</span>
                   </div>
                 </button>
@@ -396,23 +430,28 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
               </div>
             ) : (
               <form onSubmit={approve} className="flt-form">
-                {surface === "portal" && (
-                  <label className="flt-field flt-full">
-                    <span className="flt-label">Installer verification code</span>
-                    <input
-                      className="flt-input"
-                      inputMode="text"
-                      autoComplete="one-time-code"
-                      placeholder="ABCD-EFGH"
-                      required
-                      maxLength={9}
-                      value={form.user_code}
-                      onChange={(event) => setForm({ ...form, user_code: event.target.value.toUpperCase() })}
-                      aria-describedby="portal-enrollment-code-hint"
-                    />
-                    <span id="portal-enrollment-code-hint" className="flt-hint">Shown once by the installer and valid for 15 minutes. It is never used as a long-lived credential.</span>
-                  </label>
-                )}
+                <label className="flt-field flt-full">
+                  <span className="flt-label">
+                    {surface === "portal" ? "Installer verification code" : "Code shown on the machine"}
+                    {surface === "manager" && <> <span className="flt-optional">(needed when installs run without a token)</span></>}
+                  </span>
+                  <input
+                    className="flt-input"
+                    inputMode="text"
+                    autoComplete="one-time-code"
+                    placeholder="ABCD-EFGH"
+                    required={surface === "portal"}
+                    maxLength={9}
+                    value={form.user_code}
+                    onChange={(event) => setForm({ ...form, user_code: event.target.value.toUpperCase() })}
+                    aria-describedby="enrollment-code-hint"
+                  />
+                  <span id="enrollment-code-hint" className="flt-hint">
+                    {surface === "portal"
+                      ? "Shown once by the installer and valid for 15 minutes. It is never used as a long-lived credential."
+                      : "Shown by the installer on the machine, valid for 15 minutes. It proves you are approving the machine in front of you, not someone else's request."}
+                  </span>
+                </label>
                 <label className="flt-field flt-full">
                   <span className="flt-label">vedha-agent name <span className="flt-optional">(optional)</span></span>
                   <input className="flt-input" placeholder="auto: vedha_agent_01" value={form.probe_name} onChange={(e) => setForm({ ...form, probe_name: e.target.value })} />
@@ -488,6 +527,9 @@ const STYLES = `
 .flt-expiry-label { color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; }
 .flt-expiry-btn { padding: 3px 9px; border-radius: 6px; border: 0.5px solid var(--border-subtle); background: var(--bg-surface); color: var(--text-secondary); font-size: 11px; cursor: pointer; }
 .flt-expiry-btn:hover { color: var(--accent); border-color: var(--border-accent); background: var(--accent-ghost); }
+.flt-revoke-btn { margin-left: auto; color: var(--sev-high-color); }
+.flt-revoke-btn:hover { color: var(--sev-high-color); border-color: var(--sev-high-color); background: transparent; }
+.flt-revoked-note { margin-top: 7px; font-size: 11.5px; color: var(--sev-high-color); }
 .flt-agent-toggle { width: 100%; background: none; border: none; padding: 0; cursor: pointer; font: inherit; }
 .flt-agent-head { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
 .flt-chev { color: var(--text-faint); flex-shrink: 0; transition: transform 0.15s ease; }

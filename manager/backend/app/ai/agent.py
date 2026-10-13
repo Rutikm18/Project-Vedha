@@ -74,6 +74,24 @@ ALLOWED_ACTIONS = [
 
 _SEV_RANK = {"critical": 5, "high": 4, "medium": 3, "low": 2, "info": 1}
 
+# ── what a model-authored recommendation may point at ──────────────────────────
+# The advisor reads scan data an attacker on the target network can influence
+# (banners, hostnames, finding titles), so its output is untrusted. Whatever a
+# recommendation names must be a real object of THIS engagement; anything else is
+# dropped before it is stored, so the later approval step never acts on a target a
+# model (or a poisoned banner) invented or took from another tenant.
+TARGET_TYPES = ("finding", "asset", "attack_path", "engagement")
+# Actions that only make sense against one concrete finding or asset.
+_TARGETED_ACTIONS = {
+    "run_targeted_scan", "request_exploit_validation", "recheck_finding",
+    "mark_false_positive", "escalate_finding",
+}
+_TARGETED_TYPES = {"finding", "asset"}
+MAX_RECOMMENDATIONS_PER_RUN = 50
+_TITLE_MAX = 500
+_RATIONALE_MAX = 4000
+_EVIDENCE_MAX_BYTES = 8 * 1024
+
 SYSTEM_PROMPT = (
     "You are the Vedha security advisor — an assistant that reviews an authorized "
     "penetration-test engagement's data and proposes next steps for a human operator.\n\n"
@@ -172,6 +190,8 @@ class AgentDecisionEngine:
         self._effort = settings.llm_effort
         self._max_tokens = settings.llm_max_tokens
         self._max_iters = 8
+        # SYSTEM_PROMPT plus, once run() starts, the engagement's sector brief.
+        self._system = SYSTEM_PROMPT
 
         # Ordered (provider, client, model) list: Claude first, then OpenAI tool
         # calling behind the same SDK shape (app/ai/openai_tools.py). The loop's
@@ -212,6 +232,7 @@ class AgentDecisionEngine:
         except GatewayDenied as exc:
             raise AgentUnavailableError(str(exc)) from exc
 
+        self._system = await self._system_with_domain(engagement_id)
         run_id = uuid.uuid4()
         messages: list[dict] = [{
             "role": "user",
@@ -227,7 +248,7 @@ class AgentDecisionEngine:
             resp = await self._create(messages)
             await _audit_sdk_call(
                 self._db, self._settings, task="advisor_agent", model=self._model, pseudo=pseudo,
-                system=SYSTEM_PROMPT, messages=messages,
+                system=self._system, messages=messages,
                 response=repr(getattr(resp, "content", "")), engagement_id=engagement_id)
 
             if getattr(resp, "stop_reason", None) == "refusal":
@@ -267,6 +288,21 @@ class AgentDecisionEngine:
                     run_id=str(run_id), stored=stored)
         return {"run_id": str(run_id), "recommendations_stored": stored}
 
+    async def _system_with_domain(self, engagement_id: uuid.UUID) -> str:
+        """SYSTEM_PROMPT plus the engagement's sector/jurisdiction brief (same
+        trusted block the chat assistant uses). Fail-soft: any lookup problem
+        leaves the plain prompt, so the advisor never fails because of it."""
+        from app.models.engagement import Engagement
+        from app.services.domain_context import domain_brief_for
+        try:
+            eng = (await self._db.execute(
+                select(Engagement).where(Engagement.id == engagement_id))).scalar_one_or_none()
+            brief = await domain_brief_for(self._db, eng) if eng is not None else None
+        except Exception as exc:  # noqa: BLE001 — the brief is advisory
+            logger.warning("agent.domain_brief_failed", engagement=str(engagement_id), error=str(exc))
+            return SYSTEM_PROMPT
+        return f"{SYSTEM_PROMPT}\n\n{brief.text}" if brief and brief.text else SYSTEM_PROMPT
+
     async def _create(self, messages: list[dict]):
         """One model turn from the first provider that can serve it. Failures are
         recorded in the shared circuit breaker, so a provider that just
@@ -284,7 +320,7 @@ class AgentDecisionEngine:
                 # breakpoint on the system block caches BOTH (Anthropic order:
                 # tools → system → messages), so each iteration only pays for the
                 # growing message tail.
-                "system": cached_system_prompt(SYSTEM_PROMPT),
+                "system": cached_system_prompt(self._system),
                 "tools": _TOOLS,
                 "messages": messages,
             }
@@ -405,14 +441,40 @@ class AgentDecisionEngine:
 
     # ── persistence (the ONLY write; everything lands pending) ───────────────────────
 
+    async def _targets_in_engagement(self, eid: uuid.UUID, wanted: dict[str, set[uuid.UUID]]) -> dict[str, set[uuid.UUID]]:
+        """Of the ids a model named, the ones that really belong to this engagement
+        (one query per type, however many recommendations there are)."""
+        found: dict[str, set[uuid.UUID]] = {t: set() for t in TARGET_TYPES}
+        found["engagement"] = {eid} if eid in wanted.get("engagement", set()) else set()
+        for target_type, model in (("finding", Finding), ("asset", Asset), ("attack_path", AttackPath)):
+            ids = wanted.get(target_type)
+            if not ids:
+                continue
+            rows = (await self._db.execute(
+                select(model.id).where(model.engagement_id == eid, model.id.in_(ids))
+            )).scalars().all()
+            found[target_type] = set(rows)
+        return found
+
     async def _persist(self, eid: uuid.UUID, run_id: uuid.UUID, submit_input: dict) -> int:
         recs = submit_input.get("recommendations") or []
+        if not isinstance(recs, list):
+            return 0
+        recs = [r for r in recs if isinstance(r, dict)][:MAX_RECOMMENDATIONS_PER_RUN]
+
+        # Resolve every target the model named against this engagement up front.
+        wanted: dict[str, set[uuid.UUID]] = {}
+        for r in recs:
+            target_type = str(r.get("target_type") or "").strip().lower()
+            target_id = _maybe_uuid(r.get("target_id"))
+            if target_type in TARGET_TYPES and target_id is not None:
+                wanted.setdefault(target_type, set()).add(target_id)
+        valid = await self._targets_in_engagement(eid, wanted) if wanted else {t: set() for t in TARGET_TYPES}
+
         stored = 0
         for r in recs:
-            if not isinstance(r, dict):
-                continue
             category = str(r.get("category") or "").strip()
-            title = str(r.get("title") or "").strip()
+            title = _clean_text(r.get("title") or "", _TITLE_MAX)
             if category not in _CATEGORIES or not title:
                 continue  # drop malformed / off-schema rows rather than persist junk
             action = r.get("action")
@@ -424,24 +486,59 @@ class AgentDecisionEngine:
                     continue
             else:
                 action = None  # triage / attack_path rows don't carry an action
+
+            target_type = str(r.get("target_type") or "").strip().lower() or None
+            raw_target = r.get("target_id")
+            target_id = _maybe_uuid(raw_target)
+            if target_type is not None or raw_target:
+                # A named target must be a known type AND a real object of this
+                # engagement; otherwise the whole recommendation is dropped.
+                if target_type not in TARGET_TYPES or target_id is None or target_id not in valid[target_type]:
+                    logger.warning("agent.dropped_target", category=category, action=action,
+                                   target_type=target_type)
+                    continue
+            if action in _TARGETED_ACTIONS and not (target_type in _TARGETED_TYPES and target_id is not None):
+                logger.info("agent.dropped_untargeted_action", action=action)
+                continue
+
             self._db.add(AgentRecommendation(
                 engagement_id=eid, run_id=run_id,
                 category=category,
-                target_type=(str(r["target_type"])[:32] if r.get("target_type") else None),
-                target_id=_maybe_uuid(r.get("target_id")),
+                target_type=target_type,
+                target_id=target_id,
                 action=action,
-                title=title[:500],
-                rationale=(str(r["rationale"]) if r.get("rationale") else None),
+                title=title,
+                rationale=_clean_text(r["rationale"], _RATIONALE_MAX) if r.get("rationale") else None,
                 confidence=_maybe_decimal(r.get("confidence")),
-                priority=(str(r["priority"])[:16] if r.get("priority") else None),
+                priority=(_clean_text(r["priority"], 16) or None) if r.get("priority") else None,
                 status=STATUS_PENDING,
-                evidence=r,
+                evidence=_bounded_evidence(r),
                 model=self._model,
             ))
             stored += 1
         if stored:
             await self._db.flush()
         return stored
+
+
+# ── recommendation hygiene ──────────────────────────────────────────────────────
+
+def _clean_text(value: Any, maximum: int) -> str:
+    """Single-line, control-free, bounded text for a model-supplied string."""
+    text = "".join(" " if (ch.isspace() or not ch.isprintable()) else ch for ch in str(value))
+    return " ".join(text.split())[:maximum].strip()
+
+
+def _bounded_evidence(rec: dict) -> dict:
+    """The raw model payload, capped. Oversized payloads keep only their scalar
+    top-level fields so a runaway tool input cannot bloat the database."""
+    try:
+        if len(json.dumps(rec, default=str)) <= _EVIDENCE_MAX_BYTES:
+            return rec
+    except (TypeError, ValueError):
+        pass
+    return {k: (v if isinstance(v, (str, int, float, bool)) or v is None else None)
+            for k, v in rec.items() if isinstance(k, str)}
 
 
 # ── helpers ─────────────────────────────────────────────────────────────────────
@@ -481,9 +578,15 @@ def _maybe_uuid(value: Any):
 
 
 def _maybe_decimal(value: Any):
-    if value is None:
+    """A confidence in [0, 100] with one decimal place, or None. The column is
+    Numeric(4,1), so an out-of-range or non-finite model value would otherwise fail
+    the flush and abort the whole advisor request."""
+    if value is None or isinstance(value, bool):
         return None
     try:
-        return Decimal(str(value))
+        number = Decimal(str(value))
     except (InvalidOperation, ValueError, TypeError):
         return None
+    if not number.is_finite():
+        return None
+    return min(Decimal(100), max(Decimal(0), number)).quantize(Decimal("0.1"))

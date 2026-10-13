@@ -26,7 +26,10 @@ from app.utils.db import get_or_404
 from app.models.enums import FindingSeverity, FindingStatus, ScanJobStatus, ScanJobType
 from app.models.finding import Finding
 from app.models.scan_job import ScanJob
-from app.services.finding_scan_provenance import record_scan_observation
+from app.services.finding_scan_provenance import (
+    CUSTODY_CAPTURED_BY_MANAGER,
+    record_scan_observation,
+)
 
 router = APIRouter(prefix="/engagements/{engagement_id}/ad", tags=["active-directory"])
 logger = structlog.get_logger()
@@ -174,6 +177,7 @@ async def _run_ad_assessment_and_save(
                     item,
                     scan_job_id=job_uuid,
                     recorded_at=recorded_at,
+                    source_host=params.get("dc_ip"),
                 ))
                 created += 1
             except Exception as exc:
@@ -198,6 +202,7 @@ def _ad_finding(
     *,
     scan_job_id: uuid.UUID,
     recorded_at: datetime,
+    source_host: str | None = None,
 ) -> Finding:
     severity = item.get("severity")
     severity = (
@@ -214,6 +219,10 @@ def _ad_finding(
         tool="ad_assessment",
         recorded_at=recorded_at,
         initial=True,
+        # The manager runs this scanner directly, so it is the custodian; the DC
+        # (or the item's own host) is the scanned host.
+        source_host=item.get("target") or item.get("host") or source_host,
+        captured_by=CUSTODY_CAPTURED_BY_MANAGER,
     )
     return Finding(
         engagement_id=engagement_id,

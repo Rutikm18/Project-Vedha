@@ -1,0 +1,4 @@
+[
+  {"scanner": "mobile_scan", "target": "192.168.1.91", "timestamp": "2026-09-01T00:00:00Z", "port": 5555, "proto": "tcp", "status": "open",
+   "data": {"adb_command": "CNXN", "adb_version": "0x1000000", "max_payload": 1048576, "auth_required": false, "unauthenticated_shell": true, "note": "ADB in TCP mode — NO AUTH — remote shell available to anyone"}}
+]

@@ -2,8 +2,12 @@
 
 This module is intentionally deterministic and read-only.  It may normalize
 recorded JSON into a stable shape and calculate clearly-labelled current SLA
-projections, but it never generates missing narrative, timestamps, evidence, or
-compliance mappings.
+projections, but it never generates missing timestamps, evidence, or compliance
+mappings. Narrative the platform did not record (technical details, impact, business
+impact, exploitation context), the "why was this flagged" line and the fix plan are filled
+from the deterministic knowledge base (``report_enrichment``) — never by a model — and each
+such field is labelled ``knowledge_base`` in ``narrative_sources`` so recorded text and
+standard text stay distinguishable. Precedence: overrides > recorded evidence > knowledge base.
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services import report_enrichment as enrich
 from app.compliance.profile import EngagementProfile, profile_from_roe
 from app.compliance.registry import (
     DISCLAIMER,
@@ -31,11 +36,12 @@ from app.compliance.registry import (
 )
 from app.intel.tagging import tag_strings
 from app.models.asset import Asset
-from app.models.detection_run import DetectionRun
+from app.models.detection_run import RUN_COMPLETED, DetectionRun
 from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.finding_event import FindingEvent
 from app.models.remediation_plan import RemediationPlan
+from app.models.scan_job import ScanJob
 from app.models.scan_result import ScanResult
 from app.models.sla_policy import SlaPolicy
 from app.models.user import User
@@ -69,11 +75,16 @@ from app.schemas.report_document import (
     ReportRemediationPlan,
     ReportRetestRecord,
     ReportSlaProjection,
+    ReportCoverageSheet,
+    ReportIssueGroup,
     ReportSummary,
     ReportVerification,
 )
 from app.services import finding_events, sla
-from app.services.evidence_integrity import verify_canonical_sha256
+from app.services.evidence_integrity import (
+    content_for_integrity,
+    verify_canonical_sha256,
+)
 from app.services.finding_compliance import (
     compliance_for,
     compliance_mapping_basis,
@@ -228,8 +239,14 @@ def _artifact(
             break
     sha256 = _text(item.get("sha256"))
     sha256_basis = _text(item.get("sha256_basis"))
+    # Verify over the content the digest actually covers: the custody block the
+    # manager stamps (hash, capture identity, provenance, dedup key) is excluded
+    # so a verified hash means the OBSERVED evidence is unchanged, and advancing
+    # provenance or re-stamping custody never reads as a mismatch.
     sha256_verified = (
-        verify_canonical_sha256(content, sha256, sha256_basis)
+        verify_canonical_sha256(
+            content_for_integrity(content), sha256, sha256_basis
+        )
         if sha256 is not None
         else None
     )
@@ -1037,6 +1054,9 @@ def _closure(
                 gaps.append("risk_acceptance_expiry_absent")
             if not _has_detail(detail, "compensating_controls"):
                 gaps.append("risk_acceptance_compensating_controls_absent")
+            expiry = _parse_rfc3339(_text(detail.get("expires_at") or detail.get("expiry")))
+            if expiry is not None and expiry <= generated_at:
+                gaps.append("risk_acceptance_expired")
         elif status == "fp" and not evidence.artifacts:
             gaps.append("false_positive_contradiction_evidence_absent")
 
@@ -1149,7 +1169,8 @@ def _recommendations_from_evidence(evidence: Any) -> list[ReportRecommendation]:
     return values
 
 
-def _remediation(finding: Finding, rows: list[RemediationPlan]) -> ReportRemediation:
+def _remediation(finding: Finding, rows: list[RemediationPlan],
+                 asset: Asset | None = None) -> ReportRemediation:
     plans = [plan for row in rows if (plan := _plan(row)) is not None]
     remediation_updated_at = getattr(finding, "remediation_updated_at", None)
     remediation_updated_by = getattr(finding, "remediation_updated_by", None)
@@ -1171,8 +1192,29 @@ def _remediation(finding: Finding, rows: list[RemediationPlan]) -> ReportRemedia
             )
             for recommendation in plan.long_term_recommendations
         )
+    plan = enrich.fix_plan(finding, asset)
+    if plan and not recommendations:
+        # Nothing was recorded or reviewed, so the KB recipe's steps and long-term advice
+        # become the recommendation records — clearly labelled as standard (unreviewed)
+        # content so they are never mistaken for a reviewed plan. (Recorded and reviewed
+        # recommendations always take precedence; the full recipe stays in `fix_plan`.)
+        kb_texts = [
+            f"Step {step.get('step')} [{step.get('tier')}]: {step.get('title')}"
+            + (f" — {step.get('description')}" if step.get("description") else "")
+            for step in plan.get("steps") or []
+        ] + [t for t in plan.get("long_term_recommendations") or [] if isinstance(t, str)]
+        recommendations.extend(
+            ReportRecommendation(
+                text=text.strip(),
+                source_type="knowledge_base_recipe",
+                source_id=str(plan.get("recipe_id") or ""),
+                review_state="unreviewed_knowledge_base",
+            )
+            for text in kb_texts
+            if text.strip()
+        )
     gaps: list[str] = []
-    if not finding.remediation and not plans:
+    if not finding.remediation and not plans and not plan:
         gaps.append("remediation_absent")
     if finding.remediation and remediation_updated_at is None:
         gaps.append("remediation_timestamp_absent")
@@ -1191,9 +1233,29 @@ def _remediation(finding: Finding, rows: list[RemediationPlan]) -> ReportRemedia
         recommendations=recommendations,
         recorded_recommendations=_dedupe(
             recommendation.text for recommendation in recommendations
+            if recommendation.source_type != "knowledge_base_recipe"
         ),
+        fix_plan=plan,
         gaps=gaps,
     )
+
+
+def _role_fields(asset: Asset) -> dict[str, Any]:
+    """The role the report shows, with its confidence (M10): only roles a classifier actually
+    recorded are shown, and an untrustworthy one says so instead of being presented as fact."""
+    role = getattr(asset, "device_role", None)
+    if not role:
+        return {}
+    from app.intel.device_role import drives_amplifier, resolve_role
+    confidence = getattr(asset, "role_confidence", None)
+    verdict = resolve_role(str(role), confidence, getattr(asset, "os", None))
+    return {
+        "device_role": str(role),
+        "role_confidence": float(confidence) if confidence is not None else None,
+        "resolved_role": verdict.role,
+        "role_basis": verdict.basis,
+        "role_trusted": drives_amplifier(str(role), confidence, getattr(asset, "os", None)),
+    }
 
 
 def _asset(asset: Asset | None) -> ReportAsset | None:
@@ -1212,6 +1274,7 @@ def _asset(asset: Asset | None) -> ReportAsset | None:
         environment=asset.environment,
         tags=asset.tags if isinstance(asset.tags, dict) else {},
         last_seen=asset.last_seen,
+        **_role_fields(asset),
     )
 
 
@@ -1330,7 +1393,7 @@ def _finding(
     evidence = normalize_evidence(finding.evidence)
     lifecycle = _timeline(finding, event_rows)
     closure = _closure(finding, lifecycle, resolution_runs, generated_at)
-    remediation = _remediation(finding, plan_rows)
+    remediation = _remediation(finding, plan_rows, asset)
     mappings = extract_compliance_mappings(finding.evidence)
     content_overrides = (
         finding.content_overrides
@@ -1360,6 +1423,50 @@ def _finding(
     preconditions = _recorded_evidence_value(
         finding.evidence, "preconditions", "prerequisites"
     )
+    # Knowledge-base fallback for narrative nobody recorded (overrides > evidence > KB).
+    narrative_sources: dict[str, str] = {}
+    kb = enrich.kb_narrative(finding, asset)
+    for field_name, recorded in (
+        ("technical_details", technical_details),
+        ("impact", impact),
+        ("business_impact", business_impact),
+        ("exploitation", exploitation),
+    ):
+        narrative_sources[field_name] = (
+            enrich.SOURCE_RECORDED if recorded is not None else enrich.SOURCE_KB
+        )
+    if technical_details is None:
+        technical_details = kb["technical_details"]
+    if impact is None:
+        impact = kb["impact"]
+    if business_impact is None:
+        business_impact = kb["business_impact"]
+    # Root cause and preconditions are standard text about the weakness CLASS, filled only when
+    # nothing was recorded. Reproduction is the recipe's own re-check ("how to confirm it again").
+    for field_name, recorded, standard in (
+        ("root_cause", root_cause, kb["root_cause"]),
+        ("preconditions", preconditions, kb["preconditions"]),
+        ("reproduction_steps", reproduction_steps,
+         enrich.reproduction_from_plan(remediation.fix_plan)),
+    ):
+        narrative_sources[field_name] = (
+            enrich.SOURCE_RECORDED if recorded is not None else enrich.SOURCE_KB
+        )
+        if recorded is None and standard:
+            if field_name == "root_cause":
+                root_cause = standard
+            elif field_name == "preconditions":
+                preconditions = standard
+            else:
+                reproduction_steps = standard
+    if exploitation is None:
+        exploitation = kb["exploitation"]
+    description = finding.description
+    description_source = enrich.SOURCE_RECORDED
+    if not description or enrich.description_is_rule_metadata(finding):
+        description = enrich.first_sentence(kb["technical_details"]) or description
+        description_source = enrich.SOURCE_KB
+    narrative_sources["description"] = description_source
     assignee_id = getattr(finding, "assigned_to", None)
     action_tracking = _action_tracking(
         finding,
@@ -1389,7 +1496,7 @@ def _finding(
     )
 
     gaps: list[str] = []
-    if not finding.description:
+    if not description:
         gaps.append("description_absent")
     if asset is None:
         gaps.append("asset_context_absent")
@@ -1405,17 +1512,13 @@ def _finding(
         gaps.append("exploitation_context_absent")
     if reproduction_steps is None:
         gaps.append("reproduction_steps_absent")
-    finding_evidence = finding.evidence if isinstance(finding.evidence, dict) else {}
-    if not finding.cve_ids and not _text(
-        finding_evidence.get("cve_not_applicable_reason")
-    ):
+    na_reasons = enrich.not_applicable_reasons(finding)
+    if not finding.cve_ids and not na_reasons.get("cve"):
         gaps.append("cve_reference_or_not_applicable_reason_absent")
     cwe_ids = _cwe_ids(finding.evidence)
-    if not cwe_ids and not _text(finding_evidence.get("cwe_not_applicable_reason")):
+    if not cwe_ids and not na_reasons.get("cwe"):
         gaps.append("cwe_reference_or_not_applicable_reason_absent")
-    if finding.cvss_score is None and not _text(
-        finding_evidence.get("cvss_not_applicable_reason")
-    ):
+    if finding.cvss_score is None and not na_reasons.get("cvss"):
         gaps.append("cvss_score_or_not_applicable_reason_absent")
     if finding.cvss_score is not None and not finding.cvss_vector:
         gaps.append("cvss_vector_absent")
@@ -1457,7 +1560,12 @@ def _finding(
     return ReportFinding(
         id=finding.id,
         title=finding.title,
-        description=finding.description,
+        description=description,
+        detection_rationale=enrich.detection_rationale(finding),
+        service_port=enrich.service_port(finding),
+        merged_signals=enrich.merged_signals(finding),
+        not_applicable_reasons=na_reasons,
+        narrative_sources=narrative_sources,
         technical_details=technical_details,
         impact=impact,
         business_impact=business_impact,
@@ -1721,6 +1829,61 @@ def _engagement(engagement: Engagement) -> ReportEngagement:
     )
 
 
+_SEVERITY_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
+
+
+def _group_signals(members: list[ReportFinding]) -> list[str]:
+    """Everything that says something about this issue besides its lead finding: the other
+    findings' titles plus the producers merged INTO any of them, de-duplicated, in order."""
+    lead = members[0].title
+    out: list[str] = []
+    for m in members:
+        for title in ([m.title] if m is not members[0] else []) + [
+                s.get("title") for s in m.merged_signals if s.get("title")]:
+            if title and title != lead and title not in out:
+                out.append(title)
+    return out
+
+
+def _issue_groups(findings: list[ReportFinding]) -> list[ReportIssueGroup]:
+    """Roll findings up to issues: everything about one service (port) of one asset is one
+    row, with the individual findings nested. A finding with no asset or no port is its own
+    issue — nothing is merged on a guess."""
+    buckets: dict[str, list[ReportFinding]] = {}
+    for item in findings:
+        asset_id = item.asset.id if item.asset is not None else None
+        key = (f"{asset_id}:{item.service_port}" if asset_id and item.service_port is not None
+               else f"finding:{item.id}")
+        buckets.setdefault(key, []).append(item)
+    groups: list[ReportIssueGroup] = []
+    for key, members in buckets.items():
+        members.sort(key=lambda m: (-_SEVERITY_RANK.get(m.severity, 0), m.title))
+        head = members[0]
+        asset = head.asset
+        groups.append(ReportIssueGroup(
+            key=key,
+            asset_id=asset.id if asset else None,
+            asset_label=(asset.hostname or asset.fqdn or asset.ip_address) if asset else None,
+            port=head.service_port,
+            title=head.title,
+            severity=head.severity,
+            open=any(m.status in {"open", "confirmed"} for m in members),
+            finding_count=len(members),
+            finding_ids=[m.id for m in members],
+            signals=_group_signals(members),
+        ))
+    groups.sort(key=lambda g: (-_SEVERITY_RANK.get(g.severity, 0), -g.finding_count,
+                               g.asset_label or "", g.port or 0))
+    return groups
+
+
+def _coverage_sheet(run: DetectionRun | None, job: Any | None) -> ReportCoverageSheet | None:
+    if run is None:
+        return None
+    sheet = enrich.coverage_sheet(run, job)
+    return ReportCoverageSheet(**sheet) if sheet else None
+
+
 def _summary(findings: list[ReportFinding]) -> ReportSummary:
     severities = Counter(item.severity for item in findings)
     statuses = Counter(item.status for item in findings)
@@ -1745,7 +1908,10 @@ def _summary(findings: list[ReportFinding]) -> ReportSummary:
         severity: sum(row.get(status, 0) for status in _TERMINAL_STATUSES)
         for severity, row in severity_status.items()
     }
+    issue_groups = _issue_groups(findings)
     return ReportSummary(
+        issue_count=len(issue_groups),
+        issue_groups=issue_groups,
         total_findings=len(findings),
         by_severity=dict(severities),
         by_status=dict(statuses),
@@ -1880,6 +2046,8 @@ def build_report_document(
     sla_windows: dict[str, int],
     assignee_emails: dict[uuid.UUID, str] | None = None,
     engagement_asset_tags: set[str] | None = None,
+    coverage_run: DetectionRun | None = None,
+    coverage_job: Any | None = None,
     snapshot_kind: Literal[
         "postgresql_repeatable_read_read_only",
         "sqlite_read_transaction",
@@ -1953,6 +2121,7 @@ def build_report_document(
         engagement=engagement_out,
         summary=_summary(findings),
         findings=findings,
+        coverage_sheet=_coverage_sheet(coverage_run, coverage_job),
         compliance_rollup=compliance,
         derived_regional_compliance=_derived_regional_compliance(
             engagement,
@@ -2194,6 +2363,34 @@ async def load_report_document(
         if policy is not None
         else sla.default_windows()
     )
+    # The engagement's latest completed detection run (+ the scan job that fed it) for the
+    # coverage sheet. Tenant-scoped like every other report query.
+    coverage_run = (
+        await db.execute(
+            select(DetectionRun)
+            .join(Engagement, Engagement.id == DetectionRun.engagement_id)
+            .where(
+                DetectionRun.engagement_id == engagement_id,
+                Engagement.tenant_id == tenant_id,
+                DetectionRun.status == RUN_COMPLETED,
+            )
+            .order_by(DetectionRun.started_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    coverage_job = None
+    if coverage_run is not None and coverage_run.job_id is not None:
+        coverage_job = (
+            await db.execute(
+                select(ScanJob)
+                .join(Engagement, Engagement.id == ScanJob.engagement_id)
+                .where(
+                    ScanJob.id == coverage_run.job_id,
+                    ScanJob.engagement_id == engagement_id,
+                    Engagement.tenant_id == tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
     return build_report_document(
         engagement=engagement,
         finding_rows=list(finding_rows),
@@ -2205,6 +2402,8 @@ async def load_report_document(
         sla_windows=windows,
         assignee_emails=assignee_emails,
         engagement_asset_tags=engagement_asset_tags,
+        coverage_run=coverage_run,
+        coverage_job=coverage_job,
         snapshot_kind=snapshot_kind,
         snapshot_guarantee=snapshot_guarantee,
     )

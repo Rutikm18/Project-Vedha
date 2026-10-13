@@ -28,7 +28,7 @@ Each use case is dispatched by a stable numeric code; the probe maps it to exact
 | `80` | **Full-Port Audit (all 65,535)** | Every TCP port on a host, with a completeness self-check so a clean result is genuinely clean — catches services hiding on non-standard ports. | ✅ | 20–90 min /host |
 | `81` | **Internet-Exposure Mapping (multi-vantage)** | With two or more probes, separates *truly internet-exposed* services from internal-only ones — answers "what can an outside attacker actually reach?" | ✅ | 5–15 min /24 |
 | `82` | **Deep Port Sweep (few hosts)** | Full 65,535-port stealth sweep budgeted for a small, high-value host set (crown-jewel deep dive). | ✅ | 20–90 min/host (≤3 hosts) |
-| `11` | **Re-scan & Change Detection** | Re-runs an assessment and highlights *what changed* — new hosts, newly opened ports, config drift. | 🟡 | 15–60 min /24 |
+| `11` | **Re-scan & Change Detection** | Re-runs an assessment and highlights *what changed* — new hosts, newly opened ports, config drift. | ✅ | 15–60 min /24 |
 | `20` | **Web & TLS/SSL Security Check** | Grades TLS/SSL config (protocol versions, cipher strength, cert health) on web servers. | 🟡 | 5–15 min |
 | `21` | **Web Application Security Check** | Fingerprints web apps — methods, security headers, server tech — a pre-flight before a full web-app pentest. | 🟡 | 5–15 min |
 | `40` | **Database Exposure Check** | Checks whether MySQL/Postgres/MSSQL/Redis/Mongo are reachable and accept unauthenticated connections. | 🟡 | 3–10 min |
@@ -106,6 +106,48 @@ Each use case is dispatched by a stable numeric code; the probe maps it to exact
 | **Correlation** | Exposed datastore + unauth access (data breach) | Critical | — | T1210, T1078, T1005 |
 | **Correlation** | Default SNMP on network infra (lateral movement) | Med→High | — | T1602.001, T1078 |
 
+### 3a-bis. Detection enhancements (latest — see `manager/detection_engine/DETECTION_ENHANCEMENTS.md`)
+
+A pass over the *collected-but-unassessed* facts (data the probe already shipped
+and stored that no rule read — a guaranteed silent false-negative class) added
+**18 new detections, 2 attack-path correlations, and an ATT&CK tactic/technique
+roll-up**. Detection only; **no probe changes** — the probe stays collection-only.
+State follows the same discipline: credentialed/validated sources → **confirmed**,
+everything else → **suspected** until the scanner earns rig validation; every
+detector fails silent on absent/errored input (never a false accusation).
+
+| Area | New check | Severity | CWE | MITRE | Tier |
+|------|-----------|:--------:|-----|-------|------|
+| Crypto/TLS | Weak certificate public key (<2048-bit RSA/<256-bit EC) | High | CWE-326 | T1040 | confirmed |
+| Crypto/TLS | Certificate signed with broken hash (MD5/SHA-1) | High | CWE-327 | T1557 | confirmed |
+| Web | Dangerous HTTP methods enabled (PUT/DELETE/TRACE/CONNECT) | Medium | CWE-650 | T1505 | suspected |
+| Web | HTTPS service without HSTS (downgrade/sslstrip) | Low | CWE-319 | T1040 | suspected |
+| Info disclosure | DNS version.bind software disclosure | Low | CWE-200 | T1590.002 | suspected |
+| Info disclosure | LDAP anonymous **search** returns directory content | Medium | CWE-200 | T1087.002 | suspected |
+| SNMP/UDP | SNMP measured GETBULK amplification (DDoS reflector) | Medium | CWE-406 | T1498.002 | suspected |
+| IoT | MQTT broker accepts unauthenticated clients | High | CWE-306 | T1133 | suspected |
+| IoT | TR-069/CWMP management interface exposed (Mirai vector) | Medium | CWE-284 | T1190 | suspected |
+| IoT | RTSP camera/stream endpoint exposed | Medium | CWE-284 | T1021 | suspected |
+| Mobile | Android ADB unauthenticated remote shell | Critical | CWE-306 | T1021 | suspected |
+| AI/MCP | AI/MCP inference endpoint exposed without auth (`uc 61`) | High | CWE-306 | T1133 | suspected |
+| **Host / IOA** | Endpoint protection disabled or degraded (Defender off) | High | CWE-693 | T1562.001 | **confirmed** |
+| **Host / IOA** | Service binary in a user-writable directory | High | CWE-732 | T1543.003 | **confirmed** |
+| **Host** | Unquoted Windows service path | Medium | CWE-428 | T1574.009 | **confirmed** |
+| **Host** | Excessive local administrators | Low | CWE-269 | T1078 | **confirmed** |
+| **Host / IOA** | Known cryptominer/malware process running (curated) | Critical | CWE-506 | T1496 | **confirmed** |
+| **Host / IOA** | Backdoor/C2 listener bound on the host | High | CWE-506 | T1571 | **confirmed** |
+| **Threat intel** | TLS fingerprint (JARM/JA4S/JA4X) matches known tooling | High | CWE-506 | T1071.001 | suspected (IOC) |
+| **Correlation** | AD exposure (anonymous LDAP + SMB; worse on a DC) | Med→Crit | — | T1087.002, T1557.001, T1210 | — |
+| **Correlation** | Exposed management plane (IPMI cipher-0 / WinRM+RDP) | High→Crit | — | T1078, T1021 | — |
+
+The **Host / IOA** rows are the first cut of **Backlog #1 (credentialed scanning)**:
+they read the authenticated Windows/Linux inventory the probe collects and were
+previously ignored by detection. They also add the engine's first **indicator-of-
+attack** signals — AV tampering, rogue service binaries, miner processes, backdoor
+listeners — surfacing active-compromise evidence a config-only VA cannot see. A
+new `attack_matrix.build_attack_matrix()` rolls every finding up into a MITRE
+ATT&CK tactic/technique matrix for the report.
+
 ### 3a. CVE / Exploitability Intelligence (verified)
 
 | Aspect | How it works | Why it's trustworthy |
@@ -113,7 +155,7 @@ Each use case is dispatched by a stable numeric code; the probe maps it to exact
 | Version → CVE | Observed product+version → CPE 2.3 candidate → **offline OSV snapshot** version-range match (dpkg/epoch-aware) | Fully **offline & deterministic** — no data leaves the network; every run records `db_snapshot_hash` |
 | Confirmed vs suspected | "Confirmed" requires the range match **and** an authoritative (credentialed) source; banner-inferred stays "suspected, backport-possible" | We never claim a vuln we can't substantiate |
 | Prioritization | CISA **KEV** + FIRST **EPSS** + CVSS joined per finding; precedence KEV > EPSS≥0.5 > EPSS≥0.1 > CVSS | Client sees *actually-exploited* risk first, not just high CVSS |
-| Exploitability overlay | Posture findings linked to live CVEs (SMBv1→EternalBlue, RDP-no-NLA→BlueKeep, SMB-signing→PetitPotam, container→Docker-API, MSRPC→PrintNightmare) | Turns a config finding into a named, prioritized attack |
+| Exploitability overlay | Posture findings linked to live CVEs (SMBv1→EternalBlue, RDP-no-NLA→BlueKeep+DejaBlue, SMB-signing→PetitPotam, container→Docker-API, MSRPC→PrintNightmare+ZeroLogon, SSH→Terrapin) | Turns a config finding into a named, prioritized attack |
 
 ---
 
@@ -140,9 +182,8 @@ Each use case is dispatched by a stable numeric code; the probe maps it to exact
 | Web & TLS/SSL triage (`uc 20`) | Cert/cipher/protocol grading as a standalone use case | 🟡 coming_soon |
 | Web application triage (`uc 21`) | Method/header/tech fingerprint pre-pentest | 🟡 coming_soon |
 | Database exposure check (`uc 40`) | DB reachability + unauth as a standalone use case | 🟡 coming_soon |
-| AI & MCP endpoint discovery (`uc 61`) | Exposed inference / MCP server surface | 🟡 coming_soon |
+| AI & MCP endpoint discovery (`uc 61`) | Exposed inference / MCP server surface | 🟡 collection coming_soon; **manager detection rule shipped** |
 | OT / ICS passive discovery (`uc 70`) | Listen-only industrial inventory | 🟡 coming_soon |
-| Re-scan & change detection (`uc 11`) | Delta reporting between runs | 🟡 coming_soon |
 | EDR/SIEM detection-coverage grader | Matches attack actions vs SIEM/EDR alerts → ATT&CK coverage % + Sigma-rule gap recommendations | 🟡 built, integrating |
 | NVD companion snapshot | Optional NVD/CPE data beside OSV | 🟡 optional |
 | Regional compliance packs + sector/BFSI AI gateway | Jurisdiction-aware guidance (IN/EU/UK/US/ME/APAC), cloud/hybrid/sovereign deployment profiles | 🟡 branch, unmerged |
@@ -153,7 +194,7 @@ Each use case is dispatched by a stable numeric code; the probe maps it to exact
 
 | # | Capability | Why we need it | Priority |
 |---|------------|----------------|:--------:|
-| 1 | **Credentialed / authenticated scanning** | Turn "default-cred candidate" into *confirmed*; deeper patch/config visibility | High |
+| 1 | **Credentialed / authenticated scanning** | Turn "default-cred candidate" into *confirmed*; deeper patch/config visibility — **initial manager-side host-posture/IOA shipped** (`host_posture.py`: Defender state, service binaries, admins, processes, listeners) | High |
 | 2 | **CIS / SCAP compliance benchmarking** | No compliance-benchmark scanning today; clients ask for CIS baselines | High |
 | 3 | **Confirmed default-credential testing** | Currently candidate-only (safe); needs opt-in safe login attempts | Medium |
 | 4 | **Deeper web-app testing** | Beyond triage — injection/authz checks (RoE-gated) | Medium |

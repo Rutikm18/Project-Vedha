@@ -14,11 +14,12 @@ import uuid
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 
 from app.ai.agent import AgentDecisionEngine, AgentUnavailableError
 from app.auth.rbac import require_role
+from app.ratelimit import ai_rate_limit
 from app.dependencies import DB, AuthUser
 from app.models.agent_recommendation import AgentRecommendation
 from app.models.engagement import Engagement
@@ -46,7 +47,7 @@ def _rec_dict(r: AgentRecommendation) -> dict:
     }
 
 
-@router.post("/run", summary="Run the agentic AI advisor over this engagement")
+@router.post("/run", dependencies=[Depends(ai_rate_limit)], summary="Run the agentic AI advisor over this engagement")
 async def run_advisor(
     engagement_id: uuid.UUID,
     db: DB,

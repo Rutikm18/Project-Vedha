@@ -1,5 +1,7 @@
 # Vedha Agent — Windows (simple, git-based)
 
+> Starting, running, updating and troubleshooting an installed agent: [docs/operations/WINDOWS_AGENT_MANAGEMENT.md](../../docs/operations/WINDOWS_AGENT_MANAGEMENT.md).
+
 Run the probe on a **Windows** machine straight from the repo — no Docker, no exe
 build, no zip. The customer clones/pulls from GitHub and runs one script that
 sets up a venv, installs dependencies, and starts the agent.
@@ -10,7 +12,39 @@ sets up a venv, installs dependencies, and starts the agent.
 
 ---
 
-## The customer commands (on the target Windows machine)
+## One command (recommended): signed release from your manager
+
+In the Vedha portal open **Fleet → Add agent**, pick **Windows**, and copy the command. It carries
+your manager address and a single-use install token.
+
+PowerShell, from an **elevated** prompt (Run as administrator):
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; & ([scriptblock]::Create((irm 'https://manager.example.com/agent/install.ps1'))) -Manager 'https://manager.example.com' -Token 'vet_...'"
+```
+or from cmd.exe (asks for administrator rights itself):
+```bat
+curl.exe --proto =https --tlsv1.2 -fsSL "https://manager.example.com/agent/install.cmd" -o "%TEMP%\vedha-install.cmd" && "%TEMP%\vedha-install.cmd" "https://manager.example.com" "vet_..."
+```
+
+The installer (`install-remote.ps1`, served as `/agent/install.ps1`) first verifies the release
+manifest's ECDSA P-256 signature against the key baked into the script, then downloads the package
+with your token and checks its size and SHA-256 against that signed manifest, checks the Authenticode
+signature when the release pins a certificate, unpacks it (refusing any path that escapes the target
+folder) and runs the packaged `install.ps1` (the same installer as in the hand-delivered ZIP: package
+checksums, connection check, locked data folder, Scheduled Task, wait-for-connect, diagnostics). It stops at
+the first mismatch and installs nothing. The token goes only into the agent's settings file inside the
+locked data folder and is removed once the agent is online. The manager must be an `https://` address.
+
+`C:\ProgramData\vedha-agent` is restricted to SYSTEM and Administrators (it holds the agent's
+identity key). The installer and uninstaller stay in `C:\ProgramData\vedha-agent\tools`.
+
+Update: run the same command again with a fresh token. Remove: `C:\ProgramData\vedha-agent\tools\uninstall.cmd`
+(add `-Purge` to also delete the identity and logs). Audit a release without installing it: add `-VerifyOnly`
+to the PowerShell command (no administrator rights needed).
+
+---
+
+## The git-based customer commands (on the target Windows machine)
 
 **Prerequisites:** none pre-installed is required — `setup.ps1` **auto-installs
 Python** if it's missing (winget or the official installer). Use
@@ -69,6 +103,8 @@ State/identity/logs live under `C:\ProgramData\vedha-agent\`.
 | File | Role |
 |---|---|
 | `setup.ps1` / `setup.cmd` | **the automated installer** (venv + deps + run/register) |
+| `install-remote.ps1` / `install-remote.cmd` | **one-command signed install** (stamped with the release key and served by the manager as `/agent/install.ps1` and `/agent/install.cmd`) |
+| `install.ps1` / `install.cmd` | install from an unpacked package (what the one-command installer runs after verifying it) |
 | `uninstall.ps1` / `uninstall.cmd` | remove the background task |
 | `probe.env.template` | documents the config the script sets |
 | `README-CUSTOMER.txt` | short in-repo customer note |

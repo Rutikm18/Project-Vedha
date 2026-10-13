@@ -21,6 +21,7 @@ Design:
 """
 from __future__ import annotations
 
+from app.intel.device_role import drives_amplifier
 from app.models.enums import FindingSeverity
 
 # ── signal port tables (mirrors probe gates.py / findings.py) ────────────────
@@ -72,6 +73,10 @@ class _HostSignals:
         self.db_ports: set[int] = set()
         self.device_role: str | None = None
         self.role_detail: str | None = None
+        # Directory / out-of-band management signals (B4 composites).
+        self.ldap_anon: bool = False          # anonymous bind OR search succeeded
+        self.ldap_search: bool = False        # anonymous SEARCH returned content
+        self.ipmi_cipher_zero: bool = False    # IPMI cipher-0 auth bypass
 
     def observe(self, fact: dict) -> None:
         data = fact.get("data") if isinstance(fact.get("data"), dict) else {}
@@ -92,6 +97,16 @@ class _HostSignals:
                 self.smbv1 = True
             if "signing_required" in data:
                 self.smb_signing_required = bool(data.get("signing_required"))
+
+        if scanner in ("ldap_scan", "ldap_enum"):
+            if data.get("anonymous_search_allowed") is True:
+                self.ldap_anon = True
+                self.ldap_search = True
+            elif data.get("anonymous_bind") is True:
+                self.ldap_anon = True
+
+        if scanner in ("ipmi_scan", "ipmi") and data.get("cipher_zero") is True:
+            self.ipmi_cipher_zero = True
 
         if scanner == "device_classify" or data.get("device_type"):
             self.device_role = data.get("device_type") or self.device_role
@@ -138,7 +153,14 @@ def _group(facts: list[dict], roles: dict[str, dict]) -> dict[str, _HostSignals]
         hosts.setdefault(target, _HostSignals()).observe(fact)
     for ip, sig in hosts.items():
         role = roles.get(ip) or {}
-        sig.finalize(role.get("device_role"), role.get("role_detail"))
+        device_role, role_detail = role.get("device_role"), role.get("role_detail")
+        # A role may only amplify severity when it is trustworthy: a low-confidence or
+        # OS-contradicted classification (a Linux server answering on router ports) is
+        # still stored on the asset but does not turn a finding into a "network device"
+        # or "domain controller" one.
+        if not drives_amplifier(device_role, role.get("role_confidence"), role.get("os")):
+            device_role, role_detail = None, None
+        sig.finalize(device_role, role_detail)
     return hosts
 
 
@@ -264,9 +286,89 @@ def _snmp_public_lateral(ip: str, s: _HostSignals) -> dict | None:
     }
 
 
+def _ad_exposure(ip: str, s: _HostSignals) -> dict | None:
+    """B4: an anonymously-readable directory on a host that also runs SMB — on a
+    domain controller this is a domain-recon-to-compromise chain (enumerate users/
+    groups/SPNs anonymously, then relay/attack the SMB surface)."""
+    if not (s.ldap_anon and s.smb_seen):
+        return None
+    how = "SEARCH (directory content)" if s.ldap_search else "BIND"
+    correlated = [f"LDAP-ANON-{'SEARCH' if s.ldap_search else 'BIND'}", "SMB-PRESENT"]
+    severity = FindingSeverity.high if s.ldap_search else FindingSeverity.medium
+    detail = (f"Anonymous LDAP {how} is permitted AND SMB is present on the same host "
+              "— an unauthenticated attacker can enumerate the directory (users, groups, "
+              "SPNs) and pivot to the SMB/authentication surface.")
+    dc = _is_domain_controller(s.role_detail, s.device_role)
+    if dc:
+        severity = FindingSeverity.critical
+        correlated.append("ROLE-DOMAIN-CONTROLLER")
+        detail += (" This host is a DOMAIN CONTROLLER — anonymous directory read plus "
+                   "a relayable SMB surface is a direct path toward domain compromise.")
+    return {
+        "rule_id": "CORR-AD-EXPOSURE",
+        "title": "Active Directory exposure (anonymous LDAP + SMB)",
+        "severity": severity,
+        "target": ip,
+        "port": 389,
+        "description": detail,
+        "remediation": ("Disable anonymous LDAP bind/search; require SMB signing and LDAP "
+                        "channel binding + signing; restrict DC management to trusted hosts."),
+        "mitre_techniques": ["T1087.002", "T1557.001", "T1210"],
+        "evidence": {"correlated": correlated, "ldap_search": s.ldap_search,
+                     "domain_controller": dc, "device_role": s.device_role,
+                     "role_detail": s.role_detail},
+    }
+
+
+# Out-of-band / remote-management ports that, exposed together, mean the host's
+# control plane is reachable from this vantage.
+_WINRM_PORTS = {5985, 5986}
+
+
+def _mgmt_plane_exposed(ip: str, s: _HostSignals) -> dict | None:
+    """B4: the host's management/control plane is reachable. IPMI cipher-0 is an
+    authentication BYPASS granting full out-of-band control (power, console,
+    virtual media) — critical on its own. Otherwise, two remote-admin planes
+    exposed together (WinRM + RDP) is a concentrated takeover surface."""
+    winrm = bool(s.open_tcp & _WINRM_PORTS)
+    rdp = RDP_PORT in s.open_tcp
+    if s.ipmi_cipher_zero:
+        correlated = ["IPMI-CIPHER-ZERO"]
+        severity = FindingSeverity.critical
+        detail = ("IPMI cipher suite 0 accepts ANY password — a full out-of-band "
+                  "takeover of the host (power, console, virtual media) with no valid "
+                  "credential.")
+        if winrm or rdp:
+            correlated += (["SVC-WINRM-EXPOSED"] if winrm else []) + (["SVC-RDP-EXPOSED"] if rdp else [])
+            detail += " In-band remote management (WinRM/RDP) is also exposed on this host."
+        port = 623
+    elif winrm and rdp:
+        correlated = ["SVC-WINRM-EXPOSED", "SVC-RDP-EXPOSED"]
+        severity = FindingSeverity.high
+        detail = ("Both WinRM and RDP remote-administration planes are exposed on one "
+                  "host — a concentrated credential-attack and takeover surface.")
+        port = 5985
+    else:
+        return None
+    return {
+        "rule_id": "CORR-MGMT-PLANE-EXPOSED",
+        "title": "Exposed host management plane",
+        "severity": severity,
+        "target": ip,
+        "port": port,
+        "description": detail,
+        "remediation": ("Disable IPMI cipher 0 and isolate BMC/IPMI to a dedicated "
+                        "management VLAN; restrict WinRM/RDP to jump hosts with MFA."),
+        "mitre_techniques": ["T1078", "T1021"],
+        "evidence": {"correlated": correlated, "ipmi_cipher_zero": s.ipmi_cipher_zero,
+                     "winrm": winrm, "rdp": rdp},
+    }
+
+
 _COMPOSITES = [
     _ntlm_relay, _legacy_windows, _cleartext_cluster,
     _exposed_db_unauth, _snmp_public_lateral,
+    _ad_exposure, _mgmt_plane_exposed,
 ]
 
 

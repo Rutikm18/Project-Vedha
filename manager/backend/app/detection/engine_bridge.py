@@ -39,7 +39,11 @@ from app.models.detection_run_finding import (
     DetectionRunFinding, RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED,
     RUN_FINDING_RESOLVED,
 )
-from app.discovery.finding_translator import _resolve_asset, _find_open_duplicate
+from app.discovery.finding_translator import (
+    AssetCache, _resolve_asset, _find_open_duplicate, prime_asset_cache,
+    exposed_service_condition, condition_index_key, DEDUP_KEY,
+    merge_signals, prune_stale_signals, stronger_severity,
+)
 from app.detection.attack_paths import attack_path_findings
 from app.detection.prioritization import _posture_risk_on_manager_scale
 from app.detection.resolution import (
@@ -48,7 +52,11 @@ from app.detection.resolution import (
 from app.ai.verification_graph import run_verification
 from app.config import get_settings
 from app.services.finding_events import record_event
-from app.services.finding_scan_provenance import preserve_trusted_scan_provenance
+from app.services.finding_scan_provenance import (
+    CUSTODY_CAPTURED_BY_MANAGER,
+    preserve_trusted_scan_provenance,
+    stamp_chain_of_custody,
+)
 
 logger = structlog.get_logger()
 
@@ -297,7 +305,13 @@ def detect_all_from_facts_traced(
         except ImportError:                          # older engine: CVE-only
             from pipeline import run_pipeline  # type: ignore
             findings, _ = run_pipeline([tmp])
-            return [f.to_dict() for f in findings], [], empty_meta
+            # Mirror run_full_detection's gap #4 partition: a `range-open` match
+            # is product-presence (open-ended range, no version signal), not a
+            # customer-facing CVE — withhold it here too so this degraded path
+            # cannot reintroduce the banner-host flood.
+            cve = [f.to_dict() for f in findings
+                   if getattr(f, "match_basis", None) != "range-open"]
+            return cve, [], empty_meta
     except Exception as exc:  # noqa: BLE001
         # The CVE track can fail on its own (e.g. a missing/oversized NVD snapshot);
         # the POSTURE track must NOT go down with it — config-exposure findings need
@@ -444,6 +458,21 @@ async def _find_remediated_match(db, engagement_id, asset_id, title, *,
 
 
 def _posture_description(p: dict) -> str | None:
+    """What a reader sees as the finding's description: a plain-language sentence about the
+    weakness from the knowledge base. The rule's own metadata (CWE, ATT&CK, scanner, false-
+    positive note) lives in the evidence and in the report's `detection_rationale`, not here.
+    Falls back to that metadata line only when the KB has nothing for the rule."""
+    try:
+        from types import SimpleNamespace
+        from app.services import report_enrichment as enrich
+        probe = SimpleNamespace(evidence=p, title=p.get("title"), description="",
+                                remediation=p.get("remediation"), cve_ids=None,
+                                severity=p.get("severity"))
+        sentence = enrich.first_sentence(enrich.kb_narrative(probe)["technical_details"])
+        if sentence:
+            return sentence
+    except Exception:  # noqa: BLE001 — a description is decoration, never a reason to drop a finding
+        pass
     bits: list[str] = []
     if p.get("cwe"):
         bits.append(p["cwe"])
@@ -461,6 +490,7 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                                     cache: dict | None = None,
                                     open_index: dict | None = None,
                                     remediated_index: dict | None = None,
+                                    identity=None,
                                     ) -> tuple[int, int]:
     """Translate posture/config-exposure findings (from the VERIFIED scanners) into
     backend Finding rows, reusing the SAME dedup + regression-reopen lifecycle as
@@ -472,12 +502,45 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
         try:
             title = _posture_title(p)
             manager_risk = _posture_risk_on_manager_scale(p)
-            asset = await _resolve_asset(db, engagement_id, p.get("asset_ip"), cache=cache)
+            asset = await _resolve_asset(db, engagement_id, p.get("asset_ip"), cache=cache,
+                                         identity=identity)
             asset_id = asset.id if asset else None
 
+            # gap #2: an exposed-service posture finding (POSTURE-EXPOSED-*) carries
+            # a per-port condition key so it is the SAME issue as any other
+            # producer's exposed-service finding on that port, merging instead of
+            # adding a second, differently-titled row. Dedicated-scanner findings
+            # (SMB/RDP/TLS) are not keyed by port — two real issues can share one.
+            # Every rule carries its canonical condition key (posture_rules.condition_key),
+            # so dedicated-scanner findings merge with port-intel rows of the SAME
+            # (service, weakness-class) while a different weakness on the same port stays
+            # its own finding. Older engine output without the key keeps the legacy rule.
+            ev_in = p.get("evidence") if isinstance(p.get("evidence"), dict) else {}
+            condition = ev_in.get(DEDUP_KEY) or (
+                exposed_service_condition(p.get("port"), p.get("proto"))
+                if str(p.get("rule_id") or "").startswith("POSTURE-EXPOSED-") else None)
+            if condition:
+                p[DEDUP_KEY] = condition
+
             dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
-                                             index=open_index)
+                                             condition=condition, index=open_index)
             if dup is not None:
+                new_sev = _POSTURE_SEV.get(p.get("severity"), FindingSeverity.info)
+                prev_ev = dup.evidence if isinstance(dup.evidence, dict) else {}
+                different_producer = bool(condition) and (
+                    dup.title != title or prev_ev.get("rule_id") != p.get("rule_id"))
+                if different_producer or prev_ev.get("signals"):
+                    # Another producer/rule describing the SAME condition: keep the strongest
+                    # severity and remember every signal (stamped with this run) for the
+                    # report roll-up. A finding already carrying signals refreshes its own.
+                    p["signals"] = merge_signals(
+                        prev_ev, existing_rule_id=prev_ev.get("rule_id"),
+                        existing_title=dup.title, existing_severity=dup.severity,
+                        existing_run_id=dup.detection_run_id, run_id=run_id,
+                        incoming={"rule_id": p.get("rule_id"), "title": title,
+                                  "severity": p.get("severity")})
+                    if different_producer:
+                        dup.severity = stronger_severity(dup.severity, new_sev)
                 dup.evidence = preserve_trusted_scan_provenance(
                     p,
                     previous_evidence=dup.evidence,
@@ -509,6 +572,8 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                     remediated_index.pop((asset_id, title), None)
                 if open_index is not None:
                     open_index[(asset_id, title)] = regressed
+                    if condition:
+                        open_index[condition_index_key(asset_id, condition)] = regressed
                 continue
 
             state = p.get("state")
@@ -536,6 +601,8 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             db.add(f)
             touched.append(f)
             created += 1
+            if open_index is not None and condition:
+                open_index[condition_index_key(asset_id, condition)] = f
             # The dedup lookup no longer autoflushes into a query, so a second
             # finding with this identity in the SAME run only collapses onto
             # this row if the index knows about it.
@@ -545,6 +612,30 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             logger.warning("posture_finding.create_failed",
                            rule_id=p.get("rule_id"), error=str(exc))
     return created, reaffirmed
+
+
+def _stamp_chain_of_custody(findings, now) -> None:
+    """Stamp integrity custody on every finding this detection run touched.
+
+    These rows (CVE, posture, attack-path) record their scan lineage in DB
+    columns, not an evidence ``scan_provenance`` block, so they never passed
+    through ``record_scan_observation`` and would otherwise reach the report with
+    no integrity hash. ``captured_by`` is the manager (it computed the digest);
+    ``source_host`` is the asset IP the rule fired on when the evidence carries
+    one. A failure on one finding must not sink the batch or the run.
+    """
+    for f in findings:
+        try:
+            evidence = f.evidence if isinstance(f.evidence, dict) else {}
+            f.evidence = stamp_chain_of_custody(
+                evidence,
+                source_host=evidence.get("asset_ip") or evidence.get("target"),
+                captured_by=CUSTODY_CAPTURED_BY_MANAGER,
+                tool=evidence.get("scanner") or evidence.get("engine"),
+                captured_at=now,
+            )
+        except Exception as exc:  # noqa: BLE001 — custody must never break the run
+            logger.warning("custody.stamp_failed", error=str(exc))
 
 
 async def _stamp_verification(findings, llm=None) -> None:
@@ -563,17 +654,20 @@ async def _stamp_verification(findings, llm=None) -> None:
 
 
 async def _engagement_device_roles(db: AsyncSession, engagement_id: uuid.UUID) -> dict[str, dict]:
-    """ip → {device_role, role_detail} from already-promoted assets, so a prior
-    device_inventory scan amplifies today's correlation (Track B2)."""
+    """ip → {device_role, role_detail, role_confidence, os} from already-promoted assets, so a
+    prior device_inventory scan amplifies today's correlation (Track B2). The confidence and OS
+    let the correlator ignore a role that is not trustworthy (see intel.device_role)."""
     rows = (await db.execute(
-        select(Asset.ip_address, Asset.device_role, Asset.role_detail).where(
+        select(Asset.ip_address, Asset.device_role, Asset.role_detail,
+               Asset.role_confidence, Asset.os).where(
             Asset.engagement_id == engagement_id,
             Asset.device_role.isnot(None),
         )
     )).all()
     return {
-        ip: {"device_role": role, "role_detail": detail}
-        for ip, role, detail in rows if ip
+        ip: {"device_role": role, "role_detail": detail,
+             "role_confidence": confidence, "os": os_name}
+        for ip, role, detail, confidence, os_name in rows if ip
     }
 
 
@@ -582,6 +676,7 @@ async def _persist_attack_paths(
     cache: dict | None = None, open_index: dict | None = None,
     remediated_index: dict | None = None,
     touched: list | None = None,
+    identity=None,
 ) -> int:
     """Correlate composite attack paths from the run's facts and persist them as
     Finding rows (deduped by title, reaffirmed across runs). Returns NEW count."""
@@ -589,7 +684,8 @@ async def _persist_attack_paths(
     created = 0
     for d in attack_path_findings(facts, device_roles):
         try:
-            asset = await _resolve_asset(db, engagement_id, d.get("target"), cache=cache)
+            asset = await _resolve_asset(db, engagement_id, d.get("target"), cache=cache,
+                                         identity=identity)
             asset_id = asset.id if asset else None
             title = d["title"][:500]
             evidence = {
@@ -712,6 +808,103 @@ async def _record_run_membership(db: AsyncSession, run: DetectionRun) -> None:
             run_id=run.id, finding_id=fid, outcome=RUN_FINDING_RESOLVED))
 
 
+async def _notify_new_findings(db: AsyncSession, engagement_id: uuid.UUID, run_id: uuid.UUID) -> None:
+    """Tell the tenant about the Critical / High findings this run opened (one
+    message per severity, per run), if their notification rules say so. Never
+    raises, and runs in a savepoint so even a database error here cannot spoil the
+    detection run's own transaction."""
+    try:
+        from app.models.engagement import Engagement
+        from app.services.notification_rules import notify_event_safe
+
+        async with db.begin_nested():
+            opened = (await db.execute(
+                select(Finding.severity, Finding.title).where(
+                    Finding.initial_detection_run_id == run_id,
+                    Finding.severity.in_([FindingSeverity.critical, FindingSeverity.high]),
+                )
+            )).all()
+            if not opened:
+                return
+            eng = (await db.execute(
+                select(Engagement.tenant_id, Engagement.name).where(Engagement.id == engagement_id)
+            )).one_or_none()
+            if eng is None:
+                return
+            tenant_id, name = eng
+            for severity, label, event in (
+                (FindingSeverity.critical, "Critical", "critical_finding"),
+                (FindingSeverity.high, "High", "high_finding"),
+            ):
+                titles = [t for s, t in opened if s == severity]
+                if not titles:
+                    continue
+                shown = "\n".join(f"- {t}" for t in titles[:5])
+                more = f"\n…and {len(titles) - 5} more" if len(titles) > 5 else ""
+                await notify_event_safe(
+                    db, tenant_id, event,
+                    f"Vedha: {len(titles)} new {label} finding{'s' if len(titles) != 1 else ''} in {name}",
+                    f"A scan of '{name}' opened {len(titles)} {label} finding{'s' if len(titles) != 1 else ''}:\n"
+                    f"{shown}{more}")
+    except Exception as exc:  # noqa: BLE001 — notification must not fail the run
+        logger.warning("detection_run.notify_failed", run_id=str(run_id), error=str(exc))
+
+
+async def _notify_coverage_gap(db: AsyncSession, engagement_id: uuid.UUID, ingest: dict | None) -> None:
+    """Tell the tenant when a scan's facts were partly or wholly rejected: the checks
+    for those facts never ran, so a quiet result is not a clean one. Same guarantees
+    as _notify_new_findings: a savepoint, and it never raises."""
+    try:
+        census = ingest if isinstance(ingest, dict) else {}
+        quarantined = int(census.get("quarantined") or 0)
+        if quarantined <= 0:
+            return
+        from app.models.engagement import Engagement
+        from app.services.notification_rules import notify_event_safe
+
+        submitted = int(census.get("submitted") or 0)
+        ingested = int(census.get("ingested") or 0)
+        reasons = census.get("reasons") if isinstance(census.get("reasons"), dict) else {}
+        async with db.begin_nested():
+            eng = (await db.execute(
+                select(Engagement.tenant_id, Engagement.name).where(Engagement.id == engagement_id)
+            )).one_or_none()
+            if eng is None:
+                return
+            tenant_id, name = eng
+            why = "; ".join(f"{str(k)[:80]} ({int(v)})" for k, v in list(reasons.items())[:3]) or "no reason recorded"
+            await notify_event_safe(
+                db, tenant_id, "coverage_gap",
+                f"Vedha: detection coverage gap in {name}",
+                f"A scan of '{name}' submitted {submitted} facts but {quarantined} could not be "
+                f"understood ({ingested} checked), so those hosts and services were not "
+                f"assessed. Top reasons: {why}.")
+    except Exception as exc:  # noqa: BLE001 — notification must not fail the run
+        logger.warning("detection_run.coverage_notify_failed", error=str(exc))
+async def _refresh_attack_paths(db: AsyncSession, engagement_id: uuid.UUID) -> None:
+    """Best-effort refresh of an engagement's stored attack paths (see
+    attack_paths.refresh_if_materialised). Imported lazily: the router pulls in the
+    web layer, which detection must not depend on at import time."""
+    try:
+        from app.routers.attack_paths import refresh_if_materialised
+        await refresh_if_materialised(db, engagement_id)
+    except Exception as exc:  # noqa: BLE001 — a stale path list must not fail detection
+        logger.warning("detection_run.attack_path_refresh_failed",
+                       engagement_id=str(engagement_id), error=str(exc))
+
+
+async def _refresh_attack_paths(db: AsyncSession, engagement_id: uuid.UUID) -> None:
+    """Best-effort refresh of an engagement's stored attack paths (see
+    attack_paths.refresh_if_materialised). Imported lazily: the router pulls in the
+    web layer, which detection must not depend on at import time."""
+    try:
+        from app.routers.attack_paths import refresh_if_materialised
+        await refresh_if_materialised(db, engagement_id)
+    except Exception as exc:  # noqa: BLE001 — a stale path list must not fail detection
+        logger.warning("detection_run.attack_path_refresh_failed",
+                       engagement_id=str(engagement_id), error=str(exc))
+
+
 async def create_findings_from_facts(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
     *, scan_result_id: uuid.UUID | None = None, job_id: uuid.UUID | None = None,
@@ -781,7 +974,12 @@ async def create_findings_from_facts(
         touched: list = []
         # One asset cache shared by the CVE, posture and attack-path loops: the same
         # host is resolved ONCE per run instead of once per finding (kills the N+1).
-        asset_cache: dict = {}
+        asset_cache: AssetCache = AssetCache()
+        # Asset identity for this submission (P1b): global by default; private IPs
+        # scoped to the submitting probe's site when the engagement opts in.
+        # Resolved ONCE so the CVE, posture and composite loops agree.
+        from app.services.asset_resolution import identity_context
+        identity = await identity_context(db, engagement_id, scan_result_id=scan_result_id)
         # The same treatment for the dedup/regression lookups, which were the
         # other N+1 in these loops: TWO queries load this engagement's existing
         # findings, instead of one or two per finding produced (~12 per host, so
@@ -796,11 +994,20 @@ async def create_findings_from_facts(
         # plus the detection-trace coverage roll-up (which rules were blind/clean/
         # not-assessed) so a non-finding can explain itself.
         cve_dicts, posture_dicts, detect_meta = await _run_detection_engine(facts)
+        # Every host this run can touch, looked up in ONE query per 1,000 instead of
+        # one per host (the remaining per-host N+1: ~1 SELECT per distinct host).
+        await prime_asset_cache(
+            db, engagement_id,
+            [f.get("target") for f in facts if isinstance(f, dict)]
+            + [d.get("asset_ip") for d in cve_dicts]
+            + [p.get("asset_ip") for p in posture_dicts],
+            asset_cache, identity=identity)
         for d in cve_dicts:
             try:
                 cve = d.get("cve_id") or "finding"
                 title = f"{cve} — {d.get('cpe', '').split(':')[4] if d.get('cpe') else ''}".strip(" —")[:500]
-                asset = await _resolve_asset(db, engagement_id, d.get("asset_ip"), cache=asset_cache)
+                asset = await _resolve_asset(db, engagement_id, d.get("asset_ip"),
+                                             cache=asset_cache, identity=identity)
                 asset_id = asset.id if asset else None
 
                 dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
@@ -876,7 +1083,7 @@ async def create_findings_from_facts(
             p_created, p_reaffirmed = await _persist_posture_findings(
                 db, engagement_id, run.id, now, posture_dicts, touched, db_version,
                 cache=asset_cache, open_index=open_index,
-                remediated_index=remediated_index)
+                remediated_index=remediated_index, identity=identity)
             created += p_created
             reaffirmed += p_reaffirmed
         except Exception as exc:  # noqa: BLE001 — posture must not sink the run
@@ -897,10 +1104,17 @@ async def create_findings_from_facts(
             corr_new = await _persist_attack_paths(
                 db, engagement_id, run, detect_meta.get("accepted_facts") or [], now,
                 cache=asset_cache, open_index=open_index,
-                remediated_index=remediated_index, touched=touched)
+                remediated_index=remediated_index, touched=touched, identity=identity)
             created += corr_new
         except Exception as exc:  # noqa: BLE001 — correlation must not sink the run
             logger.warning("detection_run.correlation_failed", error=str(exc))
+
+        # Chain of custody: stamp an integrity digest on every finding this run
+        # touched BEFORE resolution reads them, so the engagement report can prove
+        # the recorded evidence is unchanged. Unconditional (unlike verification)
+        # and best-effort; the final flush persists it.
+        prune_stale_signals(touched, run.id)
+        _stamp_chain_of_custody(touched, now)
 
         # Coverage ledger + coverage-gated auto-resolution (Phase 0/1). Best-effort:
         # never let resolution failure sink an otherwise-good detection run.
@@ -959,6 +1173,18 @@ async def create_findings_from_facts(
         run.findings_reaffirmed = reaffirmed
         run.findings_current = int(current or 0)
         await db.flush()
+        if created:
+            await _notify_new_findings(db, engagement_id, run.id)
+        await _notify_coverage_gap(db, engagement_id, (run.stats or {}).get("ingest"))
+
+
+
+        # Stored attack paths and the fix-first analysis describe the findings as of
+        # their last computation. When this run changed the live set (something new,
+        # something resolved) refresh them — only if the engagement already has
+        # stored results, and never at the cost of the run itself.
+        if created or resolved:
+            await _refresh_attack_paths(db, engagement_id)
         logger.info("detection_run.completed", run_id=str(run.id),
                     engagement_id=str(engagement_id), new=created,
                     reaffirmed=reaffirmed, resolved=resolved,

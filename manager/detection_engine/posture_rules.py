@@ -27,6 +27,7 @@ DESIGN (mirrors the CVE engine's discipline):
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
@@ -34,6 +35,7 @@ from typing import Any, Callable, Optional
 from default_creds_catalog import has_known_defaults
 from eol_catalog import lookup_eol
 from models import Asset, Fact, FindingState
+from os_release_intel import release_from_ssh_fact
 
 # ── trust tier ────────────────────────────────────────────────────────────────
 # Scanners validated against ground truth (DESKTOP-34M18MB / 192.168.1.77) whose
@@ -52,6 +54,7 @@ VALIDATED_SCANNERS: frozenset = frozenset({
     "os_fingerprint",                        # os_fusion (build-backed)
     "service_banner",                        # banner grab (honest 'no banner')
     "printer_scan",                          # real PJL handshake confirm
+    "snmp_scan",                             # SNMP default-community rig-verified (lab, 9 Oct)
 })
 
 
@@ -124,6 +127,20 @@ class TraceRow:
         return {"rule_id": self.rule_id, "scanner": self.scanner,
                 "outcome": self.outcome, "asset_ip": self.asset_ip,
                 "port": self.port, "reason": self.reason}
+
+
+class Undetermined:
+    """What a detector returns when its scanner ran but could not settle the
+    question: an OS guess with no release, or a build two releases share. That is
+    a coverage gap (NO_EVIDENCE, with the reason), not agent drift and not clean.
+    Falsy, so it can never pass for a finding."""
+    __slots__ = ("reason",)
+
+    def __init__(self, reason: str):
+        self.reason = reason
+
+    def __bool__(self) -> bool:
+        return False
 
 
 # ── risk model ────────────────────────────────────────────────────────────────
@@ -233,6 +250,18 @@ class PostureRule:
     # set of paths that gate assessability — for rules with OR-alternative inputs,
     # leave it empty rather than declare a path that isn't always required.
     requires: tuple[str, ...] = ()
+    # True for a rule that only means something when NOTHING else explained the port: it is
+    # skipped when another scanner already produced an open-port fact for the same port (the
+    # unidentified-service rule must not fire on a port the MQTT or ADB scanner identified).
+    unless_explained: bool = False
+    # What the detector's evidence IS (see BASIS_*). Dedicated-scanner rules read a
+    # protocol-level answer, hence the default; a rule that keys off an open port or a
+    # banner heuristic must say so and is then capped at SUSPECTED.
+    evidence_basis: str = "protocol_observed"
+    # One finding per host, whichever fact proved it (port None, so the finding id
+    # is stable when the evidence moves between scanners). For host properties
+    # such as the OS release, which several scanners can each reveal.
+    host_level: bool = False
 
 
 # ── detectors (pure: Fact -> evidence dict | None) ────────────────────────────
@@ -374,21 +403,194 @@ def _msrpc_exposed(f: Fact) -> Optional[dict]:
     return None
 
 
+# US-CERT/CISA TA14-017A bandwidth-amplification factors (lower bound of the published
+# range). A measured response/request ratio at or above a protocol's factor makes the
+# service a usable reflective-DDoS source; below it the service is merely exposed.
+_AMP_FACTOR_THRESHOLDS = {
+    "dns": 28.0, "ntp": 556.0, "snmp": 6.3, "ssdp": 30.8,
+    "chargen": 358.0, "memcached": 10000.0, "ldap": 46.0,
+}
+
+
+def _num(v: Any) -> Optional[float]:
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
 def _udp_amplifier(f: Fact) -> Optional[dict]:
+    """A UDP service that is demonstrably usable as a reflective-DDoS amplifier.
+
+    Fires only on a protocol-level proof or a measured factor — NEVER on "the service
+    answered a normal query" (a closed-recursion DNS server or a stock NTP daemon
+    answers one too, and is not an amplifier):
+      * NTP    — monlist actually enabled;
+      * DNS    — open recursion (RA set, NOERROR, answers present);
+      * memcached — stats served to an unauthenticated UDP client;
+      * chargen — any reply (the service IS the amplifier, TA14-017A ~358x);
+      * any of the above protocols — a measured `amplification_factor` at or above the
+        TA14-017A threshold.
+    Below that it is exposure (handled by the exposure rules), not amplification."""
     d = _d(f)
     if d.get("monlist_enabled") is True:
-        return {"service": "ntp", "monlist_enabled": True}
+        return {"service": "ntp", "monlist_enabled": True, "basis": "protocol_observed"}
     if d.get("open_recursion") is True:
-        return {"service": "dns", "open_resolver": True}
+        return {"service": "dns", "open_resolver": True, "basis": "protocol_observed"}
     svc = str(d.get("service") or "").lower()
-    if d.get("responded") is True and svc in _AMPLIFIERS and f.status == "open":
-        return {"service": svc}
+    if d.get("responded") is not True or f.status != "open" or svc not in _AMPLIFIERS:
+        return None
+    if svc == "memcached" and d.get("exposed_unauthenticated") is True:
+        return {"service": svc, "exposed_unauthenticated": True, "basis": "protocol_observed"}
+    if svc == "chargen":
+        return {"service": svc, "basis": "protocol_observed",
+                "factor_reference": _AMP_FACTOR_THRESHOLDS["chargen"]}
+    factor = _num(d.get("amplification_factor"))
+    threshold = _AMP_FACTOR_THRESHOLDS.get(svc)
+    if factor is not None and threshold is not None and factor >= threshold:
+        return {"service": svc, "amplification_factor": round(factor, 2),
+                "threshold": threshold, "basis": "measured_factor"}
+    return None
+
+
+# Ports where an open socket that returns no identifiable banner is the NORMAL case: these
+# protocols are client-first or binary, and have dedicated scanners / rules of their own.
+_SILENT_BY_DESIGN_PORTS = frozenset({
+    53, 88, 111, 135, 139, 389, 445, 464, 593, 636, 873, 2049, 3268, 3269, 3389, 5985, 5986,
+})
+_EPHEMERAL_FLOOR = 49152          # dynamic RPC / ephemeral range: unidentified by nature
+
+
+def _unidentified_service(f: Fact) -> Optional[dict]:
+    """An open TCP port that the banner stage tried to identify and could not.
+
+    Fires only when service_banner SAYS it found nothing (`identified is False`) — a fact
+    from a probe build that predates the flag is never read as "unidentified". Ports the
+    exposed-service catalog already names, silent-by-design protocols and the ephemeral range
+    are excluded, so this is the long tail: Smart Install 4786, SLP 427, Radmin 4899, AFP 548,
+    EPMD 4369, BGP 179 and whatever else answers on a non-standard port."""
+    d = _d(f)
+    port = f.port
+    if d.get("identified") is not False or f.status != "open" or (f.proto or "tcp") == "udp":
+        return None
+    if not isinstance(port, int) or port <= 0 or port >= _EPHEMERAL_FLOOR \
+            or port in _SILENT_BY_DESIGN_PORTS:
+        return None
+    try:
+        from port_intel import catalog_categories     # standalone module, no cycle
+        if port in catalog_categories():
+            return None
+    except ImportError:                                # pragma: no cover
+        pass
+    ev: dict = {"port": port, "identified": False}
+    if d.get("raw_hex"):
+        ev["raw_hex"] = str(d["raw_hex"])[:128]
+    return ev
+
+
+def _snmpv3_noauth(f: Fact) -> Optional[dict]:
+    """An SNMPv3 user that answered a read at security level noAuthNoPriv: no authentication
+    and no encryption, the v3 equivalent of a default community. The probe tries only a few
+    documented default user names and records the first that got a GetResponse."""
+    user = _d(f).get("snmpv3_noauth_user")
+    return {"user": user} if isinstance(user, str) and user else None
+
+
+def _ftp_anonymous_write(f: Fact) -> Optional[dict]:
+    """Anonymous FTP accepted an upload (the probe stored a tiny file and tried to delete it).
+    Only present when the operator explicitly enabled the opt-in write test; `anon_write` is
+    None when it was not tested, and that is never read as a clean result."""
+    d = _d(f)
+    if d.get("ftp") is True and d.get("anonymous_login") is True and d.get("anon_write") is True:
+        return {"software": d.get("software"),
+                "leftover_file": d.get("anon_write_leftover") or None}
+    return None
+
+
+def _udp_service_answered(f: Fact, service: str) -> Optional[dict]:
+    d = _d(f)
+    if d.get("responded") is True and f.status == "open" \
+            and str(d.get("service") or "").lower() == service:
+        return d
+    return None
+
+
+def _sip_exposed(f: Fact) -> Optional[dict]:
+    """A SIP service that answered an OPTIONS probe with a real SIP status line. The status
+    line is the protocol observation; a bare UDP reply on 5060 that is not SIP is not this."""
+    d = _udp_service_answered(f, "sip")
+    line = str((d or {}).get("sip_response") or "")
+    if d is not None and line.upper().startswith("SIP/2.0"):
+        return {"sip_response": line[:120], "server": d.get("server") or None}
+    return None
+
+
+def _netbios_exposed(f: Fact) -> Optional[dict]:
+    """A NetBIOS name service that answered a node-status query: it discloses host, domain
+    and MAC details to whoever can reach UDP/137."""
+    return {"service": "netbios-ns"} if _udp_service_answered(f, "netbios-ns") else None
+
+
+def _mdns_exposed(f: Fact) -> Optional[dict]:
+    """An mDNS responder that answered a unicast query with a response (QR bit set), i.e.
+    reachable beyond the local link where multicast DNS is meant to stay."""
+    d = _udp_service_answered(f, "mdns")
+    if d is not None and d.get("mdns_response") is True:
+        return {"answer_count": d.get("answer_count")}
+    return None
+
+
+def _ike_aggressive(f: Fact) -> Optional[dict]:
+    """An IKEv1 responder whose reply used the AGGRESSIVE exchange (type 4). With a pre-shared
+    key, aggressive mode sends the identity and an authentication hash in the clear, which can be
+    cracked offline. Fires only on that observed exchange type — the presence of IKE is not it."""
+    d = _d(f)
+    if str(d.get("service") or "").lower() not in {"ike", "ike-nat"} or f.status != "open":
+        return None
+    version = str(d.get("version") or "")
+    exchange = d.get("exchange_type")
+    if version.startswith("IKEv1") and isinstance(exchange, int) \
+            and not isinstance(exchange, bool) and exchange == 4:
+        return {"version": version, "exchange_type": exchange}
     return None
 
 
 def _snmp_default(f: Fact) -> Optional[dict]:
     c = _d(f).get("community")
     return {"community": c} if c in _DEFAULT_COMMUNITIES else None
+
+
+# ── canonical condition key (cross-producer identity) ─────────────────────────
+# Identity of "the same issue on the same service", independent of which producer raised
+# it or how it is titled: (service/port, weakness-class). Findings with equal keys on one
+# asset are ONE issue; the manager merges them (DefectDojo-style hash over a fixed field
+# set, with the service/port always part of it). Rules that describe different weaknesses
+# of one service (weak-TLS vs web-method on 443; default-community vs amplifier on 161)
+# get different classes, so the "two genuinely different issues on one port stay
+# separate" guard holds — the report rolls those up under the service instead.
+DEDUP_KEY = "dedup_key"
+CLASS_EXPOSED = "exposed"
+# Rules that say "this service is reachable / usable from where it should not be", however
+# they got there. Everything in categories exposure/amplification, plus the dedicated
+# scanners whose finding is the same condition a port-intel row reports for that port.
+_EXPOSED_CLASS_RULES = frozenset({"POSTURE-NFS-WORLD-READABLE-EXPORT"})
+_EXPOSED_CLASS_CATEGORIES = frozenset({"exposure", "amplification"})
+
+
+def condition_key(weakness_class: str, port: Optional[int], proto: Optional[str] = None) -> str:
+    """`<class>:<port>` (`/udp` suffix for UDP). The exposed class keeps the historical
+    `exposed:<port>` spelling so rows stored before this existed still merge."""
+    suffix = "/udp" if str(proto or "").lower() == "udp" else ""
+    return f"{weakness_class}:{port}{suffix}" if isinstance(port, int) else weakness_class
+
+
+def weakness_class_for(rule_id: str, category: Optional[str] = None) -> str:
+    if (rule_id.startswith("POSTURE-EXPOSED-") or rule_id in _EXPOSED_CLASS_RULES
+            or category in _EXPOSED_CLASS_CATEGORIES):
+        return CLASS_EXPOSED
+    return rule_id.removeprefix("POSTURE-").lower()      # one class per rule
+
+
+def condition_key_for(rule_id: str, category: Optional[str], port: Optional[int],
+                      proto: Optional[str] = None) -> str:
+    return condition_key(weakness_class_for(rule_id, category), port, proto)
 
 
 def group_key_for(rule_id: str, evidence: dict | None) -> str:
@@ -465,17 +667,39 @@ def _os_eol(f: Fact) -> Optional[dict]:
     trust in every other finding, so the asymmetry favours silence.
     """
     d = _d(f)
-    hit = lookup_eol(d.get("os_release"), d.get("os_version"))
+    if f.scanner == "ssh_scan":
+        # A distribution's packaged OpenSSH names the release it was built for.
+        derived = release_from_ssh_fact(d)
+        if derived is None:
+            return Undetermined("the SSH banner does not name a known distribution release")
+        release, version = derived["os_release"], None
+        how = f"identified from the SSH banner {derived['os_release_evidence']!r}"
+    else:
+        release, version = d.get("os_release"), d.get("os_version")
+        if not release:
+            return Undetermined(
+                "OS release not identified: an exact release needs SMB on 445 "
+                "(Windows build) or a distribution SSH banner (Linux)")
+        how = "identified by os_fingerprint"
+    hit = lookup_eol(release, version)
     if hit is None:
         return None
+    alt = d.get("os_release_alt")
+    if alt and lookup_eol(alt) is None:
+        # e.g. build 17763 is Windows 10 1809 (EOL) AND Server 2019 (supported);
+        # the network cannot tell the SKU, so neither verdict is honest.
+        return Undetermined(
+            f"build is shared by {release} (end-of-life) and {alt} (supported); "
+            f"the edition cannot be told apart from the network")
     return {
         "product": hit["product"],
         "eol_date": hit["eol_date"],
         "days_past_eol": hit["days_past_eol"],
         "source": hit["source"],
+        "os_release_source": "ssh_banner" if f.scanner == "ssh_scan" else "os_fingerprint",
         "detail": (f"{hit['product']} reached end-of-support on {hit['eol_date']} "
-                   f"({hit['days_past_eol']} days ago). No security patches are "
-                   f"issued, so its vulnerability count can only grow."),
+                   f"({hit['days_past_eol']} days ago), {how}. No security patches "
+                   f"are issued, so its vulnerability count can only grow."),
     }
 
 
@@ -495,15 +719,53 @@ def _ssh_terrapin(f: Fact) -> Optional[dict]:
     return None
 
 
-def _ssh_weak_algos(f: Fact) -> Optional[dict]:
+# Reasons (ssh-audit's wording, vendored in the probe) that mean an algorithm is BROKEN —
+# a practical attack, not just deprecation. Anything else ssh-audit fails (SHA-1 MACs and
+# signatures, RIPEMD, SEED, a 1024-bit group on its own, ...) is LEGACY: worth retiring, not
+# an emergency. A stock current OpenSSH still offers hmac-sha1, so it must not read as High.
+_SSH_BROKEN_REASON = re.compile(
+    r"rc4|3des|blowfish|cast|broken des|\bdes cipher|md5|no encryption|logjam|small ecc|"
+    r"untrusted|backdoored", re.IGNORECASE)
+_SSH_BROKEN_ALGO = re.compile(
+    r"^(arcfour|3des|des-|blowfish|cast128|none$|diffie-hellman-group1-sha1|hmac-md5)",
+    re.IGNORECASE)
+
+
+def _ssh_entry_is_broken(entry: Any) -> bool:
+    if not isinstance(entry, dict):
+        return False
+    reasons = entry.get("reasons")
+    if isinstance(reasons, list) and reasons:
+        return any(_SSH_BROKEN_REASON.search(str(r)) for r in reasons)
+    return bool(_SSH_BROKEN_ALGO.search(str(entry.get("algorithm") or "")))     # old facts
+
+
+def _ssh_failures(f: Fact) -> list:
     d = _d(f)
     if d.get("ssh_confirmed") is not True:
-        return None
+        return []
     failures = d.get("failures")
-    if not isinstance(failures, list) or not failures:
+    return failures if isinstance(failures, list) else []
+
+
+def _ssh_weak_algos(f: Fact) -> Optional[dict]:
+    """SSH offering an algorithm with a practical attack (RC4, 3DES, DES, Blowfish, MD5,
+    Logjam-class groups, no encryption). Merely deprecated algorithms are the LEGACY rule."""
+    broken = [e for e in _ssh_failures(f) if _ssh_entry_is_broken(e)]
+    if not broken:
         return None
-    return {"software": d.get("software"), "weak_count": len(failures),
-            "weak": failures[:8]}
+    d = _d(f)
+    return {"software": d.get("software"), "weak_count": len(broken), "weak": broken[:8]}
+
+
+def _ssh_legacy_algos(f: Fact) -> Optional[dict]:
+    """SSH offering only deprecated-but-not-broken algorithms (SHA-1 MACs, CBC, ...)."""
+    failures = _ssh_failures(f)
+    if not failures or any(_ssh_entry_is_broken(e) for e in failures):
+        return None
+    d = _d(f)
+    return {"software": d.get("software"), "legacy_count": len(failures),
+            "legacy": failures[:8], "buckets": d.get("buckets")}
 
 
 def _ftp_anonymous(f: Fact) -> Optional[dict]:
@@ -608,6 +870,192 @@ def _ipmi_cipher_zero(f: Fact) -> Optional[dict]:
     d = _d(f)
     if d.get("ipmi") is True and d.get("cipher_zero") is True:
         return {"rmcp_status": d.get("rmcp_status")}
+    return None
+
+
+# ── additional service-layer detectors (previously-unconsumed facts) ──────────
+# Each reads a field the probe already collects and ships but no rule assessed, so
+# every one of these weaknesses was a guaranteed silent false-negative. Every path
+# is read off the emitting scanner directly (probe/scanner/<x>_scanner.py). None of
+# these scanners is rig-validated, so findings land `suspected` (_state_for).
+
+# Minimum acceptable key sizes. RSA/DSA below 2048 bits is below every current
+# baseline (NIST SP 800-57, CA/Browser Forum); EC below 256 bits likewise.
+_MIN_RSA_DSA_BITS = 2048
+_MIN_EC_BITS = 256
+# Certificate signature algorithms that are collision-broken for TLS trust.
+_WEAK_SIG_ALGOS = {"md2", "md5", "sha1"}
+
+
+def _tls_weak_key(f: Fact) -> Optional[dict]:
+    """A server certificate whose public key is below the modern floor.
+
+    Reads the key type + bit size tls_scanner already parses from the DER. Only
+    fires when the probe POSITIVELY parsed both (the `cryptography` path); a
+    byte-count-only degraded parse emits neither field and this stays silent —
+    absent evidence must never become a weak-key accusation.
+    """
+    c = _cert(f)
+    ktype = str(c.get("public_key_type") or "").lower()
+    bits = c.get("public_key_bits")
+    if not isinstance(bits, int) or isinstance(bits, bool) or bits <= 0:
+        return None
+    if ktype in ("rsa", "dsa", "dh") and bits < _MIN_RSA_DSA_BITS:
+        floor = _MIN_RSA_DSA_BITS
+    elif ktype in ("ec", "ecdsa", "ellipticcurve") and bits < _MIN_EC_BITS:
+        floor = _MIN_EC_BITS
+    else:
+        return None
+    return {"public_key_type": ktype, "public_key_bits": bits, "minimum_bits": floor,
+            "subject": c.get("subject")}
+
+
+def _tls_weak_sig(f: Fact) -> Optional[dict]:
+    """A certificate signed with a collision-broken hash (MD5/SHA-1). Read from
+    the parsed `sig_algorithm`; a forged-chain / downgrade risk, not merely
+    cosmetic. Silent when the field was never parsed."""
+    c = _cert(f)
+    raw = str(c.get("sig_algorithm") or "").lower()
+    if not raw:
+        return None
+    hit = next((a for a in _WEAK_SIG_ALGOS if a in raw), None)
+    if not hit:
+        return None
+    return {"sig_algorithm": c.get("sig_algorithm"), "weak_hash": hit,
+            "self_signed": c.get("self_signed"), "subject": c.get("subject")}
+
+
+def _web_dangerous_methods(f: Fact) -> Optional[dict]:
+    """HTTP methods that write or probe state are enabled (PUT/DELETE/TRACE/
+    CONNECT/PATCH), read straight from the OPTIONS Allow header the web scanner
+    parsed. PUT can plant a webshell; TRACE enables Cross-Site Tracing; CONNECT
+    turns the server into an open proxy."""
+    d = _d(f)
+    methods = d.get("dangerous_methods")
+    if isinstance(methods, list) and methods:
+        return {"dangerous_methods": methods[:8],
+                "allowed_methods": (d.get("allowed_methods") or [])[:12],
+                "url": d.get("url") or d.get("final_url")}
+    return None
+
+
+def _web_missing_hsts(f: Fact) -> Optional[dict]:
+    """An HTTPS service that does not send HSTS — the response is downgradeable to
+    cleartext on the first request (sslstrip class). Scoped to TLS services and to
+    the single header that actually changes the threat model, so it stays a
+    low-noise finding rather than a blanket 'headers missing' lint."""
+    d = _d(f)
+    if d.get("tls") is not True:
+        return None
+    missing = d.get("security_headers_missing")
+    if not isinstance(missing, list) or "strict-transport-security" not in missing:
+        return None
+    return {"missing_header": "strict-transport-security",
+            "security_headers_missing": [m for m in missing if isinstance(m, str)][:8],
+            "url": d.get("url") or d.get("final_url")}
+
+
+def _dns_version_disclosure(f: Fact) -> Optional[dict]:
+    """The resolver answered a CHAOS TXT version.bind query, disclosing its exact
+    software/version to any client — recon that narrows the attacker's next move
+    to version-specific DNS CVEs. Read from the value dns_scanner already stores."""
+    d = _d(f)
+    if d.get("dns") is not True:
+        return None
+    ver = d.get("version_bind")
+    if isinstance(ver, str) and ver.strip() and ver.strip().lower() not in (
+            "unknown", "none", "refused"):
+        return {"version_bind": ver.strip()[:120], "hostname_bind": d.get("hostname_bind")}
+    return None
+
+
+def _ldap_anonymous_search(f: Fact) -> Optional[dict]:
+    """Anonymous LDAP SEARCH returned directory CONTENT (not merely a successful
+    bind to the RootDSE) — usernames, group membership and host objects readable
+    with no credentials. Higher severity than anon-bind-only, which discloses only
+    the RootDSE. Read from the scanner's own `anonymous_search_allowed`."""
+    d = _d(f)
+    if d.get("ldap") is True and d.get("anonymous_search_allowed") is True:
+        return {"sample_entry_count": d.get("sample_entry_count"),
+                "default_naming_context": d.get("default_naming_context"),
+                "naming_contexts": (d.get("naming_contexts") or [])[:8]}
+    return None
+
+
+# An amplification ratio at or above this is a usable reflective-DDoS source: a
+# small query yields a response this many times larger (US-CERT TA14-017A lists
+# SNMPv2 at 6.3x; we require a measured multiple at that published factor to avoid
+# flagging a near-1x responder).
+_SNMP_AMP_FACTOR = _AMP_FACTOR_THRESHOLDS["snmp"]
+
+
+def _snmp_amplification(f: Fact) -> Optional[dict]:
+    """A readable SNMP agent whose MEASURED response/request size ratio makes it a
+    reflective-amplification DDoS source. Reads snmp_scanner's own GETBULK
+    amplification_factor — a measured multiple, stronger than a port-presence
+    guess. Silent when the walk did not measure it (field absent)."""
+    d = _d(f)
+    factor = d.get("amplification_factor")
+    if isinstance(factor, (int, float)) and not isinstance(factor, bool) \
+            and float(factor) >= _SNMP_AMP_FACTOR:
+        return {"amplification_factor": round(float(factor), 2),
+                "threshold": _SNMP_AMP_FACTOR, "community": d.get("community")}
+    return None
+
+
+def _iot_mqtt_unauth(f: Fact) -> Optional[dict]:
+    """An MQTT broker that accepted a CONNECT with no credentials (CONNACK rc=0),
+    read from iot_scanner's own flags. An unauthenticated broker lets any client
+    subscribe to '#' and read/inject every message — telemetry, commands, secrets."""
+    d = _d(f)
+    if d.get("mqtt_connack") is True and d.get("unauthenticated_access") is True:
+        return {"return_code_meaning": d.get("return_code_meaning"),
+                "subscribe_all_granted": d.get("subscribe_all_granted")}
+    return None
+
+
+def _iot_cwmp_exposed(f: Fact) -> Optional[dict]:
+    """A TR-069/CWMP (CPE WAN management) interface is reachable. CWMP on 7547 is
+    the documented Mirai/TR-064 worm vector; exposing it to untrusted networks is
+    a remote-management surface on the device's WAN side."""
+    d = _d(f)
+    if d.get("cwmp_indicators") is True:
+        return {"server": d.get("server"), "http_response": d.get("http_response")}
+    return None
+
+
+def _iot_rtsp_exposed(f: Fact) -> Optional[dict]:
+    """An RTSP streaming endpoint (IP camera / NVR) answered an OPTIONS with its
+    method list — a reachable camera control/stream surface, frequently shipped
+    with default or no credentials."""
+    d = _d(f)
+    methods = d.get("public_methods")
+    if d.get("rtsp_version") and isinstance(methods, str) and methods.strip():
+        return {"rtsp_version": d.get("rtsp_version"), "public_methods": methods[:120],
+                "server": d.get("server")}
+    return None
+
+
+def _adb_unauth_shell(f: Fact) -> Optional[dict]:
+    """Android Debug Bridge in TCP mode accepted a connection with NO auth
+    challenge — a full remote shell (adb shell / push / install) to anyone who can
+    reach the port. Read from mobile_scanner's own `unauthenticated_shell`."""
+    d = _d(f)
+    if d.get("unauthenticated_shell") is True:
+        return {"adb_version": d.get("adb_version"), "note": d.get("note")}
+    return None
+
+
+def _mcp_ai_unauth(f: Fact) -> Optional[dict]:
+    """An AI inference / MCP endpoint (Ollama, vLLM, LM Studio, an MCP server)
+    answered discovery with no authentication. Exposed inference is model/prompt
+    data exposure and, for MCP tool servers, reachable tool execution. Reads the
+    scanner's own `unauthenticated_access` plus its calibrated confidence."""
+    d = _d(f)
+    if d.get("unauthenticated_access") is True and d.get("auth_enforced") is False:
+        return {"kind": d.get("kind"), "path": d.get("path"),
+                "model_count": d.get("model_count"),
+                "evidence_reason": d.get("evidence_reason")}
     return None
 
 
@@ -742,20 +1190,88 @@ RULES: list[PostureRule] = [
         "medium", "CWE-406", "T1498.002", "amplification", ("udp_scan",), _udp_amplifier,
         "Restrict the service to trusted networks; disable monlist / open recursion; "
         "enable response-rate limiting.",
-        fp_notes="Only fires when the service actually ANSWERED (responded=True) — "
-                 "no-reply / open|filtered never triggers it.",
+        fp_notes="Fires only on a protocol-level proof (NTP monlist, DNS open recursion, "
+                 "unauthenticated memcached stats, chargen reply) or a measured factor at "
+                 "the TA14-017A threshold. A service that merely answered a normal query "
+                 "(e.g. DNS with recursion off) is exposure, not an amplifier.",
         requires=()),   # OR-alternative signals (monlist/open_recursion/service) — no single required path
+    PostureRule(
+        "POSTURE-SIP-EXPOSED", "SIP service exposed", "low", "CWE-200", "T1595.002",
+        "exposure", ("udp_scan",), _sip_exposed,
+        "Restrict UDP/TCP 5060 (and 5061) to the SIP trunks and phones that need it, disable "
+        "unauthenticated OPTIONS/REGISTER responses to unknown sources, and rate-limit "
+        "registration attempts. Exposed SIP is a routine target for extension enumeration, "
+        "credential brute force and toll fraud.",
+        fp_notes="Fires only when the service returned a real SIP status line. An expected "
+                 "PBX/SBC is normal; the finding is about who can reach it.",
+        requires=()),
+    PostureRule(
+        "POSTURE-NETBIOS-EXPOSED", "NetBIOS name service exposed", "low", "CWE-200", "T1046",
+        "exposure", ("udp_scan",), _netbios_exposed,
+        "Block UDP/137 (and 138/139) from untrusted networks and disable NetBIOS over TCP/IP on "
+        "hosts that do not need it. The name service discloses host, domain and MAC details and "
+        "is a poisoning (NBT-NS/LLMNR) target.",
+        fp_notes="Fires only when the node-status query was answered. Common on internal "
+                 "Windows networks; a finding at trust boundaries.",
+        requires=()),
+    PostureRule(
+        "POSTURE-MDNS-EXPOSED", "mDNS responder exposed beyond the local link", "low", "CWE-200",
+        "T1046", "exposure", ("udp_scan",), _mdns_exposed,
+        "Keep multicast DNS on the local link: block UDP/5353 from routed networks and disable "
+        "the responder (Avahi/Bonjour) on servers that do not need service discovery. It "
+        "discloses hostnames and services and can be used as a reflection source.",
+        fp_notes="Fires only when a unicast query got an mDNS response (QR bit set).",
+        requires=()),
+    PostureRule(
+        "POSTURE-IKE-AGGRESSIVE-MODE", "IKE aggressive mode offered", "medium", "CWE-522",
+        "T1110.002", "weak_crypto", ("udp_scan",), _ike_aggressive,
+        "Disable IKEv1 aggressive mode and use main mode or IKEv2 with certificates or a "
+        "long random pre-shared key. In aggressive mode the identity and a PSK-derived hash "
+        "cross the wire unprotected and can be attacked offline.",
+        fp_notes="Fires only when the responder's reply used exchange type 4 (aggressive). "
+                 "The current probe sends an IKEv2 request, so this stays silent until a "
+                 "responder is shown answering in aggressive mode.",
+        requires=()),
+    PostureRule(
+        "POSTURE-UNIDENTIFIED-SERVICE", "Unidentified service listening", "low", "CWE-1188",
+        "T1046", "exposure", ("service_banner",), _unidentified_service,
+        "Find out what is listening: identify the owning process (ss -ltnp / netstat -ano), "
+        "confirm it is approved, and close or firewall it if it is not. Management and discovery "
+        "protocols (Smart Install, SLP, Radmin, AFP, EPMD, BGP) are common on non-standard ports "
+        "and should not be reachable from untrusted networks.",
+        fp_notes="The banner stage opened the port and nothing identified the service. This is a "
+                 "prompt to look, not a verdict: legitimate custom or binary protocols look the "
+                 "same. Ports in the exposure catalog, silent-by-design protocols and the "
+                 "ephemeral range are excluded.",
+        requires=(), evidence_basis="port_inference", unless_explained=True),
+    PostureRule(
+        "POSTURE-SNMPV3-NOAUTH-USER", "SNMPv3 user accepted without authentication", "high",
+        "CWE-306", "T1078", "misconfiguration", ("snmp_scan",), _snmpv3_noauth,
+        "Set every SNMPv3 user to authPriv (SHA-2 authentication and AES privacy) and delete "
+        "users configured at noAuthNoPriv; restrict SNMP to the management network.",
+        fp_notes="Fires only when a read at noAuthNoPriv got a GetResponse for a documented "
+                 "default user name. An agent that answers with a Report (unknown user) is the "
+                 "secure outcome and never fires this.",
+        requires=()),
+    PostureRule(
+        "POSTURE-FTP-ANONYMOUS-WRITE", "FTP allows anonymous upload", "critical",
+        "CWE-732", "T1105", "misconfiguration", ("ftp_scan",), _ftp_anonymous_write,
+        "Remove write permission from the anonymous account on every directory (vsftpd "
+        "anon_upload_enable=NO, anon_mkdir_write_enable=NO) or disable anonymous access.",
+        fp_notes="Proven by a completed upload, only when the operator opted in to the write "
+                 "test. Not tested (anon_write is None) is never treated as read-only.",
+        requires=()),
     PostureRule(
         "POSTURE-SNMP-DEFAULT-COMMUNITY", "SNMP default community string",
         "high", "CWE-1392", "T1078", "default_credentials", ("snmp_scan",), _snmp_default,
         "Change the community string; move to SNMPv3 with auth+priv; restrict by ACL.",
-        fp_notes="snmp_scan is not in the validated trust tier yet, so this is "
-                 "reported SUSPECTED pending validation.",
+        fp_notes="snmp_scan is in the validated trust tier (default community verified "
+                 "on the lab rig), so a community that answered is CONFIRMED.",
         requires=("community",)),
 
     PostureRule(
         "POSTURE-OS-END-OF-LIFE", "Operating system is end-of-life / unsupported",
-        "high", "CWE-1104", "T1190", "eol_software", ("os_fingerprint",), _os_eol,
+        "high", "CWE-1104", "T1190", "eol_software", ("os_fingerprint", "ssh_scan"), _os_eol,
         "Upgrade to a vendor-supported OS release. An unsupported OS receives no "
         "security patches, so known vulnerabilities accumulate permanently and no "
         "amount of hardening closes them.",
@@ -763,8 +1279,16 @@ RULES: list[PostureRule] = [
                  "catalog (eol_catalog.py), matched longest-key-first so a "
                  "supported successor never inherits its ancestor's date. An OS "
                  "absent from the catalog stays silent rather than guessing — the "
-                 "cost is catalog freshness, never a false accusation.",
-        requires=("os_release",)),
+                 "cost is catalog freshness, never a false accusation. The release "
+                 "comes from os_fingerprint (SMB build) or a distribution SSH "
+                 "banner; a host where neither names it is reported unassessed, "
+                 "and a build two editions share (17763: Windows 10 1809 / "
+                 "Server 2019) is never called end-of-life.",
+        # OR-alternative inputs (os_release on os_fingerprint, banner on ssh_scan),
+        # so no single required path; an unidentified release is reported by the
+        # detector as Undetermined (unassessed), not as drift.
+        requires=(),
+        host_level=True),
 
     PostureRule(
         "POSTURE-DEFAULT-CRED-CANDIDATE", "Device may still use vendor default credentials",
@@ -807,9 +1331,21 @@ RULES: list[PostureRule] = [
         "Restrict KexAlgorithms, Ciphers, MACs and HostKeyAlgorithms in sshd_config "
         "to the current recommended set; remove CBC ciphers, SHA-1 MACs and "
         "1024-bit Diffie-Hellman groups.",
-        fp_notes="Graded against the scanner's vendored weakness table. Offering a "
-                 "weak algorithm is not proof it is negotiated — but it is reachable "
-                 "by any client that asks for it.",
+        fp_notes="Fires only on algorithms with a practical attack (RC4, 3DES, DES, "
+                 "Blowfish, MD5, Logjam-class groups, no encryption). Merely deprecated ones "
+                 "(SHA-1 MACs, CBC) are POSTURE-SSH-LEGACY-ALGORITHMS. Offering a weak "
+                 "algorithm is not proof it is negotiated — but it is reachable by any client "
+                 "that asks for it.",
+        requires=("ssh_confirmed", "failures")),
+    PostureRule(
+        "POSTURE-SSH-LEGACY-ALGORITHMS", "SSH offers legacy algorithms",
+        "low", "CWE-327", "T1040", "weak_crypto", ("ssh_scan",), _ssh_legacy_algos,
+        "Retire the deprecated algorithms (SHA-1 MACs, CBC ciphers, 1024-bit DH groups) from "
+        "KexAlgorithms, Ciphers and MACs in sshd_config when clients allow. Nothing here has a "
+        "practical attack today; this is hygiene, not an emergency.",
+        fp_notes="Every algorithm ssh-audit fails is deprecated or weak-by-policy but none is on "
+                 "the broken list (RC4, 3DES, DES, Blowfish, MD5, Logjam-class groups). A stock "
+                 "current OpenSSH offers hmac-sha1 and lands here, not under the High rule.",
         requires=("ssh_confirmed", "failures")),
     PostureRule(
         "POSTURE-FTP-ANONYMOUS-LOGIN", "FTP allows anonymous login",
@@ -954,13 +1490,164 @@ RULES: list[PostureRule] = [
         # Same reasoning as above, mirrored: `ssl_supported` comes from MySQL,
         # Postgres and MSSQL, never from Redis or MongoDB.
         requires=("db",)),
+
+    # ── additional service-layer rules (previously-unconsumed facts) ──────────
+    # Collected by the probe, shipped, stored, and never assessed until now. None
+    # of these scanners is rig-validated, so findings land SUSPECTED (_state_for).
+    PostureRule(
+        "POSTURE-TLS-WEAK-KEY", "TLS certificate uses a weak public key",
+        "high", "CWE-326", "T1040", "weak_crypto", ("tls_scan",), _tls_weak_key,
+        "Reissue the certificate with a >=2048-bit RSA key (or a >=256-bit "
+        "elliptic-curve key). Keys below this are below every current CA/Browser "
+        "Forum and NIST baseline and are brute-forceable over the cert's lifetime.",
+        fp_notes="Fires only when the probe POSITIVELY parsed the key type and bit "
+                 "size (the full-cert-parse path). A degraded byte-count-only parse "
+                 "emits neither and this stays silent.",
+        requires=("certificate",)),
+    PostureRule(
+        "POSTURE-TLS-WEAK-SIGNATURE", "TLS certificate signed with a broken hash (MD5/SHA-1)",
+        "high", "CWE-327", "T1557", "weak_crypto", ("tls_scan",), _tls_weak_sig,
+        "Reissue the certificate with a SHA-256 (or stronger) signature. MD5 and "
+        "SHA-1 are collision-broken, so a signature over them no longer binds the "
+        "certificate to its CA — a forged chain becomes feasible.",
+        fp_notes="An internally-rooted self-signed cert may use a legacy hash by "
+                 "oversight; evidence.self_signed distinguishes that case.",
+        requires=("certificate",)),
+    PostureRule(
+        "POSTURE-WEB-DANGEROUS-METHODS", "Dangerous HTTP methods enabled",
+        "medium", "CWE-650", "T1505", "misconfiguration", ("web_scan",),
+        _web_dangerous_methods,
+        "Disable PUT/DELETE/TRACE/CONNECT/PATCH unless a documented API needs them; "
+        "PUT can upload a webshell, TRACE enables Cross-Site Tracing, and CONNECT "
+        "turns the server into an open forward proxy.",
+        fp_notes="Read from the OPTIONS Allow header the server itself returned. A "
+                 "REST API that legitimately uses PUT/PATCH/DELETE should be scoped "
+                 "to its authenticated routes — confirm before treating as a defect.",
+        requires=("dangerous_methods",)),
+    PostureRule(
+        "POSTURE-WEB-NO-HSTS", "HTTPS service does not set HSTS",
+        "low", "CWE-319", "T1040", "weak_crypto", ("web_scan",), _web_missing_hsts,
+        "Send Strict-Transport-Security with a long max-age (and preload where "
+        "appropriate) so the browser refuses to downgrade to cleartext after the "
+        "first visit.",
+        fp_notes="Scoped to TLS services and to the HSTS header specifically, so it "
+                 "does not fire as a blanket 'security headers missing' lint.",
+        requires=("security_headers_missing",)),
+    PostureRule(
+        "POSTURE-DNS-VERSION-DISCLOSURE", "DNS server discloses its version (version.bind)",
+        "low", "CWE-200", "T1590.002", "information_disclosure", ("dns_scan",),
+        _dns_version_disclosure,
+        "Override or suppress the CHAOS TXT version.bind response (BIND: "
+        "`version \"\";`) so the exact resolver software/version is not disclosed "
+        "to anonymous clients.",
+        fp_notes="Fires only when a non-empty, non-refused version string was "
+                 "returned — a server that answers 'refused'/empty never fires it.",
+        requires=("dns", "version_bind")),
+    PostureRule(
+        "POSTURE-LDAP-ANONYMOUS-SEARCH", "LDAP anonymous search returns directory content",
+        "medium", "CWE-200", "T1087.002", "information_disclosure", ("ldap_scan",),
+        _ldap_anonymous_search,
+        "Disable anonymous SEARCH (set dsHeuristics / require authentication) so "
+        "usernames, groups and host objects cannot be enumerated without "
+        "credentials — anonymous callers should at most read the RootDSE.",
+        fp_notes="Distinct from, and more serious than, POSTURE-LDAP-ANONYMOUS-BIND: "
+                 "this fires only when a search actually returned directory entries "
+                 "(anonymous_search_allowed), not merely a successful bind.",
+        requires=("ldap", "anonymous_search_allowed")),
+    PostureRule(
+        "POSTURE-SNMP-AMPLIFIER", "SNMP agent usable as a DDoS amplifier",
+        "medium", "CWE-406", "T1498.002", "amplification", ("snmp_scan",),
+        _snmp_amplification,
+        "Restrict SNMP to trusted managers by ACL, move to SNMPv3, and disable "
+        "GETBULK on large tables for untrusted sources — a readable agent with a "
+        "high response/request ratio is a reflective-DDoS source.",
+        fp_notes="Keyed off the MEASURED GETBULK amplification_factor, not a port "
+                 "guess; only fires at or above the TA14-017A SNMPv2 factor (6.3x).",
+        requires=()),   # amplification_factor only present when the walk measured it
+    PostureRule(
+        "POSTURE-MQTT-UNAUTHENTICATED", "MQTT broker accepts unauthenticated clients",
+        "high", "CWE-306", "T1133", "misconfiguration", ("iot_scan",), _iot_mqtt_unauth,
+        "Require username/password (or mutual TLS) on the broker and deny anonymous "
+        "CONNECT. An open broker lets any client subscribe to '#' and read or inject "
+        "every message — telemetry, commands and often credentials.",
+        fp_notes="Fires on a CONNACK return code 0 (accepted) to an anonymous "
+                 "CONNECT; a broker that refuses (rc 4/5) never fires it.",
+        requires=()),   # iot_scan multiplexes protocols — no single required path
+    PostureRule(
+        "POSTURE-CWMP-EXPOSED", "TR-069/CWMP management interface exposed",
+        "medium", "CWE-284", "T1190", "exposure", ("iot_scan",), _iot_cwmp_exposed,
+        "Firewall TCP/7547 from untrusted networks and restrict CWMP to the ACS "
+        "management path. CWMP/TR-064 on the WAN side is the documented Mirai worm "
+        "vector and a remote device-management surface.",
+        fp_notes="Derived from CWMP/ACS indicators in the HTTP response; a plain web "
+                 "server on the port without those markers does not fire it.",
+        requires=()),
+    PostureRule(
+        "POSTURE-RTSP-EXPOSED", "RTSP camera/streaming endpoint exposed",
+        "medium", "CWE-284", "T1021", "exposure", ("iot_scan",), _iot_rtsp_exposed,
+        "Restrict RTSP (554/8554) to trusted networks or a VPN and enforce "
+        "authentication — IP cameras and NVRs frequently ship with default or no "
+        "credentials, making an exposed stream directly viewable.",
+        fp_notes="Fires on an RTSP OPTIONS method list returned by the device; the "
+                 "scanner never attempts to open a stream.",
+        requires=()),
+    PostureRule(
+        "POSTURE-ADB-UNAUTHENTICATED", "Android Debug Bridge exposes an unauthenticated shell",
+        "critical", "CWE-306", "T1021", "misconfiguration", ("mobile_scan",),
+        _adb_unauth_shell,
+        "Disable ADB over TCP (`adb tcpip` / setprop service.adb.tcp.port -1) or "
+        "firewall 5555. An open ADB daemon grants a full remote shell — app install, "
+        "file push/pull and command execution — to anyone who can reach the port.",
+        fp_notes="Fires only on a CNXN reply with no AUTH challenge "
+                 "(unauthenticated_shell). A device that answers AUTH never fires it.",
+        requires=()),
+    PostureRule(
+        "POSTURE-AI-ENDPOINT-UNAUTHENTICATED", "AI/MCP inference endpoint exposed without auth",
+        "high", "CWE-306", "T1133", "misconfiguration", ("mcp_ai_scan",), _mcp_ai_unauth,
+        "Put the inference/MCP endpoint behind authentication (API key / OAuth / a "
+        "reverse proxy) and bind it to the application network. An open endpoint is "
+        "model and prompt-data exposure, resource abuse, and — for MCP tool servers "
+        "— reachable tool execution.",
+        fp_notes="Fires only when the scanner confirmed an unauthenticated response "
+                 "(auth_enforced is False); an endpoint that returns a real auth "
+                 "challenge is reported auth_enforced and never fires this.",
+        requires=()),
 ]
 
 
+# Credentialed inventory collectors read the host's OWN authoritative state
+# (installed packages, the real service table, Defender status, the process list)
+# over an authenticated session — the strongest evidence tier there is, stronger
+# than any network protocol observation. ingest.py already tags their facts
+# SourceConfidence.authoritative; a posture finding derived from them is therefore
+# CONFIRMED, exactly like a validated-scanner direct observation. Mirrors
+# ingest._AUTHORITATIVE_SCANNERS.
+CREDENTIALED_SCANNERS: frozenset = frozenset({"ssh_inventory", "windows_inventory"})
+
+
+def is_credentialed(scanner: str) -> bool:
+    return scanner in CREDENTIALED_SCANNERS
+
+
 # ── runner ────────────────────────────────────────────────────────────────────
-def _state_for(scanner: str) -> str:
-    return (FindingState.confirmed.value if is_validated(scanner)
-            else FindingState.suspected.value)
+# How the evidence behind a finding was obtained. Separate from WHICH scanner saw it: a
+# validated port scanner proves the port is open, not that the service on it is what the
+# port number suggests.
+BASIS_PROTOCOL_OBSERVED = "protocol_observed"   # a protocol-level answer (flag, status byte, handshake)
+BASIS_BANNER_INFERENCE = "banner_inference"     # a banner/port heuristic, no protocol proof
+BASIS_PORT_INFERENCE = "port_inference"         # only "this port is open"
+EVIDENCE_BASES = frozenset({BASIS_PROTOCOL_OBSERVED, BASIS_BANNER_INFERENCE, BASIS_PORT_INFERENCE})
+
+
+def _state_for(scanner: str, basis: str = BASIS_PROTOCOL_OBSERVED) -> str:
+    """CONFIRMED needs both a trusted scanner AND a protocol-level observation. An
+    inference (open port, banner heuristic) is at most SUSPECTED whoever saw the port —
+    the same discipline as matcher.py's `source_confidence == authoritative` gate."""
+    if basis != BASIS_PROTOCOL_OBSERVED:
+        return FindingState.suspected.value
+    if is_validated(scanner) or is_credentialed(scanner):
+        return FindingState.confirmed.value
+    return FindingState.suspected.value
 
 
 def _evidence_ref(f: Fact) -> str:
@@ -1011,6 +1698,9 @@ def evaluate_rule(rule: PostureRule, f: Fact) -> TraceRow:
     except Exception as exc:                     # a rule bug must not kill the batch
         return TraceRow(rule.rule_id, f.scanner, OUTCOME_ERROR,
                         f.target, f.port, reason=f"{type(exc).__name__}: {exc}")
+    if isinstance(ev, Undetermined):
+        return TraceRow(rule.rule_id, f.scanner, OUTCOME_NO_EVIDENCE,
+                        f.target, f.port, reason=ev.reason)
     if ev:
         return TraceRow(rule.rule_id, f.scanner, OUTCOME_MATCH,
                         f.target, f.port, evidence=ev)
@@ -1051,31 +1741,42 @@ def detect_posture_traced(
 
     # 1) Evaluate every rule whose scanner produced a fact for this asset.
     scanners_seen = {f.scanner for f in asset.facts}
+    # Ports a dedicated scanner reported open: those are explained, whatever the banner said.
+    _generic = {"port_scan", "syn_scan", "mass_scan", "service_banner", "udp_scan",
+                "host_discovery", "os_fingerprint", "exposure_matrix"}
+    explained_ports = {(x.port, x.proto or "tcp") for x in asset.facts
+                       if x.scanner not in _generic and x.port and x.status == "open"}
     for f in asset.facts:
         for rule in RULES:
             if f.scanner not in rule.scanners:
+                continue
+            if rule.unless_explained and (f.port, f.proto or "tcp") in explained_ports:
                 continue
             row = evaluate_rule(rule, f)
             traces.append(row)
             if row.outcome != OUTCOME_MATCH:
                 continue
-            key = (rule.rule_id, f.port)
+            port = None if rule.host_level else f.port
+            key = (rule.rule_id, port)
             if key in seen:                       # same weakness, same port → one finding
                 continue
             seen.add(key)
 
-            state = _state_for(f.scanner)
+            state = _state_for(f.scanner, rule.evidence_basis)
             auth = (rule.auth_enforced(f) if rule.auth_enforced else None)
             if auth is None:
                 auth = default_auth
             risk, priority = compute_risk(rule.severity, state, internet_facing, auth)
             pf = PostureFinding(
-                finding_id=make_posture_id(asset.ip, rule.rule_id, f.port),
+                finding_id=make_posture_id(asset.ip, rule.rule_id, port),
                 asset_ip=asset.ip, rule_id=rule.rule_id, title=rule.title,
                 category=rule.category, severity=rule.severity, state=state,
                 confidence=_STATE_CONF.get(state, 65), cwe=rule.cwe, mitre=rule.mitre,
-                port=f.port, proto=f.proto, evidence_refs=[_evidence_ref(f)],
-                evidence=row.evidence, remediation=rule.remediation,
+                port=port, proto=f.proto, evidence_refs=[_evidence_ref(f)],
+                evidence={**(row.evidence or {}), "evidence_basis": rule.evidence_basis,
+                          DEDUP_KEY: condition_key_for(rule.rule_id, rule.category,
+                                                       port, f.proto)},
+                remediation=rule.remediation,
                 fp_notes=rule.fp_notes, internet_facing=internet_facing,
                 auth_enforced=auth, risk_score=risk, priority=priority,
                 created_at=now, scanner=f.scanner)
@@ -1091,6 +1792,33 @@ def detect_posture_traced(
         ex_findings, ex_traces = detect_exposed_services_traced(asset, exposure)
         out.extend(ex_findings)
         traces.extend(ex_traces)
+    except Exception:  # noqa: BLE001 — must never sink core detection
+        pass
+
+    # 1a-ii) Credentialed host-posture / IOA layer: the authoritative Windows/Linux
+    #     inventory the probe collects over an authenticated session (Defender state,
+    #     the real service table, local admins, the process/listener list) that no
+    #     network scanner can see and no rule read until now. CONFIRMED tier. Returns
+    #     its findings already keyed and risk-scored; best-effort, never sinks core.
+    try:
+        from host_posture import detect_host_posture_traced   # local, no import cycle
+        hp_findings, hp_traces = detect_host_posture_traced(asset, exposure)
+        for pf in hp_findings:
+            reachable_by_id[id(pf)] = True   # credentialed = host confirmed reachable
+        out.extend(hp_findings)
+        traces.extend(hp_traces)
+    except Exception:  # noqa: BLE001 — must never sink core detection
+        pass
+
+    # 1a-iii) TLS fingerprint threat-intel (IOC) layer: match the JARM/JA4S/JA4X
+    #     fingerprints the probe computed against a curated registry of known C2 /
+    #     tooling TLS profiles. The manager computed and stored these fingerprints
+    #     and matched none of them until now. SUSPECTED by design. Best-effort.
+    try:
+        from fingerprint_intel import detect_fingerprint_intel_traced
+        fi_findings, fi_traces = detect_fingerprint_intel_traced(asset, exposure)
+        out.extend(fi_findings)
+        traces.extend(fi_traces)
     except Exception:  # noqa: BLE001 — must never sink core detection
         pass
 
@@ -1269,11 +1997,22 @@ def detect_exposed_services_traced(
             continue
         internet = (port in externally) or bool(exp_internet)
         severity = escalate(risk.severity) if internet else risk.severity
-        state = _state_for(f.scanner)                 # validated port scan → confirmed
+        # A port scan proves the port is open, not what runs on it. Only a protocol-level
+        # observation (service_banner's identified protocol / Basic-over-cleartext flag)
+        # supports CONFIRMED; a bare port or a banner string is an inference → SUSPECTED.
+        if svc_labels.get(port) or port in basic_cleartext:
+            basis = BASIS_PROTOCOL_OBSERVED
+        elif banners.get(port):
+            basis = BASIS_BANNER_INFERENCE
+        else:
+            basis = BASIS_PORT_INFERENCE
+        state = _state_for(f.scanner, basis)
         risk_score, priority = compute_risk(severity, state, internet, default_auth)
         rule_id = f"POSTURE-EXPOSED-{risk.category.upper()}"
         ev: dict[str, Any] = {"port": port, "category": risk.category,
-                              "service": risk.service, "internet_facing": internet}
+                              "service": risk.service, "internet_facing": internet,
+                              "evidence_basis": basis,
+                              DEDUP_KEY: condition_key(CLASS_EXPOSED, port, "tcp")}
         if banners.get(port):
             ev["banner"] = banners[port]
         if svc_labels.get(port):

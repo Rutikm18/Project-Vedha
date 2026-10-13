@@ -16,12 +16,30 @@ export interface AgentInstallInfo {
   /** Portal only: whether this engagement can take an agent right now. */
   can_add_agent?: boolean;
   blocker?: string | null;
+  /** The Windows side of the release; absent on managers that predate it. */
+  windows?: AgentWindowsInfo;
+  /** Install without a token: the machine shows a pairing code and an operator approves it. Absent on older managers. */
+  tokenless?: { enabled: boolean; commands: Partial<InstallCommands> };
+}
+
+export interface AgentWindowsInfo {
+  available: boolean;
+  /** Why Windows is withheld — operators only; empty for customers. */
+  reason?: string;
+  p256_signed?: boolean;
+  p256_key_id?: string | null;
+  /** SHA-1 thumbprint the release pins for vedha-agent.exe; null when it is not Authenticode-signed. */
+  authenticode_thumbprint?: string | null;
 }
 
 export interface InstallCommands {
   one_line: string;
   download: string;
   run: string;
+  /** Windows PowerShell form — run from an elevated prompt. Absent for a non-https manager or values that cannot be embedded safely. */
+  windows_powershell?: string;
+  /** cmd.exe form (self-elevating). Absent whenever the PowerShell form is. */
+  windows_cmd?: string;
 }
 
 /** An install token as Fleet lists it. `token` and `commands` exist only in the
@@ -47,6 +65,15 @@ export interface FleetEngagementOption {
   scopeCidrs: string[];
 }
 
+export interface AgentRevokeResult {
+  id: string;
+  lifecycle_status: string;
+  already_revoked: boolean;
+  /** True when its live connection was closed on the worker that handled the request. */
+  disconnected: boolean;
+  released_engagements: string[];
+}
+
 export interface AgentExpiryResult {
   id: string;
   access_expires_at: string | null;
@@ -68,10 +95,12 @@ export function createFleetWorkspaceApi(surface: FleetWorkspaceSurface) {
       probes: <T>() => fetchJson<T>("/api/scan/probes"),
       agentJobs: <T>(agentId: string) => fetchJson<T>(`/api/fleet/agents/${encodeURIComponent(agentId)}/jobs`),
       jobs: <T>(query: string) => fetchJson<T>(`/api/fleet/jobs?${query}`),
-      approve: <T>(requestId: string, probeName: string | null, _userCode?: string) => {
-        void _userCode;
+      // The code is optional here, except while tokenless install is on: the manager then requires the code
+      // the machine shows, so an operator can only approve the machine in front of them.
+      approve: <T>(requestId: string, probeName: string | null, userCode?: string) => {
+        const code = userCode?.trim();
         return fetchJson<T>(`/api/fleet/enrollment/${encodeURIComponent(requestId)}/approve`, {
-        method: "POST", body: JSON.stringify({ probe_name: probeName }),
+          method: "POST", body: JSON.stringify({ probe_name: probeName, ...(code ? { user_code: code } : {}) }),
         });
       },
       installInfo: () => fetchJson<AgentInstallInfo>("/api/fleet/release"),
@@ -98,6 +127,12 @@ export function createFleetWorkspaceApi(surface: FleetWorkspaceSurface) {
         { method: "PATCH", body: JSON.stringify({ access_expires_at: accessExpiresAt }) },
       ),
       canSetExpiry: true,
+      // Cut an agent off for good (operator only). Nothing is deleted.
+      revokeAgent: (agentId: string, reason?: string) => fetchJson<AgentRevokeResult>(
+        `/api/fleet/agents/${encodeURIComponent(agentId)}/revoke`,
+        { method: "POST", body: JSON.stringify({ reason: reason ?? null }) },
+      ),
+      canRevokeAgent: true,
     };
   }
   return {
@@ -137,5 +172,11 @@ export function createFleetWorkspaceApi(surface: FleetWorkspaceSurface) {
       return Promise.reject(new Error("Agent access expiry is managed by your Vedha operator"));
     },
     canSetExpiry: false,
+    // Customers can't revoke agents — only the operator does.
+    revokeAgent: (_agentId: string, _reason?: string): Promise<AgentRevokeResult> => {
+      void _agentId; void _reason;
+      return Promise.reject(new Error("Agents are revoked by your Vedha operator"));
+    },
+    canRevokeAgent: false,
   };
 }

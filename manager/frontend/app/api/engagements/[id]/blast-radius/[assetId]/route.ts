@@ -1,6 +1,7 @@
-import { proxyAttackGraph } from "../../../../../../lib/attack-graph-proxy";
+import { engagementGet } from "../../../../../../lib/attack-paths-proxy";
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string; assetId: string }> }) {
-  const { id, assetId } = await params;
-  return proxyAttackGraph(req, id, "blast-radius", assetId);
-}
+/** GET /api/engagements/{id}/blast-radius/{assetId} → hosts reachable if this one is owned. */
+export const GET = engagementGet({
+  uuids: ["id", "assetId"],
+  path: (p) => `/engagements/${p.id}/blast-radius/${p.assetId}`,
+});

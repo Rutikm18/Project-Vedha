@@ -7,7 +7,9 @@ import { GET as listTokens, POST as createToken } from "../app/api/fleet/enroll-
 import { DELETE as revokeToken } from "../app/api/fleet/enroll-tokens/[id]/route";
 import { GET as releaseGet } from "../app/api/fleet/release/route";
 import { PATCH as setExpiry } from "../app/api/fleet/agents/[id]/access-expiry/route";
-import { managerHost } from "../app/fleet/AddAgent";
+import {
+  managerHost, publishAdvice, tokenlessWindowsCommands, windowsCommands, windowsIntegrity, windowsOffered,
+} from "../app/fleet/AddAgent";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -130,9 +132,85 @@ describe("Fleet install UI", () => {
     assert.match(adapter, /portalApi<InstallToken>\("\/workspace\/fleet\/enroll-tokens", \{\s*method: "POST", body: \{ name, lifetime_minutes: lifetimeMinutes \}/);
   });
 
+  test("Windows is offered only when the manager says the release has a Windows package", () => {
+    const base = { available: true, manager_url: "https://m.example", manager_url_configured: true };
+    assert.equal(windowsOffered(null), false);
+    assert.equal(windowsOffered({ ...base }), false);                                   // manager predates Windows
+    assert.equal(windowsOffered({ ...base, windows: { available: false } }), false);
+    assert.equal(windowsOffered({ ...base, windows: { available: true } }), true);
+    assert.equal(windowsOffered({ ...base, available: false, windows: { available: true } }), false);
+  });
+
+  test("Windows commands come out in the preferred order and only when present", () => {
+    assert.deepEqual(windowsCommands(undefined), []);
+    assert.deepEqual(windowsCommands({ one_line: "a", download: "b", run: "c" }), []);
+    const both = windowsCommands({ one_line: "a", download: "b", run: "c", windows_powershell: "ps", windows_cmd: "cmd" });
+    assert.deepEqual(both.map((c) => [c.key, c.command]), [["powershell", "ps"], ["cmd", "cmd"]]);
+    // the cmd form can be absent on its own; whatever is present is shown
+    assert.deepEqual(windowsCommands({ one_line: "a", download: "b", run: "c", windows_powershell: "ps" }).map((c) => c.key), ["powershell"]);
+  });
+
+  test("the Windows integrity line is honest about a missing Authenticode certificate", () => {
+    const base = { available: true, manager_url: "https://m", manager_url_configured: true };
+    assert.equal(windowsIntegrity(null), "");
+    assert.equal(windowsIntegrity({ ...base, windows: { available: false } }), "");
+    assert.match(windowsIntegrity({ ...base, windows: { available: true, authenticode_thumbprint: null } }), /not Authenticode-signed/);
+    assert.match(windowsIntegrity({ ...base, windows: { available: true, authenticode_thumbprint: "ABCDEF0123456789ABCDEF0123456789ABCDEF01" } }), /Authenticode-signed \(certificate ABCDEF01/);
+  });
+
+  test("the Windows commands are shown from the server, never composed in the browser", () => {
+    const source = readFileSync(join(process.cwd(), "app/fleet/AddAgent.tsx"), "utf8");
+    assert.doesNotMatch(source, /install\.ps1'\)|Invoke-WebRequest|irm /);        // only the server builds a runnable command
+    assert.match(source, /windowsCommands\(created\?\.commands\)/);
+  });
+
   test("managerHost shows the host the agent dials", () => {
     assert.equal(managerHost("https://api.vedhasec.com"), "api.vedhasec.com");
     assert.equal(managerHost("http://10.0.0.5:18080/"), "10.0.0.5:18080");
     assert.equal(managerHost(""), "your Vedha manager");
+  });
+});
+
+describe("Fleet → Add agent: install without a token", () => {
+  const base = {
+    available: true, version: "1.0.404", arches: ["amd64"], signed: true, manager_url: "https://api.example.com",
+    manager_url_configured: true, windows: { available: true },
+  };
+  const commands = {
+    windows_powershell: "powershell -NoProfile -ExecutionPolicy Bypass -Command \"… -Manager 'https://api.example.com'\"",
+    windows_cmd: "curl.exe … \"https://api.example.com\"",
+  };
+
+  test("the no-token commands are offered only when the manager allows it and Windows is published", () => {
+    assert.equal(tokenlessWindowsCommands({ ...base, tokenless: { enabled: true, commands } }).length, 2);
+    assert.deepEqual(tokenlessWindowsCommands({ ...base, tokenless: { enabled: false, commands: {} } }), []);
+    assert.deepEqual(tokenlessWindowsCommands({ ...base }), []);                       // an older manager
+    assert.deepEqual(tokenlessWindowsCommands(null), []);
+    assert.deepEqual(tokenlessWindowsCommands({ ...base, windows: { available: false }, tokenless: { enabled: true, commands } }), []);
+    assert.deepEqual(tokenlessWindowsCommands({ ...base, available: false, tokenless: { enabled: true, commands } }), []);
+  });
+
+  test("the no-token commands carry no token", () => {
+    for (const c of tokenlessWindowsCommands({ ...base, tokenless: { enabled: true, commands } })) {
+      assert.doesNotMatch(c.command, /vet_|-Token/);
+    }
+  });
+
+  test("when nothing is published the console points at the one-command publish script first", () => {
+    const advice = publishAdvice();
+    assert.match(advice.windows, /publish-release\.ps1/);
+    assert.match(advice.windows, /-ConfigureManager/);
+    assert.match(advice.windows, /probe\\windows\\publish-release\.ps1/);            // real Windows path separators
+    assert.match(advice.linux, /make agent-release/);
+  });
+
+  test("approving from the operator console forwards the code the machine shows, and only when typed", async () => {
+    const { createFleetWorkspaceApi } = await import("../lib/fleet-workspace-api");
+    const seen = stubBackend({ state: "approved" });
+    const api = createFleetWorkspaceApi("manager");
+    await api.approve("req-1", null, " abcd-2345 ");
+    await api.approve("req-2", "edge", "");
+    assert.deepEqual(seen.map((s) => s.body), [{ probe_name: null, user_code: "abcd-2345" }, { probe_name: "edge" }]);
+    assert.match(seen[0].url, /enrollment\/req-1\/approve$/);
   });
 });

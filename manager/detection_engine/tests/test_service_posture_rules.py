@@ -89,7 +89,7 @@ def test_ssh_weak_algorithms():
                {"ssh_confirmed": True, "software": "OpenSSH_7.4",
                 "failures": [{"algorithm": "diffie-hellman-group1-sha1"},
                              {"algorithm": "hmac-sha1"}]}, "ssh_scan")
-    assert ev["weak_count"] == 2
+    assert ev["weak_count"] == 1                    # only group1 is broken; hmac-sha1 is legacy
     # An empty failure list is a clean host, not a finding.
     assert _fire("POSTURE-SSH-WEAK-ALGORITHMS",
                  {"ssh_confirmed": True, "failures": []}, "ssh_scan") is None
@@ -238,3 +238,29 @@ def test_new_rules_agree_with_probe_findings_severity():
     }
     actual = {r.rule_id: r.severity for r in P.RULES if r.rule_id in expected}
     assert actual == expected
+
+
+def test_stock_openssh_with_only_sha1_is_legacy_not_high():
+    """M/A5: OpenSSH 9.x still offers hmac-sha1; that must not read as the High finding."""
+    facts = {"ssh_confirmed": True, "software": "OpenSSH_9.6",
+             "failures": [{"category": "mac", "algorithm": "hmac-sha1",
+                           "reasons": ["using broken SHA-1 hash algorithm"]}]}
+    assert _fire("POSTURE-SSH-WEAK-ALGORITHMS", facts, "ssh_scan") is None
+    ev = _fire("POSTURE-SSH-LEGACY-ALGORITHMS", facts, "ssh_scan")
+    assert ev and ev["legacy_count"] == 1
+
+
+def test_broken_algorithms_by_reason_are_the_high_rule_only():
+    facts = {"ssh_confirmed": True,
+             "failures": [{"category": "enc", "algorithm": "arcfour",
+                           "reasons": ["using broken RC4 cipher"]},
+                          {"category": "mac", "algorithm": "hmac-sha1",
+                           "reasons": ["using broken SHA-1 hash algorithm"]}]}
+    ev = _fire("POSTURE-SSH-WEAK-ALGORITHMS", facts, "ssh_scan")
+    assert ev["weak_count"] == 1 and ev["weak"][0]["algorithm"] == "arcfour"
+    assert _fire("POSTURE-SSH-LEGACY-ALGORITHMS", facts, "ssh_scan") is None   # not both
+
+
+def test_legacy_rule_silent_without_failures():
+    assert _fire("POSTURE-SSH-LEGACY-ALGORITHMS",
+                 {"ssh_confirmed": True, "failures": []}, "ssh_scan") is None

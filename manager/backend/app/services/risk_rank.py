@@ -9,6 +9,11 @@ critical findings hit 1000, erasing the distinction between "important" and
 * asset/exposure context: 20%
 * evidence quality (verification verdict + confidence): 15%
 
+Severity is authoritative for ordering (FIRST CVSS v4 / SSVC keep severity apart
+from priority): the additive score is rescaled into a per-severity band, so the
+floor of a Critical is always above the ceiling of a High, and so on. Within a
+band the additive score still ranks by exploit likelihood, context and evidence.
+
 Missing contextual and evidence values are neutral, not silently treated as
 either safe or dangerous. The function is pure and deterministic so a reviewer
 can reconstruct every result.
@@ -31,6 +36,16 @@ _VERIFICATION_WEIGHT = {
 }
 _NEUTRAL = 0.5
 
+# Inclusive (floor, ceiling) of the final 0-1000 rank per severity. Contiguous and
+# non-overlapping, so rank order never contradicts severity order.
+_SEVERITY_BAND = {
+    "critical": (750, 1000),
+    "high": (500, 749),
+    "medium": (250, 499),
+    "low": (100, 249),
+    "info": (0, 99),
+}
+
 
 def _bounded(value: float, low: float = 0.0, high: float = 1.0) -> float:
     return max(low, min(high, value))
@@ -40,7 +55,10 @@ def compute_risk_rank(*, severity: str, cvss_score: float | None, epss_score: fl
                       kev: bool, exploit_validated: bool, verification_state: str | None,
                       confidence: int | None, asset_criticality: str | None,
                       internet_facing: bool | None, auth_enforced: bool | None) -> int:
-    severity_n = _SEVERITY_WEIGHT.get((severity or "info").lower(), 0.05)
+    sev_key = (severity or "info").lower()
+    if sev_key not in _SEVERITY_BAND:
+        sev_key = "info"
+    severity_n = _SEVERITY_WEIGHT[sev_key]
     if cvss_score is None:
         impact_n = severity_n
     else:
@@ -70,4 +88,6 @@ def compute_risk_rank(*, severity: str, cvss_score: float | None, epss_score: fl
         + context_n * 0.20
         + evidence_n * 0.15
     ) * 1000.0
-    return int(round(_bounded(score, 0.0, 1000.0)))
+    position = _bounded(score / 1000.0)
+    floor, ceiling = _SEVERITY_BAND[sev_key]
+    return int(round(floor + position * (ceiling - floor)))

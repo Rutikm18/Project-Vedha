@@ -24,6 +24,7 @@ x-backend-image: &backend-image
     args:
       INSTALL_EXTRAS: ${INSTALL_EXTRAS:-0}
       VEDHA_VERSION: ${VEDHA_VERSION:-dev}
+      PYTHON_BASE: ${BACKEND_PYTHON_BASE:-python:3.12-alpine}
   image: vedha-backend:local
 
 x-backend-env: &backend-env
@@ -32,7 +33,10 @@ x-backend-env: &backend-env
   JWT_SECRET: ${JWT_SECRET:-change-me-at-least-32-chars-long!!}
   PROBE_POLICY_SIGNING_KEY: ${PROBE_POLICY_SIGNING_KEY:-}
   AGENT_RELEASE_PUBLIC_KEY: ${AGENT_RELEASE_PUBLIC_KEY:-}
+  # Windows installs verify an ECDSA P-256 signature (Windows PowerShell cannot do Ed25519).
+  AGENT_RELEASE_P256_PUBLIC_KEY: ${AGENT_RELEASE_P256_PUBLIC_KEY:-}
   AGENT_RELEASE_REQUIRE_SIGNATURE: ${AGENT_RELEASE_REQUIRE_SIGNATURE:-false}
+  AGENT_ALLOW_TOKENLESS_INSTALL: ${AGENT_ALLOW_TOKENLESS_INSTALL:-false}
   MANAGER_PUBLIC_URL: ${MANAGER_PUBLIC_URL:-}
   APP_ENV: ${APP_ENV:-development}
   AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
@@ -178,7 +182,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.build_opener(u.ProxyHandler({})).open('http://127.0.0.1:8000/health', timeout=4)"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -282,7 +286,6 @@ services:
     environment:
       BACKEND_INTERNAL_URL: http://api:8000
       MANAGER_PUBLIC_URL: ${MANAGER_PUBLIC_URL:-http://host.docker.internal:18080}
-      AUTH_SECRET: ${JWT_SECRET:-change-me-at-least-32-chars-long!!}
       # LOCAL DEV: false is OK over HTTP. Production install sets this to true.
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
       NEXT_TELEMETRY_DISABLED: "1"

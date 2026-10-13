@@ -6,6 +6,8 @@ from app.models.finding import Finding
 from app.models.finding_event import FindingEvent
 from app.models.attack_path import AttackPath
 from app.models.attack_assessment import AttackAssessmentSnapshot
+from app.models.attack_path_analysis import AttackPathAnalysis
+from app.models.attack_path_snapshot import AttackPathSnapshot
 from app.models.detection import DetectionResult
 from app.models.scan_job import ScanJob
 from app.models.scan_schedule import ScanSchedule
@@ -34,18 +36,21 @@ from app.models.remediation_plan import RemediationPlan
 from app.models.deadline_extension import DeadlineExtensionRequest
 from app.models.sla_policy import SlaPolicy
 from app.models.integration import Integration
+from app.models.notification_rule import NotificationRule
+from app.models.sla_alert import SlaAlert
+from app.models.tenant_settings import TenantSettings
 from app.models.worker_heartbeat import WorkerHeartbeat
 
 __all__ = [
     "AttackAssessmentSnapshot",
     "Tenant", "User", "Engagement", "Asset",
-    "Finding", "FindingEvent", "AttackPath", "DetectionResult", "ScanJob", "ScanJobAttempt", "ScanResult",
+    "Finding", "FindingEvent", "AttackPath", "AttackPathAnalysis", "AttackPathSnapshot", "DetectionResult", "ScanJob", "ScanJobAttempt", "ScanResult",
     "ScanResultChunk",
     "Service", "Agent",
     "ExploitResult", "ExploitApprovalRequest", "AuditLog",
     "AttackTimeline", "DetectionConfig", "LLMOutput", "OutboxEvent",
     "DetectionRun", "DetectionRunFinding", "AgentRecommendation", "PersonalAccessToken",
     "ProbeSite", "ProbeEnrollmentRequest", "AgentCredential", "ProbeEnrollmentToken",
-    "ValidationRequest", "ScanRequest", "CustomerEntitlement", "RemediationPlan", "DeadlineExtensionRequest", "SlaPolicy", "Integration",
+    "ValidationRequest", "ScanRequest", "CustomerEntitlement", "RemediationPlan", "DeadlineExtensionRequest", "SlaPolicy", "Integration", "NotificationRule", "SlaAlert", "TenantSettings",
     "WorkerHeartbeat",
 ]

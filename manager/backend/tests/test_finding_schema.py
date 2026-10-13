@@ -162,3 +162,12 @@ def test_finding_summary_exposes_full_open_severity_breakdown():
         + summary.low_open
         + summary.info_open
     ) == summary.open_total
+
+
+def test_finding_out_says_why_scores_are_not_applicable_for_a_configuration_finding():
+    from tests.test_finding_out_computed import _base
+    config = _base(cve_ids=[], cvss_score=None, evidence={"rule_id": "POSTURE-VNC-NO-AUTH"})
+    assert {"cve", "cvss", "epss"} <= set(config.scoring_not_applicable)
+    # a vulnerability finding without a score is a data gap, not "not applicable"
+    vuln = _base(cve_ids=["CVE-2026-1"], cvss_score=None, evidence={"output": "x"})
+    assert "cvss" not in vuln.scoring_not_applicable

@@ -25,6 +25,8 @@ from typing import Any, Iterable
 
 import httpx
 
+from agent.version import AGENT_VERSION
+
 LOG = logging.getLogger("transport")
 
 
@@ -86,6 +88,12 @@ def _strip_nul(obj: Any) -> Any:
 
 class TransportError(Exception):
     """Raised when a transport operation fails permanently (not retryable)."""
+
+
+class TransportUnavailableError(TransportError):
+    """The manager could not be reached to complete a step (network error or a 5xx), so no verdict was
+    reached. Unlike a plain TransportError this is TRANSIENT: callers must retry later, never treat it as a
+    revoked credential and never give up push mode for good."""
 
 
 class AccessExpiredError(TransportError):
@@ -781,6 +789,9 @@ class Transport:
                     "current_job_id": current_job_id,
                     "attempt_id": attempt_id,
                     "fence": fence,
+                    # Lets Fleet show the version actually running, even after an
+                    # upgrade. An older manager ignores the field.
+                    "agent_version": AGENT_VERSION,
                 },
             )
             if r.status_code == 409:
@@ -1057,6 +1068,80 @@ class Transport:
             LOG.warning("submit_result failed for job %s: %s", job_id, exc)
         return False
 
+    # ── Update check (version management only) ─────────────────────────────────
+
+    def update_check(
+        self, agent_version: str, platform: str, architecture: str, *, timeout: float = 5.0,
+    ) -> dict[str, Any] | None:
+        """Ask the manager whether a newer agent exists. Returns its reply, or None
+        when the answer is unavailable for ANY reason (older manager, no network,
+        stale token). Deliberately does not refresh credentials: this runs on a
+        background thread and must never race the main loop's token handling."""
+        if not self._agent_id:
+            return None
+        try:
+            r = self._client.post(
+                "/agents/update-check",
+                headers=self.auth_header,
+                json={
+                    "agent_id": self._agent_id,
+                    "agent_version": agent_version,
+                    "platform": platform,
+                    "architecture": architecture,
+                },
+                timeout=timeout,
+            )
+            if r.status_code != 200:
+                return None
+            body = r.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        return body if isinstance(body, dict) else None
+
+    def update_ticket(self, agent_version: str, platform: str, architecture: str,
+                      *, timeout: float = 10.0) -> dict[str, Any] | None:
+        """Ask the manager for a one-time download ticket for the update it offers this agent.
+        None for any failure; like update_check it never refreshes credentials."""
+        if not self._agent_id:
+            return None
+        try:
+            r = self._client.post(
+                "/agents/update-ticket",
+                headers=self.auth_header,
+                json={"agent_id": self._agent_id, "agent_version": agent_version,
+                      "platform": platform, "architecture": architecture},
+                timeout=timeout,
+            )
+            if r.status_code != 200:
+                return None
+            body = r.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        return body if isinstance(body, dict) else None
+
+    def download_installer(self, *, timeout: float = 30.0, max_bytes: int = 2 * 1024 * 1024) -> bytes | None:
+        """The Windows installer script the manager publishes (public, no credential sent)."""
+        try:
+            r = self._client.get("/agent/install.ps1", timeout=timeout)
+            if r.status_code != 200 or len(r.content) > max_bytes:
+                return None
+            return r.content if b"Vedha" in r.content[:4096] else None
+        except httpx.HTTPError:
+            return None
+
+    def download_release_manifest(self, *, timeout: float = 30.0) -> tuple[bytes, str] | None:
+        """The signed release manifest and its P-256 signature (both public). None for any failure."""
+        try:
+            manifest = self._client.get("/agent/manifest.json", timeout=timeout)
+            signature = self._client.get("/agent/manifest.json.p256.sig", timeout=timeout)
+            if manifest.status_code != 200 or signature.status_code != 200:
+                return None
+            if len(manifest.content) > 1024 * 1024 or len(signature.content) > 4096:
+                return None
+            return manifest.content, signature.content.decode("ascii")
+        except (httpx.HTTPError, UnicodeDecodeError):
+            return None
+
     # ── Low-level HTTP GET for callbacks ───────────────────────────────────────
 
     def http_get(self, path: str) -> dict[str, Any] | None:
@@ -1096,6 +1181,9 @@ class Transport:
         import websockets
 
         if not self.ensure_device_access():
+            if self._last_refresh_outcome == DEVICE_REFRESH_UNAVAILABLE:
+                raise TransportUnavailableError(
+                    "Cannot connect WebSocket: the manager could not be reached to refresh the device credential")
             raise TransportError("Cannot connect WebSocket: device credential refresh failed")
         if not self._agent_token:
             raise TransportError("Cannot connect WebSocket: no agent token")

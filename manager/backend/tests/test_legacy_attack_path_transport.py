@@ -43,7 +43,8 @@ async def test_reads_never_refresh_and_target_refresh_preserves_other_goals(
     app, _, _ = _test_app(engine, tenant, engagement, monkeypatch)
     app.include_router(legacy.router)
     analyzer = SimpleNamespace(
-        find_paths_to_target=lambda _: [], identify_chokepoints=lambda _: []
+        find_paths_to_target=lambda _: [], identify_chokepoints=lambda _: [],
+        choke_analysis=lambda _: {}, diagnose=lambda _: {"reasons": ["synthetic empty model"]},
     )
     build = AsyncMock(return_value=(analyzer, None))
     monkeypatch.setattr(legacy, "_build_analyzer", build)

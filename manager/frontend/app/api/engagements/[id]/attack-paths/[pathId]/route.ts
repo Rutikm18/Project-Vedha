@@ -1,6 +1,7 @@
-import { proxyAttackGraph } from "../../../../../../lib/attack-graph-proxy";
+import { engagementGet } from "../../../../../../lib/attack-paths-proxy";
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string; pathId: string }> }) {
-  const { id, pathId } = await params;
-  return proxyAttackGraph(req, id, "attack-paths", pathId);
-}
+/** GET /api/engagements/{id}/attack-paths/{pathId} → one path, hop by hop. */
+export const GET = engagementGet({
+  uuids: ["id", "pathId"],
+  path: (p) => `/engagements/${p.id}/attack-paths/${p.pathId}`,
+});

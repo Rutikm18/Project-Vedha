@@ -64,12 +64,14 @@ _EOL: dict[str, str] = {
     "ubuntu 14.04":           "2019-04-30",
     "ubuntu 16.04":           "2021-04-30",
     "ubuntu 18.04":           "2023-05-31",
+    "ubuntu 20.04":           "2025-05-31",   # end of standard support (ESM is paid)
     "centos 6":               "2020-11-30",
     "centos 7":               "2024-06-30",
     "centos 8":               "2021-12-31",
     "debian 8":               "2020-06-30",
     "debian 9":               "2022-06-30",
     "debian 10":              "2024-06-30",
+    "debian 11":              "2026-08-31",   # end of Debian LTS
 }
 
 _SOURCE = "vendor_published_eos"

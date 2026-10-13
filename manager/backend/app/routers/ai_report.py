@@ -18,12 +18,14 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import require_role
+from app.ratelimit import ai_rate_limit
+from app.services.notification_rules import notify_event_safe
 from app.dependencies import DB, AuthUser
 from app.models.asset import Asset
 from app.models.attack_path import AttackPath
@@ -60,7 +62,7 @@ class RejectRequest(ReviewRequest):
 
 # ── POST /generate ────────────────────────────────────────────────────────────
 
-@router.post("/generate", status_code=status.HTTP_202_ACCEPTED, summary="Generate an AI report")
+@router.post("/generate", dependencies=[Depends(ai_rate_limit)], status_code=status.HTTP_202_ACCEPTED, summary="Generate an AI report")
 async def generate_report(
     engagement_id: uuid.UUID,
     body: GenerateRequest,
@@ -139,7 +141,7 @@ async def approve_report(
     db: DB,
     current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
 ):
-    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    engagement = await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     rows = await _pending_outputs(db, engagement_id, body.output_ids)
     if not rows:
         raise HTTPException(404, "No pending sections to approve")
@@ -149,6 +151,10 @@ async def approve_report(
         r.reviewed_at = datetime.now(timezone.utc)
     await db.flush()
     logger.info("ai.report.approved", engagement=str(engagement_id), count=len(rows))
+    await notify_event_safe(
+        db, current_user.tenant_id, "report_approved",
+        f"Vedha: report approved for {engagement.name}",
+        f"{len(rows)} report section(s) were approved for the engagement '{engagement.name}'.")
     return {"approved": len(rows), "ids": [str(r.id) for r in rows]}
 
 
@@ -329,7 +335,7 @@ async def _run_generation(engagement_id: str, job_id: str, opts: dict) -> None:
         gen = LLMReportGenerator(db)
         if not gen.available:
             await _set_job(db, job_id, ScanJobStatus.failed,
-                           {"error": "LLM not configured (set ANTHROPIC_API_KEY)"})
+                           {"error": "No AI provider is configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY or OPENROUTER_API_KEY on the Manager."})
             await db.commit()
             return
 
@@ -376,6 +382,14 @@ async def _run_generation(engagement_id: str, job_id: str, opts: dict) -> None:
                         sections += 1
         except LLMUnavailableError as exc:
             await _set_job(db, job_id, ScanJobStatus.failed, {"error": str(exc), "sections": sections})
+            await db.commit()
+            return
+        except Exception as exc:  # noqa: BLE001 — a background task must never leave the job "running"
+            logger.exception("ai.report.generation_crashed", engagement=engagement_id)
+            await db.rollback()
+            await _set_job(db, job_id, ScanJobStatus.failed,
+                           {"error": f"Report generation failed unexpectedly ({type(exc).__name__}); see manager logs.",
+                            "sections": 0})  # the failed transaction was rolled back
             await db.commit()
             return
 

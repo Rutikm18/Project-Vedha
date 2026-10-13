@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import ipaddress
 import json
 import re
 import uuid
@@ -17,7 +18,12 @@ from app.models.agent import Agent
 
 logger = structlog.get_logger()
 
-_PUBLIC_PATHS = {"/", "/health", "/metrics", "/auth/login", "/auth/refresh", "/auth/logout", "/docs", "/openapi.json", "/redoc"}
+_PUBLIC_PATHS = {
+    "/", "/health", "/metrics", "/auth/login", "/auth/refresh", "/auth/logout", "/docs", "/openapi.json", "/redoc",
+    # Second sign-in step: authenticated by the short-lived MFA challenge token in
+    # the body (auth/mfa.py), because no session exists yet.
+    "/auth/mfa/verify", "/auth/mfa/enroll/setup", "/auth/mfa/enroll/enable",
+}
 _PUBLIC_PREFIXES = ("/docs", "/redoc")
 
 _AGENT_REFRESH_PATH = re.compile(r"^/agents/[^/]+/refresh$")
@@ -33,12 +39,13 @@ _PUBLIC_ENROLLMENT_PATHS = (
     re.compile(r"^/probe-enrollment/requests/[0-9a-fA-F-]+/activate$"),
     re.compile(r"^/probe-enrollment/token$"),
 )
-# Agent distribution: the installer and signed manifest are public; the image
-# route authenticates its own enrolment token (a vet_ token is not a JWT).
+# Agent distribution: the installers and signed manifest are public; the image
+# and package routes authenticate their own enrolment token (a vet_ token is not
+# a JWT).
 _PUBLIC_DISTRIBUTION_PATHS = (
-    re.compile(r"^/agent/install\.sh$"),
-    re.compile(r"^/agent/manifest\.json(\.sig)?$"),
-    re.compile(r"^/agent/image/[a-z0-9]{1,16}$"),
+    re.compile(r"^/agent/install\.(sh|ps1|cmd)$"),
+    re.compile(r"^/agent/manifest\.json(\.sig|\.p256\.sig)?$"),
+    re.compile(r"^/agent/(image|package)/[a-z0-9]{1,16}$"),
 )
 
 
@@ -79,7 +86,7 @@ def agent_jwt_path_allows(path: str, method: str) -> bool:
     the route handlers.
     """
     method = method.upper()
-    if path == "/agents/heartbeat":
+    if path in ("/agents/heartbeat", "/agents/update-check", "/agents/update-ticket"):
         return method == "POST"
     if _AGENT_REFRESH_PATH.fullmatch(path):
         return method == "POST"
@@ -97,6 +104,25 @@ def agent_jwt_path_allows(path: str, method: str) -> bool:
     return False
 
 
+# Loopback, RFC 1918 and IPv6 unique-local. Not ipaddress.is_private, which also
+# counts documentation and other special-purpose ranges as "private".
+_INTERNAL_NETWORKS = tuple(ipaddress.ip_network(n) for n in (
+    "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "::1/128", "fc00::/7",
+))
+
+
+def _internal_caller(request: Request) -> bool:
+    """True for loopback and private-network callers (the Docker network, a LAN
+    scraper). Behind Caddy the client is the real visitor, because uvicorn only
+    trusts forwarded addresses from the Docker networks."""
+    host = request.client.host if request.client else ""
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return any(ip in net for net in _INTERNAL_NETWORKS)
+
+
 class TenantIsolationMiddleware(BaseHTTPMiddleware):
     """
     Extracts JWT from Authorization header and injects tenant_id + user
@@ -106,6 +132,10 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         path = request.url.path
+        if path == "/metrics" and not _internal_caller(request):
+            # Prometheus metrics (routes, traffic, latencies) are for the scraper
+            # on the internal network, not for anyone on the public API host.
+            return Response(content='{"detail":"Not Found"}', status_code=404, media_type="application/json")
         if (
             path in _PUBLIC_PATHS
             or path.startswith(_PUBLIC_PREFIXES)

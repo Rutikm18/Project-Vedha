@@ -68,8 +68,52 @@ test("scope wording follows the audience", () => {
 });
 
 test("the operator Scanner renders the Deep scan card and launches through the shared builder", () => {
-  const page = readFileSync(join(process.cwd(), "app/scan/page.tsx"), "utf8");
+  const page = readFileSync(join(process.cwd(), "app/scan/workspace.tsx"), "utf8");
   assert.match(page, /\{!isPortal && \(\s*<DeepScanCard plan=\{null\}/);
   assert.match(page, /buildDeepScanLaunch\(/);
   assert.doesNotMatch(page, /params: \{ scan_mode: "deep" \}/);   // no hand-built body left
+});
+
+test("the Scanner has ONE all-ports entry point: the one-host Deep scan card, no multi-host chips", () => {
+  const page = readFileSync(join(process.cwd(), "app/scan/workspace.tsx"), "utf8");
+  // the old Full-Port Audit / Deep Port Sweep selector (which allowed several hosts) is gone
+  assert.doesNotMatch(page, /FULL_PORT_UC_IDS/);
+  assert.doesNotMatch(page, /Deep &amp; full-port scans/);
+  assert.doesNotMatch(page, /up to a few hosts/);
+  // the card sits right after the Network VA hero, before the configure panel
+  const hero = page.indexOf("<NetworkVaHero");
+  const card = page.indexOf("<DeepScanCard");
+  const configure = page.indexOf("Configure &amp; launch");
+  assert.ok(hero > 0 && card > hero && configure > card, "deep scan card must come between the hero and the configure panel");
+  // exactly one card per audience
+  assert.equal((page.match(/<DeepScanCard/g) ?? []).length, 2);
+});
+
+test("a full-port scan can never be built for more than one host", () => {
+  for (const use_case_id of ["uc_deep_port_sweep", "uc_full_port_audit"]) {
+    const base = { engagement_id: "eng-1", use_case_id };
+    for (const targets of [undefined, [], ["10.0.0.5", "10.0.0.6"], ["10.0.0.0/24"], ["10.0.0.4-10.0.0.9"], ["10.0.0.5,10.0.0.6"]]) {
+      assert.throws(() => buildScanLaunchRequest({ ...base, targets }), /exactly one host/, JSON.stringify(targets));
+    }
+    assert.doesNotThrow(() => buildScanLaunchRequest({ ...base, targets: ["10.0.0.5"] }));
+    assert.doesNotThrow(() => buildScanLaunchRequest({ ...base, targets: ["10.0.0.5/32"] }));
+  }
+  // other scans are unaffected: a range is still fine for Network VA
+  assert.doesNotThrow(() => buildScanLaunchRequest({
+    engagement_id: "eng-1", use_case_id: "uc_network_va", targets: ["10.0.0.0/24"] }));
+  assert.throws(() => buildDeepScanLaunch({
+    engagementId: "eng-1", ip: "10.0.0.5, 10.0.0.6", audience: "operator" }), /exactly one host/);
+});
+
+test("the card says one host, shows what it covers, and offers no way to add a second", () => {
+  const card = readFileSync(join(process.cwd(), "components/portal/DeepScanCard.tsx"), "utf8");
+  assert.match(card, /Deep scan · one host/);
+  assert.match(card, /Deep-scan this host/);
+  assert.match(card, /65,535/);
+  assert.doesNotMatch(card, /<textarea/);              // a single-line field only
+  assert.match(deepScanCopy(null).rules[0], /Exactly one host per deep scan/);
+  assert.match(deepScanCopy(plan).rules[0], /Exactly one host per deep scan/);
+  for (const bad of ["10.0.0.5, 10.0.0.6", "10.0.0.5 10.0.0.6", "10.0.0.0/24", "10.0.0.5;10.0.0.6"]) {
+    assert.ok(deepTargetProblem(bad, ["10.0.0.0/24"], [], false), bad);
+  }
 });

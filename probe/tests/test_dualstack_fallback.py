@@ -143,8 +143,11 @@ class TestRdpFallback:
             return {"nla": True, "selected_protocol": 2} if ip == V4 else None
         monkeypatch.setattr(rdp, "probe_rdp_posture", _probe)
         sc = rdp.RDPScanner(_SCOPE(), timeout=0.1)
+        # _scan_port now returns a list (the rdp_scan fact, plus a SCHANNEL
+        # tls_scan fact when RDP negotiates TLS — not the case for this fake
+        # posture, which carries no `tls`).
         res = asyncio.run(sc._scan_port("host.example", 3389))
-        assert res is not None and res.status == "open"
+        assert len(res) == 1 and res[0].status == "open"
         assert tried == [V6, V4]
 
     def test_none_when_no_family_speaks_rdp(self, monkeypatch):
@@ -153,13 +156,13 @@ class TestRdpFallback:
         monkeypatch.setattr(rdp, "probe_rdp_posture",
                             lambda ip, port, timeout: None)
         sc = rdp.RDPScanner(_SCOPE(), timeout=0.1)
-        assert asyncio.run(sc._scan_port("host.example", 3389)) is None
+        assert asyncio.run(sc._scan_port("host.example", 3389)) == []
 
     def test_unresolvable_host_is_survivable(self, monkeypatch):
         monkeypatch.setattr(rdp, "resolve_ip_candidates",
                             lambda t, p, proto="tcp": [])
         sc = rdp.RDPScanner(_SCOPE(), timeout=0.1)
-        assert asyncio.run(sc._scan_port("nx.invalid", 3389)) is None
+        assert asyncio.run(sc._scan_port("nx.invalid", 3389)) == []
 
 
 # ── TLS fingerprint ──────────────────────────────────────────────────────────

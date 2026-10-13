@@ -17,9 +17,14 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$OutDir = "$PSScriptRoot\dist"
+  [string]$OutDir = ''
 )
 $ErrorActionPreference = 'Stop'
+
+# $PSScriptRoot is empty inside a param() default under some Windows PowerShell hosts,
+# which turned this into "\dist" (the drive root). Resolve it here, as an absolute path.
+if (-not $OutDir) { $OutDir = Join-Path $PSScriptRoot 'dist' }
+$OutDir = [System.IO.Path]::GetFullPath($OutDir)
 
 $probeRoot = Split-Path $PSScriptRoot -Parent      # ...\probe
 Set-Location $probeRoot
@@ -43,17 +48,40 @@ if ($LASTEXITCODE -ne 0) { throw 'agent closure export failed' }
 
 # 2) Compile to a standalone folder. Docstrings and asserts are stripped; the
 #    optional credential collectors (paramiko, winrm) are left out on purpose.
+#    MinGW gcc (--mingw64), not MSVC: cl.exe dies with C1002 "out of heap space" on
+#    impacket's large generated RPC modules (srvs, tsts, ...); gcc handles them.
+#    websockets IS compiled whole: it loads websockets.asyncio.client lazily by name, which
+#    Nuitka cannot follow, so without this the agent registers and then cannot open its live
+#    connection (seen on the first real install). `runtime-check` now exercises that path.
+#
+#    impacket is NOT compiled whole: --include-package=impacket pulls in huge generated
+#    modules (e.g. dcerpc.v5.tsts) that run MSVC out of heap space (C1002). Only the
+#    modules the scanners import are built; `vedha-agent runtime-check` verifies them.
 $dist = Join-Path $OutDir 'vedha-agent'
 if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
+
+# Nuitka rejects any version info unless a numeric file/product version is given too.
+$versionFile = Join-Path (Split-Path $probeRoot -Parent) 'VERSION'
+$agentVersion = if (Test-Path $versionFile) { (Get-Content $versionFile -TotalCount 1).Trim() } else { '' }
+if ($agentVersion -notmatch '^\d+(\.\d+){0,3}$') { $agentVersion = '0.0.0' }
+
 Push-Location $stage
 try {
-  & $py -m nuitka --standalone --assume-yes-for-downloads --follow-imports `
+  & $py -m nuitka --standalone --mingw64 --assume-yes-for-downloads --follow-imports `
       --python-flag=no_docstrings --python-flag=no_asserts `
       --include-package=agent --include-package=scanner --include-package=workflow `
-      --include-package=impacket --include-package=ldap3 --include-package=dns `
+      --include-package=ldap3 --include-package=dns `
+      --include-package=websockets `
+      --include-module=impacket.smbconnection --include-module=impacket.uuid `
+      --include-module=impacket.dcerpc.v5.transport --include-module=impacket.dcerpc.v5.samr `
+      --include-module=impacket.dcerpc.v5.lsat --include-module=impacket.dcerpc.v5.lsad `
+      --include-module=impacket.dcerpc.v5.rrp --include-module=impacket.dcerpc.v5.epm `
+      --include-module=impacket.dcerpc.v5.rpcrt --include-module=impacket.dcerpc.v5.dtypes `
+      --nofollow-import-to=impacket.examples --nofollow-import-to=impacket.dcerpc.v5.tsts `
       --nofollow-import-to=paramiko --nofollow-import-to=winrm `
       --nofollow-import-to=pytest --nofollow-import-to=unittest `
       --windows-console-mode=force --company-name=Vedha --product-name='Vedha Agent' `
+      "--file-version=$agentVersion" "--product-version=$agentVersion" `
       --file-description='Vedha network assessment agent' `
       "--output-dir=$OutDir" --output-filename=vedha-agent.exe --remove-output `
       agent\agent.py

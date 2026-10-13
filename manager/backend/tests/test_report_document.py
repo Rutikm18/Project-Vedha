@@ -1731,6 +1731,7 @@ async def test_loader_explicitly_tenant_scopes_every_report_fact_query():
             result(scalar_rows=[run]),
             result(scalar_rows=[scan_result]),
             result(scalar=None),
+            result(scalar=None),   # latest completed detection run (coverage sheet)
         ]
     )
 
@@ -1792,6 +1793,7 @@ async def test_loader_includes_tags_from_assets_without_findings():
             result(rows=[]),
             result(scalar_rows=[swift_tags]),
             result(scalar=None),
+            result(scalar=None),   # latest completed detection run (coverage sheet)
         ]
     )
 

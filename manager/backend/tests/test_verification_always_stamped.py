@@ -75,7 +75,7 @@ async def test_attack_path_findings_join_touched(monkeypatch):
     async def _roles(db, eid):
         return {}
 
-    async def _asset(db, eid, target, cache=None):
+    async def _asset(db, eid, target, cache=None, identity=None):
         return SimpleNamespace(id=uuid.uuid4())
 
     async def _dup(*a, **k):

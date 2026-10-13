@@ -26,7 +26,7 @@ from app.ai.failures import (
 )
 from app.ai.headroom import headroom_cooldown
 from app.ai.health import ProviderHealth
-from app.ai.kv import KvStore, default_kv
+from app.ai.kv import KvStore, answer_kv, default_kv
 from app.ai.spend import SpendMeter
 from app.ai.routing import (
     FREE,
@@ -342,8 +342,12 @@ Name the evidence used and the decisions that still require validation."""
 _TASK_RULES = {
     "security_brief": _VULNERABILITY_BRIEF_CONTRACT + """
 Write for a client stakeholder. Preserve scores and affected assets exactly as supplied.""",
-    "security_followup": """Answer the follow-up about the supplied security brief.
-For a full explanation follow the vulnerability brief contract below.
+    "security_followup": """Answer the user's follow-up question about the supplied finding.
+- The conversation so far, and "previousExplanation" in the security context (the explanation the user has already read), are what the user means by "it", "that", "this" and "explain more". Build on them. Never repeat what was already said.
+- Answer the question that was asked, directly, in the first sentence. Keep it focused (usually under 250 words) unless the user asks for a full or detailed explanation.
+- For "explain more", "elaborate" or "go deeper": add new detail to the most important parts of the previous explanation (why it matters, how to confirm it, what to watch for) instead of restating it.
+- Use the headings of the vulnerability brief contract below ONLY when the user explicitly asks for a full brief from scratch. Otherwise use short paragraphs or bullets.
+- Separate recorded facts from general knowledge, and say so when the record does not contain the answer.
 Do not provide exploit instructions.""",
     "advisor": """Help the authorized team understand exposure, attack paths, validation evidence, detection gaps, and remediation priorities.
 When the question concerns one CVE or finding, follow the vulnerability brief contract below.
@@ -523,7 +527,8 @@ class ManagerLlmService:
         self._kv = kv or default_kv()
         self.health = ProviderHealth(self._kv)
         self.spend = SpendMeter(self._kv, self.settings)
-        self.answers = AnswerStore(self._kv, self.settings.ai_answer_cache_ttl_seconds)
+        # An injected kv (tests) holds everything; otherwise answers use the cache store.
+        self.answers = AnswerStore(self._kv if kv else answer_kv(), self.settings.ai_answer_cache_ttl_seconds)
 
     def _sovereign(self) -> bool:
         return (self.settings.deployment_profile or "").strip().lower() == "sovereign"

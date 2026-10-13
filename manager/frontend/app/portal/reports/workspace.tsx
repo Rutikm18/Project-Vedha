@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   FileText, Download, Loader2, ShieldAlert, BarChart3, FileArchive,
   Printer, ExternalLink, CheckCircle, AlertTriangle, Clock, X,
 } from "lucide-react";
+import { useModalFocus } from "../../../hooks/useModalFocus";
 import { PortalShell } from "../../../components/portal/PortalShell";
 import { LockedFindingsTeaser, PlanLockNotice, PlanLockPanel } from "../../../components/portal/PlanLock";
 import { WRITTEN_REPORTS_NOTICE, isFeatureLocked } from "../../../lib/entitlements";
@@ -174,10 +175,57 @@ function PriorityItem({ index, text, tone }: { index: number; text: string; tone
   );
 }
 
+// ── Issues: one issue recorded on many assets reads once ─────────────────────
+
+interface PortalIssue {
+  key: string;
+  title: string;
+  severity: string;
+  /** Instances, open first, then by risk. */
+  items: PortalFinding[];
+  lead: PortalFinding;
+  open: number;
+}
+
+const isOpenFinding = (f: PortalFinding) => f.status === "open" || f.status === "confirmed";
+
+/** Group findings that share severity and title, most severe and riskiest first. */
+function groupIssues(findings: PortalFinding[]): PortalIssue[] {
+  const map = new Map<string, PortalFinding[]>();
+  for (const f of findings) {
+    const key = `${f.severity}|${f.title.trim().toLowerCase()}`;
+    const list = map.get(key);
+    if (list) list.push(f);
+    else map.set(key, [f]);
+  }
+  const risk = (f: PortalFinding) => f.risk_score ?? -1;
+  return [...map.entries()]
+    .map(([key, list]) => {
+      const items = [...list].sort((a, b) => Number(isOpenFinding(b)) - Number(isOpenFinding(a)) || risk(b) - risk(a));
+      return { key, title: items[0]!.title, severity: items[0]!.severity, items, lead: items[0]!, open: items.filter(isOpenFinding).length };
+    })
+    .sort((a, b) =>
+      (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9)
+      || Number(b.open > 0) - Number(a.open > 0)
+      || Math.max(...b.items.map(risk)) - Math.max(...a.items.map(risk))
+      || b.items.length - a.items.length
+      || a.title.localeCompare(b.title));
+}
+
+/** "3 open · 2 remediated", or the single status. */
+function issueStatus(issue: PortalIssue): string {
+  if (issue.items.length === 1) return issue.lead.status;
+  const counts = new Map<string, number>();
+  for (const f of issue.items) counts.set(f.status, (counts.get(f.status) ?? 0) + 1);
+  return [...counts.entries()].map(([status, n]) => `${n} ${status}`).join(" · ");
+}
+
 // ── Findings table (executive + findings tab) ─────────────────────────────────
 
 function FindingsTable({ findings, max }: { findings: PortalFinding[]; max?: number }) {
-  const list = max !== undefined ? findings.slice(0, max) : findings;
+  const issues = groupIssues(findings);
+  const list = max !== undefined ? issues.slice(0, max) : issues;
+  const repeated = list.some((i) => i.items.length > 1);
   if (!list.length) {
     return (
       <div style={{ padding: "24px 0", textAlign: "center", color: "var(--text-muted)",
@@ -191,7 +239,7 @@ function FindingsTable({ findings, max }: { findings: PortalFinding[]; max?: num
       <table className="responsive-table" style={{ width: "100%", minWidth: 500, borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "var(--bg-panel)" }}>
-            {["Severity", "Finding", "CVSS", "Risk", "Status"].map((h, i) => (
+            {["Severity", "Finding", ...(repeated ? ["Found"] : []), "CVSS", "Risk (0–1000)", "Status"].map((h, i) => (
               <th key={h} style={{
                 padding: "9px 12px", textAlign: i >= 2 ? "right" : "left",
                 fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em",
@@ -204,8 +252,12 @@ function FindingsTable({ findings, max }: { findings: PortalFinding[]; max?: num
           </tr>
         </thead>
         <tbody>
-          {list.map((f) => (
-            <tr key={f.id} data-card-row style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+          {list.map((issue) => {
+            const f = issue.lead;
+            const cvss = [...new Set(issue.items.map((x) => x.cvss_score).filter((v) => v !== null))];
+            const risk = Math.max(...issue.items.map((x) => x.risk_score ?? -1));
+            return (
+            <tr key={issue.key} data-card-row style={{ borderBottom: "1px solid var(--border-subtle)" }}>
               <td data-label="Severity" style={{ padding: "11px 12px", whiteSpace: "nowrap" }}>
                 <SevChip severity={f.severity} />
               </td>
@@ -222,20 +274,28 @@ function FindingsTable({ findings, max }: { findings: PortalFinding[]; max?: num
                   </div>
                 )}
               </td>
+              {repeated && (
+                <td data-label="Found" style={{ padding: "11px 12px", textAlign: "right",
+                  fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}
+                  title={`Recorded ${issue.items.length} time${issue.items.length === 1 ? "" : "s"}`}>
+                  ×{issue.items.length}
+                </td>
+              )}
               <td data-label="CVSS" style={{ padding: "11px 12px", textAlign: "right",
                 fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-secondary)" }}>
-                {f.cvss_score ?? "—"}
+                {cvss.length === 0 ? "—" : cvss.length === 1 ? cvss[0] : "varies"}
               </td>
               <td data-label="Risk" style={{ padding: "11px 12px", textAlign: "right",
                 fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-secondary)" }}>
-                {f.risk_score ?? "—"}
+                {risk >= 0 ? Math.round(risk) : "—"}
               </td>
               <td data-label="Status" style={{ padding: "11px 12px", textAlign: "right",
                 fontSize: 11, textTransform: "capitalize", color: "var(--text-muted)" }}>
-                {f.status}
+                {issueStatus(issue)}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -257,10 +317,14 @@ function FieldLabel({ children, color }: { children: React.ReactNode; color?: st
 /** A professional, self-contained finding record: identification, evidence,
  *  provenance (time + source), and the recommended action. Numbered so a reader
  *  can cite "F-03" the way a real assessment report is cross-referenced. */
-function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
+function FindingCard({ issue, index }: { issue: PortalIssue; index: number }) {
+  const f = issue.lead;
+  const many = issue.items.length > 1;
   const sevColor = SEVERITY_VAR[f.severity] ?? SEVERITY_VAR.info;
   const ref = `F-${String(index + 1).padStart(2, "0")}`;
   const cves = f.cve_ids ?? [];
+  const firstSeen = issue.items.map((x) => x.first_seen).filter((d): d is string => Boolean(d)).sort()[0] ?? f.first_seen;
+  const risk = Math.max(...issue.items.map((x) => x.risk_score ?? -1));
 
   return (
     <article style={{
@@ -286,6 +350,11 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
               {ref}
             </span>
             <SevChip severity={f.severity} />
+            {many && (
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: sevColor }}>
+                Recorded {issue.items.length} times · {issue.open} open
+              </span>
+            )}
             {cves.map((cve) => (
               <a key={cve} href={`https://nvd.nist.gov/vuln/detail/${cve}`}
                 target="_blank" rel="noopener noreferrer"
@@ -315,8 +384,8 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
       }}>
         {[
           { label: "CVSS", value: f.cvss_score ?? "—", color: f.cvss_score !== null ? sevColor : "var(--text-muted)" },
-          { label: "Risk score", value: f.risk_score ?? "—", color: f.risk_score !== null ? sevColor : "var(--text-muted)" },
-          { label: "Status", value: f.status, color: "var(--text-secondary)" },
+          { label: many ? "Highest risk (0–1000)" : "Risk score (0–1000)", value: risk >= 0 ? Math.round(risk) : "—", color: risk >= 0 ? sevColor : "var(--text-muted)" },
+          { label: "Status", value: issueStatus(issue), color: "var(--text-secondary)" },
         ].map((item, i) => (
           <div key={item.label} style={{
             flex: 1, padding: "10px 16px",
@@ -338,7 +407,7 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
           <FieldLabel>Observation &amp; evidence</FieldLabel>
           <p style={{ margin: "7px 0 0", fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.65 }}>
             {f.description
-              ?? "This finding was recorded during the assessment. A detailed technical description was not captured for this item."}
+              ?? "No detailed description has been recorded for this finding."}
           </p>
         </div>
 
@@ -351,7 +420,7 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
           <div>
             <FieldLabel>Identified</FieldLabel>
             <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-secondary)" }}>
-              <Timestamp value={f.first_seen} variant="exact" />
+              <Timestamp value={firstSeen} variant="exact" />
             </div>
           </div>
           <div>
@@ -378,10 +447,10 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
             </div>
           </div>
           <div>
-            <FieldLabel>Current status</FieldLabel>
+            <FieldLabel>{many ? "Occurrences" : "Current status"}</FieldLabel>
             <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-secondary)",
-              textTransform: "capitalize" }}>
-              {f.status}
+              textTransform: many ? "none" : "capitalize" }}>
+              {many ? `${issue.items.length} recorded · ${issueStatus(issue)}` : f.status}
             </div>
           </div>
         </div>
@@ -400,7 +469,7 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
           </FieldLabel>
           <p style={{ margin: "7px 0 0", fontSize: 12.5, color: "var(--text-primary)", lineHeight: 1.65 }}>
             {f.remediation
-              ?? "Remediation guidance for this finding is being prepared by your security team."}
+              ?? "No remediation guidance has been recorded for this finding yet. Ask your security team for the agreed next step."}
           </p>
         </div>
       </div>
@@ -410,17 +479,18 @@ function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
 
 // ── Executive tab ─────────────────────────────────────────────────────────────
 
-function ExecutiveTab({ summary, trends, findings }: {
-  summary: PortalSummary; trends: PortalTrends; findings: PortalFinding[];
+function ExecutiveTab({ summary, trends, findings, someLocked }: {
+  summary: PortalSummary; trends: PortalTrends; findings: PortalFinding[]; someLocked: boolean;
 }) {
   const p = summary.posture;
   const openCrit = summary.severity_counts?.critical ?? 0;
   const openHigh = summary.severity_counts?.high ?? 0;
-
+  // Locked severities are hidden by the server, so "no findings" would overclaim.
+  
   const riskStatement = openCrit > 0 ? "Immediate action required"
     : openHigh > 0 ? "Elevated risk — action recommended"
     : summary.open_findings > 0 ? "Managed — remediation in progress"
-    : "Secure posture — no open findings";
+    : (someLocked ? "No open findings in your plan's severities" : "Secure posture — no open findings");
 
   const riskColor = openCrit > 0 ? "var(--sev-critical-color)"
     : openHigh > 0 ? "var(--sev-high-color)"
@@ -439,7 +509,7 @@ function ExecutiveTab({ summary, trends, findings }: {
       : null,
     summary.open_findings > 0
       ? { text: "Retest each remediated finding and verify the fix before closure.", tone: "var(--accent)" }
-      : { text: "No open findings — maintain posture with periodic scheduled scans.", tone: "var(--nominal-color)" },
+      : { text: `${someLocked ? "No open findings in your plan's severities" : "No open findings"} — maintain posture with periodic scheduled scans.`, tone: "var(--nominal-color)" },
   ].filter(Boolean) as Array<{ text: string; tone: string }>;
 
   const topFindings = [...findings]
@@ -522,7 +592,7 @@ function ExecutiveTab({ summary, trends, findings }: {
       {/* Top findings */}
       <SectionBlock
         eyebrow="Top exposures" title="Highest-risk open findings"
-        aside={topFindings.length > 10 ? `Showing 10 of ${topFindings.length}` : undefined}
+        aside={groupIssues(topFindings).length > 10 ? `Showing 10 of ${groupIssues(topFindings).length} issues` : undefined}
       >
         <FindingsTable findings={topFindings} max={10} />
       </SectionBlock>
@@ -547,6 +617,7 @@ function FindingsTab({ findings }: { findings: PortalFinding[] }) {
     );
   }
 
+  const issues = groupIssues(sorted);
   // Count by severity for the register summary line.
   const bySev = SEVS.map((s) => ({ s, n: sorted.filter((f) => f.severity === s).length }))
     .filter((x) => x.n > 0);
@@ -555,15 +626,16 @@ function FindingsTab({ findings }: { findings: PortalFinding[] }) {
     <SectionBlock
       eyebrow="Technical detail"
       title="Detailed findings register"
-      aside={`${sorted.length} finding${sorted.length === 1 ? "" : "s"}`}
+      aside={`${sorted.length} finding${sorted.length === 1 ? "" : "s"}${issues.length < sorted.length ? ` · ${issues.length} issues` : ""}`}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Register summary: what's inside, ordered highest-risk first */}
         <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 14,
           paddingBottom: 12, borderBottom: "1px solid var(--border-subtle)" }}>
           <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-            Every recorded finding, ordered by risk. Each entry carries its evidence, time of
-            identification, source and recommended action.
+            Every recorded finding, most severe first. An issue recorded on several assets is
+            listed once. Each entry carries its evidence, time of identification, source and
+            recommended action.
           </span>
           <div style={{ display: "flex", gap: 12, marginLeft: "auto", flexWrap: "wrap" }}>
             {bySev.map(({ s, n }) => (
@@ -577,7 +649,7 @@ function FindingsTab({ findings }: { findings: PortalFinding[] }) {
           </div>
         </div>
 
-        {sorted.map((f, i) => <FindingCard key={f.id} f={f} index={i} />)}
+        {issues.map((issue, i) => <FindingCard key={issue.key} issue={issue} index={i} />)}
       </div>
     </SectionBlock>
   );
@@ -585,11 +657,13 @@ function FindingsTab({ findings }: { findings: PortalFinding[] }) {
 
 /** Keep both live-data sections mounted so print/PDF output includes the whole
  * report, while the interactive view still presents one section at a time. */
-export function PortalReportTabContent({ tab, summary, trends, findings }: {
+export function PortalReportTabContent({ tab, summary, trends, findings, someLocked = false }: {
   tab: Exclude<Tab, "documents">;
   summary: PortalSummary;
   trends: PortalTrends;
   findings: PortalFinding[];
+  /** The plan hides some severities, so "no findings" wording must say so. */
+  someLocked?: boolean;
 }) {
   return (
     <>
@@ -599,7 +673,7 @@ export function PortalReportTabContent({ tab, summary, trends, findings }: {
         data-active={tab === "executive"}
         aria-hidden={tab !== "executive"}
       >
-        <ExecutiveTab summary={summary} trends={trends} findings={findings} />
+        <ExecutiveTab summary={summary} trends={trends} findings={findings} someLocked={someLocked} />
       </div>
       <div
         className="portal-report-tab-pane"
@@ -661,6 +735,7 @@ function DocumentsTab({ reports, onView, loadingId }: {
             onClick={(e) => onView(r.id, e.currentTarget)}
             disabled={loadingId === r.id}
             className="btn btn-secondary"
+            data-report-id={r.id}
             aria-label={`View ${r.output_type.replace(/_/g, " ")}`}
             style={{ flexShrink: 0 }}
           >
@@ -677,14 +752,9 @@ function DocumentsTab({ reports, onView, loadingId }: {
 
 // ── Report viewer modal ───────────────────────────────────────────────────────
 
-function ReportModal({ report, onClose }: { report: ReportContent; onClose: () => void }) {
+function ReportModal({ report, onClose, invoker }: { report: ReportContent; onClose: () => void; invoker: React.RefObject<HTMLElement | null> }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    ref.current?.focus();
-    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", h);
-    return () => document.removeEventListener("keydown", h);
-  }, [onClose]);
+  useModalFocus(ref, true, onClose, `[data-report-id=${JSON.stringify(report.id)}]`, invoker);
 
   return (
     <div onClick={onClose} style={{
@@ -738,7 +808,9 @@ export function PortalReportsWorkspace() {
   const [tab, setTab] = useState<Tab>("executive");
   const [modal, setModal] = useState<ReportContent | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [documentError, setDocumentError] = useState<{ id: string; message: string } | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
+  const closeReport = useCallback(() => setModal(null), []);
 
   const eng     = usePortalEngagement();
   const summary = useQuery({ queryKey: ["portal", "summary"],  queryFn: () => portalApi<PortalSummary>("/summary") });
@@ -755,7 +827,9 @@ export function PortalReportsWorkspace() {
   async function viewDoc(id: string, el: HTMLElement) {
     triggerRef.current = el;
     setLoadingId(id);
+    setDocumentError(null);
     try { setModal(await portalApi<ReportContent>(`/reports/${id}`)); }
+    catch (cause) { setDocumentError({ id, message: cause instanceof Error ? cause.message : "Request failed" }); }
     finally { setLoadingId(null); }
   }
 
@@ -795,7 +869,7 @@ export function PortalReportsWorkspace() {
           const active = tab === id;
           return (
             <button
-              key={id} role="tab" aria-selected={active}
+              key={id} role="tab" aria-label={label} aria-selected={active}
               onClick={() => setTab(id)}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 7,
@@ -819,6 +893,7 @@ export function PortalReportsWorkspace() {
       )}
       {tab === "documents" && !writtenWithheld && (
         <div className="no-print">
+          {documentError && <div role="alert" className="ui-recovery">Could not open the report: {documentError.message} <button type="button" className="btn btn-secondary" disabled={Boolean(loadingId)} onClick={(event) => void viewDoc(documentError.id, event.currentTarget)}>Retry document</button></div>}
           <DataState
             loading={reports.isLoading} error={reports.error}
             isEmpty={(reports.data ?? []).length === 0}
@@ -896,6 +971,7 @@ export function PortalReportsWorkspace() {
                   summary={summary.data}
                   trends={trends.data}
                   findings={findings.data ?? []}
+                  someLocked={(plan.data?.locked_severities?.length ?? 0) > 0}
                 />
               </div>
 
@@ -909,7 +985,7 @@ export function PortalReportsWorkspace() {
         </DataState>
       </div>
 
-      {modal && <ReportModal report={modal} onClose={() => { setModal(null); triggerRef.current?.focus(); }} />}
+      {modal && <ReportModal report={modal} onClose={closeReport} invoker={triggerRef} />}
     </PortalShell>
   );
 }

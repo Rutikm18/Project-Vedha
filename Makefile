@@ -38,7 +38,7 @@ endif
 # it into the backend image via the VEDHA_VERSION build arg.
 export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
 
-.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed admin-show admin-reset shell venv test probe-build probe-run probe-pat seal seal-parity agent-keygen agent-release agent-publish agent-verify onprem-bundle clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback prod-diagnose
+.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed admin-show admin-reset shell venv test probe-build probe-run probe-pat seal seal-parity agent-keygen agent-release agent-publish agent-verify agent-client-kit onprem-bundle clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback prod-diagnose agent-keygen-p256 agent-pull
 
 version: ## Print the current deployed version
 	@echo $(VEDHA_VERSION)
@@ -125,8 +125,9 @@ up-graph: ## Start the platform + Neo4j (attack-path graph)
 
 up-ai: ## Start Manager with deployment-managed Ollama and pull OLLAMA_MODEL
 	@test -f .env || cp .env.docker.example .env
-	INSTALL_EXTRAS=1 $(COMPOSE) build api
-	OLLAMA_BASE_URL=http://ollama:11434 INSTALL_EXTRAS=1 $(COMPOSE) --profile local-ai up -d
+# (up-ai: the extras, scikit-learn/xgboost/shap..., ship glibc wheels only: Debian base.)
+	INSTALL_EXTRAS=1 BACKEND_PYTHON_BASE=python:3.12-slim $(COMPOSE) build api
+	OLLAMA_BASE_URL=http://ollama:11434 INSTALL_EXTRAS=1 BACKEND_PYTHON_BASE=python:3.12-slim $(COMPOSE) --profile local-ai up -d
 
 down: ## Stop ALL services incl. a stray probe/edge (keeps volumes)
 	$(COMPOSE) --profile graph --profile probe --profile ui --profile local-ai down --remove-orphans
@@ -199,24 +200,44 @@ seal-parity: ## Local sealed-vs-plaintext manifest parity check (needs Docker; ~
 # ── Agent release (served by the manager; never a public registry) ───────────
 # Build machine only: the private key never goes on the manager server.
 #   make agent-keygen                       once; prints AGENT_RELEASE_PUBLIC_KEY for .env
+#   make agent-keygen-p256                  once; the Windows key -> AGENT_RELEASE_P256_PUBLIC_KEY
 #   make agent-release                      build + sign amd64 and arm64 from VERSION
 #   make agent-publish TO=user@host:/opt/Project-Vedha/manager/agent-releases
+# Normally CI does all of this (.github/workflows/agent-release.yml, tag agent-v<VERSION>) and the
+# manager host just runs:
+#   make agent-pull REPO=<owner>/<repo> TO=/opt/Project-Vedha/manager/agent-releases
+# See docs/operations/AGENT_DISTRIBUTION.md.
 AGENT_RELEASE_KEY ?= $(HOME)/.vedha/agent-release-key.pem
+AGENT_RELEASE_P256_KEY ?= $(HOME)/.vedha/agent-release-p256-key.pem
 AGENT_ARCH ?= amd64,arm64
 RELEASE_PY := $(shell test -x manager/backend/.venv/bin/python && echo manager/backend/.venv/bin/python || echo python3)
 
 agent-keygen: ## Create the agent release signing key (build machine only; prints the public key for .env)
 	@$(RELEASE_PY) scripts/agent_release.py keygen --out "$(AGENT_RELEASE_KEY)"
 
-agent-release: ## Build + sign the agent release from VERSION [AGENT_ARCH=amd64,arm64] [AGENT_RELEASE_KEY=...]
-	@$(RELEASE_PY) scripts/agent_release.py build --key "$(AGENT_RELEASE_KEY)" --arch "$(AGENT_ARCH)"
+agent-keygen-p256: ## Create the Windows release key (P-256) next to an existing Ed25519 key; prints AGENT_RELEASE_P256_PUBLIC_KEY
+	@$(RELEASE_PY) scripts/agent_release.py keygen --p256-out "$(AGENT_RELEASE_P256_KEY)"
 
-agent-verify: ## Verify the built release: make agent-verify PUB=<AGENT_RELEASE_PUBLIC_KEY>
-	@$(RELEASE_PY) scripts/agent_release.py verify dist/agent-release --public-key "$(PUB)"
+agent-release: ## Build + sign the agent release from VERSION [AGENT_ARCH=...] [WINDOWS_ZIP=path to a built Windows package]
+	@$(RELEASE_PY) scripts/agent_release.py build --key "$(AGENT_RELEASE_KEY)" --arch "$(AGENT_ARCH)" $(if $(WINDOWS_ZIP),--p256-key "$(AGENT_RELEASE_P256_KEY)" --windows-zip "$(WINDOWS_ZIP)",)
+
+agent-verify: ## Verify the built release: make agent-verify PUB=<AGENT_RELEASE_PUBLIC_KEY> [P256_PUB=<AGENT_RELEASE_P256_PUBLIC_KEY>]
+	@$(RELEASE_PY) scripts/agent_release.py verify dist/agent-release --public-key "$(PUB)" $(if $(P256_PUB),--p256-public-key "$(P256_PUB)",)
+
+agent-pull: ## On the manager host: pull the newest signed release from GitHub: make agent-pull REPO=owner/name TO=<AGENT_RELEASE_DIR> [TAG=agent-vX.Y.Z]
+	@test -n "$(REPO)" -a -n "$(TO)" || { echo "REPO (owner/name) and TO (the manager's agent-releases directory) are required"; exit 2; }
+	@$(RELEASE_PY) scripts/agent_release.py pull --repo "$(REPO)" --to "$(TO)" $(if $(TAG),--tag "$(TAG)",) $(if $(wildcard .env),--env-file .env,)
 
 agent-publish: ## Copy the built release to the manager: make agent-publish TO=user@host:/path (or a local dir)
 	@test -n "$(TO)" || { echo "TO is required, e.g. TO=ubuntu@1.2.3.4:/opt/Project-Vedha/manager/agent-releases (local dev: TO=manager/agent-releases)"; exit 2; }
 	@$(RELEASE_PY) scripts/agent_release.py publish dist/agent-release --to "$(TO)"
+
+# The folder you email a client: signed installer + filled-in guide + checksums
+# (never the image). The token and the installer checksum go by another channel.
+#   make agent-client-kit CUSTOMER="ACME Bank" MANAGER=https://api.vedhasec.com PUB=<AGENT_RELEASE_PUBLIC_KEY> [CONTACT="…"]
+agent-client-kit: ## Client install kit for one customer: make agent-client-kit CUSTOMER=... MANAGER=https://api... PUB=<release public key> [CONTACT=...]
+	@test -n "$(CUSTOMER)" -a -n "$(MANAGER)" -a -n "$(PUB)" || { echo "CUSTOMER, MANAGER (https://api.<domain>) and PUB (AGENT_RELEASE_PUBLIC_KEY) are required"; exit 2; }
+	@$(RELEASE_PY) scripts/agent_client_kit.py --customer "$(CUSTOMER)" --manager "$(MANAGER)" --public-key "$(PUB)" --contact "$(CONTACT)"
 
 # On request only: an encrypted, signed platform bundle for ONE on-prem customer.
 #   make onprem-bundle CUSTOMER="ACME Bank" RECIPIENT=age1...   (their `age-keygen` public key)

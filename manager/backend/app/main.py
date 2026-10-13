@@ -7,6 +7,8 @@ import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from app.auth.middleware import TenantIsolationMiddleware
 from app.auth.router import router as auth_router
@@ -22,10 +24,12 @@ from app.routers.agent_distribution import router as agent_distribution_router
 from app.routers.agent_ws import router as agent_ws_router  # WebSocket probe push
 from app.routers.ai_report import router as ai_report_router
 from app.routers.ai import router as ai_router
+from app.routers.attack_paths import overview_router as attack_paths_overview_router
 from app.routers.attack_paths import router as attack_paths_router
 from app.routers.attack_assessments import router as attack_assessments_router
 from app.routers.detection import router as detection_router
 from app.routers.detection_runs import router as detection_runs_router
+from app.routers.changes import router as changes_router
 from app.routers.agent_advisor import router as agent_advisor_router
 from app.routers.customer_access import (
     router as customer_access_router,
@@ -42,6 +46,8 @@ from app.routers.findings import router as findings_router
 from app.routers.health import router as health_router
 from app.routers.probe_enrollment import router as probe_enrollment_router
 from app.routers.integrations import router as integrations_router
+from app.routers.notification_rules import router as notification_rules_router
+from app.routers.org_settings import router as org_settings_router
 from app.routers.remediation import router as remediation_router
 from app.routers.remediation import bundles_router as remediation_bundles_router
 from app.routers.report_document import router as report_document_router
@@ -118,6 +124,13 @@ async def lifespan(app: FastAPI):
 
 # ── App factory ───────────────────────────────────────────────────────────────
 
+def api_docs_urls(production: bool) -> dict[str, str | None]:
+    """The interactive API docs are a map of every route: off in production."""
+    if production:
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
+
+
 app = FastAPI(
     title="Vedha VAPT Platform API",
     description=(
@@ -126,9 +139,7 @@ app = FastAPI(
         "attack path analysis, and detection coverage."
     ),
     version=get_version(),
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    **api_docs_urls(get_settings().is_production),
     lifespan=lifespan,
 )
 
@@ -229,6 +240,21 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
+@app.exception_handler(RedisConnectionError)
+@app.exception_handler(RedisTimeoutError)
+async def redis_unavailable_handler(request: Request, exc: Exception):
+    """Login throttling, refresh tokens and the agent backplane need Redis. Those
+    routes stay failed closed while it is down, but as a 503 the caller can retry
+    and on-call reads "dependency down", not the 500 of a defect in our code. A
+    rejected command (ResponseError) is our defect and still falls through."""
+    logger.error("redis_unavailable", path=request.url.path, exc=str(exc))
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": "A required service is temporarily unavailable. Retry shortly."},
+        headers={"Retry-After": "5"},
+    )
+
+
 # ── Routers ───────────────────────────────────────────────────────────────────
 
 app.include_router(health_router)
@@ -250,6 +276,8 @@ app.include_router(engagement_report_router)
 app.include_router(sla_policy_router)
 app.include_router(engagement_sla_policy_router)
 app.include_router(integrations_router)
+app.include_router(notification_rules_router)
+app.include_router(org_settings_router)
 app.include_router(agents_router)
 app.include_router(probe_enrollment_router)
 app.include_router(agent_distribution_router)
@@ -260,8 +288,10 @@ app.include_router(validation_router)
 app.include_router(ad_router)
 app.include_router(attack_paths_router)
 app.include_router(attack_assessments_router)
+app.include_router(attack_paths_overview_router)
 app.include_router(detection_router)
 app.include_router(detection_runs_router)
+app.include_router(changes_router)
 app.include_router(agent_advisor_router)
 app.include_router(ai_report_router)
 app.include_router(ai_router)

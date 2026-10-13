@@ -153,6 +153,33 @@ def identified_products_from(
     return out
 
 
+def _os_by_asset(ingest_result: IngestResult) -> dict[str, dict]:
+    """{asset_ip: {os_guess, os_release, os_build}} from each host's OS facts, so
+    exploitability can gate a KEV link by the real OS (gap #5). Picks the most
+    authoritative OS fact per host — a higher confidence, and an explicit SMB-NTLM
+    build outranks a bare TTL family guess. Assets with no OS signal are omitted
+    (exploitability then fails open for them)."""
+    out: dict[str, dict] = {}
+    for ip, asset in ingest_result.assets.items():
+        best: dict | None = None
+        best_rank = -1.0
+        for f in asset.facts:
+            d = f.data if isinstance(f.data, dict) else {}
+            guess = d.get("os_guess") or d.get("os_release")
+            build = d.get("os_build")
+            if not guess and not isinstance(build, int):
+                continue
+            rank = float(d.get("confidence") or 0.0) + (1.0 if isinstance(build, int) else 0.0)
+            if rank > best_rank:
+                best_rank = rank
+                best = {"os_guess": d.get("os_guess"),
+                        "os_release": d.get("os_release"),
+                        "os_build": build if isinstance(build, int) else None}
+        if best:
+            out[ip] = best
+    return out
+
+
 def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
                        kev_db: KevDB | None = None, epss_db: EpssDB | None = None,
                        exposure: dict[str, dict] | None = None,
@@ -189,14 +216,28 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
     # CVE track has had this since enrichment.py; posture findings — which are
     # most of what a Windows estate actually returns — were ranked by a static
     # severity constant with no notion of what attackers are using today.
-    posture_findings = apply_exploitability(posture_findings, kev_db, epss_db)
+    posture_findings = apply_exploitability(
+        posture_findings, kev_db, epss_db, os_by_asset=_os_by_asset(ingest_result))
     posture_coverage = summarize_traces(posture_traces)
     posture_verdicts = {}
     for rid in sorted({t.rule_id for t in posture_traces}):
         verdict, reasons = verdict_for_rule(posture_traces, rid)
         posture_verdicts[rid] = {"verdict": verdict, "reasons": reasons}
+
+    # Gap #4: a `range-open` finding matched only an open-ended [introduced,
+    # unbounded) range from an inferred (banner) source — it carries no version
+    # discrimination (it would match every version of the product), so it is
+    # product-presence, NOT a version-range vulnerability. Keep it OUT of the
+    # customer-facing `cve` set (which the backend persists one-for-one as
+    # findings) so a banner-identified host no longer floods with zero-signal
+    # CVEs. It is not discarded: it is returned under `cve_product_presence`
+    # (and counted) so the signal remains traceable and a future UI can surface
+    # it as a low-priority "product present — verify patch level" rollup.
+    product_presence = [f for f in cve_findings if f.match_basis == "range-open"]
+    cve_findings = [f for f in cve_findings if f.match_basis != "range-open"]
     return {
         "cve": cve_findings,
+        "cve_product_presence": product_presence,
         "posture": posture_findings,
         "posture_traces": [t.to_dict() for t in posture_traces],
         "posture_coverage": posture_coverage,
@@ -208,6 +249,7 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
         "ingest": ingest_result,
         "counts": {
             "cve": len(cve_findings),
+            "cve_product_presence": len(product_presence),
             "cve_suppressed": len(suppression_audit),
             "posture": len(posture_findings),
             "posture_confirmed": sum(1 for f in posture_findings if f.state == "confirmed"),
