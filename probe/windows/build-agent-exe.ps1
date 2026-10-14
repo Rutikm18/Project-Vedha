@@ -35,7 +35,11 @@ $venv = Join-Path $PSScriptRoot '.venv-win'
 if (-not (Test-Path (Join-Path $venv 'Scripts\python.exe'))) { python -m venv $venv }
 $py = Join-Path $venv 'Scripts\python.exe'
 & $py -m pip install --quiet --upgrade pip
-& $py -m pip install --quiet -r (Join-Path $probeRoot 'requirements-runtime.txt') nuitka
+# Pin Nuitka below 4.3: 4.3 names the compiled main module after the entry file
+# (agent\agent.py), which SHADOWS the `agent` package, so the binary dies at
+# startup with "'agent' is not a package" (Nuitka issue #4024). Older Nuitka is
+# fine. Keep this cap until #4024 is fixed and verified on a Windows build.
+& $py -m pip install --quiet -r (Join-Path $probeRoot 'requirements-runtime.txt') 'nuitka<4.3'
 
 # 1) Only the agent's closure goes to the compiler. --check fails on a blocked
 #    module or a dynamic import (which a compiler cannot follow).
