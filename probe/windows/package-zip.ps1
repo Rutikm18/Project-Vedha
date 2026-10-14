@@ -121,7 +121,9 @@ if (Test-Path -LiteralPath $versionPy) {
   $m = [regex]::Match([System.IO.File]::ReadAllText($versionPy), 'AGENT_VERSION\s*=\s*"([^"]+)"')
   if ($m.Success) { $agentVersion = $m.Groups[1].Value }
 }
-$release = [ordered]@{
+# NB: not $release - that is case-insensitively the same as the [switch]$Release
+# parameter, so assigning an ordered dict to it throws a type-conversion error.
+$releaseInfo = [ordered]@{
   schema          = 1
   version         = $agentVersion
   package_version = $PackageVersion
@@ -133,5 +135,5 @@ $release = [ordered]@{
   built_at        = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 }
 $releasePath = $OutZip -replace '\.zip$', '.release.json'
-[System.IO.File]::WriteAllText($releasePath, ($release | ConvertTo-Json -Compress), $utf8)
+[System.IO.File]::WriteAllText($releasePath, ($releaseInfo | ConvertTo-Json -Compress), $utf8)
 Write-Host "  Release info     : $releasePath  (agent $agentVersion)"
