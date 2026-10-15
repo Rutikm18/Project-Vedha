@@ -45,7 +45,7 @@ test("the picker contains only unique eligible IPs from the selected engagement 
   assert.match(html, /<select[^>]+id="deep-scan-ip"/);
   assert.doesNotMatch(html, /multiple=|<textarea/);
   assert.match(html, /Choose one discovered IP/);
-  assert.match(html, /<button[^>]+disabled=""[^>]*>.*Deep-scan this host/);
+  assert.match(html, /<button[^>]+disabled=""[^>]*>.*Launch deep scan/);
 });
 
 test("preset choices use native radios, keep all three visible, and expose unavailable choices", () => {
@@ -53,5 +53,6 @@ test("preset choices use native radios, keep all three visible, and expose unava
   assert.equal((html.match(/type="radio"/g) ?? []).length, 3);
   assert.match(html, /checked=""[^>]+value="normal"/);
   assert.match(html, /disabled=""[^>]+value="aggressive"/);
-  assert.doesNotMatch(html, /<svg|pps|IDS|IPS|65,535/);
+  assert.match(html, /scanner-intensity-dial" aria-hidden="true"/);
+  assert.doesNotMatch(html, /pps|IDS|IPS|65,535/);
 });

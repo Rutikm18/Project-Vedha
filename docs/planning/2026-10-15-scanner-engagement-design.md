@@ -7,9 +7,9 @@ Research: [primary sources and executable policy audit](../research/2026-10-15-e
 | Decision | Interface and acceptance check |
 |---|---|
 | Primary job | Select engagement, choose engagement assessment or deep scan, verify target and launch. One primary action for the visible task. |
-| Intensity | Native radio group: Stealth / Normal / Aggressive; Normal default, preserve each engagement's choice in the browser session. Descriptions follow actual engine behavior. No speedometer, IDS avoidance claim or false full-port promise. |
+| Intensity | Native radio group: Stealth / Normal / Aggressive; Normal default, preserve each engagement's choice in the browser session. Descriptions follow actual engine behavior. Retain the familiar intensity dial as a selection indicator, with a neutral track and brand-blue needle. It represents intensity, not throughput; no IDS avoidance claim or false full-port promise. |
 | Deep | Select exactly one IP from that engagement's discovered assets; allow one manually entered IP when needed. IPv4 and IPv6 literals only, host prefix allowed; reject lists, ranges, malformed IPs, exclusions and out-of-scope values. Server remains authoritative. |
-| Scope | Inherit engagement boundaries; editable target narrowing and exclusions are in one Advanced scope disclosure. Changing engagement clears the deep IP, stale jobs and probe selection. Old asynchronous responses cannot replace the new engagement's data. |
+| Scope | Inherit engagement boundaries; target scope stays visible in the existing setup column; exclusions use a disclosure. Changing engagement clears the deep IP, stale jobs and probe selection. Old asynchronous responses cannot replace the new engagement's data. |
 | Readiness | Loading/error/empty are distinct. Missing catalog, failed setup, absent authorized scope or no capable online agent prevents launch. Deep uses the deep-capable selected agent. Portal quotas and repeat policy remain enforced. |
 | Brand | Existing system font; 4px spacing scale; neutral flat surfaces; blue #1D4ED8 light / #60A5FA dark only for actions, focus and selection. Severity colors never encode scan intensity. |
 | Results | Real job state and history, with advanced execution evidence collapsed. No scan is run as part of visual QA. |
@@ -26,3 +26,15 @@ No backend scan intensity defaults, rate limits, fragile-host protections, entit
 - Production HTTP seam: default attack-path workspace, explicit overview, and dashboard entry all serve the environment link without a build flag. Six malformed/list/range request variants return 422 before enqueue.
 - Design: mechanical detector returned no findings. Desktop and phone layouts, light and dark themes reviewed in one batch; one repair batch and confirmation completed. Existing brand tokens preserved.
 - Live-environment limitation: the original local API, PostgreSQL and Redis were not listening. The Docker executable is a dangling link to an absent Docker Desktop application. The frontend was restarted on 3114 against its original API address; it needs those existing backend services restored. The separate localhost:3115 UI preview uses explicitly named UI-test engagements and a simulated agent on a fixture-only backend. It is not a live environment assessment.
+
+## Refinement of the existing console
+
+The first simplification removed too much of the incumbent scanner and was rejected by the user. Preserve its information structure: actual fleet availability, the Network Vulnerability Assessment workflow, and the split between target setup and intensity/launch review. Keep scan history and active-job details in their established positions.
+
+- Use familiar terms: **Configure & launch**, **Target and agent**, **Scan type**, **Target scope**, **Launch scan**, and **Deep scan · one IP**. Explain the active preset once, beside its controls.
+- The workflow stage list describes the existing pipeline; it does not pretend to be live scan progress. Fleet counts use actual online agents, and scanning counts exclude offline agents.
+- Retain keyboard-operable native radio groups and all one-IP, engagement boundary, exclusion, entitlement and stale-response protections. Disable workflow switching during dispatch. Correct the portal fleet destination to `/portal/fleet`.
+- Stack the review below setup on phones. Move the campaign link below the workflow description so the text keeps its reading width; reserve enough room for the Aggressive label.
+- Preserve version **1.0.408** and all attack-path delivery changes. This refinement changes presentation and wording; it does not change scan engines or scan policy.
+
+Refinement verification: all 749 frontend tests passed before the final copy adjustment; the 22 affected scanner/entitlement tests and changed-file lint pass afterward. The production build passes. Browser checks covered native arrow-key intensity selection, per-engagement mode memory, engagement reset of the deep IP, filtering of excluded assets and multi-IP rejection. Desktop/phone and light/dark review found two layout issues, corrected together and confirmed. The manual design detector returned no findings. Scanner primary buttons now use the existing `--accent-contrast` token for readable dark-mode text. Live backend limitations above still apply; the preview remains fixture data.

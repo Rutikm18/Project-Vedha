@@ -10,7 +10,7 @@ export function deepTargetProblem(raw: string, scope: string[], history: string[
   scopeLabel = "your authorized scope", excluded: string[] = []): string | null {
   const value = raw.trim();
   if (!value) return "Enter the one IP address to deep-scan.";
-  if (/[\s,;]/.test(value)) return "A deep scan covers exactly one asset — enter a single IP.";
+  if (/[\s,;]/.test(value)) return "Enter exactly one IP address for a deep scan.";
   if (value.includes("/") && !/\/(32|128)$/.test(value)) return "That's a range — enter a single IP.";
   const ip = parseScanIp(value);
   if (!ip) return `'${value}' isn't an IP address.`;
@@ -87,8 +87,8 @@ export function DeepScanCard({ plan, scope, excluded = [], assets = [], assetsLo
 
   return (
     <section className="scanner-deep" aria-labelledby="deep-scan-title">
-      <h3 id="deep-scan-title">Deep scan · one host</h3>
-      <p>All 65,535 TCP ports on one IP, followed by service assessment.</p>
+      <h3 id="deep-scan-title">Deep scan · one IP</h3>
+      <p>Check all 65,535 TCP ports on one IP, then assess the services found.</p>
       <form onSubmit={event => {
         event.preventDefault(); setTouched(true);
         if (!launching && !problem && !blocked) onLaunch(parseScanIp(ip)!.host);
@@ -115,9 +115,9 @@ export function DeepScanCard({ plan, scope, excluded = [], assets = [], assetsLo
           {blocked ?? (touched ? problem : null) ?? "Only this IP will be scanned. Engagement exclusions still apply."}
         </p>
         <div className="scanner-submit-row">
-          <span>{plan ? copy.footer : "Operator scan · customer allowance unchanged"}</span>
+          <span>{plan ? copy.footer : "Operator scans do not use the customer’s allowance."}</span>
           <button className="btn btn-primary" type="submit" disabled={launching || !!blocked || !!problem}>
-            {launching ? <><Loader size={15} className="scn-spin" /> Dispatching…</> : <><Play size={15} /> Deep-scan this host</>}
+            {launching ? <><Loader size={15} className="scn-spin" /> Dispatching…</> : <><Play size={15} /> Launch deep scan</>}
           </button>
         </div>
       </form>
