@@ -7,6 +7,7 @@ import "../../styles/report-finding.css";
 import "../../styles/report-document.css";
 import "../../styles/report-finding-elevated.css";
 import "../../styles/report-reading.css";
+import "../../styles/report-selection.css";
 
 export const metadata = {
   title: "Report · Vedha",
