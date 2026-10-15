@@ -2171,8 +2171,15 @@ async def load_report_document(
     tenant_id: uuid.UUID,
     engagement_id: uuid.UUID,
     generated_at: datetime,
+    finding_ids: set[uuid.UUID] | None = None,
 ) -> ReportDocument | None:
-    """Load every report row in bounded batched queries, scoped to one tenant."""
+    """Load every report row in bounded batched queries, scoped to one tenant.
+
+    When ``finding_ids`` is given, the report is scoped to that subset:
+    ``build_report_document`` then recomputes the summary, readiness and
+    compliance roll-ups from exactly those findings, so a selected-findings
+    report stays internally consistent. ``None`` means the whole engagement.
+    """
     snapshot_kind, snapshot_guarantee = await _start_report_snapshot(db)
     engagement = (
         await db.execute(
@@ -2203,6 +2210,11 @@ async def load_report_document(
             .order_by(Finding.created_at, Finding.id)
         )
     ).all()
+    if finding_ids is not None:
+        # Scope to the caller's chosen findings before any derived work: every
+        # run id, assignee and roll-up below is gathered from this list, so the
+        # whole document recomputes against exactly the selected subset.
+        finding_rows = [row for row in finding_rows if row[0].id in finding_ids]
     asset_tag_rows = (
         (
             await db.execute(

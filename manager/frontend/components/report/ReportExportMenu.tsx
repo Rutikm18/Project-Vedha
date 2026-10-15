@@ -50,9 +50,11 @@ export function exportMenuPosition(
   return { top: button.bottom + 8, left, width };
 }
 
-export function ReportExportMenu({ engagementId, disabled = false }: {
+export function ReportExportMenu({ engagementId, disabled = false, findingIds }: {
   engagementId?: string;
   disabled?: boolean;
+  /** When a strict subset is selected, the export is scoped to these finding ids. */
+  findingIds?: string[];
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -73,7 +75,11 @@ export function ReportExportMenu({ engagementId, disabled = false }: {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ format, engagementId }),
+        body: JSON.stringify({
+          format,
+          engagementId,
+          ...(findingIds && findingIds.length ? { findingIds } : {}),
+        }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => null) as { error?: string } | null;

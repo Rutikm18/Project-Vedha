@@ -49,6 +49,10 @@ class GenerateRequest(BaseModel):
     include_technical: bool = Field(default=True, description="Per-finding technical write-ups")
     include_remediation: bool = Field(default=True, description="Per-finding remediation guides")
     max_findings: int = Field(default=10, ge=1, le=50, description="Cap on findings written up")
+    selected_finding_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        description="Restrict the per-finding write-ups to these findings; omit for all.",
+    )
 
 
 class ReviewRequest(BaseModel):
@@ -365,11 +369,16 @@ async def _run_generation(engagement_id: str, job_id: str, opts: dict) -> None:
             await db.flush()
 
             if opts.get("include_technical") or opts.get("include_remediation"):
-                findings = (await db.execute(
+                findings_stmt = (
                     select(Finding).where(Finding.engagement_id == eng_uuid)
                     .order_by(Finding.risk_score.desc().nullslast())
-                    .limit(opts.get("max_findings", 10))
-                )).scalars().all()
+                )
+                selected_ids = opts.get("selected_finding_ids")
+                if selected_ids:
+                    # Scope the write-ups to the operator's chosen findings.
+                    findings_stmt = findings_stmt.where(Finding.id.in_(selected_ids))
+                findings_stmt = findings_stmt.limit(opts.get("max_findings", 10))
+                findings = (await db.execute(findings_stmt)).scalars().all()
                 for f in findings:
                     asset = None
                     if f.asset_id:

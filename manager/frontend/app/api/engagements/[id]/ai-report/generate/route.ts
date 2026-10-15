@@ -13,8 +13,12 @@ export async function POST(
     sections?: string[];
     maxFindings?: number;
     max_findings?: number;
+    selected_finding_ids?: string[];
   };
   const sections = Array.isArray(body.sections) ? body.sections : [];
+  const selectedFindingIds = Array.isArray(body.selected_finding_ids)
+    ? body.selected_finding_ids.filter((id): id is string => typeof id === "string")
+    : null;
 
   try {
     const result = await backend<{ job_id: string; status: string }>(
@@ -26,6 +30,9 @@ export async function POST(
           include_technical: sections.length === 0 || sections.includes("technical_finding"),
           include_remediation: sections.length === 0 || sections.includes("remediation"),
           max_findings: body.max_findings ?? body.maxFindings ?? 10,
+          ...(selectedFindingIds && selectedFindingIds.length
+            ? { selected_finding_ids: selectedFindingIds }
+            : {}),
         },
       },
     );

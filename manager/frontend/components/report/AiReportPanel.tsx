@@ -74,9 +74,11 @@ function formatDatetime(value?: string): string {
  * Existing review-gated AI workflow. It remains outside the canonical report
  * and is excluded from print: generated prose is never treated as report fact.
  */
-export function AiReportPanel({ engagementId, findingCount }: {
+export function AiReportPanel({ engagementId, findingCount, selectedFindingIds }: {
   engagementId: string;
   findingCount: number;
+  /** When a strict subset is selected, the per-finding write-ups are scoped to these ids. */
+  selectedFindingIds?: string[];
 }) {
   const [jobId, setJobId] = useState("");
 
@@ -114,6 +116,9 @@ export function AiReportPanel({ engagementId, findingCount }: {
       method: "POST",
       body: JSON.stringify({
         maxFindings: Math.min(Math.max(findingCount, 1), 50),
+        ...(selectedFindingIds && selectedFindingIds.length
+          ? { selected_finding_ids: selectedFindingIds }
+          : {}),
       }),
     }),
     onSuccess: (job) => setJobId(job.jobId ?? job.job_id),
@@ -162,6 +167,9 @@ export function AiReportPanel({ engagementId, findingCount }: {
           </div>
           <p style={{ margin: "4px 0 0 21px", fontSize: 10.5, color: "var(--text-muted)" }}>
             Manager loads canonical engagement records server-side. Generated sections remain internal until human approval.
+            {selectedFindingIds && selectedFindingIds.length
+              ? ` Write-ups are scoped to the ${selectedFindingIds.length} selected finding${selectedFindingIds.length === 1 ? "" : "s"}.`
+              : ""}
           </p>
         </div>
         <button
