@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Play, RefreshCw, CheckCircle2, Clock, XCircle, Loader,
-  Cpu, RotateCcw, ShieldAlert, Send, ChevronDown,
+  Cpu, RotateCcw, ShieldAlert, Send, ChevronDown, Radar, ScanLine, SlidersHorizontal, Link2,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { PortalShell } from "../../components/portal/PortalShell";
@@ -650,7 +650,9 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
     <Shell title="Scanner" subtitle="Run a network assessment with a deployed vedha-agent." hideRefresh
       headerActions={<button type="button" className="btn btn-secondary" disabled={loadingData}
         onClick={() => setSetupAttempt(attempt => attempt + 1)}><RefreshCw size={14} /> {loadingData ? "Refreshing setup…" : "Refresh setup"}</button>}>
-      <div className="scn-page scanner-workspace">
+      <div className="scn-page scanner-workspace" data-input="keyboard"
+        onPointerDownCapture={event => { event.currentTarget.dataset.input = "pointer"; }}
+        onKeyDownCapture={event => { event.currentTarget.dataset.input = "keyboard"; }}>
         {Object.keys(setupErrors).length > 0 && <div role="alert" className="scn-recovery">
           <strong>Could not verify scan setup</strong>
           {Object.entries(setupErrors).map(([label, message]) => <p key={label}>{label}: {message}</p>)}
@@ -664,6 +666,7 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
           campaignHref={isPortal ? "/portal/scans#campaign" : "/campaign"} />
         <section className="scanner-setup" aria-labelledby="scanner-setup-title" aria-busy={loadingData}>
           <header className="scanner-setup-header">
+            <span className="scanner-config-icon"><SlidersHorizontal size={18} aria-hidden="true" /></span>
             <div><h2 id="scanner-setup-title">Configure &amp; launch</h2><p>Set the engagement, scope, and scan intensity.</p></div>
             <span className="scanner-config-context">{scanKind === "deep" ? "Deep scan · one IP" : "Network assessment"}</span>
           </header>
@@ -690,14 +693,15 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
               <legend>Scan type</legend>
               <div className="scanner-coverage-options">
                 <label data-selected={scanKind === "engagement"}><input type="radio" name="scan-coverage" value="engagement"
-                  checked={scanKind === "engagement"} onChange={() => { setScanKind("engagement"); setSelectedProbe(""); }} /> Network assessment</label>
+                  checked={scanKind === "engagement"} onChange={() => { setScanKind("engagement"); setSelectedProbe(""); }} /><Radar size={15} aria-hidden="true" /> Network assessment</label>
                 <label data-selected={scanKind === "deep"}><input type="radio" name="scan-coverage" value="deep"
-                  checked={scanKind === "deep"} onChange={() => { setScanKind("deep"); setSelectedProbe(""); }} /> Deep scan · one IP</label>
+                  checked={scanKind === "deep"} onChange={() => { setScanKind("deep"); setSelectedProbe(""); }} /><ScanLine size={15} aria-hidden="true" /> Deep scan · one IP</label>
               </div>
             </fieldset>
+            <div key={scanKind} className="scanner-target-content">
             {scanKind === "engagement" ? <>
               <div className="scanner-scope-heading"><label htmlFor="scan-scope">Target scope</label>
-                {scopeIsInherited && <span>From engagement</span>}
+                {scopeIsInherited && <span><Link2 size={12} aria-hidden="true" />From engagement</span>}
                 {!scopeIsInherited && inheritedScope && <button type="button" className="scanner-text-action" disabled={launching}
                   onClick={() => setTargets(inheritedScope)}>Reset scope</button>}
               </div>
@@ -721,6 +725,7 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
                 probeReady={deepProbes.length > 0} launching={launching}
                 blockedReason={setupBlocked ? "Scan setup must be verified before launch." : null}
                 onLaunch={ip => void launchDeep(ip)} />}
+            </div>
           </div>
           {scanKind === "engagement" && <aside className="scanner-review-column" aria-label="Scan review and launch">
             {!isOt && <ScanIntensityControl value={shownIntensity} onChange={chooseIntensity} disabled={!selectedEng || launching}
@@ -736,7 +741,7 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
               <div><dt>Exclusions</dt><dd>{!selectedEng ? "—" : excludeCount ? `${excludeCount} applied` : "None configured"}</dd></div>
             </dl>
             <div className="scanner-launch-review">
-              <p className="scanner-readiness" role="status">{readiness}</p>
+              <p className="scanner-readiness" role="status" data-ready={!setupBlocked && !!selectedEng && compatibleIdleProbes.length > 0}><span aria-hidden="true" />{readiness}</p>
               {planBlock && <p className="scanner-help">{planBlock}</p>}
               {isPortal && plan?.modes[shownIntensity]?.left != null && <p className="scanner-help">Uses 1 of {plan.modes[shownIntensity].left} remaining {intensityObj.label.toLowerCase()} scans.</p>}
               <button type="button" className="btn btn-primary" onClick={launch} disabled={!canLaunch}>
