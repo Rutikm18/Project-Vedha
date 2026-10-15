@@ -31,6 +31,10 @@ export function AttackPathsPanel() {
   return (
     <div className="apxp">
       <AttackPathStyles />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "var(--space-3)", padding: "var(--space-4) var(--space-5)", flexWrap: "wrap" }}>
+        <span style={{ fontSize: "var(--fs-body-s)", color: "var(--text-secondary)" }}>Stored per-engagement results</span>
+        <Link href="/attack-paths" className="btn btn-secondary">Open environment chains <ArrowRight size={14} aria-hidden="true" /></Link>
+      </div>
       <DataState
         loading={query.isLoading}
         error={query.error}
@@ -49,8 +53,8 @@ export function AttackPathsPanel() {
           <span style={{ fontSize: "var(--fs-body-s)", color: "var(--text-muted)" }}>
             {overviewSummary(query.data)}{total > shown.length ? ` · showing ${shown.length} of ${total}` : ""}
           </span>
-          <Link href="/attack-paths" className="focusable" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--fs-body-s)", fontWeight: 650, color: "var(--accent)", textDecoration: "none" }}>
-            All engagements <ArrowRight size={13} aria-hidden="true" />
+          <Link href="/attack-paths?mode=overview" className="focusable" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--fs-body-s)", fontWeight: 650, color: "var(--accent)", textDecoration: "none" }}>
+            Engagement overview <ArrowRight size={13} aria-hidden="true" />
           </Link>
         </div>
       </DataState>

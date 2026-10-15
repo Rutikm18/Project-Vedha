@@ -1,24 +1,12 @@
-/* Display data for the scan-intensity dial. The probe owns the real envelope
-   (probe/workflow/intensity.py) and the launcher sends only the name, so
-   `rate` must equal the preset's rate — a test enforces it. The dial measures
-   HARDNESS, not speed: the widest sweep probes the most gently. */
+/** Mode descriptions follow probe/workflow/intensity.py; requests send only the preset name.
+ * Rates describe configured envelopes, not observed throughput or completion time. */
 export type Intensity = "stealth" | "normal" | "aggressive";
-
-export interface IntensityOption {
-  id: Intensity;
-  label: string;
-  rate: number;
-  why: string;
-  color: string;
-  angle: number;
-  sweep: string;
-}
-
+export interface IntensityOption { id: Intensity; label: string; rate: number; why: string }
 export const INTENSITY: IntensityOption[] = [
-  { id: "stealth",    label: "Stealth",    rate: 50,  color: "#6ee7b7",             angle: -60, sweep: "6.2s",
-    why: "Low and slow over a small high-signal port set. Minimizes IDS/IPS triggers and link load — for monitored, production, or fragile segments." },
-  { id: "normal",     label: "Normal",     rate: 200, color: "var(--accent)",        angle: 0,   sweep: "3.4s",
-    why: "Balanced default. Right for most internal engagements with no special constraints." },
-  { id: "aggressive", label: "Aggressive", rate: 150, color: "var(--sev-high-color)", angle: 60,  sweep: "4.2s",
-    why: "Exhaustive where time allows: high-signal ports first on every host, then as much of all 65,535 ports as the job's time budget allows — the rest is reported as not scanned." },
+  { id: "stealth", label: "Stealth", rate: 50,
+    why: "Lower traffic with a focused port set. This remains an active assessment." },
+  { id: "normal", label: "Normal", rate: 200,
+    why: "Balanced coverage for routine engagement assessments." },
+  { id: "aggressive", label: "Aggressive", rate: 150,
+    why: "Broader enterprise coverage and additional retries. Choose Deep scan for all TCP ports on one IP." },
 ];

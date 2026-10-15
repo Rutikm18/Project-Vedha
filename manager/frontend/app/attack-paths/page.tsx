@@ -31,7 +31,7 @@ function LegacyAttackPathsOverviewPage() {
       headerActions={<span className="badge badge-info" title="Attack paths is in beta">Beta</span>}
       subtitle="How an attacker could reach your crown jewels, per engagement"
     >
-      {process.env.NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED === "true" && <nav className="attack-path-modes" aria-label="Attack-path scope"><Link href="/attack-paths">Environment chains</Link><Link href="/attack-paths?mode=overview" aria-current="page">Engagement overview</Link></nav>}
+      <nav className="attack-path-modes" aria-label="Attack-path scope"><Link className="btn btn-secondary" href="/attack-paths">Open environment chains</Link><Link href="/attack-paths?mode=overview" aria-current="page">Engagement overview</Link></nav>
       <div style={{ display: "grid", gap: "var(--space-4)", padding: "var(--space-4)", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
         <section className="panel apxp" aria-label="Attack paths, all engagements">
           <AttackPathStyles />
@@ -61,5 +61,5 @@ function LegacyAttackPathsOverviewPage() {
 
 export default function AttackPathsOverviewPage({ searchParams }: { searchParams: Promise<{mode?:string|string[]}> }) {
   const query=use(searchParams);
-  return process.env.NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED === "true" && query.mode!=="overview" ? <EnvironmentAttackWorkspace/> : <LegacyAttackPathsOverviewPage/>;
+  return query.mode!=="overview" ? <EnvironmentAttackWorkspace/> : <LegacyAttackPathsOverviewPage/>;
 }

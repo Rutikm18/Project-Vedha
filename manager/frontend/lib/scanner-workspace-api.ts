@@ -12,6 +12,7 @@ export function createScannerWorkspaceApi(surface: ScannerWorkspaceSurface) {
       useCases: <T>() => fetchJson<T>("/api/scan/use-cases"),
       probes: <T>() => fetchJson<T>("/api/scan/probes"),
       engagements: <T>() => fetchJson<T>("/api/engagements"),
+      assets: <T>(engagementId: string) => fetchJson<T>(`/api/engagements/${encodeURIComponent(engagementId)}/assets`),
       jobs: <T>(engagementId: string) => fetchJson<T>(`/api/scan/jobs?engagement_id=${encodeURIComponent(engagementId)}`),
       job: <T>(jobId: string) => fetchJson<T>(`/api/scan/jobs/${encodeURIComponent(jobId)}`),
       launch: <T>(body: ScanLaunchBody) => fetchJson<T>("/api/scan/launch", {
@@ -29,6 +30,10 @@ export function createScannerWorkspaceApi(surface: ScannerWorkspaceSurface) {
     engagements: async <T>() => {
       const detail = await portalApi<unknown>("/workspace/engagement");
       return { engagements: [toUiEngagement(detail)] } as T;
+    },
+    assets: <T>(engagementId: string) => {
+      if (!engagementId) throw new Error("Select an engagement before loading IPs.");
+      return portalApi<T>("/workspace/engagement/assets");
     },
     jobs: <T>() => portalApi<T>("/workspace/scan/jobs"),
     job: <T>(jobId: string) => portalApi<T>(`/workspace/scan/jobs/${encodeURIComponent(jobId)}`),

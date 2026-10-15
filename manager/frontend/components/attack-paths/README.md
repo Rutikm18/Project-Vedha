@@ -16,7 +16,7 @@ The actual global route view is `/attack-paths`, behind the existing assessment 
 
 ## Run
 
-Use this project's normal backend, database and outbox-worker setup. Apply migrations through 0064. Enable `ATTACK_ASSESSMENTS_ENABLED` with an explicit `ATTACK_ASSESSMENT_ENGAGEMENT_ALLOWLIST` for the intended engagement IDs. In the frontend, run `npm install`, then `NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED=true npm run dev`. Set `BACKEND_INTERNAL_URL` to the intended backend. Sign in with an existing operator account. Select the actual engagement(s) and rebuild the view; ordinary GET requests do not generate routes or run scans.
+Use this project's normal backend, database and outbox-worker setup. Apply migrations through 0064. Enable `ATTACK_ASSESSMENTS_ENABLED` with an explicit `ATTACK_ASSESSMENT_ENGAGEMENT_ALLOWLIST` for the intended engagement IDs. In the frontend, run `npm install`, then `npm run dev`. Set `BACKEND_INTERNAL_URL` to the intended backend. Sign in with an existing operator account. Select the actual engagement(s) and rebuild the view; ordinary GET requests do not generate routes or run scans.
 
 `npm test` runs the repository's existing Node/TypeScript test runner, including `tests/business-routes.test.ts`. Keeping that runner avoids an unrelated Jest/Vitest migration. `npm run build` and `npx tsc --noEmit` verify the Next.js integration. The framework stays Next.js/React 19; React Flow and dagre are the graph libraries requested in the brief.
 
@@ -63,3 +63,5 @@ Scan one: **8 routes**, **3 reachable critical systems**, **1 all-confirmed rout
 Path enumeration is capped at 2,000 and 100,000 work steps, reports lower-bound counts when truncated, and displays pages of at most 20 routes. Separate traversal computes reachable critical systems independently of enumeration limits. Cycles do not bootstrap reachability, and duplicate edges do not inflate path counts. Memoized layout does not move on fix previews. The 300-system/600-connection test measures layout/computation separately; browser smoothness and Lighthouse scores must be measured rather than inferred from this test.
 
 Remaining real-integration questions: which existing customer/engagement is intended for the preview; which source owns confirmed connection observations; and which assets the customer/operator has marked critical. The local task preview contains only synthetic records. The actual view never falls back to the made-up fixture.
+
+The environment workspace is the default `/attack-paths` interface in every frontend build. It no longer depends on a hidden frontend build flag. Backend feature, tenant, role and engagement allowlist checks still control access. The explicit `?mode=overview` URL shows stored per-engagement results and offers an environment-workspace link.

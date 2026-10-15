@@ -67,26 +67,13 @@ test("scope wording follows the audience", () => {
   assert.equal(deepTargetProblem("10.0.0.9", scope, [], false, "this engagement's scope"), null);
 });
 
-test("the operator Scanner renders the Deep scan card and launches through the shared builder", () => {
+test("deep selection belongs to the chosen engagement and uses the shared builder", () => {
   const page = readFileSync(join(process.cwd(), "app/scan/workspace.tsx"), "utf8");
-  assert.match(page, /\{!isPortal && \(\s*<DeepScanCard plan=\{null\}/);
+  assert.match(page, /<DeepScanCard key=\{selectedEng\}/);
   assert.match(page, /buildDeepScanLaunch\(/);
-  assert.doesNotMatch(page, /params: \{ scan_mode: "deep" \}/);   // no hand-built body left
-});
-
-test("the Scanner has ONE all-ports entry point: the one-host Deep scan card, no multi-host chips", () => {
-  const page = readFileSync(join(process.cwd(), "app/scan/workspace.tsx"), "utf8");
-  // the old Full-Port Audit / Deep Port Sweep selector (which allowed several hosts) is gone
-  assert.doesNotMatch(page, /FULL_PORT_UC_IDS/);
-  assert.doesNotMatch(page, /Deep &amp; full-port scans/);
-  assert.doesNotMatch(page, /up to a few hosts/);
-  // the card sits right after the Network VA hero, before the configure panel
-  const hero = page.indexOf("<NetworkVaHero");
-  const card = page.indexOf("<DeepScanCard");
-  const configure = page.indexOf("Configure &amp; launch");
-  assert.ok(hero > 0 && card > hero && configure > card, "deep scan card must come between the hero and the configure panel");
-  // exactly one card per audience
-  assert.equal((page.match(/<DeepScanCard/g) ?? []).length, 2);
+  assert.match(page, /assets=\{selectedAssets\?\.rows \?\? \[\]\}/);
+  assert.match(page, /excluded=\{selectedEngagement\?\.excludedCidrs/);
+  assert.equal((page.match(/<DeepScanCard/g) ?? []).length, 1);
 });
 
 test("a full-port scan can never be built for more than one host", () => {
