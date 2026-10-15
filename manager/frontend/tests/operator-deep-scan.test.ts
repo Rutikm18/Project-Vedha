@@ -92,10 +92,10 @@ test("a full-port scan can never be built for more than one host", () => {
     engagementId: "eng-1", ip: "10.0.0.5, 10.0.0.6", audience: "operator" }), /exactly one host/);
 });
 
-test("the card says one host, shows what it covers, and offers no way to add a second", () => {
+test("the card says one IP, shows what it covers, and offers no way to add a second", () => {
   const card = readFileSync(join(process.cwd(), "components/portal/DeepScanCard.tsx"), "utf8");
-  assert.match(card, /Deep scan · one host/);
-  assert.match(card, /Deep-scan this host/);
+  assert.match(card, /Deep scan · one IP/);
+  assert.match(card, /Launch deep scan/);
   assert.match(card, /65,535/);
   assert.doesNotMatch(card, /<textarea/);              // a single-line field only
   assert.match(deepScanCopy(null).rules[0], /Exactly one host per deep scan/);

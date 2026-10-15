@@ -125,7 +125,7 @@ test("deep scan pre-check: one in-scope asset, respecting the repeat policy", ()
   assert.equal(deepTargetProblem("10.0.0.5", scope, [], true), null);
   assert.equal(deepTargetProblem("10.0.0.5/32", scope, [], true), null);
   assert.match(deepTargetProblem("", scope, [], true) ?? "", /Enter the one IP/);
-  assert.match(deepTargetProblem("10.0.0.5, 10.0.0.6", scope, [], true) ?? "", /exactly one asset/);
+  assert.match(deepTargetProblem("10.0.0.5, 10.0.0.6", scope, [], true) ?? "", /exactly one IP/);
   assert.match(deepTargetProblem("10.0.0.0/28", scope, [], true) ?? "", /range/);
   assert.match(deepTargetProblem("10.0.0.300", scope, [], true) ?? "", /isn't an IP/);
   assert.match(deepTargetProblem("192.0.2.9", scope, [], true) ?? "", /outside your authorized scope/);

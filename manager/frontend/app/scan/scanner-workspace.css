@@ -1,7 +1,7 @@
 .scanner-workspace { display: grid; gap: var(--space-6); width: 100%; container-type: inline-size; }
-.scanner-setup { padding: var(--space-6); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); background: var(--bg-panel); display: grid; gap: var(--space-6); min-width: 0; }
-.scanner-setup-header { display: flex; justify-content: space-between; align-items: start; gap: var(--space-4); }
-.scanner-setup h2 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.02em; }
+.scanner-setup { padding: 0; border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); background: var(--bg-panel); display: grid; gap: 0; min-width: 0; }
+.scanner-setup-header { padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: start; gap: var(--space-4); }
+.scanner-setup h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -.02em; }
 .scanner-setup-header p, .scanner-deep > p { margin: var(--space-2) 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
 .scanner-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-5); }
 .scanner-setup label:not(.scanner-mode-options label):not(.scanner-coverage-options label) { display: block; font-size: 13px; font-weight: 550; color: var(--text-primary); margin-bottom: var(--space-2); }
@@ -56,7 +56,71 @@
 .scn-spin { animation: scanner-spin 1s linear infinite; }
 @keyframes scanner-spin { to { transform: rotate(360deg); } }
 @container (max-width: 600px) { .scanner-mode-options { grid-template-columns: minmax(0, 1fr); } .scanner-mode-options label { gap: var(--space-1); padding: var(--space-3); } }
-@container (max-width: 560px) { .scanner-setup { padding: var(--space-4); gap: var(--space-5); } .scanner-fields { grid-template-columns: minmax(0, 1fr); } .scanner-setup-header { flex-wrap: wrap; } .scanner-submit-row { align-items: stretch; flex-direction: column; } .scanner-submit-row .btn { width: 100%; justify-content: center; } .scanner-coverage-options { display: grid; } .scn-recent { flex-wrap: wrap; } .scn-recent-time { width: 100%; margin-left: 0 !important; } .scn-recent-id { display: none; } .scn-result-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+@container (max-width: 560px) { .scanner-setup { padding: 0; gap: 0; } .scanner-fields { grid-template-columns: minmax(0, 1fr); } .scanner-setup-header { flex-wrap: wrap; } .scanner-submit-row { align-items: stretch; flex-direction: column; } .scanner-submit-row .btn { width: 100%; justify-content: center; } .scanner-coverage-options { display: grid; } .scn-recent { flex-wrap: wrap; } .scn-recent-time { width: 100%; margin-left: 0 !important; } .scn-recent-id { display: none; } .scn-result-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
 @media (prefers-reduced-motion: reduce) { .scn-spin { animation: none; } .scanner-mode-options label { transition: none; } }
 
 [data-theme="dark"] .scanner-setup { color-scheme: dark; }
+
+/* Preserve the established scanner console: fleet, workflow, target column and review rail. */
+.scanner-workspace { gap: var(--space-5); }
+.scanner-fleet { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); min-height: 48px; padding: var(--space-3) var(--space-5); background: var(--bg-panel); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); color: var(--text-secondary); font-size: 12px; }
+.scanner-fleet-title { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; color: var(--text-primary); }
+.scanner-fleet dl { display: flex; gap: var(--space-4); margin: 0; }
+.scanner-fleet dl > div { display: flex; flex-direction: row-reverse; gap: 6px; align-items: baseline; }
+.scanner-fleet dt { font-size: 12px; }
+.scanner-fleet dd { margin: 0; color: var(--text-primary); font: 600 14px var(--font-mono); font-variant-numeric: tabular-nums; }
+.scanner-fleet > a, .scanner-network-va a { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); text-decoration: none; font-size: 12px; min-height: 44px; margin-block: -10px; }
+.scanner-fleet > a { margin-left: auto; }
+.scanner-fleet-names { display: flex; flex-wrap: wrap; gap: var(--space-3); min-width: 0; }
+.scanner-fleet-names > span { display: inline-flex; align-items: center; gap: 6px; overflow-wrap: anywhere; }
+.scanner-fleet-names i { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: var(--nominal-color); }
+.scanner-network-va { padding: var(--space-5); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); background: var(--bg-panel); }
+.scanner-network-va header { display: flex; align-items: start; gap: var(--space-3); }
+.scanner-workflow-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 40px; width: 40px; height: 40px; border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-secondary); background: var(--bg-surface); }
+.scanner-network-va header > div { flex: 1; min-width: 0; }
+.scanner-network-va h2 { margin: 0; color: var(--text-primary); font-size: 20px; line-height: 1.3; font-weight: 650; letter-spacing: -.02em; }
+.scanner-network-va p { margin: 6px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; max-width: 75ch; }
+.scanner-network-va header > a { flex-shrink: 0; align-self: center; margin-left: auto; }
+.scanner-workflow-footer { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; color: var(--text-secondary); font-size: 12px; }
+.scanner-workflow-footer ol { display: flex; align-items: center; flex-wrap: wrap; list-style: none; padding: 0; margin: 0; gap: var(--space-3); }
+.scanner-workflow-footer li + li { padding-left: var(--space-3); border-left: 1px solid var(--border-default); }
+.scanner-workflow-selected { display: inline-flex; align-items: center; gap: 6px; }
+.scanner-config-context { font-size: 12px; color: var(--text-secondary); align-self: center; }
+.scanner-console-body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, .95fr); min-width: 0; }
+.scanner-console-body[data-kind=deep] { grid-template-columns: minmax(0, 1fr); }
+.scanner-target-column { min-width: 0; padding: var(--space-5); display: grid; align-content: start; gap: var(--space-4); }
+.scanner-target-column > h3 { margin: 0; font-size: 14px; color: var(--text-primary); font-weight: 600; }
+.scanner-review-column { min-width: 0; padding: var(--space-5); border-left: 1px solid var(--border-subtle); background: var(--bg-surface); border-radius: 0 0 var(--radius-xl) 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.scanner-scope-heading { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: -8px; }
+.scanner-scope-heading > label { margin: 0 !important; }
+.scanner-scope-heading > span { font-size: 11px; color: var(--text-secondary); }
+.scanner-target-column > .scanner-help { margin-top: -8px; }
+.scanner-review-facts { display: grid; gap: var(--space-2); margin: 0; padding-block: var(--space-3); border-block: 1px solid var(--border-subtle); font-size: 12px; }
+.scanner-review-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); }
+.scanner-review-facts dt { color: var(--text-secondary); }
+.scanner-review-facts dd { margin: 0; color: var(--text-primary); text-align: right; }
+.scanner-launch-review { display: grid; gap: var(--space-3); margin-top: auto; }
+.scanner-launch-review .btn { min-height: 44px; justify-content: center; gap: var(--space-2); }
+.scanner-launch-review > .scanner-text-action { justify-self: center; }
+.scanner-intensity legend { font-size: 14px; }
+.scanner-intensity-dial { position: relative; margin: 0 auto var(--space-3); max-width: 180px; height: 118px; text-align: center; }
+.scanner-intensity-dial svg { display: block; width: 100%; height: 100px; }
+.scanner-intensity-dial strong { display: block; color: var(--text-primary); font-size: 15px; line-height: 1; font-weight: 600; }
+.scanner-dial-track { stroke: var(--border-strong); }
+.scanner-dial-selected { stroke: var(--accent); }
+.scanner-dial-hub { fill: var(--accent); }
+.scanner-review-column .scanner-mode-options { grid-template-columns: minmax(0, .95fr) minmax(0, .95fr) minmax(0, 1.2fr); gap: 6px; }
+.scanner-review-column .scanner-mode-options label { padding: 8px 5px; min-height: 44px; align-content: center; gap: 4px; background: var(--bg-panel); }
+.scanner-review-column .scanner-mode-options label[data-selected=true] { background: var(--accent-ghost); }
+.scanner-review-column .scanner-mode-title { justify-content: center; font-size: 12px; gap: 4px; }
+.scanner-review-column .scanner-mode-title input { width: 12px; height: 12px; flex-basis: 12px; margin: 0; }
+.scanner-review-column .scanner-mode-title strong { font-weight: 550; }
+.scanner-review-column .scanner-mode-description { display: none; }
+.scanner-review-column .scanner-mode-options label > small { text-align: center; }
+.scanner-review-column .scanner-help { margin-top: var(--space-3); min-height: 3.2em; }
+.scanner-network-va :is(button, a):focus-visible, .scanner-fleet a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@container (max-width: 900px) { .scanner-fleet-names { display: none; } .scanner-network-va header { flex-wrap: wrap; } .scanner-network-va header > a { margin-left: 52px; align-self: start; } }
+@container (max-width: 680px) { .scanner-console-body { grid-template-columns: minmax(0, 1fr); } .scanner-review-column { border-left: 0; border-top: 1px solid var(--border-subtle); border-radius: 0 0 var(--radius-xl) var(--radius-xl); } .scanner-config-context { display: none; } }
+@container (max-width: 560px) { .scanner-fleet { gap: var(--space-2) var(--space-4); padding: var(--space-3) var(--space-4); } .scanner-fleet-title { width: 100%; } .scanner-network-va { padding: var(--space-4); } .scanner-network-va h2 { font-size: 18px; } .scanner-network-va header { display: grid; grid-template-columns: 40px minmax(0, 1fr); } .scanner-network-va header > a { grid-column: 2; margin-left: 0; justify-self: start; } .scanner-setup-header { padding: var(--space-4); } .scanner-target-column, .scanner-review-column { padding: var(--space-4); } .scanner-workflow-footer ol { gap: var(--space-2); } .scanner-workflow-footer li + li { padding-left: var(--space-2); } }
+
+.scanner-workspace .btn-primary { color: var(--accent-contrast); }
