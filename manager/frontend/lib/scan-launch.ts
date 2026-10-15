@@ -1,3 +1,5 @@
+import { parseScanIp } from "./scan-target";
+
 export interface ScanLaunchBody {
   engagement_id: string;
   use_case_id: string;
@@ -41,11 +43,7 @@ export const ONE_HOST_MESSAGE = "A deep scan covers exactly one host — enter a
 
 /** True when `value` is one IP (a /32 or /128 suffix is allowed), not a list or range. */
 export function isSingleHost(value: unknown): boolean {
-  if (typeof value !== "string") return false;
-  const v = value.trim();
-  if (!v || /[\s,;-]/.test(v)) return false;
-  if (v.includes("/") && !/\/(32|128)$/.test(v)) return false;
-  return true;
+  return parseScanIp(value) !== null;
 }
 
 /** The launcher body for a single-asset Deep scan, from either Scanner.
@@ -73,7 +71,7 @@ export function buildDeepScanLaunch(opts: {
  * contract. Both operator and portal transports call this exact function. */
 export function buildScanLaunchRequest(body: ScanLaunchBody) {
   if (FULL_PORT_USE_CASES.includes(body.use_case_id)
-      && !(body.targets?.length === 1 && isSingleHost(body.targets[0]))) {
+      && !(Array.isArray(body.targets) && body.targets.length === 1 && isSingleHost(body.targets[0]))) {
     throw new Error(ONE_HOST_MESSAGE);
   }
   const job_type = JOB_TYPE_MAP[body.use_case_id] ?? "discovery";
