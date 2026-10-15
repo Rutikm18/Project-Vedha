@@ -162,13 +162,18 @@ for PORT in 80 443; do
 done
 log "ports 80/443 available ✓"
 
-# CPU sizing
+# CPU + RAM sizing. Each uvicorn worker loads the whole app (~300-400 MB), so on a
+# small box 2+ workers thrash swap and the API starts dropping connections under
+# load — the console floods /agents/jobs and the BFF sees ECONNRESET/UND_ERR_SOCKET
+# (seen in the field on a 1 GB server). Cap workers by BOTH cores and memory so a
+# fresh deploy on a small instance is stable without hand-tuning.
 CPUS=$(nproc)
 if [ -z "${API_WORKERS:-}" ]; then
-  # Cap at 4 uvicorn workers — more thrashes RAM on shared box
-  API_WORKERS=$(( CPUS < 2 ? 1 : (CPUS > 4 ? 4 : CPUS) ))
+  cpu_cap=$(( CPUS < 2 ? 1 : (CPUS > 4 ? 4 : CPUS) ))
+  ram_cap=$(( MEM_GB < 2 ? 1 : (MEM_GB < 4 ? 2 : 4) ))
+  API_WORKERS=$(( cpu_cap < ram_cap ? cpu_cap : ram_cap ))
 fi
-log "cpu: ${CPUS} cores → API_WORKERS=${API_WORKERS}"
+log "cpu: ${CPUS} cores, ram: ${MEM_GB}GB → API_WORKERS=${API_WORKERS}"
 
 # ── 3. Package dependencies ───────────────────────────────────────────────────
 step "Installing system dependencies"
@@ -530,10 +535,12 @@ $GET_HOST {
     encode gzip
     @agent path /agent/* /agents/* /probe-enrollment/* /health
     handle @agent {
+        # No active health check: with a single upstream it only adds a ~15s window
+        # after every API restart where the facade 503s while the check re-confirms
+        # (hit in the field right after setting the release keys). Passive health
+        # (dial failure) is enough here, same as the UI host block above.
         reverse_proxy api:8000 {
             header_up X-Real-IP {remote_host}
-            health_path /health
-            health_interval 15s
         }
     }
     handle {
@@ -718,6 +725,12 @@ rollback_previous_release() {
 build_images || die "image build failed (see the lines above and $DEPLOY_LOG)"
 # Remove orphaned containers from previous deploys (profile changes, service renames)
 "${COMPOSE_CMD[@]}" up -d --no-build --remove-orphans 2>&1 | tee -a "$DEPLOY_LOG"
+
+# The Caddyfile is a bind mount, so changing its CONTENT (a new vhost like the
+# get.$DOMAIN facade) does NOT make `up -d` recreate Caddy — it keeps serving the
+# old config until it restarts. Restart it so a re-run that adds/edits a host is
+# actually served, instead of needing a manual `docker restart` (hit in the field).
+"${COMPOSE_CMD[@]}" restart caddy 2>&1 | tee -a "$DEPLOY_LOG" || warn "could not restart caddy; a new vhost may need: docker restart <caddy>"
 
 # ── 14. Wait for API health ───────────────────────────────────────────────────
 step "Health check (up to ${DEPLOY_TIMEOUT}s)"

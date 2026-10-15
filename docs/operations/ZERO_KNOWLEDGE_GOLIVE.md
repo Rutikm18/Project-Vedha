@@ -211,3 +211,46 @@ or internal name — only the generic facade and a single-use token. This uses t
 the redeem step. The package is byte-compatible with the Windows `package-zip.ps1`
 output and the installer verifies every file against `SHA256SUMS.txt` before it
 installs. Builder + tests: `scripts/airgap_package.py`, `probe/tests/test_airgap_package.py`.
+
+---
+
+## Deploying to a NEW server — the short version (most of the pain is now automated)
+
+The first field deploy (14-16 Oct) surfaced a string of gotchas. **They are now baked
+into the scripts**, so a fresh server is far fewer steps. On a new box:
+
+1. **DNS:** one A record `get.$DOMAIN -> <server IP>` (+ `app.`/`api.` as usual).
+2. **Deploy the manager:**
+   ```bash
+   sudo RELEASE_REF=<signed-tag-or-sha> DOMAIN=yourdomain.com ./deploy/aws/install.sh
+   ```
+   (`REQUIRE_SIGNED_RELEASE=0` only if you deploy an *unsigned* branch, as during development.)
+3. **Publish the agent** (one-time Windows compile → Mac/Windows publish), then **activate**:
+   ```bash
+   sudo ./deploy/aws/set-release-keys.sh --ed25519 '<pub>' --p256 '<pub>'
+   ```
+4. **Add agent** in Fleet → generate a code → install on clients.
+
+### What is now automatic (was manual in the first deploy)
+| Field problem | Now handled by |
+|---|---|
+| Console dropped connections (`ECONNRESET`/`UND_ERR_SOCKET`) on a small box | `install.sh` sizes `API_WORKERS` by **RAM as well as CPU** — a <2 GB box auto-runs 1 worker |
+| Facade 503 for ~15 s after every API restart | the `get.$DOMAIN` block has **no active health check** (single upstream, passive health) |
+| New facade vhost not served until a manual `docker restart caddy` | `install.sh` **restarts Caddy** after the stack is up |
+| Windows build died on **Python 3.13** | `build-agent-exe.ps1` checks the venv Python up front and fails with the 3.12 fix |
+| Windows build died on **Nuitka 4.3** ("'agent' is not a package") | `build-agent-exe.ps1` pins `nuitka<4.3` |
+| `package-zip.ps1` crashed after writing the zip | `$release`/`[switch]$Release` collision fixed |
+| `publish-release.ps1` died on the Python version check | parses `python --version` (no PS 5.1 quote-stripping) |
+| `/agent/redeem` returned 401 | added to the auth middleware public-path allowlist |
+
+### What is still manual on a new server (and the one-command fix for each)
+- **Signing keys → `.env`.** The build prints two public keys; run
+  `sudo ./deploy/aws/set-release-keys.sh --ed25519 '<pub>' --p256 '<pub>'` (writes them, recreates the API, verifies).
+- **Windows build box: Defender quarantines impacket.** Before the build, in an **admin** PowerShell:
+  `Add-MpPreference -ExclusionPath "<repo path>"`. (impacket is a pentest lib Defender flags; without the
+  exclusion the build fails with `[Errno 22]` on `impacket\__init__.py`.)
+- **SSH from the build box to the server.** Put the key in `~/.ssh/config` with `User ubuntu` + `IdentityFile`,
+  and `icacls <key> /inheritance:r /grant:r "$env:USERNAME:R"` so Windows SSH accepts it.
+- **`MANAGER_PUBLIC_URL`** must be the facade — `install.sh` sets it from `DOMAIN` automatically now; only
+  override if you front the manager differently.
+- **Server size:** 1 GB RAM is below comfortable for the full console; **2 GB+** (e.g. t3.small) is recommended.
