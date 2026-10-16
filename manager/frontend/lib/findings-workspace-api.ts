@@ -72,6 +72,7 @@ export function createFindingsWorkspaceApi(surface: FindingsWorkspaceSurface) {
       }),
       remediation: <T>(id: string, os: string) => fetchJson<T>(`/api/findings/${id}/remediation?os=${os}`),
       events: <T>(id: string) => fetchJson<T>(`/api/findings/${id}/events`),
+      riskExplanation: <T>(id: string) => fetchJson<T>(`/api/findings/${id}/risk-explanation`),
       obligations: <T>(id: string) => fetchJson<T>(`/api/findings/${id}/obligations`),
       complianceBrief: <T>(id: string) => fetchJson<T>(`/api/findings/${id}/compliance-brief`, { method: "POST" }),
     };
@@ -121,6 +122,7 @@ export function createFindingsWorkspaceApi(surface: FindingsWorkspaceSurface) {
     })) as T,
     remediation: <T>(id: string, os: string) => portalApi<T>(`/findings/${id}/remediation?os=${os}`),
     events: <T>(id: string) => portalApi<T>(`/findings/${id}/events`),
+    riskExplanation: <T>(id: string) => portalApi<T>(`/workspace/findings/${id}/risk-explanation`),
     obligations: <T>(id: string) => portalApi<T>(`/workspace/findings/${id}/obligations`),
     complianceBrief: <T>(id: string) => portalApi<T>(`/workspace/findings/${id}/compliance-brief`, {
       method: "POST", idempotencyKey: newId(),

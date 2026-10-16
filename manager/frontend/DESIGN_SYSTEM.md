@@ -79,10 +79,19 @@ blue token so it remains legible and consistent in both themes.
 
 Severity communicates technical impact. Priority communicates response order;
 the two must remain visibly distinct and must not be treated as synonyms.
+Priority is never derived from severity in the browser. The server applies an
+ordered rule set (first match wins) over real signals (known-exploited, validated
+exploit, EPSS, SLA state) and returns the priority with the deciding rule;
+closed findings carry no priority, so no chip is rendered for them.
 Composite finding risk uses the Manager's 0–1000 contract. It is additive and
 explainable: impact (CVSS + severity) is 40%, exploit likelihood (EPSS + KEV +
 validated exploit) is 25%, asset/exposure context is 20%, and verification
 quality is 15%. An upstream posture score never maps directly to 1000.
+The score is shown with its full working ("How the score is calculated" on the
+finding Overview, for operators and customers): every input with its value and
+whether it was recorded or defaulted, the weighted sum, the severity-band
+placement, and the priority rules with the deciding one marked. The browser only
+words what `GET /findings/{id}/risk-explanation` returns; it never recomputes.
 
 ## Findings decision model
 

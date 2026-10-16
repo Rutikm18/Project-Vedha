@@ -43,7 +43,7 @@ const finding = {
   cves: ["CVE-2026-0001"],
   riskScore: 940,
   risk_score: 940,
-  riskBreakdown: { cvss: 392, epss: 120, kev: 180, exploit: 120, asset: 72, lateral: 56 },
+  priority: "P0",
   cvss: "9.8",
   cvss_score: 9.8,
   cvssVector: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
@@ -60,10 +60,48 @@ const finding = {
   fpProbability: 0.02,
   fpProbabilityRecorded: true,
   aiTriage: {
-    priority: "P0",
     reasoning: "Internet-reachable privileged service with active exploitation evidence.",
     recommendation: "Restrict exposure and validate the control immediately.",
     confidence: 0.96,
+  },
+};
+
+// What GET /findings/{id}/risk-explanation returns for the finding above (critical, KEV, 9.8, EPSS 82%).
+const riskExplanation = {
+  model_version: "risk-rank-v1", score: 940, max: 1000, severity: "critical",
+  dimensions: [
+    { key: "impact", label: "Impact", weight: 0.4, value: 0.984, points: 393.6, inputs: [
+      { key: "cvss", label: "CVSS base score", raw: 9.8, normalized: 0.98, weight: 0.8, contribution: 0.784, source: "recorded", note: "Recorded CVSS 9.8 out of 10." },
+      { key: "severity", label: "Severity", raw: "critical", normalized: 1, weight: 0.2, contribution: 0.2, source: "recorded", note: "Critical maps to 1.0." },
+    ] },
+    { key: "exploit", label: "Exploitability", weight: 0.25, value: 0.9, points: 225, inputs: [
+      { key: "epss", label: "EPSS", raw: 0.82, normalized: 0.82, weight: 0.45, contribution: 0.369, source: "recorded", note: "82% chance of exploitation in 30 days." },
+      { key: "kev", label: "Known exploited (KEV)", raw: true, normalized: 1, weight: 0.35, contribution: 0.35, source: "recorded", note: "Listed in CISA KEV." },
+      { key: "exploit_validated", label: "Exploit validated", raw: false, normalized: 0, weight: 0.2, contribution: 0, source: "recorded", note: "Not validated." },
+    ] },
+    { key: "context", label: "Asset context", weight: 0.2, value: 0.5, points: 100, inputs: [
+      { key: "asset_criticality", label: "Asset criticality", raw: null, normalized: 0.5, weight: 0.45, contribution: 0.225, source: "default", note: "No asset recorded; neutral 0.5 used." },
+      { key: "internet_facing", label: "Internet exposure", raw: null, normalized: 0.5, weight: 0.35, contribution: 0.175, source: "default", note: "Not recorded; neutral 0.5 used." },
+      { key: "auth_gap", label: "Authentication gap", raw: null, normalized: 0.5, weight: 0.2, contribution: 0.1, source: "default", note: "Not recorded; neutral 0.5 used." },
+    ] },
+    { key: "evidence", label: "Evidence strength", weight: 0.15, value: 0.8, points: 120, inputs: [
+      { key: "verification", label: "Verification verdict", raw: "confirmed", normalized: 1, weight: 0.6, contribution: 0.6, source: "recorded", note: "Confirmed." },
+      { key: "confidence", label: "Confidence", raw: 50, normalized: 0.5, weight: 0.4, contribution: 0.2, source: "recorded", note: "50% confidence." },
+    ] },
+  ],
+  additive_score: 838.6, band: { floor: 750, ceiling: 1000, position: 0.7544 },
+  placement: { formula: "floor + position × (ceiling − floor)", result: 940 },
+  defaults_used: ["asset_criticality", "internet_facing", "auth_gap"],
+  context: { asset: null, internet_exposure_source: "not recorded", service_exposure: null },
+  stored_score: 940, stored_in_sync: true,
+  priority: {
+    priority: "P0", label: "Immediate", rule: "exploited_high_impact",
+    reason: "Known to be exploited and critical impact.", inputs: {},
+    rules: [
+      { id: "exploited_high_impact", priority: "P0", condition: "Known exploited (KEV) or validated, and severity High or Critical", matched: true, decisive: true },
+      { id: "critical_past_sla", priority: "P0", condition: "Critical and past its SLA deadline", matched: false, decisive: false },
+      { id: "critical", priority: "P1", condition: "Severity Critical", matched: true, decisive: false },
+    ],
   },
 };
 
@@ -154,6 +192,7 @@ export async function mockApi(route: Route) {
   if (path === "/api/findings/compare") return json(route, {
     a: null, b: null, new: [], resolved: [], persistent: [], summary: {},
   });
+  if (/^\/api\/findings\/[^/]+\/risk-explanation$/.test(path)) return json(route, riskExplanation);
   if (path.startsWith("/api/findings/")) return json(route, finding);
 
   if (path === "/api/analytics/posture") return json(route, {

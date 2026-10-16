@@ -280,3 +280,14 @@ test("phone triage keeps queue search in the initial viewport", async ({ page },
   await expect(page.getByRole("button", { name: /urgent finding/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^SMBv1 enabled/ })).toBeVisible();
 });
+
+test("a finding shows the full working of its risk score and priority", async ({ page }) => {
+  await page.goto("/findings");
+  await page.locator(".finding-card-open").first().click();
+  await page.getByRole("link", { name: "How is this calculated?" }).click();
+  const calc = page.locator("#risk-calculation");
+  await expect(calc.getByText("393.6 + 225.0 + 100.0 + 120.0 = 838.6")).toBeVisible();
+  await expect(calc.getByText("750 + 0.7544 × (1000 − 750) = 940")).toBeVisible();
+  await expect(calc.getByText(/3 inputs were not recorded/)).toBeVisible();
+  await expect(calc.getByText("Decided this")).toBeVisible();
+});

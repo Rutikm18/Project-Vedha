@@ -99,10 +99,6 @@ const FIND_STATUS_TO_UI: Record<string, string> = {
   accepted: "ACCEPTED",
   fp: "FALSE_POSITIVE",
 };
-function severityToPriority(sev: string): string {
-  return sev === "CRITICAL" ? "P0" : sev === "HIGH" ? "P1" : sev === "MEDIUM" ? "P2" : "P3";
-}
-
 function evidenceString(value: unknown): string {
   if (typeof value === "string") return value;
   if (value === undefined) return "";
@@ -211,10 +207,10 @@ export function toUiFinding(api: any): any {
     cve: api.cve_ids ?? [],
     cves: api.cve_ids ?? [],
     riskScore: Math.round(risk),
-    riskBreakdown: api.risk_breakdown ?? {
-      cvss, epss: Math.round(epss * 100), kev: api.kev_listed ? 100 : 0,
-      exploit: 0, asset: 0, lateral: 0,
-    },
+    // P0-P5 comes from the server's rule set (services/finding_priority.py); closed
+    // findings have none. It is never derived from severity in the browser.
+    priority: api.priority ?? null,
+    priorityReason: api.priority_reason ?? null,
     epssScore: epss,
     epssPercentile: api.epss_percentile ?? 0,
     epssRecorded: api.epss_score != null,
@@ -240,7 +236,6 @@ export function toUiFinding(api: any): any {
     assignee: api.assignee ?? undefined,
     tags: api.tags ?? api.cve_ids ?? [],
     aiTriage: api.ai_triage ?? {
-      priority: severityToPriority(severity),
       reasoning: "",
       recommendation: "",
       confidence: 0,

@@ -62,6 +62,7 @@ import type { FindingGroup, FindingGroupKind, FindingGroupPage } from "../../lib
 import { DataState, SkeletonRows, EmptyState } from "../../components/states/DataState";
 import { FindingRemediation } from "../../components/remediation/FindingRemediation";
 import { FindingObligations } from "../../components/intel/FindingObligations";
+import { RiskScorePanel } from "../../components/findings/RiskScorePanel";
 import { LockedFindingsTeaser, PlanLockPanel } from "../../components/portal/PlanLock";
 import { isFeatureLocked } from "../../lib/entitlements";
 import { usePortalEntitlement } from "../../lib/portal-client";
@@ -158,10 +159,6 @@ interface ExploitationView {
   signals?: Record<string, unknown>;
 }
 interface EvidenceFact { label: string; value: string; }
-interface RiskBreakdown {
-  cvss: number; epss: number; kev: number;
-  exploit: number; asset: number; lateral: number;
-}
 interface KillChainStep {
   phase: string; technique: string; description: string; mitre?: string;
 }
@@ -180,7 +177,9 @@ interface Finding {
   compliance: ComplianceRef[];
   mitre: { id: string; name: string }[];
   riskScore: number;
-  riskBreakdown: RiskBreakdown;
+  /** P0-P5 from the server's rule set; null once the finding is closed. */
+  priority: Priority | null;
+  priorityReason?: string | null;
   epssScore: number;
   epssPercentile: number;
   epssRecorded: boolean;
@@ -202,7 +201,7 @@ interface Finding {
   assignee?: string;
   tags?: string[];
   cves?: string[];
-  aiTriage: { priority: Priority; reasoning: string; recommendation: string; confidence: number };
+  aiTriage: { reasoning: string; recommendation: string; confidence: number };
   // ── P2/P4 verification + lifecycle ──
   verificationState?: string | null;
   verificationConfidence?: number | null;
@@ -569,50 +568,6 @@ function fmtEventDay(iso: string): string {
   return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
 }
 
-/* ─── Risk composition ────────────────────────────────────────────────────
- * Zero-weight factors used to render zero-width divs — invisible, but they
- * still consumed a legend slot and implied a contribution. They now drop out
- * of the bar and grey out in the legend, so "did not contribute" is legible.
- * Order stays fixed across findings: a moving legend cannot be compared. */
-function RiskBreakdownBar({ breakdown, score }: { breakdown: RiskBreakdown; score: number }) {
-  const segments = [
-    { key: "cvss",    label: "Base severity",   color: "var(--chart-series-1)", value: Math.max(0, breakdown.cvss) },
-    { key: "epss",    label: "Exploit odds",    color: "var(--chart-series-2)", value: Math.max(0, breakdown.epss) },
-    { key: "exploit", label: "Exploit maturity", color: "var(--chart-series-3)", value: Math.max(0, breakdown.exploit) },
-    { key: "lateral", label: "Lateral movement", color: "var(--chart-series-4)", value: Math.max(0, breakdown.lateral) },
-    { key: "asset",   label: "Asset value",     color: "var(--chart-series-5)", value: Math.max(0, breakdown.asset) },
-    { key: "kev",     label: "Known exploited", color: SEV_PALETTE.RED,         value: Math.max(0, breakdown.kev) },
-  ];
-  const recordedTotal = segments.reduce((total, segment) => total + segment.value, 0);
-  const contributing = segments.filter((s) => s.value > 0);
-  const summary = contributing.length
-    ? contributing.map((s) => `${s.label} ${s.value}`).join(", ")
-    : "No scoring factor is recorded";
-
-  return (
-    <div className="risk-breakdown">
-      <div className="risk-breakdown-head">
-        <span>What drives the {score} score</span>
-        <span>{contributing.length} of {segments.length} factors recorded</span>
-      </div>
-      <div className="risk-breakdown-bar" role="img" aria-label={`Risk composition: ${summary}`}>
-        {contributing.length === 0 ? <i data-empty style={{ width: "100%" }} /> : contributing.map((s) => (
-          <i key={s.key} style={{ width: `${(s.value / recordedTotal) * 100}%`, background: s.color }} title={`${s.label}: ${s.value}`} />
-        ))}
-      </div>
-      <ul className="risk-breakdown-legend">
-        {segments.map((s) => (
-          <li key={s.key} data-muted={s.value === 0 || undefined}>
-            <i style={{ background: s.value > 0 ? s.color : "var(--border-strong)" }} />
-            {s.label}
-            <b>{s.value > 0 ? s.value : "—"}</b>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 /* ─── Kill chain ──────────────────────────────────────────────────────────
  * Genuinely a sequence, so the numbered rail earns its place here (and only
  * here — nothing else in this file gets step markers). */
@@ -966,8 +921,10 @@ const SOURCE_GROUP_ORDER: SourceGroup[] = [
  * The old order (description → impact → technical → decision context) made
  * them read three paragraphs before reaching the thing they came for. */
 function FindingOverview({
-  finding, related, sla, customerImpact, firstRemediation, onOpenTab,
+  finding, related, sla, customerImpact, firstRemediation, onOpenTab, api, surface,
 }: {
+  api: FindingsWorkspaceApi;
+  surface: FindingsWorkspaceSurface;
   finding: Finding;
   related: Finding[];
   sla: Sla;
@@ -980,6 +937,7 @@ function FindingOverview({
   const confidence = finding.verificationConfidence == null ? "not scored" : `${finding.verificationConfidence}%`;
   const cvss = useMemo(() => decodeCvssVector(finding.cvssVector), [finding.cvssVector]);
   const sources = useMemo(() => referenceSources(finding), [finding]);
+  const [calcOpen, setCalcOpen] = useState(false);
 
   return (
     <div className="finding-overview-view">
@@ -1167,7 +1125,16 @@ function FindingOverview({
         <section>
           <h3>Scores and identifiers</h3>
           <dl>
-            <div><dt>Manager risk</dt><dd style={{ color: riskScoreColor(finding.riskScore) }}>{finding.riskScore} / 1000</dd></div>
+            <div><dt>Manager risk</dt><dd style={{ color: riskScoreColor(finding.riskScore) }}>
+              {finding.riskScore} / 1000{" "}
+              <a
+                href="#risk-calculation"
+                className="finding-calc-link"
+                onClick={() => setCalcOpen(true)}
+              >
+                How is this calculated?
+              </a>
+            </dd></div>
             <div><dt>CVSS</dt><dd title={finding.notApplicable?.cvss}>{hasCvss(finding.cvss) ? finding.cvss : (finding.notApplicable?.cvss ? "Not applicable — configuration finding" : "Not recorded")}</dd></div>
             <div><dt>Vector</dt><dd><code>{finding.cvssVector || "Not recorded"}</code></dd></div>
             <div><dt>CVE</dt><dd>{finding.cves?.length ? finding.cves.join(", ") : "None recorded"}</dd></div>
@@ -1185,6 +1152,19 @@ function FindingOverview({
           </dl>
         </section>
       </div>
+
+      <details
+        id="risk-calculation"
+        className="finding-risk-calc"
+        open={calcOpen}
+        onToggle={(e) => setCalcOpen(e.currentTarget.open)}
+      >
+        <summary>
+          <span>How the {finding.riskScore} score{finding.priority ? ` and ${finding.priority} priority are` : " is"} calculated</span>
+          <small>Every input, weight and rule, with the value used</small>
+        </summary>
+        {calcOpen && <RiskScorePanel findingId={finding.id} api={api} surface={surface} />}
+      </details>
     </div>
   );
 }
@@ -1215,7 +1195,6 @@ function IntelPanel({ finding }: { finding: Finding }) {
         <div className="finding-intel-meter" role="img" aria-label={`Composite risk ${f.riskScore} out of 1000`}>
           <i style={{ width: `${Math.min(100, Math.max(0, f.riskScore / 10))}%`, background: riskScoreColor(f.riskScore) }} />
         </div>
-        <RiskBreakdownBar breakdown={f.riskBreakdown} score={f.riskScore} />
       </section>
 
       <div className="finding-intel-grid">
@@ -1675,7 +1654,7 @@ function FindingDetail({
         <div className="finding-detail-badges">
           <SevBadge s={f.severity} />
           <StatusBadge s={f.status} />
-          <PriorityBadge priority={f.aiTriage.priority} compact />
+          {f.priority && <PriorityBadge priority={f.priority} compact />}
           <RiskBadge score={f.riskScore} />
           <ChipRow chips={chips} max={6} />
           {f.exploitMaturityRecorded && (
@@ -1879,6 +1858,8 @@ function FindingDetail({
             customerImpact={customerImpact}
             firstRemediation={firstRemediation}
             onOpenTab={setTab}
+            api={api}
+            surface={surface}
           />
         )}
         {tab === "intel" && <IntelPanel finding={f} />}
@@ -2313,7 +2294,7 @@ const FindingRow = React.memo(function FindingRow({
         className="finding-card-open"
         aria-current={selected || undefined}
         aria-expanded={selected}
-        aria-label={`${f.title}. ${f.affectedHost}. ${f.severity}. ${f.aiTriage.priority} ${PRIORITY_LABEL[f.aiTriage.priority]}. Risk ${f.riskScore} of 1000.`}
+        aria-label={`${f.title}. ${f.affectedHost}. ${f.severity}. ${f.priority ? `${f.priority} ${PRIORITY_LABEL[f.priority]}. ` : ""}Risk ${f.riskScore} of 1000.`}
         onClick={() => onSelect(f.id)}
       />
       {bulkSelectable && onToggleBulk && (
@@ -2330,7 +2311,7 @@ const FindingRow = React.memo(function FindingRow({
         <div className="finding-card-badges">
           <SevBadge s={f.severity} />
           <StatusBadge s={f.status} />
-          <PriorityBadge priority={f.aiTriage.priority} compact />
+          {f.priority && <PriorityBadge priority={f.priority} compact />}
           {f.scanOutcome && (
             <span className="chip finding-scan-outcome" data-outcome={f.scanOutcome}
                   title={`In this scan: ${SCAN_OUTCOME_LABEL[f.scanOutcome] ?? f.scanOutcome}`}>
@@ -2491,18 +2472,6 @@ const FINDINGS_CSS = `
 .findings-inline-action:hover, .findings-clear-filter:hover { color: var(--text-primary); background: var(--bg-hover); }
 
 /* ── 1. Risk composition ─────────────────────────────────────────────── */
-.risk-breakdown-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 7px; }
-.risk-breakdown-head span:first-child { color: var(--text-primary); font: 650 11.5px/1.3 var(--font-ui); }
-.risk-breakdown-head span:last-child { color: var(--text-muted); font: 500 9.5px/1.3 var(--font-mono); }
-.risk-breakdown-bar { display: flex; height: 8px; overflow: hidden; border-radius: 4px; background: var(--track-bg); }
-.risk-breakdown-bar i { min-width: 3px; }
-.risk-breakdown-bar i[data-empty] { background: var(--border-strong); }
-.risk-breakdown-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 9px 0 0; padding: 0; list-style: none; }
-.risk-breakdown-legend li { display: flex; align-items: center; gap: 5px; color: var(--text-secondary); font: 500 10px/1.3 var(--font-ui); }
-.risk-breakdown-legend li[data-muted] { color: var(--text-faint); }
-.risk-breakdown-legend i { width: 7px; height: 7px; border-radius: 2px; }
-.risk-breakdown-legend b { color: var(--text-primary); font: 650 10px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; }
-.risk-breakdown-legend li[data-muted] b { color: var(--text-faint); }
 
 /* ── 2. Kill chain ───────────────────────────────────────────────────── */
 .kill-chain { display: grid; margin: 0; padding: 0; list-style: none; }
@@ -3124,6 +3093,12 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 .finding-overview-facts dd, .finding-overview-technical-grid dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--text-primary); font: 550 12px/1.5 var(--font-ui); }
 .finding-overview-technical-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
 .finding-overview-technical-grid > section > h3 { margin-bottom: 8px; }
+.finding-calc-link { margin-left: 6px; color: var(--accent, var(--brand)); font: 600 11px/1.4 var(--font-ui); white-space: nowrap; }
+.finding-risk-calc { border: var(--hairline) solid var(--border-subtle); border-radius: 10px; background: var(--surface-1, transparent); }
+.finding-risk-calc > summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding: 12px 14px; cursor: pointer; color: var(--text-primary); font: 650 13px/1.4 var(--font-ui); }
+.finding-risk-calc > summary small { color: var(--text-muted); font: 500 11px/1.4 var(--font-ui); }
+.finding-risk-calc[open] > summary { border-bottom: var(--hairline) solid var(--border-subtle); }
+.finding-risk-calc > .rsx, .finding-risk-calc > .rsx-status { margin: 14px; }
 .finding-overview-technical-grid dd code { font: 500 10px/1.55 var(--font-mono); }
 .finding-attack-context { padding-top: 18px; border-top: var(--hairline) solid var(--border-subtle); }
 .finding-attack-context-grid { display: grid; grid-template-columns: minmax(210px, .7fr) minmax(0, 1.3fr); gap: 22px; }
@@ -3206,8 +3181,7 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 .finding-intel-score span { color: var(--text-muted); font: 500 11px/1 var(--font-mono); }
 .finding-intel-meter { height: 6px; overflow: hidden; border-radius: 3px; background: var(--track-bg); }
 .finding-intel-meter i { display: block; height: 100%; border-radius: 3px; }
-.finding-intel-card .risk-breakdown { margin-top: 14px; padding-top: 13px; border-top: var(--hairline) solid var(--border-subtle); }
-.finding-intel-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.finding-intel-card .finding-intel-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .finding-intel-flag { color: var(--sev-critical-color) !important; font-family: var(--font-mono) !important; font-size: 10px !important; }
 .finding-intel-coverage { display: grid; gap: 4px; margin: 10px 0 0; padding: 0; list-style: none; }
 .finding-intel-coverage li { display: grid; grid-template-columns: 66px minmax(0, 1fr) auto; gap: 8px; align-items: center; border-radius: 5px; padding: 4px 7px; background: var(--bg-app); }
