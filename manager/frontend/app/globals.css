@@ -2252,22 +2252,6 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 }
 
 /* ─── Badges ─── */
-.reports-beta-banner {
-  min-height: 48px;
-  padding: 9px 18px;
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  color: var(--accent);
-  background: var(--accent-ghost);
-  border-bottom: 1px solid var(--border-accent);
-}
-.reports-beta-banner svg { flex: 0 0 auto; margin-top: 2px; }
-.reports-beta-banner strong,
-.reports-beta-banner span { display: block; }
-.reports-beta-banner strong { color: var(--text-primary); font-size: 10px; }
-.reports-beta-banner span { margin-top: 2px; color: var(--text-secondary); font-size: 9px; }
-
 /* ─── Reports: live engagement-grounded beta workspace ─── */
 .report-controls {
   display: flex; align-items: end; justify-content: space-between; gap: 16px;
@@ -3796,12 +3780,6 @@ button.intel-tag:focus-visible { outline: 2px solid var(--accent); outline-offse
 
 /* Reporting hierarchy: larger reading type, cleaner controls, and a wider
    document canvas. Existing finding/evidence logic remains unchanged. */
-.reports-beta-banner {
-  min-height: 0; margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--border-accent);
-  border-radius: 10px; background: color-mix(in srgb, var(--accent-ghost) 72%, var(--bg-panel));
-}
-.reports-beta-banner strong { font-size: 12px; }
-.reports-beta-banner span { font-size: 11px; line-height: 1.5; }
 .report-controls { margin: 0 0 14px; padding: 13px 14px; align-items: center; }
 .report-controls [role="tab"] { min-height: 40px; font-size: 11.5px; }
 .report-document { max-width: 1280px; }

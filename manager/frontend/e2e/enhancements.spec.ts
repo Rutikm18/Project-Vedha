@@ -193,17 +193,37 @@ test("portal mobile navigation protects focus and restores its trigger", async (
   await expect(page.locator('#operator-navigation')).toHaveAttribute("inert", "");
 });
 
-test("report readiness and metadata remain available in print", async ({ page }) => {
+test("one menu prints the customer copy or the complete record, and document control stays in both", async ({ page }) => {
   await page.goto("/reports");
-  await expect(page.getByRole("region", { name: "Report handoff readiness" })).toBeVisible();
-  const metadata = page.locator(".cr-generation-details");
-  await expect(metadata).not.toHaveAttribute("open", "");
-  await metadata.locator("summary").click();
-  await expect(metadata.getByText("Schema version", { exact: true })).toBeVisible();
-  await metadata.locator("summary").click();
+  // The operator-only "Record readiness" check is on screen for the operator.
+  const readiness = page.locator("section.rr-operator-only");
+  await expect(readiness).toBeVisible();
+  await page.evaluate(() => { window.print = () => {}; });
+
+  const menu = page.getByRole("button", { name: "Export or print report" });
+  await menu.click();
+  await page.getByRole("menuitem", { name: /Print customer copy/ }).click();
+  await expect(page.locator(".rr-report")).toHaveAttribute("data-print", "customer");
   await page.emulateMedia({ media: "print" });
-  await expect(metadata.getByText("Schema version", { exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Report handoff readiness" })).toBeHidden();
+  await expect(readiness).toBeHidden();                                   // left out of the customer copy
+  await expect(page.getByText("Schema version", { exact: true })).toBeVisible();   // metadata stays
+
+  await page.emulateMedia({ media: "screen" });
+  await menu.click();
+  await page.getByRole("menuitem", { name: /Print complete record/ }).click();
+  await expect(page.locator(".rr-report")).toHaveAttribute("data-print", "full");
+  await page.emulateMedia({ media: "print" });
+  await expect(readiness).toBeVisible();                                  // the complete record keeps it
+});
+
+test("the AI draft panel stays out of the way until something needs review", async ({ page }) => {
+  await page.goto("/reports");
+  const toggle = page.getByRole("button", { name: /AI-assisted report draft/ });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByText("No sections awaiting review")).toBeVisible();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByText("stay internal, and out of the", { exact: false })).toBeVisible();
 });
 
 for (const path of ["/findings", "/scan", "/reports"]) {

@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   FileText,
   Loader2,
+  Printer,
   Sheet,
 } from "lucide-react";
 import type { ReportExportFormat } from "../../lib/report/export-files";
@@ -23,6 +24,13 @@ const OPTIONS: Array<{
   { format: "docx", label: "Word document", description: "Editable review copy", icon: FileText },
   { format: "xlsx", label: "Excel workbook", description: "Multi-sheet evidence workbook", icon: FileSpreadsheet },
   { format: "csv", label: "CSV tracker", description: "Flat tracker without evidence bodies", icon: Sheet },
+];
+
+export type ReportPrintMode = "customer" | "full";
+
+const PRINT_OPTIONS: Array<{ mode: ReportPrintMode; label: string; description: string }> = [
+  { mode: "customer", label: "Print customer copy", description: "The reading view, without the operator readiness check" },
+  { mode: "full", label: "Print complete record", description: "Everything, with every finding's full record open" },
 ];
 
 function responseFilename(header: string | null, fallback: string): string {
@@ -50,9 +58,12 @@ export function exportMenuPosition(
   return { top: button.bottom + 8, left, width };
 }
 
-export function ReportExportMenu({ engagementId, disabled = false }: {
+export function ReportExportMenu({ engagementId, disabled = false, onPrint }: {
   engagementId?: string;
   disabled?: boolean;
+  /** When given, the menu also offers the two print copies, so the page header
+   *  carries one control instead of three (three overflowed a phone). */
+  onPrint?: (mode: ReportPrintMode) => void;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -143,14 +154,14 @@ export function ReportExportMenu({ engagementId, disabled = false }: {
         ref={buttonRef}
         type="button"
         className="btn btn-secondary cr-export-trigger"
-        aria-label="Export report"
+        aria-label={onPrint ? "Export or print report" : "Export report"}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-disabled={unavailable}
         onClick={toggle}
       >
         {active ? <Loader2 size={14} className="spin" aria-hidden /> : <Download size={14} aria-hidden />}
-        Export
+        {onPrint ? "Export & print" : "Export"}
         <ChevronDown size={13} aria-hidden />
       </button>
       {menuAt && createPortal(
@@ -161,6 +172,23 @@ export function ReportExportMenu({ engagementId, disabled = false }: {
           aria-label="Report export formats"
           style={{ position: "fixed", top: menuAt.top, left: menuAt.left, right: "auto", width: menuAt.width }}
         >
+          {onPrint && (
+            <>
+              <div className="cr-export-group" role="presentation">Print</div>
+              {PRINT_OPTIONS.map(({ mode, label, description }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { setMenuAt(null); onPrint(mode); }}
+                >
+                  <Printer size={16} aria-hidden />
+                  <span><strong>{label}</strong><small>{description}</small></span>
+                </button>
+              ))}
+              <div className="cr-export-group" role="presentation">Download</div>
+            </>
+          )}
           {OPTIONS.map(({ format, label, description, icon: Icon }) => (
             <button
               key={format}

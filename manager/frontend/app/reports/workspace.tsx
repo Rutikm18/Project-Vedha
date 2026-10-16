@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, FileText, Printer } from "lucide-react";
+import { FileText, LockKeyhole } from "lucide-react";
 
 import { PageShell } from "../../components/PageShell";
 import { PortalReportsWorkspace } from "../portal/reports/workspace";
 import { AiReportPanel } from "../../components/report/AiReportPanel";
 import { CanonicalReportDocument } from "../../components/report/CanonicalReportDocument";
-import { ReportExportMenu } from "../../components/report/ReportExportMenu";
+import { ReportExportMenu, type ReportPrintMode } from "../../components/report/ReportExportMenu";
 import { DataState, EmptyState, SkeletonRows } from "../../components/states/DataState";
 import { fetchJson, isUnauthorized } from "../../lib/fetcher";
 import type { ReportDocument } from "../../lib/report/report-document";
@@ -27,7 +27,7 @@ interface EngagementList {
  * readiness check left out) or as the complete record (every disclosure open).
  * Large reports render records on first open, so give React a moment.
  */
-function printReport(mode: "customer" | "full") {
+function printReport(mode: ReportPrintMode) {
   const root = document.querySelector<HTMLElement>(".rr-report");
   if (!root) return;
   root.dataset.print = mode;
@@ -65,44 +65,14 @@ function CanonicalReportsWorkspace() {
   return (
     <PageShell
       title="Reports"
-      subtitle="Vulnerability assessment report — live operator draft"
+      subtitle="Vulnerability assessment report"
       headerActions={
-        <div className="report-export-control no-print">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => printReport("customer")}
-            disabled={!report}
-            title="The reading view: summary, findings, roadmap and closure, without the operator record-readiness check"
-          >
-            <Printer size={14} />Print customer copy
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => printReport("full")}
-            disabled={!report}
-            title="Everything, including the complete canonical record of every finding"
-          >
-            <Printer size={14} />Print complete record
-          </button>
-          <ReportExportMenu engagementId={report?.engagement.id} disabled={!report || loading} />
-        </div>
+        <ReportExportMenu engagementId={report?.engagement.id} disabled={!report || loading} onPrint={printReport} />
       }
     >
-      <div className="reports-beta-banner no-print">
-        <AlertTriangle size={14} />
-        <div>
-          <strong>Live, non-persisted operator draft</strong>
-          <span>
-            Every section below comes from the current canonical record. Missing evidence, closure proof,
-            metadata, and compliance mappings remain visible gaps. Review before customer delivery.
-          </span>
-        </div>
-      </div>
-
-      <div className="report-controls no-print">
-        <label>
+      <style>{STYLES}</style>
+      <div className="rpt-bar no-print">
+        <label className="rpt-pick">
           <span>Engagement</span>
           <select value={engagementId} onChange={(event) => setSelectedId(event.target.value)}>
             {engagements.map((engagement) => (
@@ -112,9 +82,14 @@ function CanonicalReportsWorkspace() {
             ))}
           </select>
         </label>
-        {reportQ.isFetching && !reportQ.isLoading && (
-          <span role="status" aria-live="polite">Refreshing canonical record…</span>
-        )}
+        <div className="rpt-state" role="status" aria-live="polite">
+          <span className="rpt-chip"><LockKeyhole size={12} aria-hidden /> Live draft · not saved</span>
+          {reportQ.isFetching && !reportQ.isLoading && <span>Refreshing the record…</span>}
+        </div>
+        <p className="rpt-note">
+          Built from the engagement&apos;s current record. Missing evidence, closure proof, metadata and
+          compliance mappings stay visible as gaps. Review before delivery to the customer.
+        </p>
       </div>
 
       <DataState
@@ -150,6 +125,21 @@ function CanonicalReportsWorkspace() {
     </PageShell>
   );
 }
+
+const STYLES = `
+.rpt-bar { display: grid; grid-template-columns: minmax(0, 420px) 1fr; align-items: end; gap: 6px 16px; width: min(1180px, 100%); margin: 0 auto 14px; }
+.rpt-pick { display: grid; gap: 5px; min-width: 0; }
+.rpt-pick > span { color: var(--text-muted); font: 650 10.5px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: .05em; }
+.rpt-pick select { width: 100%; min-width: 0; min-height: 38px; padding: 0 10px; border: var(--hairline) solid var(--border-default); border-radius: 8px; background: var(--bg-panel); color: var(--text-primary); font: 500 13px/1.2 var(--font-ui); text-overflow: ellipsis; }
+.rpt-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 38px; color: var(--text-muted); font: 500 12px/1.3 var(--font-ui); }
+.rpt-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: var(--hairline) solid var(--sev-medium-edge, var(--border-default)); background: var(--sev-medium-bg, transparent); color: var(--sev-medium-color); font: 650 11.5px/1.2 var(--font-ui); }
+.rpt-note { grid-column: 1 / -1; margin: 0; max-width: 90ch; color: var(--text-muted); font: 500 12px/1.5 var(--font-ui); }
+@media (max-width: 720px) {
+  .rpt-bar { grid-template-columns: minmax(0, 1fr); }
+  .rpt-pick select { min-height: 44px; }
+  .rpt-state { min-height: 0; }
+}
+`;
 
 export function ReportsWorkspace({ surface = "manager" }: {
   surface?: "manager" | "portal";
