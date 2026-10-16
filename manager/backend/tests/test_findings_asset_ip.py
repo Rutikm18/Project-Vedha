@@ -58,6 +58,13 @@ def _orm_finding(asset_id):
     )
 
 
+@pytest.fixture(autouse=True)
+def _no_sla_lookup(monkeypatch):
+    """These tests are about asset identity / scan blocks, not SLA. The SLA lookup (two
+    more bulk queries per page) is covered in test_finding_priority.py."""
+    monkeypatch.setattr(findings_router, "_sla_states", AsyncMock(return_value={}))
+
+
 def _page_db(a1, a2):
     """db whose first two queries are the page's bulk lookups: asset rows (with
     criticality), then service exposure. Anything else returns nothing."""

@@ -38,6 +38,8 @@ from app.services.finding_enrichment import detail_enrichment
 from app.services.finding_workflow import suggest_risk_owner
 from app.services.finding_groups import GroupRow, build_groups
 from app.services.finding_priority import severity_order_case
+from app.services import deadlines, sla as sla_service
+from app.services.finding_priority import explain_priority
 from app.services.risk_inputs import exposure_source, risk_inputs, strongest_exposure
 from app.services.risk_rank import compute_risk_rank, explain_risk_rank
 from app.routers.sla_policy import resolve_windows
@@ -238,6 +240,33 @@ async def _asset_risk_context(db: AsyncSession, findings: list[Finding]) -> dict
     return ctx
 
 
+async def _sla_states(db: AsyncSession, findings: list[Finding]) -> dict:
+    """finding id → SLA state, using each finding's engagement policy, then the tenant's,
+    then the defaults (the order services/deadlines.py defines). Two bulk queries."""
+    eng_ids = {f.engagement_id for f in findings}
+    if not eng_ids:
+        return {}
+    engs = {e.id: e for e in (await db.execute(
+        select(Engagement).where(Engagement.id.in_(eng_ids))
+    )).scalars().all()}
+    tenant_id = next(iter(engs.values())).tenant_id if engs else None
+    tenant = await deadlines.tenant_windows(db, tenant_id) if tenant_id else None
+    default = sla_service.default_windows()
+    out = {}
+    for f in findings:
+        eng = engs.get(f.engagement_id)
+        windows = (deadlines.engagement_windows(eng) if eng else None) or tenant or default
+        out[f.id] = sla_service.compute(f, windows=windows).state
+    return out
+
+
+def priority_for(finding: Finding, sla_state: str | None) -> dict:
+    inputs = risk_inputs(finding)
+    return explain_priority(
+        severity=inputs["severity"], kev=inputs["kev"], exploit_validated=inputs["exploit_validated"],
+        epss_score=inputs["epss_score"], sla_state=sla_state, status=finding.status)
+
+
 def _rank_for(finding: Finding, ctx: dict) -> int:
     a = ctx.get(finding.asset_id, {})
     return compute_risk_rank(**risk_inputs(
@@ -256,12 +285,15 @@ async def _with_asset_identity(db: AsyncSession, findings: list[Finding]) -> lis
     the canonical risk rank (real asset criticality and exposure)."""
     ctx = await _asset_risk_context(db, findings)
     scan_refs = await _scan_refs(db, findings)
+    states = await _sla_states(db, findings)
     out = []
     for f in findings:
         a = ctx.get(f.asset_id, {})
+        pri = priority_for(f, states.get(f.id))
         out.append(FindingOut.model_validate(f).model_copy(
             update={"asset_ip": a.get("ip"), "asset_hostname": a.get("hostname"),
                     "risk_rank": _rank_for(f, ctx),
+                    "priority": pri["priority"], "priority_reason": pri["reason"],
                     "scan": scan_refs.get(f.detection_run_id)}))
     return out
 
@@ -312,6 +344,9 @@ async def _finding_detail_out(db: AsyncSession, finding: Finding) -> FindingOut:
         "asset_hostname": asset_context.hostname if asset_context else None,
         "scan": scan_refs.get(finding.detection_run_id),
     }
+    states = await _sla_states(db, [finding])
+    pri = priority_for(finding, states.get(finding.id))
+    update["priority"], update["priority_reason"] = pri["priority"], pri["reason"]
     # Same inputs as the list (shared builder), so a finding reads the same everywhere.
     exposure = await _asset_exposure(db, finding.asset_id)
     update["risk_rank"] = compute_risk_rank(**risk_inputs(
@@ -1005,6 +1040,8 @@ async def risk_explanation_for(db: AsyncSession, finding: Finding) -> dict:
     # inputs after every scan; a mismatch means the sort key is waiting for a refresh.
     explanation["stored_score"] = stored
     explanation["stored_in_sync"] = stored is not None and round(stored) == explanation["score"]
+    states = await _sla_states(db, [finding])
+    explanation["priority"] = priority_for(finding, states.get(finding.id))
     return explanation
 
 

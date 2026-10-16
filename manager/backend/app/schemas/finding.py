@@ -405,6 +405,10 @@ class FindingOut(BaseModel):
     scan_outcome: str | None = None
     # P4 unified priority (computed; see services/risk_rank.py).
     risk_rank: int | None = None
+    # Response priority P0-P5 (services/finding_priority.explain_priority); None for closed
+    # findings and on responses that do not resolve SLA state.
+    priority: str | None = None
+    priority_reason: str | None = None
     # Why CVE / CVSS / EPSS / CWE are legitimately empty (recorded, or derived for configuration
     # findings) — so a list can say "not applicable" instead of "not recorded".
     scoring_not_applicable: dict[str, str] = Field(default_factory=dict)

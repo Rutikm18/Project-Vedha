@@ -42,6 +42,13 @@ def _scan_row(run_id, job_id, *, reference, use_case_id, intensity,
             job_done, job_started)
 
 
+@pytest.fixture(autouse=True)
+def _no_sla_lookup(monkeypatch):
+    """These tests are about asset identity / scan blocks, not SLA. The SLA lookup (two
+    more bulk queries per page) is covered in test_finding_priority.py."""
+    monkeypatch.setattr(findings_router, "_sla_states", AsyncMock(return_value={}))
+
+
 @pytest.mark.asyncio
 async def test_scan_block_resolved_in_one_query():
     run_id, job_id = uuid.uuid4(), uuid.uuid4()

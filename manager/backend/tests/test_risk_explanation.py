@@ -154,7 +154,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
-from app.models.enums import FindingSeverity
+from app.models.enums import FindingSeverity, FindingStatus
 from app.routers import findings as findings_router
 from app.services.risk_inputs import (
     exposure_source, internet_facing_from_exposure, risk_inputs, strongest_exposure)
@@ -163,7 +163,8 @@ from app.services.risk_inputs import (
 def _f(**kw):
     base = dict(severity=FindingSeverity.critical, cvss_score=None, epss_score=None, evidence={},
                 exploit_validated=False, verification_state="confirmed", verification_confidence=92,
-                risk_score=None, asset_id=None, engagement_id=uuid.uuid4(), id=uuid.uuid4())
+                risk_score=None, asset_id=None, engagement_id=uuid.uuid4(), id=uuid.uuid4(),
+                status=FindingStatus.open, first_seen=None, created_at=None)
     base.update(kw)
     return SimpleNamespace(**base)
 
@@ -198,6 +199,13 @@ def test_kev_is_read_from_either_evidence_location():
     assert risk_inputs(_f(evidence={"kev": True}))["kev"] is True
     assert risk_inputs(_f(evidence={"enrichment": {"kev": True}}))["kev"] is True
     assert risk_inputs(_f())["kev"] is False
+
+
+@pytest.fixture(autouse=True)
+def _no_sla_lookup(monkeypatch):
+    """These tests are about asset identity / scan blocks, not SLA. The SLA lookup (two
+    more bulk queries per page) is covered in test_finding_priority.py."""
+    monkeypatch.setattr(findings_router, "_sla_states", AsyncMock(return_value={}))
 
 
 def _db(asset, service_exposures):
