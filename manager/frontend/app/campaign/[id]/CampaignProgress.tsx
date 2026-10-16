@@ -14,7 +14,8 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Clock3, CircleSlash, Trash2 } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Clock3, CircleSlash, Trash2 } from "lucide-react";
+import { CAMPAIGN_CSS } from "../../../components/campaign/campaign-css";
 import RawFacts from "./RawFacts";
 import { createScannerWorkspaceApi, type ScannerWorkspaceSurface } from "../../../lib/scanner-workspace-api";
 
@@ -166,8 +167,8 @@ export default function CampaignProgress({ engagementId, surface = "manager" }: 
     return () => { window.clearTimeout(initial); clearInterval(t); };
   }, [load, data?.is_complete, data?.overall_status]);
 
-  if (err) return <div style={{ color: "var(--sev-high,#f97316)", fontSize: 12 }}>Failed to load campaign: {err}</div>;
-  if (!data) return <div style={{ color: "var(--text-muted)", fontSize: 12 }}>Loading campaign…</div>;
+  if (err) return <p className="cpg-empty" data-tone="bad" role="alert"><style>{CAMPAIGN_CSS}</style>Failed to load campaign: {err}</p>;
+  if (!data) return <p className="cpg-empty"><style>{CAMPAIGN_CSS}</style>Loading campaign…</p>;
 
   const gaps = data.coverage?.has_gaps ?? false;
   const statusColor = data.overall_status === "error" ? "var(--sev-high,#f97316)"
@@ -175,87 +176,68 @@ export default function CampaignProgress({ engagementId, surface = "manager" }: 
     : data.is_complete ? "var(--sev-low,#3b82f6)" : "var(--accent)";
   const s = data.summary;
   const reasons = data.reasons ?? [];
+  const queued = data.jobs.filter((j) => j.status === "pending").length;
+  const queueFull = queued >= MAX_QUEUED_JOBS;
 
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* ── high-level exec band: authoritative status + risk rollup ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
-        padding: "12px 16px", borderRadius: 12, border: "0.5px solid var(--border-accent)",
-        background: "var(--bg-panel)", boxShadow: "var(--shadow-md)" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 9, height: 9, borderRadius: "50%", background: statusColor,
-            animation: data.is_complete ? "none" : "pulse 1.4s infinite" }} />
-          <strong style={{ fontSize: 13, color: "var(--text-primary)" }}>
-            {STATUS_LABEL[data.overall_status] ?? data.overall_status}
-          </strong>
-          {/* the fix: "Complete" appears ONLY when the whole pipeline is done */}
-          {!data.is_complete && <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>· in progress ({data.percent}%)</span>}
+    <section className="cpg">
+      <style>{CAMPAIGN_CSS}</style>
+
+      {/* ── exec band: authoritative status + risk rollup ── */}
+      <div className="cpg-card cpg-band">
+        <span className="cpg-state">
+          <i style={{ background: statusColor }} data-live={!data.is_complete} aria-hidden />
+          <strong>{STATUS_LABEL[data.overall_status] ?? data.overall_status}</strong>
+          {/* "Complete" appears ONLY when the whole pipeline is done */}
+          {!data.is_complete && <small>in progress ({data.percent}%)</small>}
         </span>
-        {data.engagement?.name && <span style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>{data.engagement.name}</span>}
+        {data.engagement?.name && <span className="cpg-dim">{data.engagement.name}</span>}
         {data.job_stats && (
-          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+          <span className="cpg-dim">
             {data.job_stats.probes.length || 0} {(data.job_stats.probes.length || 0) === 1 ? "probe" : "probes"} · {data.job_stats.running} running · {data.job_stats.complete}/{data.job_stats.total} jobs done
           </span>
         )}
         {s && (
-          <span style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}><strong style={{ color: "var(--text-primary)" }}>{s.total_findings}</strong> {s.total_findings === 1 ? "finding" : "findings"}</span>
-            {s.actionable > 0 && <span style={{ fontSize: 11, color: "var(--text-muted)" }}><strong style={{ color: "var(--accent)" }}>{s.actionable}</strong> actionable</span>}
-            {s.exploitable > 0 && <span style={{ fontSize: 11, color: "var(--sev-critical,#ef4444)" }}><strong>{s.exploitable}</strong> exploitable</span>}
-            {s.max_risk_score > 0 && <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>max risk {Math.round(s.max_risk_score)}</span>}
+          <span className="cpg-rollup">
+            <span><b>{s.total_findings}</b> {s.total_findings === 1 ? "finding" : "findings"}</span>
+            {s.actionable > 0 && <span><b style={{ color: "var(--accent)" }}>{s.actionable}</b> actionable</span>}
+            {s.exploitable > 0 && <span style={{ color: "var(--sev-critical-color)" }}><b>{s.exploitable}</b> exploitable</span>}
+            {s.max_risk_score > 0 && <span className="cpg-mono">max risk {Math.round(s.max_risk_score)}</span>}
           </span>
         )}
-        <span style={{ display: "flex", gap: 8, marginLeft: s ? 0 : "auto" }}>
-          <Link href={surface === "portal" ? "/portal/scope" : `/engagements/${engagementId}`} className="campaign-result-link">
-            Engagement view <ArrowUpRight size={12} />
+        <span className="cpg-links">
+          <Link href={surface === "portal" ? "/portal/scope" : `/engagements/${engagementId}`} className="cpg-link">
+            Engagement view <ArrowUpRight size={12} aria-hidden />
           </Link>
-          <Link href={surface === "portal" ? "/portal/findings" : `/findings?engagement=${engagementId}`} className="campaign-result-link">
-            All results <ArrowUpRight size={12} />
+          <Link href={surface === "portal" ? "/portal/findings" : `/findings?engagement=${engagementId}`} className="cpg-link">
+            All results <ArrowUpRight size={12} aria-hidden />
           </Link>
         </span>
       </div>
 
       {/* ── reasons banner: state what happened, never leave a silent spinner ── */}
       {reasons.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 14px",
-          borderRadius: 10, border: `0.5px solid ${statusColor}`,
-          background: "var(--bg-panel)", boxShadow: "var(--shadow-sm)" }}>
+        <div className="cpg-reasons" style={{ ["--cpg-tone" as string]: statusColor }}>
           {reasons.map((r, i) => (
-            <span key={i} style={{ fontSize: 11.5, color: "var(--text-secondary)", lineHeight: 1.5 }}>
-              <strong style={{ color: statusColor }}>⚠</strong> {r}
-            </span>
+            <span key={i}><b aria-hidden>⚠</b> {r}</span>
           ))}
           {gaps && data.coverage && data.coverage.blind_rule_ids.length > 0 && (
-            <span style={{ fontSize: 10.5, fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>
-              blind checks: {data.coverage.blind_rule_ids.join(" · ")}
-            </span>
+            <code>blind checks: {data.coverage.blind_rule_ids.join(" · ")}</code>
           )}
         </div>
       )}
 
       {/* ── coverage strip: what did detection actually CHECK? ── */}
       {data.coverage && data.coverage.rules_total > 0 && (
-        <div style={{ display: "flex", gap: 16, alignItems: "center", padding: "8px 14px",
-          borderRadius: 10, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)" }}>
-          <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)",
-            letterSpacing: 1.2, textTransform: "uppercase" }}>Coverage</span>
-          <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
-            <strong style={{ color: "var(--text-primary)" }}>{data.coverage.rules_assessed}</strong>
-            /{data.coverage.rules_total} checks assessed
-          </span>
+        <div className="cpg-card cpg-strip">
+          <span className="cpg-label">Coverage</span>
+          <span><b>{data.coverage.rules_assessed}</b>/{data.coverage.rules_total} checks assessed</span>
           {data.coverage.rules_blind > 0 && (
-            <span style={{ fontSize: 11.5, color: "var(--sev-medium,#eab308)" }}>
-              <strong>{data.coverage.rules_blind}</strong> blind (unknown, not clean)
-            </span>
+            <span style={{ color: "var(--sev-medium-color)" }}><b>{data.coverage.rules_blind}</b> blind (unknown, not clean)</span>
           )}
-          {data.coverage.rules_unassessed > 0 && (
-            <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
-              {data.coverage.rules_unassessed} not run
-            </span>
-          )}
+          {data.coverage.rules_unassessed > 0 && <span>{data.coverage.rules_unassessed} not run</span>}
           {data.evidence && data.evidence.submissions > 0 && (
-            <span style={{ marginLeft: "auto", fontSize: 11, fontFamily: "var(--font-mono)",
-              color: data.evidence.fully_covered ? "var(--text-muted)" : "var(--sev-medium,#eab308)" }}>
+            <span className="cpg-end" style={{ color: data.evidence.fully_covered ? undefined : "var(--sev-medium-color)" }}>
               {data.evidence.covered}/{data.evidence.submissions} submissions detected
             </span>
           )}
@@ -263,185 +245,172 @@ export default function CampaignProgress({ engagementId, surface = "manager" }: 
       )}
 
       {/* ── pipeline ticker + progress bar ── */}
-      <div style={{ borderRadius: 12, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)", overflow: "hidden", boxShadow: "var(--shadow-md)" }}>
-        <div style={{ padding: "13px 16px", display: "flex", alignItems: "center", gap: 11, borderBottom: "0.5px solid var(--border-subtle)" }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)" }}>Detection pipeline</span>
-          <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{data.percent}%</span>
+      <div className="cpg-card" style={{ overflow: "hidden" }}>
+        <div className="cpg-pipe-head">
+          <h3>Detection pipeline</h3>
+          <span>{data.percent}%</span>
         </div>
-        {/* 0–100% bar */}
-        <div style={{ height: 4, background: "var(--border-subtle)" }}>
-          <div style={{ height: "100%", width: "100%", transform: `scaleX(${Math.min(100, Math.max(0, data.percent)) / 100})`, transformOrigin: "left center", background: "var(--accent)", transition: "transform var(--dur-slow,.6s)" }} />
+        <div className="cpg-track" role="progressbar" aria-label="Detection pipeline progress"
+          aria-valuenow={data.percent} aria-valuemin={0} aria-valuemax={100}>
+          <i style={{ transform: `scaleX(${Math.min(100, Math.max(0, data.percent)) / 100})` }} />
         </div>
-        {/* phase ticker */}
-        <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", gap: 4, flexWrap: "wrap" }}>
+        <ol className="cpg-phases" aria-label="Pipeline stages">
           {data.phases.map((p, i) => (
-            <span key={p.name} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 74 }}>
-                <span style={{ width: 9, height: 9, borderRadius: "50%",
-                  background: p.status === "done" ? "var(--accent)" : p.status === "active" ? "var(--accent)" : "var(--border-accent)",
-                  boxShadow: p.status === "active" ? "0 0 0 3px var(--accent-ghost)" : "none",
-                  animation: p.status === "active" ? "pulse 1.4s infinite" : "none" }} />
-                <span style={{ fontSize: 10, fontWeight: 600, color: p.status === "pending" ? "var(--text-faint)" : "var(--text-secondary)" }}>
-                  {PHASE_LABEL[p.name] ?? p.name}{p.count != null ? ` · ${p.count}` : ""}
+            <li key={p.name} className="cpg-phase" data-status={p.status}>
+              <div>
+                <i aria-hidden />
+                <span>
+                  {PHASE_LABEL[p.name] ?? p.name}{p.count != null && <> · <em>{p.count}</em></>}
+                  <span className="sr-only"> ({p.status})</span>
                 </span>
+              </div>
+              {i < data.phases.length - 1 && <hr aria-hidden />}
+            </li>
+          ))}
+        </ol>
+        <div className="cpg-sevs">
+          {(["critical", "high", "medium", "low", "info"] as const).map((sev) => {
+            const n = data.detection.by_severity[sev] ?? 0;
+            return (
+              <span key={sev} data-zero={n === 0}>
+                <i style={{ background: SEV_COLOR[sev] }} aria-hidden /><b>{n}</b> {sev}
               </span>
-              {i < data.phases.length - 1 && (
-                <span style={{ width: 22, height: 1, background: p.status === "done" ? "var(--accent)" : "var(--border-subtle)" }} />
-              )}
-            </span>
-          ))}
-        </div>
-        {/* severity rollup */}
-        <div style={{ display: "flex", gap: 12, padding: "8px 16px 12px", borderTop: "0.5px solid var(--border-subtle)", flexWrap: "wrap" }}>
-          {(["critical", "high", "medium", "low", "info"] as const).map((s) => (
-            <span key={s} style={{ fontSize: 11, color: "var(--text-muted)" }}>
-              <strong style={{ color: SEV_COLOR[s] }}>{data.detection.by_severity[s] ?? 0}</strong> {s}
-            </span>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* ── per-probe jobs ── */}
       <div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.4, textTransform: "uppercase" }}>Jobs ({data.jobs.length})</div>
-          {(() => {
-            // Surface the queue cap BEFORE the operator hits it, so a refused
-            // enqueue is never a surprise.
-            const queued = data.jobs.filter((j) => j.status === "pending").length;
-            const full = queued >= MAX_QUEUED_JOBS;
-            return (
-              <span style={{ fontSize: 10.5, fontFamily: "var(--font-mono)", padding: "2px 8px", borderRadius: 6,
-                background: full ? "var(--sev-medium-bg, var(--accent-ghost))" : "var(--accent-ghost)",
-                color: full ? "var(--sev-medium-color, var(--accent))" : "var(--text-muted)" }}
-                title={full
-                  ? `Queue is full (${MAX_QUEUED_JOBS} max). Remove a queued job before adding another.`
-                  : `${queued} of ${MAX_QUEUED_JOBS} queue slots used`}>
-                queue {queued}/{MAX_QUEUED_JOBS}{full ? " · full" : ""}
-              </span>
-            );
-          })()}
+        <div className="cpg-head">
+          <h3>Jobs</h3>
+          <span className="cpg-count">{data.jobs.length}</span>
+          {/* Surface the queue cap BEFORE the operator hits it, so a refused enqueue is never a surprise. */}
+          <span className="cpg-chip" data-tone={queueFull ? "warn" : undefined}
+            title={queueFull
+              ? `Queue is full (${MAX_QUEUED_JOBS} max). Remove a queued job before adding another.`
+              : `${queued} of ${MAX_QUEUED_JOBS} queue slots used`}>
+            queue {queued}/{MAX_QUEUED_JOBS}{queueFull ? " · full" : ""}
+          </span>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {data.jobs.map((j) => {
-            const bar = jobBar(j.status);
-            return (
-            <div key={j.id} style={{ borderRadius: 12, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)", padding: "12px 16px", boxShadow: "var(--shadow-md)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{j.use_case_id ?? j.job_type}</span>
-                <span style={{ fontSize: 10.5, fontFamily: "var(--font-mono)", padding: "2px 8px", borderRadius: 6, background: "var(--accent-ghost)", color: "var(--accent)", textTransform: "capitalize" }}>{j.phase}</span>
-                <span style={{ fontSize: 10.5, color: j.status === "failed" ? "var(--sev-critical-color)" : "var(--text-muted)", textTransform: "capitalize", ...(j.status === "cancelled" ? { fontStyle: "italic" } : {}) }}>{j.status}</span>
-                {j.agent_name && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>vedha-agent <strong style={{ color: "var(--text-secondary)" }}>{j.agent_name}</strong></span>}
-                <span
-                  title={j.reference ? `Job ${j.reference}` : j.id}
-                  style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}
-                >
-                  {/* The quotable reference, not eight characters of a UUID. */}
-                  {j.reference ?? j.id.slice(0, 8)}
-                </span>
-                {/* Stop / Remove — offered ONLY for jobs that can still be acted
-                    on. A finished job shows no control at all, rather than a
-                    disabled one that implies the action might work. */}
-                {(j.status === "running" || j.status === "pending") && (
-                  <button
-                    type="button"
-                    onClick={() => void cancelJob(j.id, j.status === "running")}
-                    disabled={!!cancelling[j.id]}
-                    title={j.status === "running"
-                      ? "Stop this running job and free the probe for the next queued job"
-                      : "Remove this job from the queue"}
-                    aria-label={`${j.status === "running" ? "Stop" : "Remove"} job ${j.reference ?? j.id.slice(0, 8)}`}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 5,
-                      fontSize: 10.5, fontWeight: 600, padding: "3px 9px",
-                      borderRadius: 6, cursor: cancelling[j.id] ? "wait" : "pointer",
-                      border: "0.5px solid var(--border-subtle)",
-                      background: "transparent",
-                      color: cancelling[j.id] ? "var(--text-faint)" : "var(--sev-high-color, #f97316)",
-                      opacity: cancelling[j.id] ? 0.6 : 1,
-                    }}
+        {data.jobs.length === 0 ? (
+          <p className="cpg-empty">No jobs yet. Launch a campaign from the Scanner and its jobs appear here as they are queued and run.</p>
+        ) : (
+          <div className="cpg-jobs">
+            {data.jobs.map((j) => {
+              const bar = jobBar(j.status);
+              const actionable = j.status === "running" || j.status === "pending";
+              const ref = j.reference ?? j.id.slice(0, 8);
+              return (
+                <article key={j.id} className="cpg-card cpg-job">
+                  <div className="cpg-job-top">
+                    <strong>{j.use_case_id ?? j.job_type}</strong>
+                    <span className="cpg-chip" data-tone="accent" style={{ textTransform: "capitalize" }}>{j.phase}</span>
+                    <span className="cpg-status" data-status={j.status}><i aria-hidden />{j.status}</span>
+                    {j.agent_name && <span className="cpg-dim">vedha-agent <b>{j.agent_name}</b></span>}
+                    {/* The quotable reference, not eight characters of a UUID. */}
+                    <span className="cpg-ref" title={j.reference ? `Job ${j.reference}` : j.id}>{ref}</span>
+                    {/* Stop / Remove — offered ONLY for jobs that can still be acted on. A finished
+                        job shows no control at all, rather than a disabled one. */}
+                    {actionable && (
+                      <button
+                        type="button"
+                        className="cpg-act"
+                        onClick={() => void cancelJob(j.id, j.status === "running")}
+                        disabled={!!cancelling[j.id]}
+                        title={j.status === "running"
+                          ? "Stop this running job and free the probe for the next queued job"
+                          : "Remove this job from the queue"}
+                        aria-label={`${j.status === "running" ? "Stop" : "Remove"} job ${ref}`}
+                      >
+                        {j.status === "running" ? <CircleSlash size={11} aria-hidden /> : <Trash2 size={11} aria-hidden />}
+                        {cancelling[j.id] ? "Stopping…" : j.status === "running" ? "Stop" : "Remove"}
+                      </button>
+                    )}
+                  </div>
+                  {/* SAFE raw-result summary */}
+                  {(j.result_summary?.scanner_count != null || j.result_summary?.fact_count != null
+                    || j.result_summary?.open_ports != null || j.result_summary?.profile
+                    || j.result_summary?.scanners?.length) && (
+                    <div className="cpg-facts">
+                      {j.result_summary?.scanner_count != null && <span><b>{j.result_summary.scanner_count}</b> scanners</span>}
+                      {j.result_summary?.fact_count != null && <span><b>{j.result_summary.fact_count}</b> facts</span>}
+                      {j.result_summary?.open_ports != null && <span><b>{j.result_summary.open_ports}</b> open ports</span>}
+                      {j.result_summary?.profile && <span>profile <b>{j.result_summary.profile}</b></span>}
+                      {j.result_summary?.scanners?.length ? <span className="cpg-mono">{j.result_summary.scanners.join(" · ")}</span> : null}
+                    </div>
+                  )}
+                  <div
+                    className="cpg-bar"
+                    role="progressbar"
+                    aria-label={`${j.use_case_id ?? j.job_type} job progress`}
+                    {...(bar.indeterminate
+                      // No aria-valuenow when the value is genuinely unknown: a screen reader
+                      // should hear "in progress", not a made-up number.
+                      ? { "aria-valuetext": "in progress" }
+                      : { "aria-valuenow": bar.pct, "aria-valuemin": 0, "aria-valuemax": 100 })}
                   >
-                    {j.status === "running" ? <CircleSlash size={11} /> : <Trash2 size={11} />}
-                    {cancelling[j.id] ? "Stopping…" : j.status === "running" ? "Stop" : "Remove"}
-                  </button>
-                )}
-              </div>
-              {/* SAFE raw-result summary */}
-              <div style={{ display: "flex", gap: 14, marginTop: 8, flexWrap: "wrap", fontSize: 11, color: "var(--text-muted)" }}>
-                {j.result_summary?.scanner_count != null && <span><strong style={{ color: "var(--text-secondary)" }}>{j.result_summary.scanner_count}</strong> scanners</span>}
-                {j.result_summary?.fact_count != null && <span><strong style={{ color: "var(--text-secondary)" }}>{j.result_summary.fact_count}</strong> facts</span>}
-                {j.result_summary?.open_ports != null && <span><strong style={{ color: "var(--text-secondary)" }}>{j.result_summary.open_ports}</strong> open ports</span>}
-                {j.result_summary?.profile && <span>profile <strong style={{ color: "var(--text-secondary)" }}>{j.result_summary.profile}</strong></span>}
-                {j.result_summary?.scanners?.length ? <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{j.result_summary.scanners.join(" · ")}</span> : null}
-              </div>
-              <div
-                role="progressbar"
-                aria-label={`${j.use_case_id ?? j.job_type} job progress`}
-                {...(bar.indeterminate
-                  // No aria-valuenow when the value is genuinely unknown — a
-                  // screen reader should hear "in progress", not a made-up number.
-                  ? { "aria-valuetext": "in progress" }
-                  : { "aria-valuenow": bar.pct, "aria-valuemin": 0, "aria-valuemax": 100 })}
-                style={{ height: 4, marginTop: 10, overflow: "hidden", borderRadius: 999, background: "var(--track-bg)" }}>
-                <div style={{
-                  width: bar.indeterminate ? "40%" : "100%",
-                  transform: bar.indeterminate ? undefined : `scaleX(${Math.min(100, Math.max(0, bar.pct)) / 100})`,
-                  transformOrigin: "left center",
-                  height: "100%", background: bar.color,
-                  borderRadius: 999,
-                  animation: bar.indeterminate ? "vedhaIndeterminate 1.4s ease-in-out infinite" : undefined,
-                  transition: bar.indeterminate ? undefined : "transform var(--dur-base) var(--ease-out)",
-                }} />
-              </div>
-              {cancelErr[j.id] && (
-                <div role="alert" style={{ marginTop: 8, fontSize: 10.5, color: "var(--sev-high-color, #f97316)" }}>
-                  Could not stop this job: {cancelErr[j.id]}
-                </div>
-              )}
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>
-                {j.created_at && <span><Clock3 size={10} style={{ display: "inline", verticalAlign: -1, marginRight: 4 }} />queued {new Date(j.created_at).toLocaleString()}</span>}
-                {j.started_at && <span>started {new Date(j.started_at).toLocaleString()}</span>}
-                {j.completed_at && <span>finished {new Date(j.completed_at).toLocaleString()}</span>}
-              </div>
-            </div>
-          );})}
-        </div>
+                    <i style={{
+                      width: bar.indeterminate ? "40%" : "100%",
+                      transform: bar.indeterminate ? undefined : `scaleX(${Math.min(100, Math.max(0, bar.pct)) / 100})`,
+                      background: bar.color,
+                      animation: bar.indeterminate ? "vedhaIndeterminate 1.4s ease-in-out infinite" : undefined,
+                    }} />
+                  </div>
+                  {cancelErr[j.id] && <div role="alert" className="cpg-err">Could not stop this job: {cancelErr[j.id]}</div>}
+                  <div className="cpg-times">
+                    {j.created_at && <span><Clock3 size={10} style={{ display: "inline", verticalAlign: -1, marginRight: 4 }} aria-hidden />queued {new Date(j.created_at).toLocaleString()}</span>}
+                    {j.started_at && <span>started {new Date(j.started_at).toLocaleString()}</span>}
+                    {j.completed_at && <span>finished {new Date(j.completed_at).toLocaleString()}</span>}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── findings + step-by-step remediation ── */}
       <div>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10 }}>Findings & Remediation ({data.findings.length})</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="cpg-head">
+          <h3>Findings &amp; remediation</h3>
+          <span className="cpg-count">{data.findings.length}</span>
+        </div>
+        <div className="cpg-finds">
           {data.findings.length === 0 && <FindingsEmpty data={data} gaps={gaps} />}
           {data.findings.map((f) => {
             const steps = remediationSteps(f.remediation);
-            const isOpen = open[f.id];
+            const isOpen = !!open[f.id];
+            const sevColor = SEV_COLOR[f.severity] ?? "var(--text-muted)";
             return (
-              <div key={f.id} style={{ borderRadius: 10, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)", overflow: "hidden" }}>
-                <button onClick={() => setOpen((o) => ({ ...o, [f.id]: !o[f.id] }))}
-                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "10px 14px", cursor: "pointer", background: "transparent", border: "none", textAlign: "left" }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: SEV_COLOR[f.severity], flexShrink: 0 }} />
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-primary)" }}>{f.title}</span>
-                  {f.mitre_techniques?.length ? <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{f.mitre_techniques.join(", ")}</span> : null}
-                  {f.corroborated_by && f.corroborated_by.length > 0 && (
-                    <span title={`Confidence raised by cross-signal corroboration: ${f.corroborated_by.join(", ")}`}
-                      style={{ fontSize: 9.5, fontFamily: "var(--font-mono)", padding: "1px 6px", borderRadius: 5,
-                        background: "var(--accent-ghost)", color: "var(--accent)" }}>⛓ corroborated</span>
-                  )}
-                  <span style={{ marginLeft: "auto", fontSize: 10.5, fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
-                    {f.severity}{f.risk_score != null ? ` · risk ${Math.round(f.risk_score)}` : ""}{f.confidence != null ? ` · conf ${f.confidence}` : ""}{f.state === "confirmed" ? " · confirmed" : ""}
+              <div key={f.id} className="cpg-card cpg-find">
+                <button type="button" className="cpg-find-head" aria-expanded={isOpen}
+                  onClick={() => setOpen((o) => ({ ...o, [f.id]: !o[f.id] }))}>
+                  <span className="cpg-sev" style={{ color: sevColor }}>{f.severity}</span>
+                  <strong>{f.title}</strong>
+                  <span className="cpg-find-meta">
+                    {f.mitre_techniques?.length ? <span className="cpg-chip cpg-mono">{f.mitre_techniques.join(", ")}</span> : null}
+                    {f.corroborated_by && f.corroborated_by.length > 0 && (
+                      <span className="cpg-chip" data-tone="accent"
+                        title={`Confidence raised by cross-signal corroboration: ${f.corroborated_by.join(", ")}`}>corroborated</span>
+                    )}
+                    {f.risk_score != null && <span className="cpg-chip cpg-mono">risk {Math.round(f.risk_score)}</span>}
+                    {f.confidence != null && <span className="cpg-chip cpg-mono">conf {f.confidence}</span>}
+                    {f.state === "confirmed" && <span className="cpg-chip">confirmed</span>}
                   </span>
+                  <ChevronDown size={14} aria-hidden style={{ color: "var(--text-faint)", transform: isOpen ? "rotate(180deg)" : undefined }} />
                 </button>
                 {isOpen && (
-                  <div style={{ padding: "0 14px 14px 31px" }}>
+                  <div className="cpg-find-body">
                     {steps.length ? (
-                      <ol style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 6 }}>
-                        {steps.map((s, i) => <li key={i} style={{ fontSize: 11.5, color: "var(--text-secondary)", lineHeight: 1.5 }}>{s}</li>)}
-                      </ol>
-                    ) : <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>No remediation guidance recorded.</span>}
-                    {f.cve_ids?.length ? <div style={{ marginTop: 8, fontSize: 10.5, fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{f.cve_ids.join(", ")}</div> : null}
-                    <Link href={surface === "portal" ? `/portal/findings?finding=${f.id}` : `/findings?engagement=${engagementId}&finding=${f.id}`} className="campaign-result-link" style={{ marginTop: 10 }}>
-                      Open finding result <ArrowUpRight size={12} />
+                      <ol className="cpg-steps">{steps.map((st, i) => <li key={i}>{st}</li>)}</ol>
+                    ) : <p className="cpg-dim" style={{ margin: "10px 0 0" }}>No remediation guidance recorded.</p>}
+                    {f.cve_ids?.length ? (
+                      <div className="cpg-cves">{f.cve_ids.map((c) => <span key={c} className="cpg-chip cpg-mono">{c}</span>)}</div>
+                    ) : null}
+                    <Link href={surface === "portal" ? `/portal/findings?finding=${f.id}` : `/findings?engagement=${engagementId}&finding=${f.id}`}
+                      className="cpg-link" style={{ marginTop: 10 }}>
+                      Open finding result <ArrowUpRight size={12} aria-hidden />
                     </Link>
                   </div>
                 )}
@@ -465,25 +434,24 @@ export default function CampaignProgress({ engagementId, surface = "manager" }: 
  * conclusion the backend hasn't established.
  */
 function FindingsEmpty({ data, gaps }: { data: Progress; gaps: boolean }) {
-  const c = { fontSize: 12, lineHeight: 1.5 } as const;
   if (data.overall_status === "error")
-    return <div style={{ ...c, color: "var(--sev-high,#f97316)" }}>
+    return <p className="cpg-empty" data-tone="bad">
       Detection failed — {data.reasons?.[0] ?? "see run error"}. This is NOT a clean result.
-    </div>;
+    </p>;
   if (data.overall_status === "aggregating" || data.overall_status === "stalled")
-    return <div style={{ ...c, color: "var(--sev-medium,#eab308)" }}>
+    return <p className="cpg-empty" data-tone="warn">
       Detection hasn&apos;t produced results yet — {data.reasons?.[0] ?? "waiting on the detection worker"}.
-    </div>;
+    </p>;
   if (gaps && data.coverage)
-    return <div style={{ ...c, color: "var(--sev-medium,#eab308)" }}>
+    return <p className="cpg-empty" data-tone="warn">
       No findings, but the scan was incomplete: {data.coverage.rules_blind} of{" "}
       {data.coverage.rules_total} checks couldn&apos;t run against the data the scanner
       returned. <strong>Treat this as unknown, not clean.</strong>
-    </div>;
+    </p>;
   if (!data.is_complete)
-    return <div style={{ ...c, color: "var(--text-muted)" }}>Detection in progress…</div>;
-  return <div style={{ ...c, color: "var(--text-muted)" }}>
+    return <p className="cpg-empty">Detection in progress…</p>;
+  return <p className="cpg-empty">
     No findings — all {data.coverage?.rules_assessed ?? "applicable"} checks ran against
     this data and none matched.
-  </div>;
+  </p>;
 }

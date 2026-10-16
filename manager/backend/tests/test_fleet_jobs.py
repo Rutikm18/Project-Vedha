@@ -23,7 +23,7 @@ async def test_lists_jobs_with_probe_and_engagement_names():
     agent_id = uuid.uuid4()
     eng_id = uuid.uuid4()
     job = SimpleNamespace(
-        id=uuid.uuid4(), agent_id=agent_id, engagement_id=eng_id,
+        id=uuid.uuid4(), reference="SCN-261016-AB12CD", agent_id=agent_id, engagement_id=eng_id,
         job_type=SimpleNamespace(value="discovery"),
         status=SimpleNamespace(value="running"),
         result={"use_case_id": "uc_network_va"},
@@ -40,6 +40,8 @@ async def test_lists_jobs_with_probe_and_engagement_names():
     assert r["agent_name"] == "scanner-probe-01"
     assert r["engagement_name"] == "Lab Engagement"
     assert r["status"] == "running" and r["use_case_id"] == "uc_network_va"
+    # The label a customer can quote, not a UUID fragment.
+    assert r["reference"] == "SCN-261016-AB12CD"
 
 
 @pytest.mark.asyncio

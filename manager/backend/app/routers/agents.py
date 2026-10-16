@@ -1351,6 +1351,8 @@ async def list_all_jobs(
         res = r.result if isinstance(r.result, dict) else {}
         return {
             "job_id": str(r.id),
+            # The quotable label (SCN-YYMMDD-XXXXXX): what a customer reads out, not a UUID fragment.
+            "reference": r.reference,
             "agent_id": str(r.agent_id) if r.agent_id else None,
             "agent_name": a_names.get(str(r.agent_id)) if r.agent_id else None,
             "engagement_id": str(r.engagement_id) if r.engagement_id else None,

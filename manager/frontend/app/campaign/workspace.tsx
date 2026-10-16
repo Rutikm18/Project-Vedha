@@ -84,9 +84,9 @@ export function CampaignWorkspace({ surface = "manager" }: { surface?: CampaignW
     >
       <style>{STYLES}</style>
       <div className="cmpl-page">
-        <section className="cmpl-section">
+        <section className="cmpl-section" aria-labelledby="cmpl-pipeline">
           <header className="cmpl-section-head">
-            <div><Activity size={15} /><div><strong>Engagement pipeline</strong><span>Jobs, detection, correlation, prioritization, and remediation</span></div></div>
+            <div><Activity size={15} aria-hidden /><div><strong id="cmpl-pipeline">Engagement pipeline</strong><span>Jobs, detection, correlation, prioritization and remediation</span></div></div>
             <select value={selectedEngagement} onChange={(event) => setSelectedEngagement(event.target.value)} aria-label="Select engagement pipeline">
               <option value="">Select an engagement</option>
               {engagements.map((engagement) => (
@@ -101,59 +101,68 @@ export function CampaignWorkspace({ surface = "manager" }: { surface?: CampaignW
           )}
         </section>
 
-        <section className="cmpl-section cmpl-job-section">
-          <header className="cmpl-section-head">
-            <div><Target size={15} /><div><strong>{surface === "portal" ? "Engagement job queue" : "Tenant job queue"}</strong><span>{surface === "portal" ? "Every job in your assigned engagement" : "Every probe job, resolved to its engagement"}</span></div></div>
-          </header>
-          <FleetJobs surface={surface} />
-        </section>
+        {/* Campaign runs come from probe-side snapshots that carry no engagement identity, so a
+            customer's view of them would always be empty. Operators only. */}
+        {surface === "manager" && (
+          <section className="cmpl-section" aria-labelledby="cmpl-runs">
+            <header className="cmpl-section-head">
+              <div><Radar size={15} aria-hidden /><div><strong id="cmpl-runs">Campaign runs{rows.length > 0 && <> <em className="cmpl-count">{rows.length}</em></>}</strong><span>Stage-by-stage progress reported by each vedha-agent campaign</span></div></div>
+            </header>
+            {loading && rows.length === 0 ? (
+              <div className="cmpl-empty"><Loader2 size={16} className="cmpl-spin" aria-hidden /> Loading campaigns…</div>
+            ) : rows.length === 0 ? (
+              <div className="cmpl-empty-block">
+                <Radar size={24} color="var(--text-faint)" aria-hidden />
+                <div className="cmpl-empty-title">No campaigns yet</div>
+                <div className="cmpl-empty-hint">
+                  Launch the <strong>Network Vulnerability Assessment</strong> from the <Link href="/scan">Scanner</Link>.
+                  Vedha uses the engagement&apos;s authorized scope and shows each reported stage here.
+                </div>
+              </div>
+            ) : (
+              <div className="cmpl-list">
+                {rows.map((r) => {
+                  const isRun = r.status === "running";
+                  return (
+                    <Link key={r.campaign_id} href={`/campaign/${r.campaign_id}`} className="cmpl-row">
+                      <span className="cmpl-status" aria-label={r.status}>
+                        {isRun
+                          ? <Loader2 size={16} className="cmpl-spin" color="var(--accent)" aria-hidden />
+                          : <CheckCircle2 size={16} color="var(--nominal-color)" aria-hidden />}
+                      </span>
+                      <div className="cmpl-main">
+                        <div className="cmpl-top">
+                          <span className="cmpl-id">{r.campaign_id}</span>
+                          <span className="cmpl-scope"><Target size={12} aria-hidden /> {r.targets.join(", ") || "—"}</span>
+                        </div>
+                        <div className="cmpl-sub">
+                          {isRun ? <>Running <strong>{r.current_stage ?? "…"}</strong></> : <>Completed</>}
+                          {" · "}updated {ago(r.updated_at)}
+                        </div>
+                      </div>
+                      <div className="cmpl-progress">
+                        <div className="cmpl-bar"><div className="cmpl-bar-fill" data-running={isRun}
+                          style={{ transform: `scaleX(${Math.min(100, Math.max(0, r.percent)) / 100})` }} /></div>
+                        <span className="cmpl-pct">{Math.round(r.percent)}%</span>
+                      </div>
+                      <ChevronRight size={16} color="var(--text-faint)" aria-hidden />
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
-        <div className="cmpl-subhead"><Radar size={14} /><div><strong>Collector stage snapshots</strong><span>Low-level progress reported directly by vedha-agent campaigns</span></div></div>
-        {loading && rows.length === 0 ? (
-          <div className="cmpl-empty"><Loader2 size={16} className="cmpl-spin" /> Loading campaigns…</div>
-        ) : rows.length === 0 ? (
-          <div className="cmpl-empty-block">
-            <Radar size={24} color="var(--text-faint)" />
-            <div className="cmpl-empty-title">No campaigns yet</div>
-            <div className="cmpl-empty-hint">
-              Launch the <strong>Network Vulnerability Assessment</strong> from the{" "}
-              <Link href={surface === "portal" ? "/portal/scans" : "/scan"}>Scanner</Link>. Vedha uses the engagement&apos;s
-              authorized scope and shows each reported stage here.
-            </div>
-          </div>
-        ) : (
-          <div className="cmpl-list">
-            {rows.map((r) => {
-              const isRun = r.status === "running";
-              return (
-                <Link key={r.campaign_id} href={`${surface === "portal" ? "/portal/campaign" : "/campaign"}/${r.campaign_id}`} className="cmpl-row">
-                  <span className="cmpl-status" aria-label={r.status}>
-                    {isRun
-                      ? <Loader2 size={16} className="cmpl-spin" color="var(--accent)" />
-                      : <CheckCircle2 size={16} color="var(--nominal-color)" />}
-                  </span>
-                  <div className="cmpl-main">
-                    <div className="cmpl-top">
-                      <span className="cmpl-id">{r.campaign_id}</span>
-                      <span className="cmpl-scope"><Target size={12} /> {r.targets.join(", ") || "—"}</span>
-                    </div>
-                    <div className="cmpl-sub">
-                      {isRun
-                        ? <>Running <strong>{r.current_stage ?? "…"}</strong></>
-                        : <>Completed</>}
-                      {" · "}updated {ago(r.updated_at)}
-                    </div>
-                  </div>
-                    <div className="cmpl-progress">
-                      <div className="cmpl-bar"><div className="cmpl-bar-fill" data-running={isRun}
-                      style={{ transform: `scaleX(${Math.min(100, Math.max(0, r.percent)) / 100})` }} /></div>
-                    <span className="cmpl-pct">{Math.round(r.percent)}%</span>
-                  </div>
-                  <ChevronRight size={16} color="var(--text-faint)" />
-                </Link>
-              );
-            })}
-          </div>
+        {/* The customer's one engagement already shows its jobs in the pipeline above; the
+            tenant-wide queue is for operators who run many engagements. */}
+        {surface === "manager" && (
+          <section className="cmpl-section cmpl-job-section" aria-labelledby="cmpl-queue">
+            <header className="cmpl-section-head">
+              <div><Target size={15} aria-hidden /><div><strong id="cmpl-queue">Probe job queue</strong><span>Every probe job across all engagements, newest first</span></div></div>
+            </header>
+            <FleetJobs surface={surface} />
+          </section>
         )}
       </div>
     </Shell>
@@ -173,16 +182,17 @@ const STYLES = `
 .cmpl-primary:hover { background: var(--accent-dim); }
 .cmpl-section { display: flex; flex-direction: column; gap: 14px; }
 .cmpl-job-section { padding: 18px 20px; background: var(--bg-panel); border: 1px solid var(--border-subtle); border-radius: 12px; }
-.cmpl-section-head, .cmpl-subhead { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-.cmpl-section-head > div, .cmpl-subhead { color: var(--accent); }
-.cmpl-section-head > div, .cmpl-subhead > div { display: flex; align-items: center; gap: 9px; }
-.cmpl-section-head > div > div, .cmpl-subhead > div { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
-.cmpl-section-head strong, .cmpl-subhead strong { color: var(--text-primary); font-size: 14px; font-weight: 650; }
-.cmpl-section-head span, .cmpl-subhead span { color: var(--text-muted); font-size: 11.5px; }
+.cmpl-section-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.cmpl-section-head em.cmpl-count { margin-left: 6px; font: 600 12px/1 var(--font-mono); font-style: normal; color: var(--text-muted); }
+.cmpl-section-head > div { color: var(--accent); }
+.cmpl-section-head > div { display: flex; align-items: flex-start; gap: 9px; }
+.cmpl-section-head > div > svg { margin-top: 2px; flex: none; }
+.cmpl-section-head > div > div { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.cmpl-section-head strong { color: var(--text-primary); font-size: 14px; font-weight: 650; }
+.cmpl-section-head span { color: var(--text-muted); font-size: 11.5px; }
 .cmpl-section-head select { min-width: 250px; padding: 8px 10px; color: var(--text-primary); background: var(--bg-panel);
   border: 1px solid var(--border-default); border-radius: 8px; font: inherit; }
 .cmpl-inline-empty { padding: 24px; color: var(--text-muted); background: var(--bg-surface); border-radius: 10px; }
-.cmpl-subhead { justify-content: flex-start; padding-top: 4px; }
 .cmpl-empty { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; padding: 28px 6px; }
 .cmpl-empty-block { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 44px 24px;
   background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
@@ -196,9 +206,9 @@ const STYLES = `
 .cmpl-row:hover { border-color: var(--border-accent); background: var(--bg-hover); }
 .cmpl-status { flex-shrink: 0; display: grid; place-items: center; }
 .cmpl-main { flex: 1; min-width: 0; }
-.cmpl-top { display: flex; align-items: baseline; gap: 10px; }
+.cmpl-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .cmpl-id { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.cmpl-scope { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); }
+.cmpl-scope { display: inline-flex; align-items: center; gap: 4px; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); }
 .cmpl-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
 .cmpl-sub strong { color: var(--text-secondary); font-weight: 600; }
 .cmpl-progress { display: flex; align-items: center; gap: 9px; width: 160px; flex-shrink: 0; }
@@ -212,6 +222,8 @@ const STYLES = `
 @media (max-width: 720px) {
   .cmpl-section-head { align-items: stretch; flex-direction: column; }
   .cmpl-section-head select { width: 100%; min-width: 0; }
-  .cmpl-progress { width: 120px; }
+  .cmpl-progress { width: 96px; }
+  .cmpl-row { padding: 12px; gap: 10px; min-height: 44px; }
+  .cmpl-primary { min-height: 44px; }
 }
 `;

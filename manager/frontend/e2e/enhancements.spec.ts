@@ -359,3 +359,34 @@ test("a customer sees their own activity record without operator addresses", asy
   await expect(page.getByText("Tamper check")).toHaveCount(0);
   await expect(page.getByRole("link", { name: /CSV/ })).toHaveCount(0);
 });
+
+test("a campaign shows each job by its quotable reference, offers Stop or Remove only while it can act, and opens fix steps", async ({ page }) => {
+  await page.goto("/campaign");
+  await expect(page.getByText("SCN-261016-AB12CD").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Stop job SCN-261016-AB12CD" })).toBeVisible();     // running
+  await expect(page.getByRole("button", { name: "Remove job SCN-261016-EF34GH" })).toBeVisible();   // queued
+  await expect(page.getByRole("button", { name: /(Stop|Remove) job SCN-261015-IJ56KL/ })).toHaveCount(0);   // finished: no control
+  await expect(page.getByRole("button", { name: /(Stop|Remove) job SCN-261014-MN78OP/ })).toHaveCount(0);   // failed: no control
+
+  // Severity is a word on the row, not only a coloured dot.
+  await expect(page.locator(".cpg-sev").first()).toHaveText("critical");
+  const finding = page.getByRole("button", { name: /SMBv1 enabled/ });
+  await expect(finding).toHaveAttribute("aria-expanded", "false");
+  await finding.click();
+  await expect(finding).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByText("Disable SMBv1 on the host.")).toBeVisible();
+  await expect(page.getByText("CVE-2017-0144")).toBeVisible();
+});
+
+test("operators get the campaign runs and the all-engagement probe queue; customers get only their own pipeline", async ({ page }) => {
+  await page.goto("/campaign");
+  await expect(page.getByRole("heading", { name: "Jobs" })).toBeVisible();
+  await expect(page.getByText("Campaign runs", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("Probe job queue")).toBeVisible();
+  await expect(page.getByText("camp-20260930-a1b2")).toBeVisible();
+
+  await page.goto("/portal/campaign");
+  await expect(page.getByText("Engagement pipeline")).toBeVisible();
+  await expect(page.getByText("Probe job queue")).toHaveCount(0);   // their one engagement's jobs are already in the pipeline
+  await expect(page.getByText("Campaign runs")).toHaveCount(0);     // probe snapshots carry no engagement identity
+});

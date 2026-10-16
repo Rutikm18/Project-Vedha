@@ -169,6 +169,35 @@ const slaItems = Array.from({ length: 8 }, (_, index) => ({
   state: "breached",
 }));
 
+const campaignJobs = [
+  { id: "job-run-1111", use_case_id: "uc_network_va", job_type: "network_va", status: "running", phase: "scanning",
+    agent_name: "mumbai-dc-probe", result_summary: {}, reference: "SCN-261016-AB12CD",
+    created_at: "2026-09-30T09:40:00Z", started_at: "2026-09-30T09:41:00Z", completed_at: null },
+  { id: "job-pend-2222", use_case_id: "uc_network_va", job_type: "network_va", status: "pending", phase: "queued",
+    agent_name: null, result_summary: {}, reference: "SCN-261016-EF34GH",
+    created_at: "2026-09-30T09:45:00Z", started_at: null, completed_at: null },
+  { id: "job-done-3333", use_case_id: "uc_network_va", job_type: "network_va", status: "completed", phase: "complete",
+    agent_name: "pune-branch-probe", reference: "SCN-261015-IJ56KL",
+    result_summary: { scanner_count: 6, fact_count: 412, open_ports: 37, profile: "normal", scanners: ["nmap", "tls", "smb_scan"] },
+    created_at: "2026-09-29T08:00:00Z", started_at: "2026-09-29T08:01:00Z", completed_at: "2026-09-29T08:52:00Z" },
+  { id: "job-fail-4444", use_case_id: "uc_network_va", job_type: "network_va", status: "failed", phase: "scanning",
+    agent_name: "mumbai-dc-probe", result_summary: {}, reference: "SCN-261014-MN78OP",
+    created_at: "2026-09-28T08:00:00Z", started_at: "2026-09-28T08:01:00Z", completed_at: "2026-09-28T08:03:00Z" },
+];
+
+const fleetJobs = campaignJobs.map((j) => ({
+  job_id: j.id, reference: j.reference, agent_id: j.agent_name ? `agent-${j.agent_name}` : null, agent_name: j.agent_name,
+  engagement_id: "e2e", engagement_name: "Northwind perimeter review", job_type: j.job_type, status: j.status,
+  use_case_id: j.use_case_id, created_at: j.created_at, started_at: j.started_at, completed_at: j.completed_at,
+}));
+
+const campaignRuns = [
+  { campaign_id: "camp-20260930-a1b2", targets: ["10.10.0.0/24", "10.20.0.0/24"], status: "running", percent: 46,
+    current_stage: "Service fingerprinting", started_at: "2026-09-30T09:41:00Z", updated_at: "2026-09-30T10:29:00Z", stage_count: 7 },
+  { campaign_id: "camp-20260929-c3d4", targets: ["192.168.1.0/24"], status: "completed", percent: 100,
+    current_stage: null, started_at: "2026-09-29T08:01:00Z", updated_at: "2026-09-29T08:52:00Z", stage_count: 7 },
+];
+
 const campaignProgress = {
   engagement_id: "e2e",
   engagement: { name: engagement.name, status: engagement.status },
@@ -181,8 +210,8 @@ const campaignProgress = {
   },
   evidence: { submissions: 1, covered: 1, fully_covered: true },
   queue: { pending: false, overdue: false, dead: false },
-  jobs: [],
-  job_stats: { total: 0, running: 0, complete: 0, failed: 0, probes: [] },
+  jobs: campaignJobs,
+  job_stats: { total: 4, running: 1, complete: 1, failed: 1, probes: ["mumbai-dc-probe", "pune-branch-probe"] },
   detection: {
     status: "complete", facts_count: 1, findings_new: 1, findings_current: 1,
     by_severity: { critical: 1, high: 0, medium: 0, low: 0, info: 0 },
@@ -197,7 +226,16 @@ const campaignProgress = {
     { name: "remediation", status: "done", count: 1 },
   ],
   percent: 100,
-  findings: [],
+  findings: [
+    { id: "cmp-f1", title: "SMBv1 enabled (wormable, deprecated)", severity: "critical", risk_score: 911, confidence: 90,
+      corroborated_by: ["smb_scan", "nmap"], cve_ids: ["CVE-2017-0144"], mitre_techniques: ["T1210"], state: "confirmed",
+      remediation: "1. Disable SMBv1 on the host. 2. Restart the Server service. 3. Re-run the scan to confirm it no longer negotiates SMBv1." },
+    { id: "cmp-f2", title: "VNC accepts connections with no authentication (port 5900)", severity: "high", risk_score: 742, confidence: 70,
+      cve_ids: null, mitre_techniques: null, state: "open", remediation: null },
+    { id: "cmp-f3", title: "TLS 1.0 accepted on 10.10.0.14:443", severity: "medium", risk_score: 388, confidence: 85,
+      cve_ids: null, mitre_techniques: ["T1040"], state: "open",
+      remediation: "Disable TLS 1.0 and 1.1. Keep TLS 1.2 and 1.3 only." },
+  ],
 };
 
 function json(route: Route, body: unknown, status = 200) {
@@ -280,10 +318,11 @@ export async function mockApi(route: Route) {
   });
   if (path === "/api/activity") return json(route, []);
   if (path === "/api/agents/register" || path === "/api/agents" || path === "/api/scan/probes") return json(route, []);
-  if (path === "/api/scan/campaigns" || path === "/api/scan/jobs" || path === "/api/customers" || path === "/api/users" || path === "/api/auth/pats" || path === "/api/integrations") return json(route, []);
+  if (path === "/api/scan/campaigns") return json(route, campaignRuns);
+  if (path === "/api/fleet/jobs") return json(route, fleetJobs);
+  if (path === "/api/scan/jobs" || path === "/api/customers" || path === "/api/users" || path === "/api/auth/pats" || path === "/api/integrations") return json(route, []);
   if (path === "/api/scan/use-cases") return json(route, []);
   if (path === "/api/fleet/enrollment") return json(route, { requests: [], manager_url: "https://manager.vedha.test" });
-  if (path === "/api/fleet/jobs") return json(route, []);
   if (path === "/api/ai/status") return json(route, { enabled: false, provider: "ollama", model: "", providers: [] });
   if (path === "/api/settings/status") return json(route, { apiReachable: true, cookieSecure: true, checkedAt: "2026-09-30T10:00:00Z" });
   if (path === "/api/sla-policy") return json(route, { critical_hours: 24, high_hours: 72, medium_hours: 168, low_hours: 336, info_hours: 0, is_custom: false });

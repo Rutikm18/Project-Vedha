@@ -10,19 +10,15 @@
  * toggle. Polls every 5s so the live queue stays current.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CAMPAIGN_CSS } from "../../components/campaign/campaign-css";
 import { createFleetWorkspaceApi, type FleetWorkspaceSurface } from "../../lib/fleet-workspace-api";
 
 interface Job {
-  job_id: string; agent_id: string | null; agent_name: string | null;
+  job_id: string; reference?: string | null; agent_id: string | null; agent_name: string | null;
   engagement_id: string | null; engagement_name: string | null;
   job_type: string; status: string; use_case_id: string | null;
   created_at: string | null; started_at: string | null; completed_at: string | null;
 }
-
-const STATUS_COLOR: Record<string, string> = {
-  running: "var(--accent)", pending: "var(--text-muted)",
-  completed: "var(--sev-low,#3b82f6)", failed: "var(--sev-high,#f97316)",
-};
 
 export default function FleetJobs({ surface = "manager" }: { surface?: FleetWorkspaceSurface }) {
   const api = useMemo(() => createFleetWorkspaceApi(surface), [surface]);
@@ -61,49 +57,47 @@ export default function FleetJobs({ surface = "manager" }: { surface?: FleetWork
   }, [jobs]);
 
   const running = jobs.filter((j) => j.status === "running" || j.status === "pending").length;
-
-  const selectStyle = { fontSize: 11.5, padding: "5px 9px", borderRadius: 8,
-    border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)",
-    color: "var(--text-secondary)" } as const;
+  const filtered = Boolean(probe || engagement || runningOnly);
 
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <section className="cpg" style={{ gap: 4 }}>
+      <style>{CAMPAIGN_CSS}</style>
       {/* ── filter bar ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.4, textTransform: "uppercase" }}>Jobs</span>
-        <span style={{ fontSize: 11, color: "var(--text-muted)" }}><strong style={{ color: "var(--accent)" }}>{running}</strong> running · {jobs.length} total</span>
-        <select value={probe} onChange={(e) => setProbe(e.target.value)} style={selectStyle}>
+      <div className="cpg-q-filters">
+        <span className="cpg-dim" aria-live="polite"><b style={{ color: "var(--accent)" }}>{running}</b> running · {jobs.length} total</span>
+        <select value={probe} onChange={(e) => setProbe(e.target.value)} aria-label="Filter by probe">
           <option value="">All probes</option>
           {probes.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
         </select>
         {surface === "manager" ? (
-          <select value={engagement} onChange={(e) => setEngagement(e.target.value)} style={selectStyle}>
+          <select value={engagement} onChange={(e) => setEngagement(e.target.value)} aria-label="Filter by engagement">
             <option value="">All engagements</option>
             {engagements.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
           </select>
         ) : (
-          <span style={{ ...selectStyle, cursor: "default" }}>Assigned engagement</span>
+          <span className="cpg-chip">Assigned engagement</span>
         )}
-        <label style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
-          <input type="checkbox" checked={runningOnly} onChange={(e) => setRunningOnly(e.target.checked)} /> running only
+        <label>
+          <input type="checkbox" checked={runningOnly} onChange={(e) => setRunningOnly(e.target.checked)} /> Running only
         </label>
       </div>
 
-      {err && <div style={{ fontSize: 12, color: "var(--sev-high,#f97316)" }}>Failed to load jobs: {err}</div>}
+      {err && <p className="cpg-err" role="alert">Failed to load jobs: {err}</p>}
 
       {/* ── job rows ── */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {jobs.length === 0 && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No jobs match the current filters.</div>}
+      <div className="cpg-q-list">
+        {jobs.length === 0 && !err && (
+          <p className="cpg-empty">
+            {filtered ? "No jobs match these filters." : "No jobs yet. A job appears here when a scan is queued for a probe."}
+          </p>
+        )}
         {jobs.map((j) => (
-          <div key={j.job_id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 14px",
-            borderRadius: 10, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)", flexWrap: "wrap" }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_COLOR[j.status] ?? "var(--text-muted)",
-              animation: j.status === "running" ? "pulse 1.4s infinite" : "none", flexShrink: 0 }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{j.use_case_id ?? j.job_type}</span>
-            <span style={{ fontSize: 10.5, textTransform: "capitalize", color: STATUS_COLOR[j.status] ?? "var(--text-muted)" }}>{j.status}</span>
-            {j.agent_name && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>probe <strong style={{ color: "var(--text-secondary)" }}>{j.agent_name}</strong></span>}
-            {j.engagement_name && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>· {j.engagement_name}</span>}
-            <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>{j.job_id.slice(0, 8)}</span>
+          <div key={j.job_id} className="cpg-q-row">
+            <strong>{j.use_case_id ?? j.job_type}</strong>
+            <span className="cpg-status" data-status={j.status}><i aria-hidden />{j.status}</span>
+            {j.agent_name && <span className="cpg-dim">probe <b>{j.agent_name}</b></span>}
+            {j.engagement_name && <span className="cpg-dim">· {j.engagement_name}</span>}
+            <span className="cpg-ref" title={j.job_id}>{j.reference ?? j.job_id.slice(0, 8)}</span>
           </div>
         ))}
       </div>
