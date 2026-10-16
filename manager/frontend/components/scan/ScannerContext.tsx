@@ -1,63 +1,65 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
-import { Activity, ArrowRight, CheckCircle2, ChevronRight, Fingerprint, Layers, Network, Radar, ShieldCheck, Workflow } from "lucide-react";
+import type { ReactNode } from "react";
+import { Activity, CheckCircle2, ChevronRight, Clock, Layers, Radar, Target } from "lucide-react";
+
+export function ScannerFrame({ active, children }: { active: boolean; children: ReactNode }) {
+  return <div className="scanner-frame" data-active={active}>
+    {children}
+    {['tl', 'tr', 'bl', 'br'].map(corner => <span key={corner} className={`scanner-corner scanner-corner-${corner}`} aria-hidden="true" />)}
+  </div>;
+}
 
 export function ScannerFleetStrip({ probes, loading, href }: {
-  probes: Array<{ id: string; name: string; online: boolean; current_job_id: string | null }>;
+  probes: Array<{ id: string; name: string; online: boolean; current_job_id: string | null; capabilities: string[]; location: string | null }>;
   loading: boolean; href: string;
 }) {
   const online = probes.filter(probe => probe.online);
   const scanning = online.filter(probe => probe.current_job_id).length;
   return <section className="scanner-fleet" aria-label="vedha-agent fleet">
-    <span className="scanner-fleet-title"><Activity size={15} aria-hidden="true" /> vedha-agent fleet</span>
-    {loading ? <span>Checking agents…</span> : !probes.length ? <span>No agents registered. Connect a vedha-agent to begin.</span> : <>
-      <dl><div data-state={online.length ? "online" : undefined}><dt>Online</dt><dd>{online.length}</dd></div><div><dt>Idle</dt><dd>{online.length - scanning}</dd></div><div data-state={scanning ? "scanning" : undefined}><dt>Scanning</dt><dd>{scanning}</dd></div></dl>
-      <span className="scanner-fleet-names">{online.slice(0, 2).map(probe => <span key={probe.id}><i aria-hidden="true" />{probe.name}</span>)}</span>
-    </>}
-    <Link href={href}>View fleet <ArrowRight size={13} aria-hidden="true" /></Link>
+    <div className="scanner-fleet-summary">
+      <span className="scanner-fleet-title"><i data-online={online.length > 0} aria-hidden="true" />vedha-agent Fleet</span>
+      {loading ? <span>Loading…</span> : !probes.length ? <span>No vedha-agents registered — deploy one to begin</span> :
+        <dl><div data-state="online"><dt>Online</dt><dd>{online.length}</dd></div><div><dt>Idle</dt><dd>{online.length - scanning}</dd></div><div data-state="scanning"><dt>Scanning</dt><dd>{scanning}</dd></div></dl>}
+      <Link href={href}>View fleet <ChevronRight size={13} aria-hidden="true" /></Link>
+    </div>
+    {!loading && probes.length > 0 && <ul className="scanner-fleet-probes" aria-label="Agent availability">
+      {probes.map(probe => {
+        const state = !probe.online ? 'offline' : probe.current_job_id ? 'scanning' : 'online';
+        return <li key={probe.id} data-state={state} title={[probe.location, probe.capabilities.length ? `Capabilities: ${probe.capabilities.join(', ')}` : null].filter(Boolean).join(' · ')}>
+          <i aria-hidden="true" /><span className="scanner-agent-name">{probe.name}</span><span className="scanner-agent-status">{state}</span>
+          <span className="scanner-agent-capabilities" aria-label={`${probe.capabilities.length} capabilities`}><Layers size={11} aria-hidden="true" />{probe.capabilities.length}</span>
+        </li>;
+      })}
+    </ul>}
   </section>;
 }
 
-const stages = [
-  { label: "Discovery", Icon: Radar }, { label: "Port map", Icon: Network },
-  { label: "Assessment", Icon: ShieldCheck }, { label: "Exposure", Icon: Workflow },
-  { label: "Inventory", Icon: Layers }, { label: "Detection", Icon: Fingerprint },
-];
+const stages = ['Discovery', 'Port map', 'Assessment', 'Exposure', 'Inventory', 'Detection'];
 
-/** The existing Network VA entry, kept separate from live job progress. */
-export function NetworkVaHero({ selected, available, loading, disabled, onConfigure, campaignHref }: {
-  selected: boolean; available: boolean; loading: boolean; disabled?: boolean; onConfigure: () => void; campaignHref: string;
+export function NetworkVaHero({ workflow, selected, loading, disabled, onConfigure, campaignHref }: {
+  workflow?: { display_name: string; description: string; profile: string; expected_runtime_hint: string };
+  selected: boolean; loading: boolean; disabled?: boolean; onConfigure: () => void; campaignHref: string;
 }) {
-  const intro = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const element = intro.current;
-    if (!element || window.matchMedia("(prefers-reduced-motion: reduce)").matches || !element.animate) return;
-    // Inspired by React Bits Animated Content; implemented with native WAAPI and Vedha tokens.
-    // Content stays visible before hydration, and the reveal never delays interaction.
-    const tokens = getComputedStyle(element);
-    const animation = element.animate([{ opacity: 0.85 }, { opacity: 1 }], {
-      duration: parseFloat(tokens.getPropertyValue("--dur-fast")) || 180,
-      easing: tokens.getPropertyValue("--ease-out").trim(),
-    });
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const stop = () => { if (reduceMotion.matches) animation.cancel(); };
-    reduceMotion.addEventListener("change", stop);
-    return () => { animation.cancel(); reduceMotion.removeEventListener("change", stop); };
-  }, []);
-  return <section ref={intro} className="scanner-network-va" aria-labelledby="scanner-network-va-title">
-    <header><span className="scanner-workflow-icon"><Radar size={23} aria-hidden="true" /></span>
-      <div><h2 id="scanner-network-va-title">Network Vulnerability Assessment</h2>
-        <p>Discover assets, assess exposed services, and prioritize findings in one workflow.</p></div>
-      <Link href={campaignHref}>View live campaigns <ArrowRight size={13} aria-hidden="true" /></Link>
-    </header>
-    <div className="scanner-workflow-footer"><ol aria-label="Network VA workflow stages">
-      {stages.map(({ label, Icon }) => <li key={label}><Icon size={14} aria-hidden="true" /><span>{label}</span><ChevronRight className="scanner-stage-connector" size={12} aria-hidden="true" /></li>)}
-    </ol>
-      {loading ? <span>Loading workflow…</span> : !available ? <span>Workflow unavailable</span>
-        : selected ? <span className="scanner-workflow-selected"><CheckCircle2 size={14} aria-hidden="true" /> Selected workflow</span>
-        : <button type="button" className="scanner-text-action" disabled={disabled} onClick={onConfigure}>Use network assessment</button>}
-    </div>
-  </section>;
+  return <ScannerFrame active={selected && !!workflow && !loading}>
+    <section className="scanner-network-va" data-selected={selected && !!workflow && !loading} aria-labelledby="scanner-network-va-title">
+      <span className="scanner-workflow-glow" aria-hidden="true" />
+      <header><span className="scanner-workflow-icon"><Radar size={26} aria-hidden="true" /></span>
+        <div><div className="scanner-workflow-meta"><span>Flagship campaign</span>{workflow && <small>{workflow.profile.toUpperCase()}</small>}</div>
+          <h2 id="scanner-network-va-title">{workflow?.display_name ?? 'Network Vulnerability Assessment'}</h2>
+          <p>{workflow?.description ?? 'The Network Vulnerability Assessment workflow is unavailable.'}</p></div>
+      </header>
+      <ol className="scanner-workflow-stages" aria-label="Campaign stages, in order">
+        {stages.map((stage, index) => <li key={stage}>{index > 0 && <ChevronRight size={12} aria-hidden="true" />}<span>{stage}</span></li>)}
+      </ol>
+      <div className="scanner-workflow-actions">
+        {loading ? <span>Loading workflow…</span> : !workflow ? <span>Workflow unavailable</span>
+          : selected ? <span className="scanner-workflow-selected"><CheckCircle2 size={15} aria-hidden="true" />Selected campaign</span>
+          : <button type="button" className="btn btn-primary" disabled={disabled} onClick={onConfigure}><Target size={15} aria-hidden="true" />Configure campaign</button>}
+        <Link href={campaignHref}><Activity size={14} aria-hidden="true" />View live campaigns</Link>
+        {!loading && workflow?.expected_runtime_hint && <span className="scanner-workflow-runtime"><Clock size={12} aria-hidden="true" />{workflow.expected_runtime_hint}</span>}
+      </div>
+    </section>
+  </ScannerFrame>;
 }
