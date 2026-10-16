@@ -15,6 +15,7 @@ import { PortalShell } from "../../components/portal/PortalShell";
 import { PlanLicenceSection } from "../../components/portal/PlanLicenceSection";
 import { AuthPolicySection, CustomerDefaultsSection, ScanPolicySection } from "../../components/settings/PolicySections";
 import { AccountSecuritySection } from "../../components/settings/AccountSecuritySection";
+import { AdminOnlyNotice, CustomerAuditLog, OperatorAuditLog } from "../../components/settings/AuditLogPanel";
 import { fetchJson } from "../../lib/fetcher";
 import { copyText } from "../../lib/clipboard";
 import {
@@ -115,13 +116,6 @@ interface Agent {
   capabilities?: string[];
 }
 
-interface ActivityEvent {
-  id: string;
-  timestamp: string;
-  actor: string;
-  action: string;
-  detail: string;
-}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1006,44 +1000,28 @@ function NotificationsSection() {
 // ─── Section: Audit Log ───────────────────────────────────────────────────────
 
 function AuditLogSection({ surface }: { surface: SettingsWorkspaceSurface }) {
-  const api = React.useMemo(() => createSettingsWorkspaceApi(surface), [surface]);
-  const { data: events, isLoading, refetch } = useQuery({
-    queryKey: ["settings", surface, "audit-log"],
-    queryFn: () => api.audit<ActivityEvent[]>(),
-    refetchInterval: 30_000,
+  // Only administrators may read the trail; a refused request would make the shared fetch
+  // helper sign the user out, so the question is settled before anything is asked of it.
+  const { data: me, isLoading } = useQuery({
+    queryKey: ["me-role"],
+    queryFn: () => fetchJson<{ role: string; email?: string }>("/api/auth/me"),
+    staleTime: 5 * 60_000,
+    enabled: surface === "manager",
   });
-
-  const [search, setSearch] = useState("");
-  const filtered = (events ?? []).filter(
-    (e) => !search || e.action.toLowerCase().includes(search.toLowerCase()) || e.detail.toLowerCase().includes(search.toLowerCase()) || e.actor.toLowerCase().includes(search.toLowerCase())
-  );
-
+  const operator = surface === "manager";
   return (
     <div className="settings-panel animate-slide-in">
-      <SectionTitle icon={Activity} title="Audit log" detail="Recent platform activity — scan events, finding state changes, and operator actions." />
-      <div style={{ display: "flex", gap: 10, marginBottom: 12, alignItems: "center" }}>
-        <input placeholder="Filter by actor, action, or detail…" value={search}
-          onChange={(e) => setSearch(e.target.value)} style={inlineInput({ maxWidth: 360 })} />
-        <button className="btn btn-secondary btn-sm" onClick={() => void refetch()}>
-          <RefreshCw size={12} /> Refresh
-        </button>
-      </div>
-      {isLoading && <p className="settings-loading-msg">Loading audit events…</p>}
-      <div className="settings-audit-log">
-        {filtered.map((event) => (
-          <article key={event.id} className="settings-audit-row">
-            <time className="settings-audit-time">{formatRelative(event.timestamp)}</time>
-            <div className="settings-audit-body">
-              <strong className="settings-audit-action">{event.action}</strong>
-              <span className="settings-audit-detail">{event.detail}</span>
-            </div>
-            <span className="settings-audit-actor">{event.actor}</span>
-          </article>
-        ))}
-        {filtered.length === 0 && !isLoading && (
-          <p className="settings-empty-state">No events match the current filter.</p>
-        )}
-      </div>
+      <SectionTitle
+        icon={Activity}
+        title="Audit log"
+        detail={operator
+          ? "Who did what, when, from where, and whether it worked. Entries are chained and cannot be edited or removed."
+          : "What happened in your engagement: scans, changes to findings and plans, and who signed in."}
+      />
+      {!operator ? <CustomerAuditLog />
+        : isLoading ? <p className="settings-loading-msg">Loading…</p>
+        : me?.role === "admin" ? <OperatorAuditLog />
+        : <AdminOnlyNotice />}
     </div>
   );
 }

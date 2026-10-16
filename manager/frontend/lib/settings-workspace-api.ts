@@ -9,7 +9,6 @@ export function createSettingsWorkspaceApi(surface: SettingsWorkspaceSurface) {
       status: <T>() => fetchJson<T>("/api/settings/status"),
       probes: <T>() => fetchJson<T>("/api/agents"),
       aiStatus: <T>() => fetchJson<T>("/api/ai/status"),
-      audit: <T>() => fetchJson<T>("/api/activity?limit=100"),
     };
   }
   return {
@@ -32,6 +31,5 @@ export function createSettingsWorkspaceApi(surface: SettingsWorkspaceSurface) {
       })) as T;
     },
     aiStatus: <T>() => portalApi<T>("/workspace/ai/status"),
-    audit: <T>() => portalApi<T>("/activity?limit=100"),
   };
 }

@@ -2,14 +2,14 @@
  * Organisation policy settings — BFF proxy.
  *   GET → /org-settings/{section}   (defaults until an admin edits it)
  *   PUT → /org-settings/{section}   (strictly validated by the backend)
- * Only the three known sections are proxied, so the path cannot be steered
+ * Only the known sections are proxied, so the path cannot be steered
  * anywhere else on the backend.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { backend } from "../../../../lib/backend";
 import { withBackend } from "../../../../lib/with-backend";
 
-const SECTIONS = new Set(["auth", "scan", "customer-defaults"]);
+const SECTIONS = new Set(["auth", "scan", "customer-defaults", "audit"]);
 
 function section(params: { section: string } | undefined): string | null {
   const s = params?.section ?? "";

@@ -317,3 +317,25 @@ test("comparing two scans starts empty, then separates new, fixed, changed and u
   // The same scan cannot be both sides.
   await expect(panel.getByLabel("Target (later scan)").locator("option", { hasText: "SCN-261009-OLDER0" })).toHaveJSProperty("disabled", true);
 });
+
+test("the audit log shows the integrity check, filters by outcome and opens an entry in full", async ({ page }) => {
+  await page.goto("/settings?section=audit-log");
+  await expect(page.getByText("Tamper check passed: 1,284 entries verified in order.")).toBeVisible();
+  await expect(page.getByText("Entries are kept for 365 days")).toBeVisible();
+  await expect(page.getByText("Sign-in failed", { exact: true })).toBeVisible();
+  const request = page.waitForRequest((r) => r.url().includes("/api/audit-logs?") && r.url().includes("outcome=failure"));
+  await page.getByRole("button", { name: /^Failed/ }).click();
+  await request;
+  await page.getByRole("button", { name: /Sign-in failed/ }).first().click();
+  await expect(page.getByText("ghost@example.test").first()).toBeVisible();
+  await expect(page.getByText("user_not_found")).toBeVisible();
+  await expect(page.getByRole("link", { name: /CSV/ })).toHaveAttribute("href", /\/api\/audit-logs\/export\?.*outcome=failure/);
+});
+
+test("a customer sees their own activity record without operator addresses", async ({ page }) => {
+  await page.goto("/portal/settings?section=audit-log");
+  await expect(page.getByText("Scan requested")).toBeVisible();
+  await expect(page.getByText("Vedha analyst")).toBeVisible();
+  await expect(page.getByText("Tamper check")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /CSV/ })).toHaveCount(0);
+});

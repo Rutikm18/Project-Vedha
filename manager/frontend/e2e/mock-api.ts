@@ -66,6 +66,28 @@ const finding = {
   },
 };
 
+const auditEntry = (n: number, over: Record<string, unknown> = {}) => ({
+  id: `00000000-0000-4000-8000-0000000000${String(n).padStart(2, "0")}`,
+  timestamp: `2026-10-16T08:${String(60 - n).padStart(2, "0")}:04Z`,
+  action: "finding.updated", label: "Finding changed", category: "findings", category_label: "Findings",
+  outcome: "success",
+  actor: { id: "11111111-1111-4111-8111-111111111111", type: "user", label: "analyst@vedha.test" },
+  resource_type: "finding", resource_id: null, engagement_id: null, engagement_name: null,
+  ip_address: "203.0.113.7", user_agent: "Mozilla/5.0", request_id: `req-${n}`,
+  detail: { status: "confirmed" }, changes: { status: { before: "open", after: "confirmed" } },
+  chain_position: n, entry_hash: "ab".repeat(32), ...over,
+});
+
+const auditEntries = [
+  auditEntry(2, {
+    action: "auth.login.failure", label: "Sign-in failed", category: "authentication",
+    category_label: "Sign-in and sessions", outcome: "failure",
+    actor: { id: "anonymous", type: "anonymous", label: "ghost@example.test" },
+    detail: { reason: "user_not_found" }, changes: null, resource_type: null,
+  }),
+  auditEntry(1),
+];
+
 const scans = [
   { jobId: "job-new", reference: "SCN-261016-NEWEST", useCaseId: "uc_network_va", intensity: "normal", scannedAt: "2026-10-16T08:00:00Z", status: "completed", findings: 4 },
   { jobId: "job-old", reference: "SCN-261009-OLDER0", useCaseId: "uc_network_va", intensity: "normal", scannedAt: "2026-10-09T08:00:00Z", status: "completed", findings: 3 },
@@ -218,6 +240,27 @@ export async function mockApi(route: Route) {
   if (path === "/api/findings/groups") return json(route, {
     items: [], total: 0, page: 1, pageSize: 100, pages: 1,
   });
+  if (path === "/api/portal/audit-log") return json(route, {
+    items: [
+      { id: "00000000-0000-4000-8000-000000000101", timestamp: "2026-10-16T08:10:00Z", label: "Scan requested", category: "scanning",
+        category_label: "Scanning and probes", outcome: "success", who: "You", who_is_vedha: false, ip_address: "203.0.113.7" },
+      { id: "00000000-0000-4000-8000-000000000102", timestamp: "2026-10-16T07:55:00Z", label: "Finding changed", category: "findings",
+        category_label: "Findings", outcome: "success", who: "Vedha analyst", who_is_vedha: true, ip_address: null },
+    ],
+    next_cursor: null,
+  });
+  if (path === "/api/audit-logs/integrity") return json(route, {
+    ok: true, entries_checked: 1284, oldest: "2026-01-02T00:00:00Z", newest: "2026-10-16T08:00:00Z",
+    first_problem: null, retention_days: 365, minimum_retention_days: 180, checked_at: "2026-10-16T08:30:00Z",
+  });
+  if (path === "/api/audit-logs/facets") return json(route, {
+    categories: [
+      { key: "authentication", label: "Sign-in and sessions", count: 1 }, { key: "findings", label: "Findings", count: 1 },
+      { key: "other", label: "Other", count: 0 },
+    ],
+    outcomes: [{ key: "success", count: 1 }, { key: "failure", count: 1 }, { key: "denied", count: 0 }],
+  });
+  if (path === "/api/audit-logs") return json(route, { items: auditEntries, next_cursor: null });
   if (path === "/api/findings/assets") return json(route, []);
   if (path === "/api/findings/scans") return json(route, scans);
   if (path === "/api/findings/compare") return json(route, compareResult);
