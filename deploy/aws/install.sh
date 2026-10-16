@@ -26,7 +26,9 @@
 #        curl -fsSL "https://raw.githubusercontent.com/<org>/vedha/main/deploy/aws/install.sh" | bash
 #
 # Environment variables (all optional except where noted):
-#   DOMAIN             e.g. vedha.example.com  → UI at app.$DOMAIN, API at api.$DOMAIN
+#   DOMAIN             e.g. vedhasec.com  → UI at app.$DOMAIN, API at api.$DOMAIN,
+#                      agent facade at get.$DOMAIN (the only host clients ever see).
+#                      Create an A/ALIAS DNS record for all THREE subdomains.
 #   REPO_URL           git URL (required if not already in a checkout)
 #   APP_DIR            install location (default /opt/vedha)
 #   ADMIN_EMAIL        seeded admin email (default admin@vedha.io)
@@ -160,13 +162,18 @@ for PORT in 80 443; do
 done
 log "ports 80/443 available ✓"
 
-# CPU sizing
+# CPU + RAM sizing. Each uvicorn worker loads the whole app (~300-400 MB), so on a
+# small box 2+ workers thrash swap and the API starts dropping connections under
+# load — the console floods /agents/jobs and the BFF sees ECONNRESET/UND_ERR_SOCKET
+# (seen in the field on a 1 GB server). Cap workers by BOTH cores and memory so a
+# fresh deploy on a small instance is stable without hand-tuning.
 CPUS=$(nproc)
 if [ -z "${API_WORKERS:-}" ]; then
-  # Cap at 4 uvicorn workers — more thrashes RAM on shared box
-  API_WORKERS=$(( CPUS < 2 ? 1 : (CPUS > 4 ? 4 : CPUS) ))
+  cpu_cap=$(( CPUS < 2 ? 1 : (CPUS > 4 ? 4 : CPUS) ))
+  ram_cap=$(( MEM_GB < 2 ? 1 : (MEM_GB < 4 ? 2 : 4) ))
+  API_WORKERS=$(( cpu_cap < ram_cap ? cpu_cap : ram_cap ))
 fi
-log "cpu: ${CPUS} cores → API_WORKERS=${API_WORKERS}"
+log "cpu: ${CPUS} cores, ram: ${MEM_GB}GB → API_WORKERS=${API_WORKERS}"
 
 # ── 3. Package dependencies ───────────────────────────────────────────────────
 step "Installing system dependencies"
@@ -459,13 +466,18 @@ CADDY_DIR="$APP_DIR/deploy/aws"
 if [ -n "$DOMAIN" ]; then
   UI_HOST="app.$DOMAIN"
   API_HOST="api.$DOMAIN"
+  # The zero-knowledge agent facade: the ONLY hostname a client ever sees. It is a
+  # generic brand name that reveals nothing about the real manager, and it serves
+  # only the agent-facing paths (see the Caddyfile block below).
+  GET_HOST="get.$DOMAIN"
   COOKIE_SECURE=true
   UI_URL="https://$UI_HOST"
   API_URL="https://$API_HOST"
+  FACADE_URL="https://$GET_HOST"
 
   # Validate DNS resolves before writing Caddyfile (Caddy will fail ACME if not)
   if command -v dig >/dev/null; then
-    for HOST in "$UI_HOST" "$API_HOST"; do
+    for HOST in "$UI_HOST" "$API_HOST" "$GET_HOST"; do
       if ! dig +short "$HOST" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
         warn "DNS: $HOST does not resolve yet. Caddy ACME will fail until DNS propagates."
       else
@@ -506,6 +518,33 @@ $API_HOST {
         header_up X-Real-IP {remote_host}
         health_path /health
         health_interval 15s
+    }
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        -Server
+    }
+}
+
+$GET_HOST {
+    # Zero-knowledge agent facade. The only hostname a client is ever given. It
+    # proxies ONLY the agent-facing paths (install, enrol, redeem, runtime API,
+    # WebSocket and result upload) to the manager, and 404s everything else — so
+    # the generic brand name exposes no operator or portal surface. The real
+    # console API stays on $API_HOST. reverse_proxy upgrades WebSockets natively.
+    encode gzip
+    @agent path /agent/* /agents/* /probe-enrollment/* /health
+    handle @agent {
+        # No active health check: with a single upstream it only adds a ~15s window
+        # after every API restart where the facade 503s while the check re-confirms
+        # (hit in the field right after setting the release keys). Passive health
+        # (dial failure) is enough here, same as the UI host block above.
+        reverse_proxy api:8000 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+    handle {
+        respond "Vedha agent endpoint." 404
     }
     header {
         Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
@@ -619,7 +658,10 @@ OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
 GEMINI_API_KEY=${GEMINI_API_KEY:-}
 GROQ_API_KEY=${GROQ_API_KEY:-}
 CORS_ORIGINS=$UI_URL
-MANAGER_PUBLIC_URL=$API_URL
+# Agents and install commands dial the generic facade (get.$DOMAIN) when a domain
+# is set, so clients never see the real manager host; falls back to the API host
+# for the no-domain self-signed case. The operator console still uses $API_URL.
+MANAGER_PUBLIC_URL=${FACADE_URL:-$API_URL}
 NEO4J_ENABLED=$([ "$ENABLE_GRAPH" = "1" ] && echo true || echo false)
 NEO4J_PASSWORD=$NEO4J_PASSWORD
 VEDHA_RELEASE_ID=$RELEASE_ID
@@ -683,6 +725,12 @@ rollback_previous_release() {
 build_images || die "image build failed (see the lines above and $DEPLOY_LOG)"
 # Remove orphaned containers from previous deploys (profile changes, service renames)
 "${COMPOSE_CMD[@]}" up -d --no-build --remove-orphans 2>&1 | tee -a "$DEPLOY_LOG"
+
+# The Caddyfile is a bind mount, so changing its CONTENT (a new vhost like the
+# get.$DOMAIN facade) does NOT make `up -d` recreate Caddy — it keeps serving the
+# old config until it restarts. Restart it so a re-run that adds/edits a host is
+# actually served, instead of needing a manual `docker restart` (hit in the field).
+"${COMPOSE_CMD[@]}" restart caddy 2>&1 | tee -a "$DEPLOY_LOG" || warn "could not restart caddy; a new vhost may need: docker restart <caddy>"
 
 # ── 14. Wait for API health ───────────────────────────────────────────────────
 step "Health check (up to ${DEPLOY_TIMEOUT}s)"

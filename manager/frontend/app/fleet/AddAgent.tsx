@@ -18,7 +18,7 @@ import { useToast } from "../../hooks/useToast";
 import { copyText } from "../../lib/clipboard";
 import { INSTALL_LIFETIMES } from "../../lib/fleet-workspace-api";
 import type {
-  AgentInstallInfo, FleetEngagementOption, FleetWorkspaceSurface, InstallCommands, InstallToken,
+  AgentInstallInfo, FleetEngagementOption, FleetWorkspaceSurface, InstallCode, InstallCommands, InstallToken,
   createFleetWorkspaceApi,
 } from "../../lib/fleet-workspace-api";
 
@@ -34,6 +34,20 @@ const STATE_COLOR: Record<InstallToken["state"], string> = {
 const STATE_LABEL: Record<InstallToken["state"], string> = {
   active: "waiting for install",
   used: "agent enrolled",
+  expired: "expired",
+  revoked: "revoked",
+};
+
+const CODE_STATE_COLOR: Record<InstallCode["state"], string> = {
+  active: "var(--sev-medium-color)",
+  redeemed: "var(--nominal-color)",
+  expired: "var(--text-faint)",
+  revoked: "var(--text-faint)",
+};
+
+const CODE_STATE_LABEL: Record<InstallCode["state"], string> = {
+  active: "waiting for install",
+  redeemed: "agent enrolled",
   expired: "expired",
   revoked: "revoked",
 };
@@ -106,12 +120,25 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
   // Windows is the common client host, so it leads: the OS defaults to Windows and
   // falls back to Linux only when the release has no Windows package.
   const [os, setOs] = useState<InstallOs>("windows");
+  // Zero-knowledge Windows install codes (operator only).
+  const [codes, setCodes] = useState<InstallCode[]>([]);
+  const [createdCode, setCreatedCode] = useState<InstallCode | null>(null);
+  const [codeBusy, setCodeBusy] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
 
   const loadTokens = useCallback(async () => {
     try {
       setTokens(await api.installTokens(surface === "manager" ? engagementId || undefined : undefined));
     } catch { /* keep the last list on a transient failure */ }
   }, [api, surface, engagementId]);
+
+  const zeroKnowledge = surface === "manager";
+  const loadCodes = useCallback(async () => {
+    if (!zeroKnowledge) return;
+    try {
+      setCodes(await api.installCodes(engagementId || undefined));
+    } catch { /* keep the last list on a transient failure */ }
+  }, [api, zeroKnowledge, engagementId]);
 
   useEffect(() => {
     let alive = true;
@@ -138,13 +165,19 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch + 5s poll; setState happens after an await
     void loadTokens();
-    const timer = window.setInterval(() => void loadTokens(), 5000);
+    void loadCodes();
+    const timer = window.setInterval(() => { void loadTokens(); void loadCodes(); }, 5000);
     return () => window.clearInterval(timer);
-  }, [loadTokens]);
+  }, [loadTokens, loadCodes]);
 
   const createdState = useMemo(
     () => (created ? tokens.find((t) => t.id === created.id)?.state ?? created.state : null),
     [created, tokens],
+  );
+
+  const createdCodeState = useMemo(
+    () => (createdCode ? codes.find((c) => c.id === createdCode.id)?.state ?? createdCode.state : null),
+    [createdCode, codes],
   );
 
   const copy = (text: string) =>
@@ -184,6 +217,35 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
     }
   }
 
+  async function generateCode(event: React.FormEvent) {
+    event.preventDefault();
+    setCodeBusy(true);
+    setCodeError(null);
+    try {
+      const code = await api.createInstallCode(surface === "manager" ? engagementId || null : null, name.trim(), lifetime);
+      setCreatedCode(code);
+      toast.success("Windows install command ready — paste the one line to the client");
+      await loadCodes();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not create the install command";
+      setCodeError(message);
+      toast.error(message);
+    } finally {
+      setCodeBusy(false);
+    }
+  }
+
+  async function revokeCode(id: string) {
+    try {
+      await api.revokeInstallCode(id);
+      if (createdCode?.id === id) setCreatedCode(null);
+      toast.success("Install code revoked");
+      await loadCodes();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not revoke the install code");
+    }
+  }
+
   const host = managerHost(info?.manager_url ?? "");
   const hasWindows = windowsOffered(info);
   const target: InstallOs = hasWindows ? os : "linux";
@@ -192,6 +254,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
   const blocked = surface === "portal" && info?.can_add_agent === false;
   const canGenerate = Boolean(info?.available) && !blocked && (surface === "portal" || Boolean(engagementId));
   const recent = tokens.filter((t) => t.id !== created?.id).slice(0, 6);
+  const recentCodes = codes.filter((c) => c.id !== createdCode?.id).slice(0, 6);
 
   return (
     <section className="flt-card" aria-labelledby="add-agent-title">
@@ -415,6 +478,77 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
         </div>
       )}
 
+      {zeroKnowledge && hasWindows && (
+        <div className="aa-zk" aria-labelledby="zk-title">
+          <div className="aa-result-head">
+            <span id="zk-title" className="flt-cmd-label">Windows &mdash; one command, nothing to share</span>
+            <span className="aa-zk-badge">recommended</span>
+          </div>
+          <p className="aa-small">
+            The client pastes a single line that holds no manager address, key or token &mdash; only an opaque,
+            single-use code. It is redeemed for an enrolment token automatically; the client never logs in and
+            is never handed a secret. Uses the engagement, label and lifetime selected above.
+          </p>
+          <form className="aa-zk-form" onSubmit={generateCode}>
+            <button className="flt-submit" type="submit" disabled={!canGenerate || codeBusy}>
+              {codeBusy ? <Loader2 size={15} className="animate-spin" /> : <KeyRound size={15} />} Generate Windows install command
+            </button>
+          </form>
+          {codeError && (
+            <div className="aa-note aa-warn" role="alert"><AlertTriangle size={14} /><div>{codeError}</div></div>
+          )}
+          {createdCode && (
+            <div className="aa-result" aria-live="polite">
+              <div className="aa-result-head">
+                <span className="flt-cmd-label">Paste this one line to the client (any window; Windows asks for administrator itself)</span>
+                <span className="flt-state" style={{ color: CODE_STATE_COLOR[createdCodeState ?? "active"] }}>
+                  <span className="flt-dot" style={{ background: CODE_STATE_COLOR[createdCodeState ?? "active"] }} />
+                  {CODE_STATE_LABEL[createdCodeState ?? "active"]}
+                </span>
+              </div>
+              {createdCode.command ? (
+                <div className="flt-install">
+                  <code className="flt-code">{createdCode.command}</code>
+                  <button className="flt-icon-btn" aria-label="Copy the install command" onClick={() => copy(createdCode.command!)}>
+                    <Clipboard size={15} />
+                  </button>
+                </div>
+              ) : (
+                <p className="aa-small">This manager address cannot be embedded safely in a Windows command. Set MANAGER_PUBLIC_URL to the https:// facade address (for example https://get.your-domain.com).</p>
+              )}
+              <p className="aa-small">
+                Works once, until {formatExact(createdCode.expires_at)}. The client needs nothing else &mdash; no IP, no key, no manager name.
+                {createdCodeState === "redeemed" && " The agent has enrolled; it appears under Connected vedha-agents."}
+              </p>
+            </div>
+          )}
+          {recentCodes.length > 0 && (
+            <div className="aa-tokens">
+              <span className="flt-cmd-label">Recent install codes</span>
+              {recentCodes.map((c) => (
+                <div className="aa-token" key={c.id}>
+                  <span className="flt-mono">{c.code_prefix}&hellip;</span>
+                  <span className="aa-token-name">{c.name}</span>
+                  <span className="flt-state" style={{ color: CODE_STATE_COLOR[c.state] }}>
+                    <span className="flt-dot" style={{ background: CODE_STATE_COLOR[c.state] }} />{CODE_STATE_LABEL[c.state]}
+                  </span>
+                  <span className="aa-token-time">
+                    {c.state === "redeemed"
+                      ? `${formatExact(c.redeemed_at)}${c.redeemed_ip ? ` · ${c.redeemed_ip}` : ""}`
+                      : `until ${formatExact(c.expires_at)}`}
+                  </span>
+                  {c.state === "active" && (
+                    <button type="button" className="aa-revoke" onClick={() => void revokeCode(c.id)} aria-label={`Revoke install code ${c.code_prefix}`}>
+                      <Ban size={12} /> Revoke
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <button type="button" className="aa-link" onClick={() => setShowReqs((v) => !v)} aria-expanded={showReqs}>
         <ChevronDown size={12} className="flt-chev" data-open={showReqs} /> Host requirements and network checklist
       </button>
@@ -506,6 +640,10 @@ export const ADD_AGENT_STYLES = `
 .aa-revoke { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; border: 0.5px solid var(--border-subtle); background: transparent; color: var(--text-secondary); font-size: 11px; cursor: pointer; }
 .aa-revoke:hover { color: var(--sev-high-color); border-color: var(--sev-high-color); }
 .aa-revoke-current { margin-top: 10px; }
+.aa-zk { margin-top: 16px; padding: 12px; border-radius: 10px; border: 0.5px solid var(--border-accent); background: var(--bg-surface); display: grid; gap: 8px; }
+.aa-zk-badge { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); background: var(--accent-ghost); border-radius: 999px; padding: 2px 8px; }
+.aa-zk-form { margin: 2px 0; }
+.aa-zk .flt-submit { width: fit-content; padding: 0 16px; white-space: nowrap; }
 @media (max-width: 760px) {
   .aa-form { grid-template-columns: minmax(0, 1fr); }
   .aa-submit { width: 100%; }

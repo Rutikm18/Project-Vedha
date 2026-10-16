@@ -9,6 +9,13 @@
 
   or double-click / run install.cmd (it asks for administrator rights itself).
 
+  ZERO-KNOWLEDGE FORM (Fleet -> Add Windows Agent). The client pastes ONE line whose
+  only identity is the generic facade address; there is no token, key or internal
+  manager name in it. The opaque code is redeemed at the manager for a single-use
+  enrolment token, which then rides to the Administrator window in the environment:
+
+    & ([scriptblock]::Create((irm 'https://get.vedhasec.com/agent/install.ps1'))) -Manager 'https://get.vedhasec.com' -Code 'vac_...'
+
   The same command works from ANY window, Command Prompt or an ordinary PowerShell: when this
   script is not elevated it asks Windows for administrator permission (the UAC prompt) and
   continues in a new Administrator window. Already elevated (an RMM tool, an Administrator
@@ -47,6 +54,7 @@
 param(
   [string]$Manager = '',
   [string]$Token   = '',
+  [string]$Code    = '',          # one-time install code (vac_...): redeemed for a token, so no token/key/manager is pasted
   [string]$Scope   = '',          # CIDR list; empty = auto-detect this host's /24
   [switch]$AllowInsecureHttp,     # testing only: lets -VerifyOnly talk to a local http:// test server
   [switch]$VerifyOnly,            # download and verify everything, install nothing (no administrator needed)
@@ -99,6 +107,22 @@ function Assert-CleanToken {
     return
   }
   if ($Token -notmatch '^vet_[A-Za-z0-9_\-]{8,}$') { throw 'The install token is malformed (expected vet_...). Copy it again from Fleet -> Add agent.' }
+}
+
+function Assert-CleanCode {
+  # A one-time install code (vac_...) is the zero-knowledge path: it is redeemed at
+  # the manager for a single-use enrolment token, so the client pastes no token, no
+  # key and no manager identity beyond the generic -Manager address.
+  if (-not $Code) { return }
+  if ($VerifyOnly) {
+    throw 'An install code cannot be used with -VerifyOnly: redeeming a code spends it. Audit a release with -Token instead, or run without -VerifyOnly.'
+  }
+  if ($Token) {
+    throw 'Give an install code (-Code vac_...) OR a token (-Token vet_...), not both. A code is redeemed for a token automatically.'
+  }
+  if ($Code -notmatch '^vac_[A-Za-z0-9_\-]{16,}$') {
+    throw 'The install code is malformed (expected vac_...). Copy the whole command again from Fleet -> Add Windows Agent.'
+  }
 }
 
 function Assert-CleanScope {
@@ -293,6 +317,63 @@ function Read-Bytes([string]$Url, [long]$MaxBytes) {
   } finally { $resp.Close() }
 }
 
+function ConvertFrom-VedhaRedeem {
+  # Parse and validate the manager's answer to a redeem. Pure; unit-tested. Returns
+  # the single-use enrolment token; throws on anything that is not a vet_ token.
+  param([string]$JsonText)
+  try { $obj = $JsonText | ConvertFrom-Json } catch { throw 'The manager returned an unreadable response to the install code.' }
+  $token = [string](Get-Prop $obj 'token')
+  if ($token -notmatch '^vet_[A-Za-z0-9_\-]{8,}$') {
+    throw 'The manager did not return a valid enrolment token for this install code.'
+  }
+  return $token
+}
+
+function Invoke-VedhaRedeem {
+  # Exchange the one-time install code (vac_...) for a single-use enrolment token.
+  # The endpoint is public (the client holds no credential). Redirects are refused.
+  # The code was already validated to [A-Za-z0-9_-], so it is safe inside the JSON
+  # body with no escaping. The token comes back in the response body only and is
+  # held in memory; it is never printed or placed on a child process's command line.
+  param([string]$ManagerUrl, [string]$Code)
+  $body = [System.Text.Encoding]::UTF8.GetBytes('{"code":"' + $Code + '"}')
+  $req = [System.Net.HttpWebRequest]::Create($ManagerUrl + '/agent/redeem')
+  $req.Method = 'POST'
+  $req.AllowAutoRedirect = $false
+  $req.UserAgent = 'vedha-installer/' + $script:VedhaReleaseVersion
+  $req.ContentType = 'application/json'
+  $req.Accept = 'application/json'
+  $req.Timeout = 60000
+  $req.ReadWriteTimeout = 120000
+  $req.Proxy = [System.Net.WebRequest]::GetSystemWebProxy()
+  $req.Proxy.Credentials = [System.Net.CredentialCache]::DefaultCredentials
+  $req.ContentLength = $body.Length
+  try {
+    $stream = $req.GetRequestStream()
+    try { $stream.Write($body, 0, $body.Length) } finally { $stream.Dispose() }
+    $resp = $req.GetResponse()
+  } catch [System.Net.WebException] {
+    $resp = $_.Exception.Response
+    if ($null -eq $resp) { throw ('Cannot reach ' + $ManagerUrl + ' to redeem the install code: ' + $_.Exception.Message) }
+  }
+  $code = [int]$resp.StatusCode
+  if ($code -eq 200) {
+    $reader = New-Object System.IO.StreamReader($resp.GetResponseStream())
+    try { $text = $reader.ReadToEnd() } finally { $reader.Dispose(); $resp.Close() }
+    return ConvertFrom-VedhaRedeem $text
+  }
+  $detail = Get-ErrorDetail $resp
+  $location = $resp.Headers['Location']
+  $resp.Close()
+  if ($code -ge 300 -and $code -lt 400) {
+    throw ("The manager redirected the redeem request to '$location'. Redirects are refused; use the manager's canonical https:// address.")
+  }
+  if ($code -eq 404) { throw ('This install code is not valid, or has already been used. Ask your Vedha contact for a new command. ' + $detail) }
+  if ($code -eq 429) { throw 'Too many install-code attempts from this address; wait a minute and run the command again.' }
+  if ($code -eq 503) { throw ('The install service is temporarily unavailable; try again shortly. ' + $detail) }
+  throw ("Unexpected HTTP $code when redeeming the install code. $detail")
+}
+
 function Save-File([string]$Url, [string]$Path, [string]$Bearer, [long]$ExpectedSize) {
   $resp = Open-Response $Url $Bearer
   $total = [long]0
@@ -441,6 +522,16 @@ function Expand-SafeZip([string]$ZipPath, [string]$Destination) {
 function Install-VedhaAgent {
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
   $managerUrl = Get-CleanManager
+  Assert-CleanCode
+  # Redeem the one-time code FIRST, before any elevation: the manager mints a
+  # single-use enrolment token and we hold it in memory. From here the install is
+  # exactly the -Token path: the token rides to the Administrator window in the
+  # environment (never a command line), so no token/key/manager is ever pasted.
+  if ($Code) {
+    Write-Step 'exchanging the install code for a one-time enrolment token'
+    $script:Token = Invoke-VedhaRedeem -ManagerUrl $managerUrl -Code $Code
+    Write-Step 'install code accepted'
+  }
   Assert-CleanToken
   Assert-CleanScope
   if (Enter-VedhaElevation $managerUrl) { return }

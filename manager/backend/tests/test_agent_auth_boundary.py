@@ -6,7 +6,11 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from app.auth.jwt import create_access_token
-from app.auth.middleware import _is_public_enrollment_request, agent_jwt_path_allows
+from app.auth.middleware import (
+    _is_public_distribution_request,
+    _is_public_enrollment_request,
+    agent_jwt_path_allows,
+)
 from app.auth.middleware import TenantIsolationMiddleware
 
 
@@ -99,3 +103,23 @@ def test_only_device_side_enrollment_posts_are_public(path):
 def test_admin_enrollment_approval_is_not_public():
     assert _is_public_enrollment_request("/probe-enrollment/approve", "POST") is False
     assert _is_public_enrollment_request("/probe-enrollment/requests", "GET") is False
+
+
+def test_install_code_redeem_post_is_public():
+    # The zero-knowledge redeem is public by design: the client holds no credential.
+    assert _is_public_distribution_request("/agent/redeem", "POST") is True
+    # GET on it is not a public distribution path (redeem is POST-only).
+    assert _is_public_distribution_request("/agent/redeem", "GET") is False
+
+
+def test_existing_distribution_gets_stay_public_and_are_not_posts():
+    for path in ("/agent/install.ps1", "/agent/manifest.json", "/agent/package/windows"):
+        assert _is_public_distribution_request(path, "GET") is True
+        # the only public POST under /agent is redeem — a script fetch POST is not public
+        assert _is_public_distribution_request(path, "POST") is False
+
+
+def test_install_code_management_is_operator_only():
+    # Minting / listing / revoking codes requires an admin/manager JWT (not public).
+    assert _is_public_distribution_request("/probe-enrollment/install-codes", "POST") is False
+    assert _is_public_enrollment_request("/probe-enrollment/install-codes", "POST") is False

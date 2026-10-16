@@ -34,8 +34,22 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $venv = Join-Path $PSScriptRoot '.venv-win'
 if (-not (Test-Path (Join-Path $venv 'Scripts\python.exe'))) { python -m venv $venv }
 $py = Join-Path $venv 'Scripts\python.exe'
+# Nuitka's --mingw64 build needs Python 3.10-3.12; 3.13+ fails deep in the compile
+# ("cannot use '--mingw64' on Python 3.13 or higher"). The venv inherits whatever
+# `python` created it, so a reused 3.13 venv would waste a long build. Check here
+# and fail fast with the fix. Parse `python --version` (no `-c "..."`: Windows
+# PowerShell 5.1 strips the inner quotes passing it to a native command).
+$pyVerText = (& $py --version 2>&1 | Out-String)
+if ($pyVerText -notmatch 'Python\s+3\.(10|11|12)\b') {
+  throw ("The build venv uses '" + $pyVerText.Trim() + "', but Nuitka's MinGW build needs Python 3.10-3.12. " +
+         "Delete '" + $venv + "' and recreate it with 3.12:  py -3.12 -m venv `"" + $venv + "`"")
+}
 & $py -m pip install --quiet --upgrade pip
-& $py -m pip install --quiet -r (Join-Path $probeRoot 'requirements-runtime.txt') nuitka
+# Pin Nuitka below 4.3: 4.3 names the compiled main module after the entry file
+# (agent\agent.py), which SHADOWS the `agent` package, so the binary dies at
+# startup with "'agent' is not a package" (Nuitka issue #4024). Older Nuitka is
+# fine. Keep this cap until #4024 is fixed and verified on a Windows build.
+& $py -m pip install --quiet -r (Join-Path $probeRoot 'requirements-runtime.txt') 'nuitka<4.3'
 
 # 1) Only the agent's closure goes to the compiler. --check fails on a blocked
 #    module or a dynamic import (which a compiler cannot follow).

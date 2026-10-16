@@ -29,7 +29,7 @@ from app.models.detection_run_finding import DetectionRunFinding
 from app.models.agent_recommendation import AgentRecommendation
 from app.models.personal_access_token import PersonalAccessToken
 from app.models.probe_site import ProbeSite
-from app.models.probe_enrollment import ProbeEnrollmentRequest, AgentCredential, ProbeEnrollmentToken
+from app.models.probe_enrollment import ProbeEnrollmentRequest, AgentCredential, ProbeEnrollmentToken, AgentInstallCode
 from app.models.validation_request import ValidationRequest
 from app.models.scan_request import ScanRequest
 from app.models.customer_entitlement import CustomerEntitlement
@@ -51,7 +51,7 @@ __all__ = [
     "ExploitResult", "ExploitApprovalRequest", "AuditLog",
     "AttackTimeline", "DetectionConfig", "LLMOutput", "OutboxEvent",
     "DetectionRun", "DetectionRunFinding", "AgentRecommendation", "PersonalAccessToken",
-    "ProbeSite", "ProbeEnrollmentRequest", "AgentCredential", "ProbeEnrollmentToken",
+    "ProbeSite", "ProbeEnrollmentRequest", "AgentCredential", "ProbeEnrollmentToken", "AgentInstallCode",
     "ValidationRequest", "ScanRequest", "CustomerEntitlement", "RemediationPlan", "DeadlineExtensionRequest", "SlaPolicy", "Integration", "NotificationRule", "SlaAlert", "TenantSettings",
     "WorkerHeartbeat",
 ]

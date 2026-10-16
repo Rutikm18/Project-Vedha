@@ -27,16 +27,24 @@ from typing import Annotated
 import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import FileResponse, PlainTextResponse, Response
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app import agent_release
 from app.auth.rbac import require_role
 from app.config import get_settings
 from app.dependencies import AuthUser, DB, RedisConn
-from app.models.probe_enrollment import ProbeEnrollmentToken
+from app.models.probe_enrollment import AgentInstallCode, ProbeEnrollmentToken
 from app.ratelimit import client_ip
 from app.services import agent_update_ticket
-from app.routers.probe_enrollment import ENROLL_TOKEN_PREFIX, _secret_hash, enroll_token_is_usable
+from app.services.audit import record_audit
+from app.routers.probe_enrollment import (
+    ENROLL_TOKEN_PREFIX,
+    _secret_hash,
+    enroll_token_is_usable,
+    install_code_is_usable,
+    mint_token_for_install_code,
+)
 
 router = APIRouter(prefix="/agent", tags=["agent-distribution"])
 logger = structlog.get_logger()
@@ -111,6 +119,26 @@ def install_commands(manager_url: str, token: str | None = None) -> dict[str, st
 # configuration and the token is a generated vet_ secret, so this is a guard
 # against a surprising value, not a filter on normal input.
 _SAFE_ARG = re.compile(r"[A-Za-z0-9:/._~+=@%-]+")
+
+# A well-formed install code: the vac_ prefix plus a url-safe base64 body
+# (>=16 chars → >=128-bit codes). Used to reject junk before any DB lookup.
+_INSTALL_CODE_RE = re.compile(r"vac_[A-Za-z0-9_\-]{16,}")
+
+
+def windows_install_code_command(manager_url: str, code: str) -> str:
+    """The ONE line an operator pastes to a Windows client for the zero-knowledge
+    install. The only identity in it is the generic facade URL (passed as -Manager
+    so the piped script knows where to redeem) and the opaque vac_ code — no
+    manager IP/name beyond the facade, no key, no token. Returns '' if a value is
+    not safe to embed unescaped (e.g. a plain-http lab manager)."""
+    manager = manager_url.rstrip("/")
+    if (not manager or not manager.startswith("https://") or not _SAFE_ARG.fullmatch(manager)
+            or not _INSTALL_CODE_RE.fullmatch(code)):
+        return ""
+    return (
+        f"& ([scriptblock]::Create((irm '{manager}/agent/install.ps1'))) "
+        f"-Manager '{manager}' -Code '{code}'"
+    )
 
 
 def windows_install_commands(manager_url: str, token: str | None = None) -> dict[str, str]:
@@ -393,6 +421,72 @@ async def agent_image(arch: str, request: Request, db: DB, redis: RedisConn) -> 
             "X-Vedha-Image-Tag": image.tag,
         },
     )
+
+
+_REDEEM_OPAQUE = (
+    "This install code is not valid, or has already been used. "
+    "Ask your Vedha contact for a new command."
+)
+
+
+class RedeemInput(BaseModel):
+    code: str = Field(min_length=8, max_length=128)
+
+
+async def _rate_limit_redeem(redis, request: Request) -> None:
+    """The redeem endpoint is public and unauthenticated by design — the client holds
+    no credential. Rate-limit it hard, and fail closed if the limiter is down."""
+    key = f"agent-distribution:redeem:{client_ip(request)}"
+    try:
+        count = await redis.incr(key)
+        if count == 1:
+            await redis.expire(key, 60)
+    except Exception as exc:
+        logger.error("agent_distribution.rate_limit_unavailable", error=str(exc))
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Install-code service unavailable") from exc
+    if count > 10:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many install-code attempts; wait a minute")
+
+
+@router.post("/redeem", summary="Redeem a one-command install code (public)")
+async def redeem_install_code(body: RedeemInput, request: Request, db: DB, redis: RedisConn) -> dict:
+    """Credential-less redeem: the client holds only the opaque vac_ code and no
+    manager identity. Verify the code, mint the real vet_ token NOW (nothing was
+    stored before this), burn the code single-use, record the redeemer IP, and hand
+    the token back over TLS. Every invalid/used/expired/revoked code returns the
+    SAME 404, so the endpoint cannot be used to discover which codes exist."""
+    await _rate_limit_redeem(redis, request)
+    now = datetime.now(timezone.utc)
+    raw = body.code.strip()
+    if not _INSTALL_CODE_RE.fullmatch(raw):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _REDEEM_OPAQUE)
+    code = (await db.execute(
+        select(AgentInstallCode).where(AgentInstallCode.code_hash == _secret_hash(raw)).with_for_update()
+    )).scalar_one_or_none()
+    if not install_code_is_usable(code, now):
+        logger.warning("agent_distribution.redeem_rejected", ip=client_ip(request), present=code is not None)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _REDEEM_OPAQUE)
+    # Mint the vet_ now. If the engagement/Site can no longer take an agent this
+    # raises 404/409; get_db then rolls back and the code is NOT consumed, so a
+    # transient problem can be retried once it is fixed.
+    token, raw_vet = await mint_token_for_install_code(db, code, now)
+    code.redeemed_at = now
+    code.redeemed_ip = client_ip(request)[:45]
+    code.minted_token_id = token.id
+    record_audit(
+        db,
+        actor_id=f"install-code:{code.id}",
+        action="agent.install_code.redeemed",
+        resource_type="agent_install_code",
+        resource_id=code.id,
+        detail={"token_id": str(token.id)},
+        ip=code.redeemed_ip,
+    )
+    manager_url, _ = manager_url_for(request)
+    await db.commit()
+    logger.info("agent_distribution.redeem_ok", code_id=str(code.id),
+                token_id=str(token.id), ip=code.redeemed_ip)
+    return {"manager_url": manager_url, "token": raw_vet, "token_expires_in_seconds": 3600}
 
 
 def tokenless_status(manager_url: str) -> dict:

@@ -26,7 +26,7 @@ from app.models.agent import Agent, AgentStatus
 from app.agent_access import EXPIRED_MESSAGE, is_expired
 from app.models.audit_log import AuditLog
 from app.models.engagement import Engagement
-from app.models.probe_enrollment import AgentCredential, ProbeEnrollmentRequest, ProbeEnrollmentToken
+from app.models.probe_enrollment import AgentCredential, AgentInstallCode, ProbeEnrollmentRequest, ProbeEnrollmentToken
 from app.models.probe_site import ProbeSite
 from app.models.tenant import Tenant
 from app.ratelimit import client_ip
@@ -82,6 +82,34 @@ def enroll_token_is_usable(token, now: datetime) -> bool:
         and token.revoked_at is None
         and token.expires_at > now
         and token.uses < token.max_uses
+    )
+
+
+# ── Zero-knowledge install codes (vac_...) ──────────────────────────────────
+# The ONLY thing a Windows client is handed: an opaque, single-use code. It
+# embeds nothing (no manager URL, no key, no token) — decoding it reveals
+# nothing — and stores no secret on the manager. On redeem the manager mints the
+# real vet_ token (see agent_distribution.redeem) and burns the code.
+INSTALL_CODE_PREFIX = "vac_"
+# >=128 bits of entropy: token_urlsafe(18) is 144 bits. Short enough to copy,
+# strong enough that the public redeem endpoint cannot be brute-forced even
+# across a botnet within a code's short, single-use lifetime.
+_INSTALL_CODE_BYTES = 18
+
+
+def generate_install_code() -> tuple[str, str, str]:
+    """Return (raw_code, code_hash, code_prefix). The raw ``vac_...`` is shown once."""
+    raw = INSTALL_CODE_PREFIX + secrets.token_urlsafe(_INSTALL_CODE_BYTES)
+    return raw, _secret_hash(raw), raw[:12]
+
+
+def install_code_is_usable(code, now: datetime) -> bool:
+    """Live, unredeemed, unrevoked, unexpired."""
+    return (
+        code is not None
+        and code.revoked_at is None
+        and code.redeemed_at is None
+        and code.expires_at > now
     )
 
 
@@ -458,6 +486,90 @@ def token_out(row: ProbeEnrollmentToken, now: datetime) -> dict:
         "usable": enroll_token_is_usable(row, now),
         "state": state,
     }
+
+
+def install_code_out(row: AgentInstallCode, now: datetime) -> dict:
+    """An install code as Fleet lists it — never the raw value or its hash."""
+    if row.revoked_at is not None:
+        state = "revoked"
+    elif row.redeemed_at is not None:
+        state = "redeemed"
+    elif row.expires_at <= now:
+        state = "expired"
+    else:
+        state = "active"
+    return {
+        "id": str(row.id),
+        "name": row.name,
+        "code_prefix": row.code_prefix,
+        "engagement_id": str(row.engagement_id) if row.engagement_id else None,
+        "site_id": str(row.site_id) if row.site_id else None,
+        "created_at": row.created_at.isoformat() if getattr(row, "created_at", None) else None,
+        "expires_at": row.expires_at.isoformat(),
+        "redeemed_at": row.redeemed_at.isoformat() if row.redeemed_at else None,
+        "redeemed_ip": row.redeemed_ip,
+        "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
+        "usable": install_code_is_usable(row, now),
+        "state": state,
+    }
+
+
+async def mint_token_for_install_code(
+    db, code: AgentInstallCode, now: datetime,
+) -> tuple[ProbeEnrollmentToken, str]:
+    """Mint — at redeem time, not before — the single-use ``vet_`` an install code
+    authorises. No enrolment secret existed until this call. Branches on the
+    code's target and raises HTTPException if that target can no longer take an
+    agent (the caller holds a valid code, so this is an honest, safe message).
+    The minted token lives one hour: long enough to enrol, short by design."""
+    mint_ttl_minutes = 60
+    if code.engagement_id is not None:
+        engagement = (await db.execute(
+            select(Engagement).where(
+                Engagement.id == code.engagement_id,
+                Engagement.tenant_id == code.tenant_id,
+            ).with_for_update()
+        )).scalar_one_or_none()
+        return await issue_engagement_token(
+            db,
+            tenant_id=code.tenant_id,
+            engagement=engagement,
+            name=code.name,
+            created_by=f"install-code:{code.id}",
+            now=now,
+            expires_in_minutes=mint_ttl_minutes,
+        )
+    site = (await db.execute(
+        select(ProbeSite).where(
+            ProbeSite.id == code.site_id,
+            ProbeSite.tenant_id == code.tenant_id,
+            ProbeSite.status == "active",
+        )
+    )).scalar_one_or_none()
+    if site is None:
+        raise HTTPException(409, "The Site this code installs into is no longer available")
+    raw, token_hash, token_prefix = generate_enroll_token()
+    token = ProbeEnrollmentToken(
+        tenant_id=code.tenant_id,
+        site_id=site.id,
+        name=code.name,
+        token_hash=token_hash,
+        token_prefix=token_prefix,
+        max_uses=1,
+        expires_at=now + timedelta(minutes=mint_ttl_minutes),
+        created_by=f"install-code:{code.id}",
+    )
+    db.add(token)
+    await db.flush()
+    record_audit(
+        db,
+        actor_id=f"install-code:{code.id}",
+        action="probe.enrollment_token.created",
+        resource_type="probe_enrollment_token",
+        resource_id=token.id,
+        detail={"site_id": str(site.id), "via": "install-code"},
+    )
+    return token, raw
 
 
 # ── Trust-on-first-use auto-enrollment (single-owner fleets) ─────────────────
@@ -1104,4 +1216,148 @@ async def revoke_enroll_token(
                     "engagement_id": str(row.engagement_id) if row.engagement_id else None},
             timestamp=row.revoked_at,
         ))
+    return None
+
+
+# ── Zero-knowledge install codes (operator, admin/manager) ───────────────────
+# "Add Windows Agent" in Fleet is ONE call: it creates an opaque vac_... code and
+# returns the one-liner the operator pastes to the client. No vet_ token exists
+# yet — it is minted when the client redeems the code (agent_distribution.redeem).
+
+
+class InstallCodeCreate(BaseModel):
+    """Create an install code for an engagement (the usual case) or a pre-built Site."""
+    name: str = Field(min_length=1, max_length=120)
+    engagement_id: uuid.UUID | None = None
+    site_id: uuid.UUID | None = None
+    expires_in_minutes: int = Field(default=ENGAGEMENT_TOKEN_TTL_MINUTES, ge=5, le=10080)
+
+    @model_validator(mode="after")
+    def exactly_one_target(self):
+        if (self.site_id is None) == (self.engagement_id is None):
+            raise ValueError("provide exactly one of site_id or engagement_id")
+        return self
+
+
+@router.post("/install-codes", status_code=status.HTTP_201_CREATED,
+             summary="Create a one-command Windows install code (Fleet → Add Windows Agent)")
+async def create_install_code(
+    body: InstallCodeCreate,
+    request: Request,
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
+):
+    from app.routers.agent_distribution import manager_url_for, windows_install_code_command
+
+    now = datetime.now(timezone.utc)
+    engagement_id = None
+    site_id = None
+    if body.engagement_id is not None:
+        # Fail fast if the engagement cannot take an agent, rather than minting a
+        # code that can never be redeemed. (Redeem re-checks; scope never widens.)
+        engagement = (await db.execute(
+            select(Engagement).where(
+                Engagement.id == body.engagement_id,
+                Engagement.tenant_id == current_user.tenant_id,
+            )
+        )).scalar_one_or_none()
+        blocker = engagement_enrollment_blocker(engagement)
+        if blocker is not None:
+            raise HTTPException(404 if engagement is None else 409, blocker)
+        engagement_id = engagement.id
+    else:
+        site = (await db.execute(
+            select(ProbeSite).where(
+                ProbeSite.id == body.site_id,
+                ProbeSite.tenant_id == current_user.tenant_id,
+                ProbeSite.status == "active",
+            )
+        )).scalar_one_or_none()
+        if site is None:
+            raise HTTPException(404, "Site not found")
+        site_id = site.id
+
+    raw, code_hash, code_prefix = generate_install_code()
+    code = AgentInstallCode(
+        tenant_id=current_user.tenant_id,
+        engagement_id=engagement_id,
+        site_id=site_id,
+        name=body.name.strip() or "vedha-agent",
+        code_hash=code_hash,
+        code_prefix=code_prefix,
+        expires_at=now + timedelta(minutes=body.expires_in_minutes),
+        created_by=str(current_user.user_id),
+    )
+    db.add(code)
+    await db.flush()
+    record_audit(
+        db,
+        actor_id=str(current_user.user_id),
+        action="agent.install_code.created",
+        engagement_id=engagement_id,
+        resource_type="agent_install_code",
+        resource_id=code.id,
+        detail={"engagement_id": str(engagement_id) if engagement_id else None,
+                "site_id": str(site_id) if site_id else None,
+                "expires_at": code.expires_at.isoformat()},
+    )
+    manager_url, manager_url_configured = manager_url_for(request)
+    out = {
+        **install_code_out(code, now),
+        "code": raw,  # shown once
+        "command": windows_install_code_command(manager_url, raw),
+        "manager_url_configured": manager_url_configured,
+    }
+    await db.commit()  # Fleet lists codes right after creating one; raw code shown once
+    return out
+
+
+@router.get("/install-codes")
+async def list_install_codes(
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
+    engagement_id: uuid.UUID | None = None,
+):
+    query = (
+        select(AgentInstallCode)
+        .where(AgentInstallCode.tenant_id == current_user.tenant_id)
+        .order_by(AgentInstallCode.created_at.desc())
+        .limit(200)
+    )
+    if engagement_id is not None:
+        query = query.where(AgentInstallCode.engagement_id == engagement_id)
+    rows = (await db.execute(query)).scalars().all()
+    now = datetime.now(timezone.utc)
+    return [install_code_out(row, now) for row in rows]
+
+
+@router.delete("/install-codes/{code_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_install_code(
+    code_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
+):
+    row = (await db.execute(
+        select(AgentInstallCode).where(
+            AgentInstallCode.id == code_id,
+            AgentInstallCode.tenant_id == current_user.tenant_id,
+        ).with_for_update()
+    )).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(404, "Install code not found")
+    # Revoking an already-redeemed code does not un-enrol the agent; it only stops
+    # any further use. A redeemed code is already single-use-dead, so this is a no-op
+    # for it, but we still record the operator's intent.
+    if row.revoked_at is None:
+        row.revoked_at = datetime.now(timezone.utc)
+        record_audit(
+            db,
+            actor_id=str(current_user.user_id),
+            action="agent.install_code.revoked",
+            resource_type="agent_install_code",
+            resource_id=row.id,
+            detail={"engagement_id": str(row.engagement_id) if row.engagement_id else None,
+                    "site_id": str(row.site_id) if row.site_id else None,
+                    "was_redeemed": row.redeemed_at is not None},
+        )
     return None
