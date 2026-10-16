@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   Brain, CheckCircle2, ChevronRight, Cloud, Database, Eraser,
@@ -387,7 +388,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
           <section className="brain-runtime-card" data-ready={ready}>
             <header>
               <span>{selectedPrivacy === "local" ? <Server size={17} /> : <Cloud size={17} />}</span>
-              <div><strong>Automatic AI runtime</strong><small>{ready ? "Tries each provider in order · no choice needed" : "Needs configuration"}</small></div>
+              <div><strong>Automatic AI runtime</strong><small>{ready ? "Tries each provider in order · no choice needed" : <>Needs configuration · <Link href={surface === "portal" ? "/portal/settings?section=ai" : "/settings?section=ai"} style={{ color: "var(--accent)", fontWeight: 600 }}>Open AI Runtime settings</Link></>}</small></div>
               <span className="brain-runtime-dot" />
             </header>
             {chain.length > 0 && (

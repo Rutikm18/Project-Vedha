@@ -74,7 +74,9 @@ function healthBand(v: number) {
   return { color: "var(--sev-critical-color)", word: "Degraded" };
 }
 
-function plural(n: number, one: string, many = `${one}s`) {
+function plural(n: number | null | undefined, one: string, many = `${one}s`) {
+  // A count the server did not send is "not recorded", never the word "undefined".
+  if (typeof n !== "number" || !Number.isFinite(n)) return `an unrecorded number of ${many}`;
   return `${n} ${n === 1 ? one : many}`;
 }
 

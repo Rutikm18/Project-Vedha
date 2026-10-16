@@ -194,12 +194,12 @@ export default function CampaignProgress({ engagementId, surface = "manager" }: 
         {data.engagement?.name && <span style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>{data.engagement.name}</span>}
         {data.job_stats && (
           <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-            {data.job_stats.probes.length || 0} probe(s) · {data.job_stats.running} running · {data.job_stats.complete}/{data.job_stats.total} jobs done
+            {data.job_stats.probes.length || 0} {(data.job_stats.probes.length || 0) === 1 ? "probe" : "probes"} · {data.job_stats.running} running · {data.job_stats.complete}/{data.job_stats.total} jobs done
           </span>
         )}
         {s && (
           <span style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}><strong style={{ color: "var(--text-primary)" }}>{s.total_findings}</strong> findings</span>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}><strong style={{ color: "var(--text-primary)" }}>{s.total_findings}</strong> {s.total_findings === 1 ? "finding" : "findings"}</span>
             {s.actionable > 0 && <span style={{ fontSize: 11, color: "var(--text-muted)" }}><strong style={{ color: "var(--accent)" }}>{s.actionable}</strong> actionable</span>}
             {s.exploitable > 0 && <span style={{ fontSize: 11, color: "var(--sev-critical,#ef4444)" }}><strong>{s.exploitable}</strong> exploitable</span>}
             {s.max_risk_score > 0 && <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>max risk {Math.round(s.max_risk_score)}</span>}

@@ -68,6 +68,11 @@ export function RegulatoryProfilePanel({
       <div className="engagement-panel-body">
         {compliance.isLoading && <span className="engagement-empty-inline">Loading regulatory profile…</span>}
         {compliance.error && <span className="engagement-empty-inline">Regulatory profile unavailable.</span>}
+        {!compliance.isLoading && !compliance.error && !editing && !(data && profile) && (
+          <span className="engagement-empty-inline">
+            No regulatory profile is set for this engagement{api.canEditIntel ? " — choose a sector and jurisdictions with Edit." : "."}
+          </span>
+        )}
 
         {editing && (
           <div className="intel-profile-form">

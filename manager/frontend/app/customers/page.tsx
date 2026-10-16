@@ -200,8 +200,10 @@ export default function CustomersPage() {
       <style>{STYLES + PLAN_STYLES}</style>
       <div className="cus-page">
 
-        {/* Add a customer */}
-        <section className="cus-card">
+        {/* Add a customer. With customers already on file the directory leads and
+            this form follows — except right after issuing a login, when the
+            one-time password must stay in view. */}
+        <section className="cus-card" style={{ order: issued ? 0 : customers.length > 0 || loading ? 2 : 0 }}>
           <div className="cus-head">
             <span className="cus-head-icon"><UserPlus size={17} /></span>
             <div>
@@ -277,7 +279,7 @@ export default function CustomersPage() {
         </section>
 
         {/* Customer directory */}
-        <section className="cus-card cus-card-flush">
+        <section className="cus-card cus-card-flush" style={{ order: 1 }}>
           <header className="cus-list-head">
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Users size={15} color="var(--accent)" />
@@ -385,7 +387,9 @@ export default function CustomersPage() {
 }
 
 const STYLES = `
-.cus-page { padding: 18px; overflow-y: auto; height: 100%; display: grid; gap: 14px; }
+/* The shell already pads the page; a second 18px here made this page narrower than the others. */
+.cus-page { display: grid; gap: 14px; }
+.cus-page > * { min-width: 0; }
 .cus-card { border: 0.5px solid var(--border-subtle); border-radius: 12px; background: var(--bg-panel); padding: 16px; }
 .cus-card-flush { padding: 0; overflow: hidden; }
 .cus-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }

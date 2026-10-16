@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -167,25 +167,25 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const NAV_SECTIONS = [
-  { key: "workspace",     label: "Workspace",          icon: Globe2 },
-  { key: "team",          label: "Team",                icon: Users },
-  { key: "api-keys",      label: "API Keys",            icon: KeyRound },
-  { key: "probe-fleet",   label: "Probe Fleet",         icon: Monitor },
-  { key: "ai",            label: "AI Runtime",          icon: Bot },
-  { key: "account",       label: "Account security",    icon: LockKeyhole },
-  { key: "access",        label: "Access & Security",   icon: ShieldCheck },
-  { key: "scanning",      label: "Scanning",            icon: Radar },
-  { key: "new-customers", label: "New customers",       icon: UserPlus },
-  { key: "email",         label: "Email",               icon: Mail },
-  { key: "slack",         label: "Slack",               icon: MessageCircle },
-  { key: "jira",          label: "Jira",                icon: ExternalLink },
-  { key: "sla",           label: "SLA Policy",          icon: SlidersHorizontal },
-  { key: "notifications", label: "Notifications",       icon: Bell },
-  { key: "audit-log",     label: "Audit Log",           icon: Activity },
+  { group: "Organisation",       key: "workspace",     label: "Workspace",          icon: Globe2 },
+  { group: "Organisation",       key: "team",          label: "Team",                icon: Users },
+  { group: "Organisation",       key: "api-keys",      label: "API Keys",            icon: KeyRound },
+  { group: "Organisation",       key: "new-customers", label: "New customers",       icon: UserPlus },
+  { group: "Scanning & fleet",   key: "probe-fleet",   label: "Probe Fleet",         icon: Monitor },
+  { group: "Scanning & fleet",   key: "scanning",      label: "Scanning",            icon: Radar },
+  { group: "Security & AI",      key: "ai",            label: "AI Runtime",          icon: Bot },
+  { group: "Security & AI",      key: "account",       label: "Account security",    icon: LockKeyhole },
+  { group: "Security & AI",      key: "access",        label: "Access & Security",   icon: ShieldCheck },
+  { group: "Security & AI",      key: "audit-log",     label: "Audit Log",           icon: Activity },
+  { group: "Alerts & policy",    key: "sla",           label: "SLA Policy",          icon: SlidersHorizontal },
+  { group: "Alerts & policy",    key: "notifications", label: "Notifications",       icon: Bell },
+  { group: "Alerts & policy",    key: "email",         label: "Email",               icon: Mail },
+  { group: "Alerts & policy",    key: "slack",         label: "Slack",               icon: MessageCircle },
+  { group: "Alerts & policy",    key: "jira",          label: "Jira",                icon: ExternalLink },
 ];
 
 const PORTAL_NAV_SECTIONS = [
-  { key: "plan", label: "Plan & Licence", icon: FileBadge2 },
+  { group: "Plan", key: "plan", label: "Plan & Licence", icon: FileBadge2 },
   ...NAV_SECTIONS.filter(({ key }) => ["workspace", "account", "probe-fleet", "ai", "audit-log"].includes(key)),
 ];
 
@@ -1050,8 +1050,33 @@ function AuditLogSection({ surface }: { surface: SettingsWorkspaceSurface }) {
 
 // ─── Page root ────────────────────────────────────────────────────────────────
 
+const LOCATION_EVENT = "vedha:settings-location";
+function subscribeToLocation(onChange: () => void) {
+  window.addEventListener("popstate", onChange);
+  window.addEventListener(LOCATION_EVENT, onChange);
+  return () => {
+    window.removeEventListener("popstate", onChange);
+    window.removeEventListener(LOCATION_EVENT, onChange);
+  };
+}
+const getLocationSearch = () => window.location.search;
+const getServerLocationSearch = () => "";
+
 export function SettingsWorkspace({ surface = "manager" }: { surface?: SettingsWorkspaceSurface }) {
-  const [section, setSection] = useState(surface === "portal" ? "plan" : "team");
+  // The open section lives in the URL (?section=ai): it can be linked to, survives a
+  // refresh, and Back leaves it. useSyncExternalStore keeps hydration clean (the
+  // server snapshot is always the default section).
+  const search = useSyncExternalStore(subscribeToLocation, getLocationSearch, getServerLocationSearch);
+  const defaultSection = surface === "portal" ? "plan" : "team";
+  const wanted = new URLSearchParams(search).get("section");
+  const section = (surface === "portal" ? PORTAL_NAV_SECTIONS : NAV_SECTIONS).some((n) => n.key === wanted)
+    ? (wanted as string) : defaultSection;
+  const setSection = (key: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("section", key);
+    window.history.pushState(null, "", url);
+    window.dispatchEvent(new Event(LOCATION_EVENT));
+  };
   const api = React.useMemo(() => createSettingsWorkspaceApi(surface), [surface]);
   const statusQuery = useQuery({
     queryKey: ["settings-status", surface],
@@ -1068,10 +1093,13 @@ export function SettingsWorkspace({ surface = "manager" }: { surface?: SettingsW
       <div className="settings-layout">
         <aside className="settings-nav">
           <div className="settings-nav-heading"><Settings2 size={14} /> Configuration</div>
-          {navSections.map(({ key, label, icon: Icon }) => (
-            <button key={key} className="settings-nav-button" data-active={section === key} onClick={() => setSection(key)}>
-              <Icon size={14} /><span>{label}</span>
-            </button>
+          {navSections.map(({ group, key, label, icon: Icon }, i) => (
+            <React.Fragment key={key}>
+              {navSections[i - 1]?.group !== group && navSections.length > 6 && <div className="settings-nav-group">{group}</div>}
+              <button className="settings-nav-button" data-active={section === key} aria-current={section === key ? "page" : undefined} onClick={() => setSection(key)}>
+                <Icon size={14} /><span>{label}</span>
+              </button>
+            </React.Fragment>
           ))}
         </aside>
 

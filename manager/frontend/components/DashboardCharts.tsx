@@ -174,7 +174,10 @@ function ScoreBar({ score }: { score: number }) {
    fall through to the critical-red "open" entry. */
 
 /* ─── Main component ─── */
-export function DashboardCharts() {
+/** `queue` = the highest-risk findings + recent activity (what an analyst acts on);
+ *  `trends` = KPIs and the trend chart (context). Both parts read the same cached
+ *  queries, so rendering them in different places costs no extra requests. */
+export function DashboardCharts({ part = "all" }: { part?: "all" | "queue" | "trends" }) {
   const findingsPath = useConsolePath("findings");
   const activityPath = useConsolePath("activity");
   // Operator-only (a customer console has exactly one engagement): resolves to
@@ -238,13 +241,14 @@ export function DashboardCharts() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {failedQueries.length > 0 && (
+      {part !== "trends" && failedQueries.length > 0 && (
         <div className="dashboard-partial-state" role="status">
           <span>{failedQueries.length} dashboard {failedQueries.length === 1 ? "source is" : "sources are"} unavailable. Available data is still shown.</span>
           <button type="button" onClick={retryAll}>Retry</button>
         </div>
       )}
 
+      {part !== "queue" && <>
       {/* ── KPI Row ── */}
       <div className="dashboard-kpi-grid">
         {/* Trend arrows removed: there is no historical snapshot store to compute
@@ -308,7 +312,9 @@ export function DashboardCharts() {
 
       </div>
 
-      {/* ── Findings + Activity ── */}
+      </>}
+
+      {part !== "trends" && (
       <div className="dashboard-main-grid">
 
         {/* Top findings table */}
@@ -473,6 +479,7 @@ export function DashboardCharts() {
           </div>
         </div>
       </div>
+      )}
 
     </div>
   );

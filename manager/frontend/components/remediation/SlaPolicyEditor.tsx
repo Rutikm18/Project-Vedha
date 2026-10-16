@@ -52,7 +52,12 @@ export function SlaPolicyEditor({ engagementId }: { engagementId: string }) {
         <SlidersHorizontal size={14} aria-hidden />
         <strong style={{ fontSize: 12.5 }}>Due-date policy for this engagement</strong>
         <span className="rm-muted">— {DUE_SOURCE_LABEL[data.source] ?? data.source}
-          {" "}({SEVS.slice(0, 4).map((s) => `${s} ${data[`${s}_hours`]}h`).join(" · ")})</span>
+          {(() => {
+            // Show only windows the server actually sent: a missing one must not read "undefinedh".
+            const windows = SEVS.slice(0, 4).filter((s) => typeof data[`${s}_hours`] === "number")
+              .map((s) => `${s} ${data[`${s}_hours`]}h`);
+            return windows.length ? <>{" "}({windows.join(" · ")})</> : null;
+          })()}</span>
       </button>
       {open && (
         <form className="rm-ext-form" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>

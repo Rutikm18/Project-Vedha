@@ -20,6 +20,7 @@
  * The grid collapses at 1100px (two columns) and 720px (one), and every panel
  * is min-width:0 so long asset names truncate instead of forcing a scrollbar.
  */
+import { DashboardCharts } from "../DashboardCharts";
 import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -325,6 +326,12 @@ export function DashboardGrid() {
             <SlaStatus />
           </React.Suspense>
         </Panel>
+      </div>
+
+      {/* What an analyst acts on next sits right under the posture/SLA summary,
+          not below six panels of context. */}
+      <div className="console-band band-4">
+        <DashboardCharts part="queue" />
       </div>
 
       {showAttackPaths && (

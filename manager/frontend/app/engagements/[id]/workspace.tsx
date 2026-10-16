@@ -171,7 +171,7 @@ function OverviewTab({ engagement, surface }: { engagement: Engagement; surface:
         </article>
 
         <article className="engagement-panel">
-          <header><div><Target size={16} /><span>Scope boundaries</span></div><span>{engagement.scopeCidrs.length} targets</span></header>
+          <header><div><Target size={16} /><span>Scope boundaries</span></div><span>{engagement.scopeCidrs.length} {engagement.scopeCidrs.length === 1 ? "target" : "targets"}</span></header>
           <div className="engagement-panel-body engagement-scope">
             <div>
               <span className="engagement-field-label">Included networks and hosts</span>

@@ -62,13 +62,13 @@ export function DashboardWorkspace() {
             letterSpacing: "-0.015em",
             color: "var(--text-primary)",
           }}>
-            Trends and response queue
+            Trends
           </h2>
           <p style={{ margin: "var(--space-1) 0 0", color: "var(--text-muted)", fontSize: "var(--fs-body-s)" }}>
-            Historical movement, highest-risk work, and the latest assessment activity.
+            Historical movement across scans.
           </p>
         </div>
-        <DashboardCharts />
+        <DashboardCharts part="trends" />
       </section>
     </div>
   );

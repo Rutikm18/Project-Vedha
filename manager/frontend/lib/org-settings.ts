@@ -129,8 +129,8 @@ export function applyCustomerDefaults<T extends { lockedSeverities: string[]; lo
 ): T {
   return {
     ...draft,
-    lockedSeverities: [...defaults.poc_locked_severities],
-    lockedFeatures: [...defaults.poc_locked_features],
+    lockedSeverities: [...(defaults.poc_locked_severities ?? [])],
+    lockedFeatures: [...(defaults.poc_locked_features ?? [])],
     durationDays: defaults.poc_duration_days,
   };
 }
