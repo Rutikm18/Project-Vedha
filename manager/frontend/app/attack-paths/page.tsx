@@ -32,7 +32,7 @@ function LegacyAttackPathsOverviewPage() {
       subtitle="How an attacker could reach your crown jewels, per engagement"
     >
       {process.env.NEXT_PUBLIC_ATTACK_ASSESSMENTS_ENABLED === "true" && <nav className="attack-path-modes" aria-label="Attack-path scope"><Link href="/attack-paths">Environment chains</Link><Link href="/attack-paths?mode=overview" aria-current="page">Engagement overview</Link></nav>}
-      <div style={{ display: "grid", gap: "var(--space-4)", padding: "var(--space-4)", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
+      <div style={{ display: "grid", gap: "var(--space-4)", width: "100%" }}>
         <section className="panel apxp" aria-label="Attack paths, all engagements">
           <AttackPathStyles />
           <header className="panel-head" style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -2659,8 +2659,18 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 .findings-search button { display: inline-grid; width: 24px; height: 24px; flex: 0 0 auto; place-items: center; border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; }
 .findings-search button:hover { color: var(--text-primary); background: var(--bg-hover); }
 .findings-toolbar {
-  display: grid; grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(130px, 1fr));
+  display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
   gap: 12px; align-items: end; margin-bottom: var(--space-3);
+}
+/* Size the toolbar to the panel, not the viewport: beside the sidebar (or the detail
+   pane) the panel is far narrower than the screen. */
+.findings-filter-panel { container-type: inline-size; }
+@container (max-width: 720px) {
+  .findings-toolbar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .findings-toolbar .findings-search { grid-column: 1 / -1; }
+}
+@container (max-width: 520px) {
+  .findings-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .findings-toolbar > .findings-scope-grid { display: contents; }
 .findings-toolbar .findings-search { min-height: 38px; margin-bottom: 0; }
@@ -3464,6 +3474,21 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   .findings-urgent-item:hover { transform: none; }
 }
 @media (pointer: coarse) {
+  /* Row checkbox: a 44px hit area around a 20px drawn box (a native 17px box is too
+     small to hit reliably with a thumb). */
+  .finding-card-checkbox {
+    -webkit-appearance: none; appearance: none; display: grid; place-content: center;
+    top: 0; left: 0; width: 44px; height: 44px; background: transparent;
+  }
+  .finding-card-checkbox::before {
+    content: ""; width: 20px; height: 20px; box-sizing: border-box;
+    border: 2px solid var(--border-strong); border-radius: 5px; background: var(--bg-panel);
+  }
+  .finding-card-checkbox:checked::before {
+    border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--bg-panel);
+  }
+  .finding-card-checkbox:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; border-radius: 8px; }
+  .finding-card[data-bulk-selectable] .finding-card-body { padding-left: 40px; }
   .finding-detail-close, .finding-detail-explain,
   .findings-search button, .findings-pagination-controls button,
   .findings-inline-action { min-width: 44px; min-height: 44px; }

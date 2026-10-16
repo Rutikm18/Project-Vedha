@@ -271,10 +271,12 @@ test("saved report failure recovers into a keyboard-safe viewer", async ({ page 
 test("phone triage keeps queue search in the initial viewport", async ({ page }, info) => {
   test.skip((info.project.use.viewport?.width ?? 1440) >= 768, "Phone hierarchy only");
   await page.goto("/findings");
-  await expect(page.getByRole("button", { name: /Show 1 urgent finding/ })).toBeVisible();
+  await expect(page.getByLabel("Search findings", { exact: true })).toBeVisible();
   const search = await page.getByLabel("Search findings", { exact: true }).boundingBox();
   expect(search).not.toBeNull();
   expect(search!.y + search!.height).toBeLessThan(info.project.use.viewport!.height);
-  await page.getByRole("button", { name: /Show 1 urgent finding/ }).click();
-  await expect(page.getByRole("button", { name: /Triage SMBv1 enabled/ })).toBeVisible();
+  // A short list needs no fix-first cards: they would only repeat the rows right below,
+  // so there is no urgent toggle to open and the finding itself is the next thing on screen.
+  await expect(page.getByRole("button", { name: /urgent finding/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^SMBv1 enabled/ })).toBeVisible();
 });

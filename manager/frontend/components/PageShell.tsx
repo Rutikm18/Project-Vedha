@@ -29,7 +29,11 @@ export function PageShell({
   surface = "manager",
 }: PageShellProps) {
   const pathname = usePathname();
-  const detailParent = pathname.startsWith("/engagements/") ? { href: "/engagements", label: "Engagements" }
+  // The engagement workspace has its own "← All engagements" link in its tab bar, so a
+  // breadcrumb directly above it only repeats it; deeper pages (attack paths, customer
+  // access) have no such link and keep the breadcrumb.
+  const detailParent = pathname.startsWith("/engagements/") && !/^\/engagements\/[^/]+\/?$/.test(pathname)
+    ? { href: "/engagements", label: "Engagements" }
     : pathname.startsWith("/campaign/") ? { href: "/campaign", label: "VA Campaigns" } : null;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Header chips scroll sideways when they don't fit. Without a cue that reads as

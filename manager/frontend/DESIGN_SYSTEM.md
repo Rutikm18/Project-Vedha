@@ -134,3 +134,48 @@ database schema:
 - Interactive targets are at least 44 px on coarse pointers, have keyboard focus,
   and do not depend on hover.
 - Motion explains state change only and respects `prefers-reduced-motion`.
+
+## Console UX principles
+
+These govern layout and flow decisions, alongside the signal-colour rules above.
+They come from a review of the shipped pages plus practitioner guidance on
+security consoles (sources at the end). Treat the sources as direction, not proof:
+they are mostly vendor and design-agency writing, not controlled studies.
+
+1. **The primary task is above the fold.** Each page has one job (triage the
+   queue, launch a scan, approve a device). That surface starts in the first
+   viewport; context, history and explainers follow or collapse.
+2. **Order follows state, not a template.** An empty Fleet leads with onboarding;
+   a populated one leads with pending approvals, then agents. A customer list
+   leads once customers exist. Use CSS `order` so DOM order (and reading order for
+   assistive tech) stays stable.
+3. **Design by subtraction.** Do not repeat a row, count or explanation that is
+   already on screen (e.g. fix-first cards are omitted when the queue is short;
+   the ranking key hides while a finding is open). Disclose detail on demand.
+4. **Page actions are never clipped.** Header actions keep their size; the title
+   and subtitle ellipsize first, then status chips scroll or hide. Chips are
+   redundant context, actions are not.
+5. **Honest states.** Loading, failure, empty and "not recorded" are different
+   claims. Never print `undefined`, never imply liveness (no decorative heartbeat
+   with zero agents), and every empty state names the next action and links to it.
+6. **State lives in the URL when people will share or return to it.** Settings
+   sections use `?section=`, so they can be linked, refreshed and reached from
+   other pages (AI Brain links to its runtime settings).
+7. **Group long navigation.** More than about seven sibling items get labelled
+   groups; the card scrolls internally on short screens.
+8. **Touch targets are 44 px where a thumb acts**, with the drawn control smaller
+   than its hit area (see the finding row checkbox).
+9. **Size responsive controls to their container**, not the viewport: beside a
+   sidebar or detail pane a panel is much narrower than the screen (container
+   queries on the Findings filter panel).
+10. **Copy is part of the interface.** Singular and plural agree ("1 target"), a
+    sentence ends once, and server-supplied text is normalised before display.
+
+Sources consulted: NopSec on vulnerability-prioritisation UX
+(nopsec.com/blog/designing-a-new-user-experience-for-vulnerability-prioritization),
+Fuselab on SOC dashboard design (fuselabcreative.com/cybersecurity-dashboard-design),
+Edgescan on noise reduction through design, Basis and SAP Fiori design-system
+guidance on dense tables, saved views and density, and public write-ups of Linear
+and Vercel interface conventions (keyboard-first, subtle borders, colour reserved
+for meaning). Wiz-, Snyk- and CrowdStrike-specific UI teardowns were not found in
+searchable form; claims about those products are not relied on here.
