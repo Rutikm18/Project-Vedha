@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from sqlalchemy import Select, Text, and_, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,8 +27,8 @@ from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.finding_groups import FindingGroupPage
 from app.schemas.finding import (
     FindingAssetContext, FindingAssetOption, FindingEventOut, FindingOut, FindingPatch, FindingReopen,
-    FindingScanRef, FindingSummary, FindingTimeline, ScanCompareCounts, ScanCompareOut,
-    ScanOption, SlaSummary,
+    FindingScanRef, FindingSummary, FindingTimeline, ScanCompareChange, ScanCompareCounts, ScanCompareOut,
+    ScanCompareSnapshot, ScanCompareSummary, ScanOption, SlaSummary,
 )
 from app.services import finding_events as events_service
 from app.services.finding_metrics import compute_mttr
@@ -879,35 +879,80 @@ async def finding_scans(
 
 
 _COMPARE_BUCKET_CAP = 500
+_SEVERITY_KEYS = ("critical", "high", "medium", "low", "info")
 
 
-@router.get("/compare", response_model=ScanCompareOut,
-            summary="Diff two scans — what's new, fixed, and still present")
-async def compare_scans(
-    db: ReadDB,
-    current_user: AuthUser,
-    a: str = Query(
-        ..., min_length=1, max_length=64,
-        description="Baseline scan — SCN-YYMMDD-XXXXXX reference, job id, or run id."),
-    b: str = Query(
-        ..., min_length=1, max_length=64,
-        description="Target scan — same accepted forms as `a`."),
-    engagement_id: uuid.UUID | None = Query(
-        default=None,
-        description="Pin both scans and the finding load to one engagement "
-                    "(the portal always sets this)."),
-):
-    """Diff two scans through the per-run membership table. A finding is 'present' in
-    a scan when that scan saw it new or reaffirmed; then
-      new           = present in b but not a,
-      fixed         = present in a but not b,
-      still_present = present in both.
-    `counts` are the true totals; each finding list is capped at 500, most-severe
-    first. An unknown scan (no detection runs) is a 404."""
-    a_runs = await _resolve_scan_run_ids(
-        db, a, current_user.tenant_id, engagement_id=engagement_id)
-    b_runs = await _resolve_scan_run_ids(
-        db, b, current_user.tenant_id, engagement_id=engagement_id)
+async def _scan_snapshots(
+    db: AsyncSession, run_ids: set[uuid.UUID],
+) -> dict[uuid.UUID, ScanCompareSnapshot]:
+    """Each present finding as the scan saw it. When a scan spans several runs the
+    latest run's snapshot wins. A row recorded before snapshots existed has no
+    severity and reads as 'no snapshot'."""
+    rows = (await db.execute(
+        select(DetectionRunFinding.finding_id, DetectionRunFinding.severity,
+               DetectionRunFinding.risk_score, DetectionRunFinding.status)
+        .join(DetectionRun, DetectionRun.id == DetectionRunFinding.run_id)
+        .where(DetectionRunFinding.run_id.in_(run_ids),
+               DetectionRunFinding.outcome.in_((RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED)))
+        .order_by(DetectionRun.started_at.asc())
+    )).all()
+    return {
+        fid: ScanCompareSnapshot(
+            severity=sev, risk_score=float(risk) if risk is not None else None, status=st)
+        for fid, sev, risk, st in rows
+    }
+
+
+def _snapshot_change(
+    before: ScanCompareSnapshot | None, after: ScanCompareSnapshot | None,
+) -> tuple[bool, bool, float | None] | None:
+    """(severity changed, status changed, risk delta) between two scans' snapshots of
+    one finding, or None when nothing differs or either side has no snapshot."""
+    if before is None or after is None or before.severity is None or after.severity is None:
+        return None
+    sev = before.severity != after.severity
+    st = before.status != after.status
+    delta = None
+    if before.risk_score is not None and after.risk_score is not None:
+        delta = round(after.risk_score - before.risk_score, 2)
+    if not (sev or st or (delta not in (None, 0))):
+        return None
+    return sev, st, delta
+
+
+def _scan_summary(
+    ids: set[uuid.UUID], snaps: dict[uuid.UUID, ScanCompareSnapshot],
+    findings: dict[uuid.UUID, FindingOut],
+) -> ScanCompareSummary:
+    by_sev = {k: 0 for k in _SEVERITY_KEYS}
+    risks: list[float] = []
+    from_snapshot = True
+    for fid in ids:
+        snap = snaps.get(fid)
+        fo = findings.get(fid)
+        sev = snap.severity if snap and snap.severity else None
+        if sev is None:
+            from_snapshot = False
+            sev = str(getattr(fo.severity, "value", fo.severity)) if fo else None
+        if sev in by_sev:
+            by_sev[sev] += 1
+        risk = snap.risk_score if snap and snap.risk_score is not None else (
+            float(fo.risk_rank) if fo and fo.risk_rank is not None else None)
+        if risk is not None:
+            risks.append(risk)
+    return ScanCompareSummary(
+        total=len(ids), by_severity=by_sev,
+        average_risk=round(sum(risks) / len(risks), 1) if risks else None,
+        from_snapshot=from_snapshot)
+
+
+async def build_scan_compare(
+    db: AsyncSession, tenant_id: uuid.UUID, a: str, b: str,
+    *, engagement_id: uuid.UUID | None = None, cap: int | None = _COMPARE_BUCKET_CAP,
+) -> ScanCompareOut:
+    """The diff itself, shared by the JSON endpoint, the portal and the export."""
+    a_runs = await _resolve_scan_run_ids(db, a, tenant_id, engagement_id=engagement_id)
+    b_runs = await _resolve_scan_run_ids(db, b, tenant_id, engagement_id=engagement_id)
     if not a_runs:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Scan not found: {a}")
@@ -929,7 +974,7 @@ async def compare_scans(
         load = (
             select(Finding)
             .join(Engagement, Finding.engagement_id == Engagement.id)
-            .where(Engagement.tenant_id == current_user.tenant_id,
+            .where(Engagement.tenant_id == tenant_id,
                    Finding.id.in_(all_ids))
         )
         if engagement_id is not None:
@@ -937,18 +982,144 @@ async def compare_scans(
         rows = (await db.execute(load)).scalars().all()
         serialized = {fo.id: fo for fo in await _with_asset_identity(db, rows)}
 
+    snaps_a = await _scan_snapshots(db, a_runs)
+    snaps_b = await _scan_snapshots(db, b_runs)
+
     def bucket(ids: set[uuid.UUID]) -> list[FindingOut]:
         items = [serialized[i] for i in ids if i in serialized]
         items.sort(key=lambda f: (f.risk_rank or 0), reverse=True)
-        return items[:_COMPARE_BUCKET_CAP]
+        return items if cap is None else items[:cap]
+
+    changes: list[ScanCompareChange] = []
+    for fid in still_ids:
+        if fid not in serialized:
+            continue
+        diff = _snapshot_change(snaps_a.get(fid), snaps_b.get(fid))
+        if diff is None:
+            continue
+        sev_changed, status_changed, delta = diff
+        changes.append(ScanCompareChange(
+            finding=serialized[fid], before=snaps_a[fid], after=snaps_b[fid],
+            severity_changed=sev_changed, status_changed=status_changed, risk_delta=delta))
+    # What matters most first: a severity change, then the size of the score move.
+    changes.sort(key=lambda c: (c.severity_changed, abs(c.risk_delta or 0)), reverse=True)
 
     return ScanCompareOut(
         a=await _scan_meta(db, a_runs),
         b=await _scan_meta(db, b_runs),
         counts=ScanCompareCounts(
-            new=len(new_ids), fixed=len(fixed_ids), still_present=len(still_ids)),
+            new=len(new_ids), fixed=len(fixed_ids), still_present=len(still_ids),
+            changed=len(changes)),
+        summary_a=_scan_summary(present_a, snaps_a, serialized),
+        summary_b=_scan_summary(present_b, snaps_b, serialized),
         new=bucket(new_ids), fixed=bucket(fixed_ids), still_present=bucket(still_ids),
+        changed=changes if cap is None else changes[:cap],
     )
+
+
+@router.get("/compare", response_model=ScanCompareOut,
+            summary="Diff two scans — new, fixed, still present, and what changed")
+async def compare_scans(
+    db: ReadDB,
+    current_user: AuthUser,
+    a: str = Query(
+        ..., min_length=1, max_length=64,
+        description="Baseline scan — SCN-YYMMDD-XXXXXX reference, job id, or run id."),
+    b: str = Query(
+        ..., min_length=1, max_length=64,
+        description="Target scan — same accepted forms as `a`."),
+    engagement_id: uuid.UUID | None = Query(
+        default=None,
+        description="Pin both scans and the finding load to one engagement "
+                    "(the portal always sets this)."),
+):
+    """Diff two scans through the per-run membership table. A finding is 'present' in
+    a scan when that scan saw it new or reaffirmed; then
+      new           = present in b but not a,
+      fixed         = present in a but not b,
+      still_present = present in both,
+      changed       = still_present whose severity, risk score or status differs
+                      between the two scans' snapshots.
+    `counts` are the true totals; each finding list is capped at 500, most-severe
+    first. An unknown scan (no detection runs) is a 404."""
+    return await build_scan_compare(
+        db, current_user.tenant_id, a, b, engagement_id=engagement_id)
+
+
+_FORMULA_LEAD = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_cell(value):
+    """A spreadsheet must never run a finding title as a formula."""
+    if value is None:
+        return ""
+    if isinstance(value, str) and value.startswith(_FORMULA_LEAD):
+        return "'" + value
+    return value
+
+
+def compare_to_csv(result: ScanCompareOut) -> str:
+    """One row per finding with its bucket and each scan's recorded severity, score and
+    status. 'Before' is scan A and 'After' is scan B."""
+    import csv
+    import io
+
+    header = ["bucket", "finding_id", "title", "host", "cve", "severity_now", "risk_now",
+              "severity_a", "severity_b", "risk_a", "risk_b", "risk_change",
+              "status_a", "status_b"]
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(header)
+
+    def host(f: FindingOut) -> str:
+        return f.asset_ip or f.asset_hostname or ""
+
+    def line(bucket: str, f: FindingOut, before=None, after=None, delta=None):
+        w.writerow([_csv_cell(v) for v in (
+            bucket, str(f.id), f.title, host(f), ";".join(f.cve_ids or []),
+            getattr(f.severity, "value", f.severity), f.risk_rank,
+            before.severity if before else None, after.severity if after else None,
+            before.risk_score if before else None, after.risk_score if after else None,
+            delta, before.status if before else None, after.status if after else None)])
+
+    for f in result.new:
+        line("new", f)
+    for f in result.fixed:
+        line("fixed", f)
+    changed_ids = {c.finding.id for c in result.changed}
+    for c in result.changed:
+        line("changed", c.finding, c.before, c.after, c.risk_delta)
+    for f in result.still_present:
+        if f.id not in changed_ids:
+            line("unchanged", f)
+    return "\ufeff" + out.getvalue()
+
+
+@router.get("/compare/export", summary="Download a two-scan comparison as CSV or JSON")
+async def export_scan_compare(
+    db: ReadDB,
+    current_user: AuthUser,
+    a: str = Query(..., min_length=1, max_length=64),
+    b: str = Query(..., min_length=1, max_length=64),
+    format: Literal["csv", "json"] = Query(default="csv"),
+    engagement_id: uuid.UUID | None = Query(default=None),
+):
+    """The whole comparison, uncapped — an export that silently dropped rows past 500
+    would be worse than none."""
+    result = await build_scan_compare(
+        db, current_user.tenant_id, a, b, engagement_id=engagement_id, cap=None)
+    ref_a = result.a.reference if result.a and result.a.reference else "A"
+    ref_b = result.b.reference if result.b and result.b.reference else "B"
+    name = re.sub(r"[^A-Za-z0-9_.-]+", "_", f"compare-{ref_a}-vs-{ref_b}")
+    if format == "json":
+        return Response(
+            content=result.model_dump_json(),
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{name}.json"'})
+    return Response(
+        content=compare_to_csv(result).encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{name}.csv"'})
 
 
 @router.get("/summary", response_model=FindingSummary, summary="Tenant finding aggregates")

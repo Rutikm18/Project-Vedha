@@ -932,6 +932,20 @@ async def portal_workspace_finding_compare(
         db=db, current_user=user, a=a, b=b, engagement_id=assert_client(user))
 
 
+@router.get("/workspace/findings/compare/export",
+            summary="Download a two-scan comparison of the assigned engagement as CSV or JSON")
+async def portal_workspace_finding_compare_export(
+    user: ClientUser,
+    db: DB,
+    a: str = Query(..., min_length=1, max_length=64),
+    b: str = Query(..., min_length=1, max_length=64),
+    format: Literal["csv", "json"] = Query(default="csv"),
+):
+    from app.routers.findings import export_scan_compare
+    return await export_scan_compare(
+        db=db, current_user=user, a=a, b=b, format=format, engagement_id=assert_client(user))
+
+
 @router.get("/workspace/findings/{finding_id}", dependencies=[Depends(finding_lock_gate)], response_model=FindingOut,
             summary="Manager-parity finding detail for the assigned engagement")
 async def portal_workspace_finding_detail(finding_id: uuid.UUID, user: ClientUser, db: DB):

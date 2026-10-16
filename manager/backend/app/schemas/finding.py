@@ -537,16 +537,51 @@ class ScanCompareCounts(BaseModel):
     new: int
     fixed: int
     still_present: int
+    # Of still_present: findings whose severity, risk score or status differs between
+    # the two scans' snapshots. Needs a snapshot on BOTH sides, so it is 0 when either
+    # scan predates snapshots.
+    changed: int = 0
+
+
+class ScanCompareSnapshot(BaseModel):
+    """A finding as one scan saw it."""
+    severity: str | None = None
+    risk_score: float | None = None
+    status: str | None = None
+
+
+class ScanCompareChange(BaseModel):
+    """A finding present in both scans whose recorded state differs."""
+    finding: FindingOut
+    before: ScanCompareSnapshot
+    after: ScanCompareSnapshot
+    severity_changed: bool = False
+    status_changed: bool = False
+    risk_delta: float | None = None
+
+
+class ScanCompareSummary(BaseModel):
+    """What one scan saw, for the side-by-side totals. `from_snapshot` is False when
+    any finding's severity had to come from today's row (a scan that predates
+    snapshots), in which case the figures describe the finding now, not the scan then."""
+    total: int
+    by_severity: dict[str, int]
+    average_risk: float | None = None
+    from_snapshot: bool = True
 
 
 class ScanCompareOut(BaseModel):
     """Diff between two scans (a = baseline, b = target). A finding is 'present' in a
     scan when that scan saw it new or reaffirmed. new = present in b but not a; fixed
-    = present in a but not b; still_present = present in both. `counts` are the true
-    totals; the finding lists are capped, most-severe first."""
+    = present in a but not b; still_present = present in both; changed = the part of
+    still_present whose severity, risk score or status differs between the scans.
+    `counts` are the true totals; the finding lists are capped, most-severe first."""
     a: FindingScanRef | None = None
     b: FindingScanRef | None = None
     counts: ScanCompareCounts
+    summary_a: ScanCompareSummary | None = None
+    summary_b: ScanCompareSummary | None = None
     new: list[FindingOut]
     fixed: list[FindingOut]
     still_present: list[FindingOut]
+    changed: list[ScanCompareChange] = []

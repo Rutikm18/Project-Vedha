@@ -23,6 +23,8 @@ from app.models.detection_run_finding import (
 )
 
 _NOW = datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc)
+# (severity, risk_score, status) as the finding row carries them.
+_SNAP = ("high", 640, "open")
 
 
 def _membership_db(touched_rows, resolved_ids):
@@ -45,8 +47,8 @@ class TestClassification:
         run = SimpleNamespace(id=uuid.uuid4())
         new_id, reaff_id, resolved_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
         touched = [
-            (new_id, _NOW, _NOW),                       # created THIS run
-            (reaff_id, _NOW - timedelta(days=7), _NOW),  # carried over → reaffirmed
+            (new_id, _NOW, _NOW, *_SNAP),                   # created THIS run
+            (reaff_id, _NOW - timedelta(days=7), _NOW, *_SNAP),  # carried over → reaffirmed
         ]
         db, added = _membership_db(touched, [resolved_id])
 
@@ -61,14 +63,29 @@ class TestClassification:
         assert all(m.run_id == run.id for m in added)
 
     @pytest.mark.asyncio
+    async def test_a_touched_finding_is_snapshotted_as_this_scan_saw_it(self):
+        """Severity, score and status are copied onto the membership row so a later
+        diff can say what changed; a resolved row carries no snapshot."""
+        run = SimpleNamespace(id=uuid.uuid4())
+        fid, rid = uuid.uuid4(), uuid.uuid4()
+        db, added = _membership_db([(fid, _NOW, _NOW, "critical", 911, "confirmed")], [rid])
+
+        await engine_bridge._record_run_membership(db, run)
+
+        by_finding = {m.finding_id: m for m in added}
+        assert (by_finding[fid].severity, by_finding[fid].risk_score, by_finding[fid].status) == (
+            "critical", 911, "confirmed")
+        assert by_finding[rid].severity is None and by_finding[rid].risk_score is None
+
+    @pytest.mark.asyncio
     async def test_first_seen_equal_last_seen_is_the_only_new_signal(self):
         """A reaffirm only advances last_seen; a created finding shares the run's
         one instant. Equality — not a run-id guess — is what separates them."""
         run = SimpleNamespace(id=uuid.uuid4())
         created, reaffirmed = uuid.uuid4(), uuid.uuid4()
         touched = [
-            (created, _NOW, _NOW),
-            (reaffirmed, _NOW, _NOW + timedelta(seconds=1)),
+            (created, _NOW, _NOW, *_SNAP),
+            (reaffirmed, _NOW, _NOW + timedelta(seconds=1), *_SNAP),
         ]
         db, added = _membership_db(touched, [])
 

@@ -1,6 +1,7 @@
 import uuid
+from decimal import Decimal
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -29,3 +30,11 @@ class DetectionRunFinding(Base):
         UUID(as_uuid=True), ForeignKey("findings.id", ondelete="CASCADE"),
         primary_key=True, index=True)
     outcome: Mapped[str] = mapped_column(String(16), nullable=False)
+
+    # The finding as THIS scan saw it. A finding is one mutable row, so without these a
+    # later severity/score/status change would rewrite what an earlier scan "found" and
+    # a scan-to-scan diff could not say what changed. NULL for resolved rows and for
+    # scans recorded before the snapshot existed (compare then shows presence only).
+    severity: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    risk_score: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
+    status: Mapped[str | None] = mapped_column(String(16), nullable=True)

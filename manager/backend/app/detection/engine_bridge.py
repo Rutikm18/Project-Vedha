@@ -794,12 +794,18 @@ async def _record_run_membership(db: AsyncSession, run: DetectionRun) -> None:
         the set above: evaluate_resolutions only considers detection_run_id != run.id.
     Best-effort — membership bookkeeping must never sink an otherwise-good run."""
     touched = (await db.execute(
-        select(Finding.id, Finding.first_seen, Finding.last_seen).where(
+        select(Finding.id, Finding.first_seen, Finding.last_seen,
+               Finding.severity, Finding.risk_score, Finding.status).where(
             Finding.detection_run_id == run.id)
     )).all()
-    for fid, first_seen, last_seen in touched:
+    for fid, first_seen, last_seen, severity, risk_score, fstatus in touched:
         outcome = RUN_FINDING_NEW if first_seen == last_seen else RUN_FINDING_REAFFIRMED
-        db.add(DetectionRunFinding(run_id=run.id, finding_id=fid, outcome=outcome))
+        # Snapshot the finding as this scan saw it, so a later diff can say what changed.
+        db.add(DetectionRunFinding(
+            run_id=run.id, finding_id=fid, outcome=outcome,
+            severity=getattr(severity, "value", severity),
+            risk_score=risk_score,
+            status=getattr(fstatus, "value", fstatus)))
     resolved_ids = (await db.execute(
         select(Finding.id).where(Finding.resolution_run_id == run.id)
     )).scalars().all()
