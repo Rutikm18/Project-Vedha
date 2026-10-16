@@ -1972,7 +1972,7 @@ function spotlight(e: React.MouseEvent<HTMLElement>) {
 function FixFirstStrip({
   findings, slaFor, total, loading, failed, onRetry, onSelect,
   exploitedActive, slaActive, onToggleExploited, onToggleSla,
-  severityCounts, severityActive, onSelectSeverity, countsUnavailable, someLocked = false,
+  severityCounts, severityActive, onSelectSeverity, countsUnavailable, someLocked = false, compact = false,
 }: {
   findings: Finding[];
   slaFor: (f: Finding) => Sla;
@@ -1984,6 +1984,8 @@ function FixFirstStrip({
   countsUnavailable: boolean;
   /** Portal plan hides some severities: counts then cover only what the plan includes. */
   someLocked?: boolean;
+  /** A finding is open: shrink the summary so the detail pane gets the room. */
+  compact?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -2018,6 +2020,7 @@ function FixFirstStrip({
   return (
     <section
       className="findings-decision-strip gradient-frame spotlight"
+      data-compact={compact ? "true" : undefined}
       onMouseMove={spotlight}
       aria-labelledby="visible-triage-title"
       style={{ borderTopColor: accent }}
@@ -2110,7 +2113,9 @@ function FixFirstStrip({
         )}
       </div>
 
-      {hasData && urgent.length > 0 && (
+      {/* With only a few findings in view the cards would just repeat the rows
+          right below them, so they appear once the list is long enough to need them. */}
+      {hasData && urgent.length > 0 && findings.length > 3 && (
         <>
         <button type="button" className="findings-phone-urgent-toggle" aria-expanded={expanded} aria-controls="urgent-current-page" onClick={() => setExpanded((value) => !value)}>{expanded ? "Hide urgent findings" : `Show ${urgent.length} urgent finding${urgent.length === 1 ? "" : "s"} on this page`}<ChevronDown size={14} aria-hidden /></button>
         <div id="urgent-current-page" className="findings-urgent-grid" data-expanded={expanded}>
@@ -2514,18 +2519,19 @@ const FINDINGS_CSS = `
 
 /* ── 3. Triage legend ────────────────────────────────────────────────── */
 .findings-triage-key {
-  margin-bottom: var(--space-4); overflow: hidden;
+  margin-bottom: var(--space-3); overflow: hidden;
   border: var(--hairline) solid var(--border-subtle); border-radius: var(--r-lg); background: var(--bg-panel);
 }
 .findings-triage-key summary {
-  display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: var(--space-4);
-  padding: 10px var(--space-5); color: var(--text-primary); cursor: pointer; list-style: none;
+  display: flex; min-height: 40px; align-items: center; justify-content: space-between; gap: var(--space-4);
+  padding: 8px var(--space-4); color: var(--text-primary); cursor: pointer; list-style: none;
 }
 .findings-triage-key summary::-webkit-details-marker { display: none; }
 .findings-triage-key summary > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .findings-triage-key summary strong { font: 650 13px/1.25 var(--font-ui); }
 .findings-triage-key summary small { max-width: 88ch; color: var(--text-muted); font: 400 11.5px/1.4 var(--font-ui); }
 .findings-triage-key summary svg { flex: 0 0 auto; color: var(--text-muted); transition: transform 180ms var(--ease-out); }
+.findings-triage-key:not([open]) summary small { display: none; }
 .findings-triage-key[open] summary { border-bottom: var(--hairline) solid var(--border-subtle); }
 .findings-triage-key[open] summary svg { transform: rotate(180deg); }
 .findings-triage-key-body {
@@ -2545,7 +2551,7 @@ const FINDINGS_CSS = `
 
 /* ── 4. Fix-first strip ──────────────────────────────────────────────── */
 .findings-decision-strip {
-  position: relative; overflow: hidden; margin-bottom: 16px; padding: 18px 20px;
+  position: relative; overflow: hidden; margin-bottom: 12px; padding: 14px 18px;
   border: var(--hairline) solid var(--border-subtle); border-top: 2px solid var(--border-accent);
   border-radius: 12px; background: var(--bg-panel); box-shadow: var(--shadow-sm);
 }
@@ -2575,20 +2581,27 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
    carries the severity without relying on the number's colour alone. */
 .findings-sev-counts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .findings-sev-count {
-  display: grid; gap: 5px; justify-items: start; min-width: 86px;
+  display: inline-flex; align-items: baseline; gap: 8px; min-width: 0;
   border: var(--hairline) solid transparent; border-radius: 9px;
-  padding: 9px 12px 10px; background: transparent; cursor: pointer; text-align: left;
+  padding: 6px 12px 7px; background: transparent; cursor: pointer; text-align: left;
   border-bottom-width: 3px; border-bottom-color: var(--rail);
   transition: background 140ms var(--ease-out), border-color 140ms var(--ease-out);
 }
 .findings-sev-count:hover { background: var(--bg-hover); }
 .findings-sev-count strong {
-  font: 800 26px/1.05 var(--font-display); font-variant-numeric: tabular-nums;
+  font: 800 20px/1.05 var(--font-display); font-variant-numeric: tabular-nums;
 }
 .findings-sev-count span {
-  color: var(--text-secondary); font: 700 8.5px/1.2 var(--font-mono); letter-spacing: .05em;
+  color: var(--text-secondary); font: 700 9.5px/1.2 var(--font-mono); letter-spacing: .05em;
 }
 
+.findings-decision-strip[data-compact="true"] { padding: 8px 14px; }
+.findings-decision-strip[data-compact="true"] .findings-strip-head h2,
+.findings-decision-strip[data-compact="true"] .findings-strip-head p,
+.findings-decision-strip[data-compact="true"] .findings-urgent-grid,
+.findings-decision-strip[data-compact="true"] .findings-phone-urgent-toggle { display: none; }
+.findings-decision-strip[data-compact="true"] .findings-sev-counts { margin-top: 0; }
+.findings-decision-strip[data-compact="true"] .findings-strip-head { align-items: center; }
 .findings-urgent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(256px, 1fr)); gap: 10px; margin-top: 16px; }
 .findings-urgent-item {
   display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px;
@@ -2623,8 +2636,9 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   border: var(--hairline) solid var(--border-subtle); border-radius: var(--r-lg);
   padding: var(--space-4); background: var(--bg-panel); box-shadow: var(--shadow-sm);
 }
-.findings-filter-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+.findings-filter-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
 .findings-filter-header > div:first-child { display: flex; align-items: center; gap: 8px; }
+.findings-filter-header-tools { display: flex !important; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .findings-filter-header svg { flex: 0 0 auto; color: var(--text-muted); }
 .findings-filter-header h2 { margin: 0 0 3px; color: var(--text-primary); font: 650 14.5px/1.25 var(--font-ui); }
 .findings-filter-header p { margin: 0; color: var(--text-muted); font: 400 12px/1.4 var(--font-ui); }
@@ -2644,7 +2658,15 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 }
 .findings-search button { display: inline-grid; width: 24px; height: 24px; flex: 0 0 auto; place-items: center; border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; }
 .findings-search button:hover { color: var(--text-primary); background: var(--bg-hover); }
-.findings-shortcuts { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-bottom: var(--space-4); color: var(--text-faint); font: 500 10px/1.4 var(--font-ui); }
+.findings-toolbar {
+  display: grid; grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(130px, 1fr));
+  gap: 12px; align-items: end; margin-bottom: var(--space-3);
+}
+.findings-toolbar > .findings-scope-grid { display: contents; }
+.findings-toolbar .findings-search { min-height: 38px; margin-bottom: 0; }
+.findings-workspace[data-detail="true"] .findings-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.findings-workspace[data-detail="true"] .findings-toolbar .findings-search { grid-column: 1 / -1; }
+.findings-shortcuts { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-left: auto; margin-bottom: 0; color: var(--text-faint); font: 500 10px/1.4 var(--font-ui); }
 .findings-shortcuts span { display: inline-flex; align-items: center; gap: 5px; }
 .findings-shortcuts b { color: var(--text-muted); font: 600 10px/1.2 var(--font-mono); }
 .findings-scope-grid {
@@ -2779,6 +2801,8 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   border: var(--hairline) solid var(--border-default); border-radius: 9px; padding: 8px 10px;
   background: var(--bg-panel);
 }
+.findings-bulk-bar[data-idle="true"] { border-color: transparent; background: transparent; box-shadow: none; padding: 0 2px; min-height: 0; }
+.findings-bulk-bar[data-idle="true"] .findings-bulk-actions { display: none; }
 .findings-bulk-bar > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .findings-bulk-bar span { color: var(--text-muted); font: 550 10.5px/1.3 var(--font-ui); }
 .findings-bulk-bar span strong { color: var(--text-primary); font: 700 11px/1 var(--font-mono); }
@@ -3395,10 +3419,12 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 @media (max-width: 620px) {
   .findings-decision-strip { padding: 16px; }
   .findings-sev-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .findings-sev-count { min-width: 0; }
+  .findings-sev-count { min-width: 0; display: grid; justify-items: start; gap: 4px; }
+  .findings-filter-header-tools { flex: 1 1 100%; justify-content: flex-start; }
+  .findings-agent-refresh { flex-wrap: wrap; }
   .findings-strip-metrics { width: 100%; justify-content: space-between; }
   .findings-strip-mix { width: 100%; padding-left: 0; }
-  .findings-filter-grid, .findings-scope-grid { grid-template-columns: minmax(0, 1fr); }
+  .findings-filter-grid, .findings-scope-grid, .findings-toolbar { grid-template-columns: minmax(0, 1fr); }
   .findings-compare-pick, .findings-compare-cols { grid-template-columns: minmax(0, 1fr); }
   .findings-filter-header { align-items: center; }
   .finding-card-header, .finding-card-context { align-items: flex-start; }
@@ -3450,6 +3476,7 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   .findings-sev-counts { grid-template-columns: repeat(auto-fit, minmax(52px, 1fr)); gap: 6px; }
   .findings-sev-count { padding: 8px 6px; }
   .findings-sev-count strong { font-size: 22px; }
+  .findings-sev-count span { font-size: 8.5px; letter-spacing: .02em; }
   .findings-strip-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 6px; }
   .findings-triage-metric { min-width: 0; padding: 6px 2px; justify-items: center; text-align: center; }
   .findings-triage-metric span { flex-wrap: wrap; justify-content: center; }
@@ -3937,35 +3964,6 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     <Shell
       title="Findings"
       subtitle="Triage, verify and remediate discovered vulnerabilities"
-      headerActions={
-        <div className="findings-agent-refresh">
-          <span
-            className="findings-agent-refresh-status"
-            data-tone={agentsRefreshing ? "idle" : agentOptionsQuery.error ? "error" : activeAgentCount > 0 ? "active" : "idle"}
-            role="status"
-            aria-live="polite"
-          >
-            <i aria-hidden />
-            {agentRefreshFeedback
-              ?? (agentOptionsQuery.isLoading
-                ? "Checking agent status…"
-                : agentOptionsQuery.error
-                  ? "Agent status unavailable"
-                  : `${activeAgentCount} active of ${registeredAgentCount} registered`)}
-          </span>
-          <button
-            type="button"
-            className="findings-agent-refresh-button"
-            onClick={() => { void refreshAgents(); }}
-            disabled={agentsRefreshing}
-            aria-busy={agentsRefreshing}
-            aria-label="Refresh active Vedha agents and probes"
-          >
-            <RefreshCw className={agentsRefreshing ? "findings-spinner" : undefined} size={14} aria-hidden />
-            {agentsRefreshing ? "Checking agents…" : "Refresh agents"}
-          </button>
-        </div>
-      }
       statusItems={[
         { label: "CRITICAL OPEN",     value: summaryValue(stats.criticalOpen), color: summaryUnavailable ? "var(--text-muted)" : SEV_PALETTE.RED },
         { label: "EXPLOIT CONFIRMED", value: summaryValue(stats.validated),    color: summaryUnavailable ? "var(--text-muted)" : SEV_PALETTE.ORANGE },
@@ -4006,7 +4004,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
         </div>
       )}
 
-      <TriageKey />
+      {!selectedId && <TriageKey />}
 
       <FixFirstStrip
         findings={findings}
@@ -4024,6 +4022,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
         severityActive={filterSev}
         countsUnavailable={summaryUnavailable}
         someLocked={surface === "portal" && (lockedPlan.data?.locked_severities?.length ?? 0) > 0}
+        compact={Boolean(selectedId)}
         onSelectSeverity={(s) => applyFilter(() => setFilterSev(filterSev === s ? "ALL" : s))}
       />
 
@@ -4049,13 +4048,43 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                   </p>
                 </div>
               </div>
-              {hasActiveFilters && (
-                <button type="button" className="findings-clear-filter" onClick={clearFilters}>
-                  <RotateCcw size={13} aria-hidden /> Clear
-                </button>
-              )}
+              <div className="findings-filter-header-tools">
+        <div className="findings-agent-refresh">
+          <span
+            className="findings-agent-refresh-status"
+            data-tone={agentsRefreshing ? "idle" : agentOptionsQuery.error ? "error" : activeAgentCount > 0 ? "active" : "idle"}
+            role="status"
+            aria-live="polite"
+          >
+            <i aria-hidden />
+            {agentRefreshFeedback
+              ?? (agentOptionsQuery.isLoading
+                ? "Checking agent status…"
+                : agentOptionsQuery.error
+                  ? "Agent status unavailable"
+                  : `${activeAgentCount} active of ${registeredAgentCount} registered`)}
+          </span>
+          <button
+            type="button"
+            className="findings-agent-refresh-button"
+            onClick={() => { void refreshAgents(); }}
+            disabled={agentsRefreshing}
+            aria-busy={agentsRefreshing}
+            aria-label="Refresh active Vedha agents and probes"
+          >
+            <RefreshCw className={agentsRefreshing ? "findings-spinner" : undefined} size={14} aria-hidden />
+            {agentsRefreshing ? "Checking agents…" : "Refresh agents"}
+          </button>
+        </div>
+                {hasActiveFilters && (
+                  <button type="button" className="findings-clear-filter" onClick={clearFilters}>
+                    <RotateCcw size={13} aria-hidden /> Clear
+                  </button>
+                )}
+              </div>
             </header>
 
+            <div className="findings-toolbar">
             <div className="findings-search">
               <Search size={15} color="var(--text-muted)" aria-hidden />
               <input
@@ -4068,14 +4097,6 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
               {search
                 ? <button type="button" onClick={() => applyFilter(() => setSearch(""))} aria-label="Clear the search"><X size={14} aria-hidden /></button>
                 : <kbd aria-hidden>/</kbd>}
-            </div>
-
-            <div className="findings-shortcuts" aria-hidden>
-              <span><Keyboard size={12} /></span>
-              <span><b>J</b> <b>K</b> move</span>
-              <span><b>Enter</b> open</span>
-              <span><b>Esc</b> close</span>
-              <span><b>[</b> <b>]</b> page</span>
             </div>
 
             <div className="findings-scope-grid">
@@ -4125,6 +4146,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                   <option value="date">Newest first</option>
                 </select>
               </label>
+            </div>
             </div>
 
             <details className="findings-more-filters">
@@ -4357,6 +4379,13 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                 <Layers size={13} aria-hidden /> Grouped
               </button>
             </div>
+            <div className="findings-shortcuts" aria-hidden>
+              <span><Keyboard size={12} /></span>
+              <span><b>J</b> <b>K</b> move</span>
+              <span><b>Enter</b> open</span>
+              <span><b>Esc</b> close</span>
+              <span><b>[</b> <b>]</b> page</span>
+            </div>
             <span className="findings-view-count" aria-live="polite">
               {queueView === "grouped"
                 ? groupsQuery.data
@@ -4407,7 +4436,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
           ) : (
           <>
           {surface === "manager" && findings.length > 0 && (
-            <section className="findings-bulk-bar" aria-label="Batch finding actions">
+            <section className="findings-bulk-bar" data-idle={bulkSelectedIds.size === 0 ? "true" : undefined} aria-label="Batch finding actions">
               <div>
                 <button
                   type="button"
@@ -4419,10 +4448,12 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                   {currentPageSelected ? "Unselect page" : "Select page"}
                 </button>
                 <span aria-live="polite">
-                  <strong>{bulkSelectedIds.size}</strong> selected · maximum {MAX_BULK_FINDINGS}
+                  {bulkSelectedIds.size === 0
+                    ? `Tick rows to build remediation files (up to ${MAX_BULK_FINDINGS})`
+                    : <><strong>{bulkSelectedIds.size}</strong> selected · maximum {MAX_BULK_FINDINGS}</>}
                 </span>
               </div>
-              <div>
+              <div className="findings-bulk-actions">
                 <button type="button" onClick={openRemediationWorkspace} disabled={bulkSelectedIds.size === 0}>
                   <Terminal size={14} aria-hidden /> Build remediation files
                 </button>

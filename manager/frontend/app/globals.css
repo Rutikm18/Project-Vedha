@@ -3963,8 +3963,9 @@ button.intel-tag:focus-visible { outline: 2px solid var(--accent); outline-offse
 .vedha-breadcrumb a { color: var(--accent); text-underline-offset: 3px; }
 .ui-recovery { padding: 12px 16px; margin-bottom: 16px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-panel); color: var(--sev-high-color); font-size: 13px; line-height: 1.5; }
 .ui-refresh-error { color: var(--sev-high-color); font-size: 12px; white-space: normal; }
-.findings-more-filters > summary { cursor: pointer; padding: 12px 0; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.findings-more-filters > summary { cursor: pointer; padding: 4px 0 2px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
 .findings-more-filters > summary > span { font-weight: 400; color: var(--text-muted); }
+@media (pointer: coarse) { .findings-more-filters > summary { padding: 12px 0; } }
 .findings-applied-filters { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; }
 .findings-applied-filters button { max-width: 100%; overflow-wrap: anywhere; }
 .cr-generation-details { min-width: 0; padding: 16px; background: var(--bg-panel); }

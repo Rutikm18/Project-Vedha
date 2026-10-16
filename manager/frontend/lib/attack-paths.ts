@@ -899,7 +899,7 @@ export function overviewTiles(summary: OverviewSummary | null | undefined): Over
 /** The footer line. Counts only what is true; empty when the server sent no summary. */
 export function overviewSummary(o: Overview | null | undefined): string {
   const s = o?.summary;
-  if (!s || s.engagements === 0) return o && o.engagements.length === 0 ? "No engagements" : "";
+  if (!s || s.engagements === 0) return o?.engagements?.length === 0 ? "No engagements" : "";
   const unassessed = s.not_computed + s.no_targets + s.unrecorded;
   const base = s.assessed === 0
     ? "No engagement assessed yet"

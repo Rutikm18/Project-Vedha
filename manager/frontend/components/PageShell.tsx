@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Menu, Sun, Moon, LogOut, User } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { useTheme } from "./ThemeProvider";
@@ -32,6 +32,19 @@ export function PageShell({
   const detailParent = pathname.startsWith("/engagements/") ? { href: "/engagements", label: "Engagements" }
     : pathname.startsWith("/campaign/") ? { href: "/campaign", label: "VA Campaigns" } : null;
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Header chips scroll sideways when they don't fit. Without a cue that reads as
+  // a clipped, broken chip, so flag the overflow and let CSS fade the edge.
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const [headerOverflows, setHeaderOverflows] = useState(false);
+  useEffect(() => {
+    const el = headerScrollRef.current;
+    if (!el) return;
+    const measure = () => setHeaderOverflows(el.scrollWidth > el.clientWidth + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [statusItems, headerActions]);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const [utcTime, setUtcTime]         = useState("");
   const [userEmail, setUserEmail]     = useState<string | null>(
@@ -209,7 +222,7 @@ export function PageShell({
             display: "flex", alignItems: "center", gap: 10,
             flex: "1 1 520px", minWidth: 0, justifyContent: "flex-end", overflow: "hidden",
           }}>
-            <div className="vedha-page-header-scroll" style={{
+            <div className="vedha-page-header-scroll" ref={headerScrollRef} data-overflow={headerOverflows ? "true" : undefined} style={{
               display: "flex", alignItems: "center", gap: 10, minWidth: 0,
               width: 0, flex: "1 1 auto",
               overflowX: "auto", scrollbarWidth: "none",
@@ -419,6 +432,10 @@ const SHELL_RESPONSIVE_STYLES = `
 
 /* Tablet: 768px–1023px — sidebar always visible, but content is tighter */
 .vedha-page-header-scroll::-webkit-scrollbar { display: none; }
+.vedha-page-header-scroll[data-overflow="true"] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+}
 .vedha-page-header-scroll > *, .vedha-page-header-tools > :not(.vedha-page-header-scroll) { flex-shrink: 0; }
 
 @media (max-width: 1360px) {
