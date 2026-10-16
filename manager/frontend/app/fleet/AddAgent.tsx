@@ -103,7 +103,9 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
   const [showInspect, setShowInspect] = useState(false);
   const [showReqs, setShowReqs] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [os, setOs] = useState<InstallOs>("linux");
+  // Windows is the common client host, so it leads: the OS defaults to Windows and
+  // falls back to Linux only when the release has no Windows package.
+  const [os, setOs] = useState<InstallOs>("windows");
 
   const loadTokens = useCallback(async () => {
     try {
@@ -278,7 +280,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
 
       <form className="aa-form" onSubmit={generate}>
         {surface === "manager" && (
-          <label className="flt-field">
+          <label className="flt-field aa-field-full">
             <span className="flt-label">Engagement <span className="flt-req-star" aria-hidden="true">*</span></span>
             <select
               className="flt-input"
@@ -330,7 +332,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
         <div className="aa-result" aria-live="polite">
           {hasWindows && (
             <div className="aa-os" role="tablist" aria-label="Operating system of the host">
-              {(["linux", "windows"] as const).map((id) => (
+              {(["windows", "linux"] as const).map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -471,12 +473,22 @@ export const ADD_AGENT_STYLES = `
 .aa-dot { color: var(--text-faint); }
 .aa-note { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); color: var(--text-secondary); font-size: 11.5px; line-height: 1.5; margin-bottom: 12px; }
 .aa-note svg { flex-shrink: 0; margin-top: 2px; color: var(--sev-medium-color); }
-/* A long command must scroll inside its box, never widen the page: every flex/grid parent above it needs min-width: 0. */
-.flt-card, .aa-note > div, .aa-result > *, .aa-result .flt-cmds, .aa-result .flt-cmd { min-width: 0; }
+/* A long command must scroll inside its own box, never widen the card. Every flex/grid
+   ancestor between the scrolling .flt-code and the card must be allowed to shrink — including
+   the zero-knowledge (.aa-zk) block, whose long Windows one-liner escapes the card otherwise. */
+.flt-card, .aa-note > div,
+.aa-result, .aa-result > *, .aa-result .flt-cmds, .aa-result .flt-cmd,
+.aa-zk, .aa-zk > *,
+.flt-cmds, .flt-cmd, .flt-install { min-width: 0; }
+.flt-code { scrollbar-width: thin; }
 .aa-warn { border-color: var(--sev-medium-color); }
 .aa-form + .aa-note { margin: 12px 0 0; }
-.aa-form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; }
-.aa-submit { grid-column: auto; padding: 0 16px; white-space: nowrap; }
+/* Engagement (what the agent scans for — required, scope-defining) leads full-width; Label
+   (optional id) and Command-lifetime (the generated command's security window) pair on one row;
+   the action spans the foot. No field is ever orphaned into a narrow column. */
+.aa-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; align-items: start; }
+.aa-field-full { grid-column: 1 / -1; }
+.aa-submit { grid-column: 1 / -1; padding: 0 16px; white-space: nowrap; }
 .aa-result { margin-top: 14px; display: grid; gap: 8px; padding: 12px; border-radius: 10px; border: 0.5px solid var(--border-accent); background: var(--accent-ghost); }
 .aa-result-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .aa-small { margin: 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
