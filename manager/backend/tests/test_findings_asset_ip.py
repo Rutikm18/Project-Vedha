@@ -58,20 +58,50 @@ def _orm_finding(asset_id):
     )
 
 
+def _page_db(a1, a2):
+    """db whose first two queries are the page's bulk lookups: asset rows (with
+    criticality), then service exposure. Anything else returns nothing."""
+    assets = MagicMock()
+    assets.all.return_value = [(a1, "192.168.1.78", "nas", "critical"), (a2, "192.168.1.1", None, "low")]
+    services = MagicMock()
+    services.all.return_value = [(a1, "external"), (a1, "internal"), (a2, "internal")]
+    empty = MagicMock()
+    empty.all.return_value = []
+    results = iter([assets, services])
+    db = MagicMock()
+    db.execute = AsyncMock(side_effect=lambda *_a, **_k: next(results, empty))
+    return db
+
+
 @pytest.mark.asyncio
-async def test_page_asset_identity_is_one_query():
+async def test_page_asset_context_is_a_fixed_number_of_queries():
     a1, a2 = uuid.uuid4(), uuid.uuid4()
     rows = [_orm_finding(a1), _orm_finding(a2), _orm_finding(a1), _orm_finding(None)]
-    result = MagicMock()
-    result.all.return_value = [(a1, "192.168.1.78", "nas"), (a2, "192.168.1.1", None)]
-    db = MagicMock()
-    db.execute = AsyncMock(return_value=result)
+    db = _page_db(a1, a2)
 
     out = await findings_router._with_asset_identity(db, rows)
 
-    assert db.execute.await_count == 1
+    # Assets (identity + criticality) and service exposure for the whole page:
+    # two bulk queries, regardless of how many findings are on it.
+    assert db.execute.await_count == 2
     assert [o.asset_ip for o in out] == ["192.168.1.78", "192.168.1.1", "192.168.1.78", None]
     assert out[0].asset_hostname == "nas"
+
+    big = [_orm_finding(a1 if i % 2 else a2) for i in range(60)]
+    db2 = _page_db(a1, a2)
+    await findings_router._with_asset_identity(db2, big)
+    assert db2.execute.await_count == 2          # still two: no per-row queries
+
+
+@pytest.mark.asyncio
+async def test_list_rank_uses_the_assets_real_criticality_and_exposure():
+    """The list used neutral asset context, so it disagreed with the detail view and
+    with the portal. A critical internet-facing asset must rank above a low internal
+    one for otherwise identical findings."""
+    a1, a2 = uuid.uuid4(), uuid.uuid4()
+    hot, cold, neutral = _orm_finding(a1), _orm_finding(a2), _orm_finding(None)
+    out = await findings_router._with_asset_identity(_page_db(a1, a2), [hot, cold, neutral])
+    assert out[0].risk_rank > out[2].risk_rank > out[1].risk_rank
 
 
 @pytest.mark.asyncio

@@ -145,3 +145,99 @@ def test_band_order_never_contradicts_severity_order(sev):
     order = ["info", "low", "medium", "high", "critical"]
     for a, b in zip(order, order[1:]):
         assert highs[a] < lows[b]
+
+
+# ── shared inputs: one definition for list, detail, sort, portal and explanation ──
+import uuid
+from datetime import datetime, timezone
+from decimal import Decimal
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
+
+from app.models.enums import FindingSeverity
+from app.routers import findings as findings_router
+from app.services.risk_inputs import (
+    exposure_source, internet_facing_from_exposure, risk_inputs, strongest_exposure)
+
+
+def _f(**kw):
+    base = dict(severity=FindingSeverity.critical, cvss_score=None, epss_score=None, evidence={},
+                exploit_validated=False, verification_state="confirmed", verification_confidence=92,
+                risk_score=None, asset_id=None, engagement_id=uuid.uuid4(), id=uuid.uuid4())
+    base.update(kw)
+    return SimpleNamespace(**base)
+
+
+def test_missing_cvss_stays_missing_not_zero():
+    """Detection used to pass cvss=0.0, which made a no-CVSS critical rank ~80 points
+    lower in the stored sort key (831) than in the list (911)."""
+    assert risk_inputs(_f())["cvss_score"] is None
+    assert risk_inputs(_f(cvss_score=Decimal("9.8")))["cvss_score"] == 9.8
+    stored = compute_risk_rank(**risk_inputs(_f(), asset_criticality=None, exposure=None))
+    assert stored == 911
+
+
+def test_exposure_prefers_scan_evidence_then_asset_services():
+    assert risk_inputs(_f(evidence={"internet_facing": False}), exposure="external")["internet_facing"] is False
+    assert risk_inputs(_f(), exposure="external")["internet_facing"] is True
+    assert risk_inputs(_f(), exposure="internal")["internet_facing"] is False
+    assert risk_inputs(_f(), exposure="dmz")["internet_facing"] is None       # unknown, not a guess
+    assert risk_inputs(_f(evidence={"internet_facing": "yes"}), exposure=None)["internet_facing"] is None
+    assert exposure_source(_f(evidence={"internet_facing": True}), None) == "scan evidence"
+    assert exposure_source(_f(), "external") == "asset service exposure"
+    assert exposure_source(_f(), None) == "not recorded"
+
+
+def test_strongest_exposure_picks_the_most_exposed_service():
+    assert strongest_exposure(["internal", "external", None]) == "external"
+    assert strongest_exposure([None, None]) is None
+    assert internet_facing_from_exposure("isolated") is False
+
+
+def test_kev_is_read_from_either_evidence_location():
+    assert risk_inputs(_f(evidence={"kev": True}))["kev"] is True
+    assert risk_inputs(_f(evidence={"enrichment": {"kev": True}}))["kev"] is True
+    assert risk_inputs(_f())["kev"] is False
+
+
+def _db(asset, service_exposures):
+    """Queries in order: asset row (scalar_one_or_none), then service exposures (scalars().all())."""
+    a = MagicMock()
+    a.scalar_one_or_none.return_value = asset
+    sv = MagicMock()
+    sv.scalars.return_value.all.return_value = service_exposures
+    results = iter([a, sv])
+    db = MagicMock()
+    db.execute = AsyncMock(side_effect=lambda *_a, **_k: next(results))
+    return db
+
+
+@pytest.mark.asyncio
+async def test_endpoint_explanation_equals_the_list_rank_for_the_same_finding():
+    asset = SimpleNamespace(ip_address="10.0.0.5", hostname="db1", criticality=SimpleNamespace(value="critical"))
+    f = _f(asset_id=uuid.uuid4(), cvss_score=Decimal("7.5"), epss_score=Decimal("0.4"))
+    exp = await findings_router.risk_explanation_for(_db(asset, ["external", "internal"]), f)
+    ctx = {f.asset_id: {"criticality": "critical", "exposure": "external", "ip": "10.0.0.5", "hostname": "db1"}}
+    assert exp["score"] == findings_router._rank_for(f, ctx)
+    assert exp["context"]["asset"]["criticality"] == "critical"
+    assert exp["context"]["internet_exposure_source"] == "asset service exposure"
+    assert "asset service exposure" in next(
+        i for d in exp["dimensions"] for i in d["inputs"] if i["key"] == "internet_facing")["note"]
+
+
+@pytest.mark.asyncio
+async def test_stored_score_sync_flag_tells_the_truth():
+    f = _f()
+    f.risk_score = Decimal("831.00")                       # the old, wrong stored value
+    exp = await findings_router.risk_explanation_for(_db(None, []), f)
+    assert exp["score"] == 911 and exp["stored_score"] == 831.0 and exp["stored_in_sync"] is False
+    f.risk_score = Decimal("911.00")
+    exp = await findings_router.risk_explanation_for(_db(None, []), f)
+    assert exp["stored_in_sync"] is True
+
+
+@pytest.mark.asyncio
+async def test_finding_without_an_asset_is_explained_with_defaults_not_invented_context():
+    exp = await findings_router.risk_explanation_for(_db(None, []), _f())
+    assert exp["context"]["asset"] is None
+    assert {"asset_criticality", "internet_facing", "auth_gap"} <= set(exp["defaults_used"])

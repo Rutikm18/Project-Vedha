@@ -179,7 +179,12 @@ async def portal_findings(
         q = q.where(Finding.status == status_filter)
     q = q.order_by(Finding.risk_score.desc().nullslast())
     rows = (await db.execute(q)).scalars().all()
-    return [ClientFindingOut.model_validate(r) for r in rows]
+    # The score shown is the canonical rank (real asset criticality and exposure), the
+    # same number the operator console shows, not the stored sort key.
+    from app.routers.findings import risk_ranks_for
+    ranks = await risk_ranks_for(db, list(rows))
+    return [ClientFindingOut.model_validate(r).model_copy(update={"risk_score": ranks[r.id]})
+            for r in rows]
 
 
 @router.get("/findings/locked",
@@ -199,7 +204,9 @@ async def portal_finding(finding_id: uuid.UUID, user: ClientUser, db: DB):
     )).scalar_one_or_none()
     if r is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
-    return ClientFindingOut.model_validate(r)
+    from app.routers.findings import risk_ranks_for
+    ranks = await risk_ranks_for(db, [r])
+    return ClientFindingOut.model_validate(r).model_copy(update={"risk_score": ranks[r.id]})
 
 
 @router.get("/findings/{finding_id}/events", dependencies=[Depends(finding_lock_gate)], response_model=FindingTimeline,
@@ -936,6 +943,19 @@ async def portal_workspace_finding_detail(finding_id: uuid.UUID, user: ClientUse
     )
     from app.routers.findings import _finding_detail_out
     return await _finding_detail_out(db, finding)
+
+
+@router.get("/workspace/findings/{finding_id}/risk-explanation", dependencies=[Depends(finding_lock_gate)],
+            summary="How this finding's 0-1000 risk score is calculated")
+async def portal_finding_risk_explanation(finding_id: uuid.UUID, user: ClientUser, db: DB):
+    finding = await finding_workflow.get_finding_for_action(
+        db,
+        finding_id,
+        tenant_id=user.tenant_id,
+        engagement_id=assert_client(user),
+    )
+    from app.routers.findings import risk_explanation_for
+    return await risk_explanation_for(db, finding)
 
 
 @router.get("/workspace/findings/{finding_id}/obligations", dependencies=[Depends(finding_lock_gate), Depends(compliance_gate)],

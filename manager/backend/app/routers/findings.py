@@ -21,6 +21,7 @@ from app.models.detection_run_finding import (
     DetectionRunFinding, RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED, RUN_FINDING_RESOLVED,
 )
 from app.models.scan_job import ScanJob
+from app.models.service import Service
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.finding_groups import FindingGroupPage
@@ -37,7 +38,8 @@ from app.services.finding_enrichment import detail_enrichment
 from app.services.finding_workflow import suggest_risk_owner
 from app.services.finding_groups import GroupRow, build_groups
 from app.services.finding_priority import severity_order_case
-from app.services.risk_rank import compute_risk_rank
+from app.services.risk_inputs import exposure_source, risk_inputs, strongest_exposure
+from app.services.risk_rank import compute_risk_rank, explain_risk_rank
 from app.routers.sla_policy import resolve_windows
 from app.services.deadlines import engagement_windows
 from app.utils.pagination import paginate_query
@@ -211,24 +213,67 @@ async def _scan_outcomes(
     return best
 
 
-async def _with_asset_identity(db: AsyncSession, findings: list[Finding]) -> list[FindingOut]:
-    """Serialize a page with each finding's asset IP/hostname and originating scan
-    — ONE query each for the page, never one per row."""
+async def _asset_risk_context(db: AsyncSession, findings: list[Finding]) -> dict:
+    """Per-asset identity, criticality and strongest service exposure for a page of
+    findings: THREE bulk queries however many rows, never one per row. Everything the
+    risk rank needs about the asset comes from here, in every list-shaped response."""
     ids = {f.asset_id for f in findings if f.asset_id is not None}
-    identity: dict = {}
-    if ids:
-        rows = (await db.execute(
-            select(Asset.id, Asset.ip_address, Asset.hostname).where(Asset.id.in_(ids))
-        )).all()
-        identity = {aid: (ip, host) for aid, ip, host in rows}
+    ctx: dict = {}
+    if not ids:
+        return ctx
+    rows = (await db.execute(
+        select(Asset.id, Asset.ip_address, Asset.hostname, Asset.criticality)
+        .where(Asset.id.in_(ids))
+    )).all()
+    svc = (await db.execute(
+        select(Service.asset_id, Service.exposure).where(Service.asset_id.in_(ids))
+    )).all()
+    grouped: dict = {}
+    for aid, exp in svc:
+        grouped.setdefault(aid, []).append(exp)
+    for aid, ip, host, crit in rows:
+        ctx[aid] = {"ip": ip, "hostname": host,
+                    "criticality": getattr(crit, "value", crit),
+                    "exposure": strongest_exposure(grouped.get(aid, []))}
+    return ctx
+
+
+def _rank_for(finding: Finding, ctx: dict) -> int:
+    a = ctx.get(finding.asset_id, {})
+    return compute_risk_rank(**risk_inputs(
+        finding, asset_criticality=a.get("criticality"), exposure=a.get("exposure")))
+
+
+async def risk_ranks_for(db: AsyncSession, findings: list[Finding]) -> dict:
+    """finding id → the canonical rank. For list-shaped responses that do not go
+    through FindingOut (the customer portal's legacy rows)."""
+    ctx = await _asset_risk_context(db, findings)
+    return {f.id: _rank_for(f, ctx) for f in findings}
+
+
+async def _with_asset_identity(db: AsyncSession, findings: list[Finding]) -> list[FindingOut]:
+    """Serialize a page with each finding's asset IP/hostname, originating scan and
+    the canonical risk rank (real asset criticality and exposure)."""
+    ctx = await _asset_risk_context(db, findings)
     scan_refs = await _scan_refs(db, findings)
     out = []
     for f in findings:
-        ip, host = identity.get(f.asset_id, (None, None))
+        a = ctx.get(f.asset_id, {})
         out.append(FindingOut.model_validate(f).model_copy(
-            update={"asset_ip": ip, "asset_hostname": host,
+            update={"asset_ip": a.get("ip"), "asset_hostname": a.get("hostname"),
+                    "risk_rank": _rank_for(f, ctx),
                     "scan": scan_refs.get(f.detection_run_id)}))
     return out
+
+
+async def _asset_exposure(db: AsyncSession, asset_id) -> str | None:
+    """The asset's strongest service exposure (external beats internal), or None."""
+    if asset_id is None:
+        return None
+    vals = (await db.execute(
+        select(Service.exposure).where(Service.asset_id == asset_id)
+    )).scalars().all()
+    return strongest_exposure(vals)
 
 
 async def _finding_detail_out(db: AsyncSession, finding: Finding) -> FindingOut:
@@ -267,26 +312,13 @@ async def _finding_detail_out(db: AsyncSession, finding: Finding) -> FindingOut:
         "asset_hostname": asset_context.hostname if asset_context else None,
         "scan": scan_refs.get(finding.detection_run_id),
     }
-    # On the detail read we know the asset, so recompute the explainable rank WITH
-    # real criticality/exposure instead of the neutral defaults the list path uses.
-    # Exposure (internet_facing/auth_enforced) is only honoured if the engine
-    # actually recorded it in evidence — never guessed. When absent it stays None
-    # and compute_risk_rank treats it as neutral (see risk_rank.py's contract).
-    if asset_context is not None:
-        ev = finding.evidence if isinstance(finding.evidence, dict) else {}
-        enr = ev.get("enrichment") if isinstance(ev.get("enrichment"), dict) else {}
-        update["risk_rank"] = compute_risk_rank(
-            severity=str(getattr(finding.severity, "value", finding.severity)),
-            cvss_score=float(finding.cvss_score) if finding.cvss_score is not None else None,
-            epss_score=float(finding.epss_score) if finding.epss_score is not None else None,
-            kev=bool(ev.get("kev") or enr.get("kev")),
-            exploit_validated=bool(finding.exploit_validated),
-            verification_state=finding.verification_state,
-            confidence=finding.verification_confidence,
-            asset_criticality=asset_context.criticality,
-            internet_facing=ev.get("internet_facing"),
-            auth_enforced=ev.get("auth_enforced"),
-        )
+    # Same inputs as the list (shared builder), so a finding reads the same everywhere.
+    exposure = await _asset_exposure(db, finding.asset_id)
+    update["risk_rank"] = compute_risk_rank(**risk_inputs(
+        finding,
+        asset_criticality=asset_context.criticality if asset_context is not None else None,
+        exposure=exposure,
+    ))
     # Detail-only heavy enrichment: explanation, business impact, technical detail,
     # exploitation posture, evidence-as-facts, and five-framework compliance. The
     # list endpoint deliberately omits this to stay bounded (see the schema note).
@@ -942,6 +974,51 @@ async def get_finding(
 ):
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
     return await _finding_detail_out(db, finding)
+
+
+async def risk_explanation_for(db: AsyncSession, finding: Finding) -> dict:
+    """The full working of the finding's risk rank, from the same inputs as the list,
+    the detail and the sort. Shared by the operator and customer-portal routes."""
+    asset = None
+    if finding.asset_id is not None:
+        asset = (await db.execute(
+            select(Asset).where(Asset.id == finding.asset_id,
+                                Asset.engagement_id == finding.engagement_id)
+        )).scalar_one_or_none()
+    exposure = await _asset_exposure(db, finding.asset_id) if asset is not None else None
+    criticality = getattr(asset.criticality, "value", asset.criticality) if asset is not None else None
+    explanation = explain_risk_rank(**risk_inputs(
+        finding, asset_criticality=criticality, exposure=exposure))
+    source = exposure_source(finding, exposure)
+    for dim in explanation["dimensions"]:
+        for item in dim["inputs"]:
+            if item["key"] == "internet_facing" and item["source"] == "recorded":
+                item["note"] = f"{item['note']} (from {source})"
+    stored = float(finding.risk_score) if finding.risk_score is not None else None
+    explanation["context"] = {
+        "asset": ({"ip_address": asset.ip_address, "hostname": asset.hostname,
+                   "criticality": criticality} if asset is not None else None),
+        "internet_exposure_source": source,
+        "service_exposure": exposure,
+    }
+    # The stored score is what "Highest risk" sorts on. It is recomputed from these same
+    # inputs after every scan; a mismatch means the sort key is waiting for a refresh.
+    explanation["stored_score"] = stored
+    explanation["stored_in_sync"] = stored is not None and round(stored) == explanation["score"]
+    return explanation
+
+
+@router.get("/{finding_id}/risk-explanation",
+            summary="How this finding's 0-1000 risk score is calculated")
+async def finding_risk_explanation(
+    finding_id: uuid.UUID,
+    db: ReadDB,
+    current_user: AuthUser,
+):
+    """Every input, weight, dimension and the severity band behind the score, with each
+    unrecorded input marked as a default. Read-only; tenant-scoped like the detail."""
+    finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
+    return await risk_explanation_for(db, finding)
 
 
 @router.get("/{finding_id}/events", response_model=FindingTimeline,

@@ -77,7 +77,7 @@ def _finding_with_internal():
     return SimpleNamespace(
         id=uuid.uuid4(), title="Unauth RCE", description="bad", severity=FindingSeverity.critical,
         status=FindingStatus.open, cvss_score=None, cve_ids=["CVE-2024-1"], risk_score=None,
-        remediation="patch now", first_seen=None,
+        remediation="patch now", first_seen=None, asset_id=None, verification_state=None,
         # internal — MUST NOT appear in customer output:
         exploitable=True, exploit_validated=True, detection_status="missed",
         needs_review=True, verification_rationale="internal analyst note",

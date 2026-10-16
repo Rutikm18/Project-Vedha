@@ -28,6 +28,7 @@ from app.models.asset import Asset
 from app.models.enums import AssetCriticality, FindingStatus
 from app.models.finding import Finding
 from app.models.service import Service
+from app.services.risk_inputs import risk_inputs, strongest_exposure
 from app.services.risk_rank import compute_risk_rank
 
 logger = structlog.get_logger()
@@ -121,10 +122,8 @@ def composite_risk_score(
     ))
 
 
-def _strongest_exposure(values: list[str | None]) -> str | None:
-    """The most-exposed value among an asset's services (external beats internal)."""
-    ranked = [(v, _EXPOSURE_RANK.get((v or "").lower(), 0)) for v in values if v]
-    return max(ranked, key=lambda t: t[1])[0] if ranked else None
+# Kept under its old name for existing callers; the logic lives in services.risk_inputs.
+_strongest_exposure = strongest_exposure
 
 
 def _load_offline_kev_epss():
@@ -183,11 +182,9 @@ async def prioritize_engagement_findings(
     for f in findings:
         cve = (f.cve_ids or [None])[0]
 
-        epss = float(f.epss_score) if f.epss_score is not None else 0.0
         if f.epss_score is None and epss_db is not None and cve:
             rec = epss_db.get(cve)
             if rec and rec.get("epss") is not None:
-                epss = float(rec["epss"])
                 f.epss_score = rec["epss"]
 
         evidence = f.evidence if isinstance(f.evidence, dict) else {}
@@ -199,22 +196,15 @@ async def prioritize_engagement_findings(
                 f.evidence = evidence
 
         asset = assets.get(f.asset_id) if f.asset_id else None
-        crit = asset.criticality.value if asset and asset.criticality else "medium"
         exposure = exposure_by_asset.get(f.asset_id) if f.asset_id else None
 
-        score = composite_risk_score(
-            cvss=float(f.cvss_score) if f.cvss_score is not None else 0.0,
-            epss=epss,
-            kev=kev,
-            exploit_validated=bool(f.exploit_validated),
-            severity=getattr(f.severity, "value", str(f.severity)),
-            asset_criticality=crit,
+        # The same inputs the list, the detail and the explanation use, so the stored
+        # score (what "Highest risk" sorts on) can never disagree with the number shown.
+        score = float(compute_risk_rank(**risk_inputs(
+            f,
+            asset_criticality=(asset.criticality.value if asset and asset.criticality else None),
             exposure=exposure,
-            verification_state=f.verification_state,
-            confidence=f.verification_confidence,
-            auth_enforced=(evidence.get("auth_enforced")
-                           if isinstance(evidence.get("auth_enforced"), bool) else None),
-        )
+        )))
         if f.risk_score is None or float(f.risk_score) != score:
             f.risk_score = score
             changed += 1
