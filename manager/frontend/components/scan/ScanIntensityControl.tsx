@@ -2,11 +2,11 @@
 
 import { INTENSITY, type Intensity } from "../../lib/scan-intensity";
 
-const summaries: Record<Intensity, string> = {
-  stealth: "Lower traffic · focused coverage",
-  normal: "Balanced coverage · everyday assessments",
-  aggressive: "Broader coverage · additional retries",
-};
+const arcs = [
+  { id: 'stealth', d: 'M22,96 A78,78 0 0 1 61,29.4' },
+  { id: 'normal', d: 'M61,29.4 A78,78 0 0 1 139,29.4' },
+  { id: 'aggressive', d: 'M139,29.4 A78,78 0 0 1 178,96' },
+];
 
 export function ScanIntensityControl({ value, onChange, disabled, allowed = INTENSITY.map(option => option.id), badges }: {
   value: Intensity; onChange: (value: Intensity) => void; disabled?: boolean;
@@ -14,32 +14,23 @@ export function ScanIntensityControl({ value, onChange, disabled, allowed = INTE
 }) {
   const selected = INTENSITY.find(option => option.id === value)!;
   const angle = { stealth: -60, normal: 0, aggressive: 60 }[value];
-  const arc = angle + 90;
-  return <fieldset className="scanner-intensity" disabled={disabled}>
+  return <fieldset className="scanner-intensity" data-mode={value} disabled={disabled}>
     <legend>Scan intensity</legend>
     <div className="scanner-intensity-dial" aria-hidden="true">
-      <svg viewBox="0 0 200 116" focusable="false">
-        <path d="M22 96 A78 78 0 0 1 178 96" fill="none" className="scanner-dial-track" strokeWidth="7" strokeLinecap="round" />
-        <path d="M22 96 A78 78 0 0 1 178 96" pathLength="180" fill="none" className="scanner-dial-arc" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${arc} 180`} />
-        {Array.from({ length: 19 }, (_, index) => <line key={index} x1="100" y1="29" x2="100" y2={index % 3 === 0 ? "36" : "33"}
-          transform={`rotate(${index * 10 - 90} 100 96)`} className="scanner-dial-tick" strokeWidth="1" />)}
-        {[[-60, "stealth"], [0, "normal"], [60, "aggressive"]].map(([rotation, name]) => <g key={name} transform={`rotate(${rotation} 100 96)`}>
-          <line x1="100" y1="14" x2="100" y2="23" className={name === value ? "scanner-dial-selected" : "scanner-dial-track"} strokeWidth="2" />
-        </g>)}
+      <svg viewBox="0 0 200 110" focusable="false">
+        {arcs.map(arc => <path key={arc.id} d={arc.d} fill="none" stroke={`var(--scan-${arc.id})`} strokeWidth="9" strokeLinecap="round" opacity={arc.id === value ? .8 : .26} />)}
         <g style={{ transform: `rotate(${angle}deg)` }} className="scanner-dial-needle">
-          <line x1="100" y1="96" x2="100" y2="43" className="scanner-dial-selected" strokeWidth="2.5" strokeLinecap="round" />
-          <circle cx="100" cy="43" r="3" className="scanner-dial-hub" />
+          <line x1="100" y1="96" x2="100" y2="26" stroke="var(--scan-selected)" strokeWidth="2.5" strokeLinecap="round" />
         </g>
-        <circle cx="100" cy="96" r="7" className="scanner-dial-hub-ring" />
-        <circle cx="100" cy="96" r="3" className="scanner-dial-hub" />
-      </svg><strong>{selected.label}</strong>
+        <circle cx="100" cy="96" r="5.5" fill="var(--bg-panel)" stroke="var(--scan-selected)" strokeWidth="2" />
+      </svg>
+      <div className="scanner-dial-readout"><strong>{selected.rate} pps</strong><span>{selected.label} · preset rate</span></div>
     </div>
     <div className="scanner-mode-options">
-      {INTENSITY.map(option => <label key={option.id} data-selected={value === option.id} data-disabled={!allowed.includes(option.id)}>
-        <span className="scanner-mode-title"><input type="radio" name="scan-intensity" value={option.id}
-          checked={value === option.id} disabled={!allowed.includes(option.id)} onChange={() => onChange(option.id)} />
-          <strong>{option.label}</strong></span>
-        <span className="scanner-mode-description">{summaries[option.id]}</span>
+      {INTENSITY.map(option => <label key={option.id} data-mode={option.id} data-selected={value === option.id} data-disabled={!allowed.includes(option.id)}>
+        <input type="radio" name="scan-intensity" value={option.id} checked={value === option.id}
+          disabled={!allowed.includes(option.id)} onChange={() => onChange(option.id)} />
+        <span className="scanner-mode-title"><i aria-hidden="true" /><strong>{option.label}</strong></span>
         {badges?.[option.id] && <small>{badges[option.id]}</small>}
       </label>)}
     </div>

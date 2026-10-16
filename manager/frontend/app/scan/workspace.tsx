@@ -3,14 +3,14 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Play, RefreshCw, CheckCircle2, Clock, XCircle, Loader,
-  Cpu, RotateCcw, ShieldAlert, Send, ChevronDown, Radar, ScanLine, SlidersHorizontal, Link2,
+  Cpu, RotateCcw, ShieldAlert, Send, ChevronDown, Radar, ScanLine, Target, Crosshair, Layers,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { PortalShell } from "../../components/portal/PortalShell";
 import { useToast } from "../../hooks/useToast";
 import { createScannerWorkspaceApi, type ScannerWorkspaceSurface } from "../../lib/scanner-workspace-api";
 import { DEEP_SCAN_UC, buildDeepScanLaunch, type ScanLaunchBody } from "../../lib/scan-launch";
-import { ScannerFleetStrip, NetworkVaHero } from "../../components/scan/ScannerContext";
+import { ScannerFleetStrip, NetworkVaHero, ScannerFrame } from "../../components/scan/ScannerContext";
 import { ScanIntensityControl } from "../../components/scan/ScanIntensityControl";
 import { scanIpAllowed, type ScanAssetOption } from "../../lib/scan-target";
 import "./scanner-workspace.css";
@@ -643,7 +643,8 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
   const readiness = setupBlocked ? "Scan setup must be verified before launch."
     : !selectedEng ? "Select an engagement to continue."
     : !compatibleProbes.length ? "No compatible agent is online. Connect an agent to start scanning."
-    : compatibleIdleProbes.length ? "Agent ready" : "Agent busy · scan will queue";
+    : compatibleIdleProbes.length ? `${compatibleIdleProbes.length} compatible idle agent${compatibleIdleProbes.length === 1 ? "" : "s"} ready`
+    : `${compatibleProbes.length} compatible agent${compatibleProbes.length === 1 ? " is" : "s are"} busy · scan will queue`;
   const selectedAssets = assets.engagementId === selectedEng ? assets : null;
 
   return (
@@ -661,18 +662,21 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
         </div>}
         {!setupErrors["Probe inventory"] && <ScannerFleetStrip probes={probes} loading={loadingData}
           href={isPortal ? "/portal/fleet" : "/fleet"} />}
-        <NetworkVaHero available={!!ucObj} loading={loadingData} disabled={launching} selected={scanKind === "engagement"}
+        <NetworkVaHero workflow={ucObj} loading={loadingData} disabled={launching} selected={scanKind === "engagement"}
           onConfigure={() => { setScanKind("engagement"); setSelectedProbe(""); }}
           campaignHref={isPortal ? "/portal/scans#campaign" : "/campaign"} />
+        <section className="scanner-setup-section">
+        <SectionLabel>Configure &amp; launch</SectionLabel>
+        <ScannerFrame active={!!ucObj && !loadingData}>
         <section className="scanner-setup" aria-labelledby="scanner-setup-title" aria-busy={loadingData}>
           <header className="scanner-setup-header">
-            <span className="scanner-config-icon"><SlidersHorizontal size={18} aria-hidden="true" /></span>
-            <div><h2 id="scanner-setup-title">Configure &amp; launch</h2><p>Set the engagement, scope, and scan intensity.</p></div>
-            <span className="scanner-config-context">{scanKind === "deep" ? "Deep scan · one IP" : "Network assessment"}</span>
+            <span className="scanner-config-icon"><Radar size={20} aria-hidden="true" /></span>
+            <div><h2 id="scanner-setup-title">{scanKind === "deep" ? "Deep scan · one IP" : ucObj?.display_name ?? "Network Vulnerability Assessment"}</h2>
+              <p className="scanner-config-metadata">{scanKind === "deep" ? "One IP · full TCP port assessment" : [ucObj?.scan_type, ucObj?.profile.toUpperCase(), ucObj?.expected_runtime_hint].filter(Boolean).join(" · ")}</p></div>
           </header>
           <div className="scanner-console-body" data-kind={scanKind}>
           <div className="scanner-target-column">
-            <h3>Target and agent</h3>
+            <div className="scanner-group-heading"><Target size={15} aria-hidden="true" /><div><h3>Target and agent</h3><p>Choose the authorized engagement and execution point.</p></div></div>
             <div className="scanner-fields">
               <div><label htmlFor="scan-engagement">Engagement</label>
                 <select id="scan-engagement" value={selectedEng} disabled={loadingData || launching}
@@ -700,22 +704,23 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
             </fieldset>
             <div key={scanKind} className="scanner-target-content">
             {scanKind === "engagement" ? <>
-              <div className="scanner-scope-heading"><label htmlFor="scan-scope">Target scope</label>
-                {scopeIsInherited && <span><Link2 size={12} aria-hidden="true" />From engagement</span>}
-                {!scopeIsInherited && inheritedScope && <button type="button" className="scanner-text-action" disabled={launching}
-                  onClick={() => setTargets(inheritedScope)}>Reset scope</button>}
+              <div className="scanner-group-heading"><Crosshair size={15} aria-hidden="true" /><div><h3>Scope boundaries</h3><p>Confirm what the vedha-agent may and may not touch.</p></div></div>
+              <div className="scanner-scope-fields">
+                <div><div className="scanner-scope-heading"><label htmlFor="scan-scope">Scope</label>
+                  {scopeIsInherited && <span><Layers size={11} aria-hidden="true" />From engagement</span>}
+                  {!scopeIsInherited && inheritedScope && <button type="button" className="scanner-text-action" disabled={launching}
+                    onClick={() => setTargets(inheritedScope)}>Reset scope</button>}
+                </div>
+                <textarea id="scan-scope" value={targets} disabled={!selectedEng || launching} rows={4}
+                  placeholder={selectedEng ? "No scope configured for this engagement" : "Select an engagement to inherit its scope"}
+                  onChange={event => setTargets(event.target.value)} aria-describedby="scan-scope-help" />
+                <p id="scan-scope-help" className="scanner-help">{scopeIsInherited ? "Inherited from the engagement — edit to narrow this run to a subset." : "Targets must remain inside this engagement’s authorized scope."}</p></div>
+                <div><label htmlFor="scan-excluded">Excluded scope <small>{excludeCount ? `${excludeCount} exclusion${excludeCount === 1 ? "" : "s"}` : "optional"}</small></label>
+                <textarea id="scan-excluded" value={excluded} disabled={!selectedEng || launching} rows={4}
+                  placeholder="IPs or CIDRs to exclude from this run"
+                  onChange={event => setExcluded(event.target.value)} aria-describedby="scan-excluded-help" />
+                <p id="scan-excluded-help" className="scanner-help">{excludeIsInherited ? "Inherited engagement exclusions remain enforced." : "These exclusions apply in addition to engagement boundaries."}</p></div>
               </div>
-              <textarea id="scan-scope" value={targets} disabled={!selectedEng || launching} rows={3}
-                placeholder={selectedEng ? "No scope configured for this engagement" : "Select an engagement to load its scope"}
-                onChange={event => setTargets(event.target.value)} aria-describedby="scan-scope-help" />
-              <p id="scan-scope-help" className="scanner-help">{scopeIsInherited ? "Targets are inherited from this engagement." : "Narrow targets within the engagement’s authorized scope."}</p>
-              <details className="scanner-details">
-                <summary>Excluded scope{excludeCount ? ` · ${excludeCount} exclusion${excludeCount === 1 ? "" : "s"}` : " · optional"}</summary>
-                <label htmlFor="scan-excluded">Excluded IPs or CIDRs</label>
-                <textarea id="scan-excluded" value={excluded} disabled={!selectedEng || launching} rows={2}
-                  onChange={event => setExcluded(event.target.value)} />
-                <p className="scanner-help">{excludeIsInherited ? "Inherited engagement exclusions remain enforced." : "These exclusions are applied in addition to engagement boundaries."}</p>
-              </details>
             </> : !selectedEng ? <p className="scanner-help">Select an engagement to choose one IP for a deep scan.</p>
               : isPortal && !plan ? <p className="scanner-help">Checking deep scan allowance…</p> : <DeepScanCard key={selectedEng}
                 plan={isPortal ? plan : null} scope={selectedEngagement?.scopeCidrs ?? []}
@@ -728,6 +733,7 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
             </div>
           </div>
           {scanKind === "engagement" && <aside className="scanner-review-column" aria-label="Scan review and launch">
+            <div className="scanner-group-heading"><Radar size={15} aria-hidden="true" /><div><h3>Scan behavior</h3><p>Choose the assessment intensity.</p></div></div>
             {!isOt && <ScanIntensityControl value={shownIntensity} onChange={chooseIntensity} disabled={!selectedEng || launching}
               allowed={isPortal ? portalDial : undefined} badges={isPortal && plan ? {
                 stealth: modeShort(plan.modes.stealth), normal: modeShort(plan.modes.normal), aggressive: modeShort(plan.modes.aggressive),
@@ -751,6 +757,8 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
             </div>
           </aside>}
           </div>
+        </section>
+        </ScannerFrame>
         </section>
         {/* ── Active job + dispatch receipt ── */}
         {job && (

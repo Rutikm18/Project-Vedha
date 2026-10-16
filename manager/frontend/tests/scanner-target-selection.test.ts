@@ -54,5 +54,7 @@ test("preset choices use native radios, keep all three visible, and expose unava
   assert.match(html, /checked=""[^>]+value="normal"/);
   assert.match(html, /disabled=""[^>]+value="aggressive"/);
   assert.match(html, /scanner-intensity-dial" aria-hidden="true"/);
-  assert.doesNotMatch(html, /pps|IDS|IPS|65,535/);
+  assert.match(html, /200 pps/);
+  assert.match(html, /preset rate/);
+  assert.doesNotMatch(html, /IDS|IPS|65,535/);
 });
