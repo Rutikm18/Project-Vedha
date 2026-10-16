@@ -22,6 +22,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 from pydantic import BaseModel, Field, field_validator
 
 from app import agent_access
+from app.models.audit_log import AuditLog
+from app.services import audit_query
 from app.routers.probe_enrollment import ENGAGEMENT_TOKEN_TTL_MINUTES, INSTALL_TOKEN_LIFETIMES
 from sqlalchemy import func, select
 
@@ -944,6 +946,40 @@ async def portal_workspace_finding_compare_export(
     from app.routers.findings import export_scan_compare
     return await export_scan_compare(
         db=db, current_user=user, a=a, b=b, format=format, engagement_id=assert_client(user))
+
+
+@router.get("/audit-log", response_model=audit_query.CustomerAuditPage,
+            summary="What happened in your engagement: scans, changes and access, newest first")
+async def portal_audit_log(
+    user: ClientUser,
+    db: DB,
+    start: datetime | None = Query(default=None, alias="from"),
+    end: datetime | None = Query(default=None, alias="to"),
+    category: str | None = Query(default=None, max_length=32),
+    outcome: Literal["success", "failure", "denied"] | None = Query(default=None),
+    cursor: str | None = Query(default=None, max_length=200),
+    limit: int = Query(default=50, ge=1, le=100),
+):
+    """The customer's own record. Only customer-visible events of THEIR engagement (and the
+    sign-ins of their own users); operator staff appear as "Vedha analyst" and no internal
+    detail, change set or operator address is returned."""
+    from app.services import audit_catalog
+    if category is not None and category not in audit_catalog.CATEGORIES:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown category '{category}'")
+    engagement_id = assert_client(user)
+    filters = audit_query.AuditFilters(start=start, end=end, category=category, outcome=outcome)
+    base = select(AuditLog).where(AuditLog.tenant_id == user.tenant_id,
+                                  audit_query.customer_scope(engagement_id))
+    try:
+        stmt = audit_query.page_after(audit_query.apply_filters(base, filters), cursor).limit(limit + 1)
+    except ValueError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid cursor") from None
+    rows = list((await db.execute(stmt)).scalars().all())
+    more = len(rows) > limit
+    rows = rows[:limit]
+    return audit_query.CustomerAuditPage(
+        items=await audit_query.to_customer_entries(db, rows, me=user.user_id),
+        next_cursor=audit_query.encode_cursor(rows[-1].timestamp, rows[-1].id) if more and rows else None)
 
 
 @router.get("/workspace/findings/{finding_id}", dependencies=[Depends(finding_lock_gate)], response_model=FindingOut,

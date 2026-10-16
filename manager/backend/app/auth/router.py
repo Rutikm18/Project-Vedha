@@ -51,6 +51,7 @@ from app.ratelimit import (
 from app.auth import mfa as mfa_lib
 from app.auth import totp
 from app.services.audit import record_audit
+from app.services import audit as audit_service
 from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
@@ -104,6 +105,38 @@ def access_claims_for(user: User) -> dict:
     return claims
 
 
+# ── Audit of sign-in events ──────────────────────────────────────────────────
+#
+# A failed sign-in RAISES, so the request's transaction rolls back; these are written in
+# their own transaction so the failure is kept. The reason is recorded for the
+# administrator and never reaches the caller (the response stays a generic 401).
+
+def _tag_user(exc: AuthenticationError, user: User) -> AuthenticationError:
+    exc.audit_user = user
+    return exc
+
+
+async def _audit_sign_in_failure(email: str, reason: str, user: User | None = None) -> None:
+    await audit_service.record_audit_independent(
+        actor_id=user.id if user else "anonymous",
+        actor_type=("client" if user is not None and user.client_engagement_id else "user") if user else "anonymous",
+        actor_label=email,
+        tenant_id=user.tenant_id if user else None,
+        action="auth.login.failure", outcome="failure",
+        resource_type="user" if user else None, resource_id=user.id if user else None,
+        detail={"reason": reason},
+    )
+
+
+async def _audit_sign_in_success(user: User, *, method: str) -> None:
+    await audit_service.record_audit_independent(
+        actor_id=user.id, actor_type="client" if user.client_engagement_id else "user",
+        actor_label=user.email, tenant_id=user.tenant_id, action="auth.login.success",
+        resource_type="user", resource_id=user.id,
+        detail={"method": method, "role": user.role.value},
+    )
+
+
 # ── Private authentication service ───────────────────────────────────────────
 
 async def _assert_account_usable(user: User, db: AsyncSession) -> None:
@@ -153,8 +186,9 @@ async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
 
     try:
         await _assert_account_usable(user, db)
-    except (DisabledUserError, DisabledTenantError, ExpiredPasswordError):
+    except (DisabledUserError, DisabledTenantError, ExpiredPasswordError) as exc:
         await asyncio.to_thread(_pwd.dummy_verify)   # maintain constant-time behaviour
+        _tag_user(exc, user)
         raise
 
     # ── bcrypt verify ─────────────────────────────────────────────────────
@@ -164,10 +198,10 @@ async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
         # passlib 1.7.4 has no single base error: verify() raises ValueError
         # (malformed/unknown hash, oversized password), TypeError (bad password
         # type), or RuntimeError (Internal/MissingBackendError). Catch all three.
-        raise BcryptFailureError(f"bcrypt raised for user {user.id}: {exc}") from exc
+        raise _tag_user(BcryptFailureError(f"bcrypt raised for user {user.id}: {exc}"), user) from exc
 
     if not match:
-        raise PasswordMismatchError(f"password mismatch for user {user.id}")
+        raise _tag_user(PasswordMismatchError(f"password mismatch for user {user.id}"), user)
 
     return user
 
@@ -200,12 +234,21 @@ async def login(
 
     # Per-account backstop: an IP limit alone cannot slow a spray spread across
     # many sources against one user. Checked before any password work.
-    await check_login_failures(redis, body.email)
+    try:
+        await check_login_failures(redis, body.email)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            await audit_service.record_audit_independent(
+                actor_id="anonymous", actor_type="anonymous", actor_label=body.email,
+                action="auth.login.locked", outcome="denied",
+                detail={"reason": "too_many_failures"})
+        raise
 
     try:
         user = await _authenticate(body.email, body.password, db)
     except AuthenticationError as exc:
         await record_login_failure(redis, body.email)
+        await _audit_sign_in_failure(body.email, exc.reason_code, getattr(exc, "audit_user", None))
         latency = round((time.monotonic() - t0) * 1000, 1)
         bound.warning(
             "auth.login.failed",
@@ -237,6 +280,7 @@ async def login(
     auth_policy = await org_settings.get_section(db, user.tenant_id, "auth")
     if not org_settings.sign_in_allowed(auth_policy, role=user.role.value, address=client_ip(request)):
         await record_login_failure(redis, body.email)
+        await _audit_sign_in_failure(body.email, "network_not_allowed", user)
         bound.warning("auth.login.network_blocked", user_id=str(user.id), role=user.role.value)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_GENERIC_401)
 
@@ -258,6 +302,7 @@ async def login(
         return LoginResponse(mfa_enrollment_required=True, mfa_token=token)
 
     tokens = await _issue_session(user, redis, bound)
+    await _audit_sign_in_success(user, method="password")
     latency = round((time.monotonic() - t0) * 1000, 1)
     bound.info(
         "auth.login.success",
@@ -419,6 +464,9 @@ async def logout(body: RefreshRequest, redis=Depends(get_redis)):
             await refresh_store.consume(redis, payload["jti"])
         except _STORE_ERRORS as exc:
             raise _session_store_unavailable(exc) from None
+        await audit_service.record_audit_independent(
+            actor_id=payload.get("sub", "unknown"), tenant_id=payload.get("tenant_id"),
+            action="auth.logout", resource_type="user")
     return {"ok": True}
 
 
@@ -452,6 +500,10 @@ async def create_personal_access_token(
     db.add(row)
     await db.flush()
     await db.refresh(row)
+    record_audit(db, actor_id=current_user.user_id, action="auth.api_key.created",
+                 resource_type="api_key", resource_id=row.id,
+                 detail={"name": row.name, "role": row.role, "scopes": list(row.scopes or []),
+                         "expires_at": row.expires_at.isoformat() if row.expires_at else None})
     logger.info("auth.pat.created", user_id=str(current_user.user_id), pat_id=str(row.id), name=row.name)
     return PersonalAccessTokenCreated(
         id=row.id,
@@ -522,6 +574,8 @@ async def revoke_personal_access_token(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token not found")
     if row.revoked_at is None:
         row.revoked_at = datetime.now(timezone.utc)
+        record_audit(db, actor_id=current_user.user_id, action="auth.api_key.revoked",
+                     resource_type="api_key", resource_id=row.id, detail={"name": row.name})
         await db.flush()
     logger.info("auth.pat.revoked", user_id=str(current_user.user_id), pat_id=str(row.id))
     return {"ok": True, "id": str(row.id), "revoked_at": row.revoked_at.isoformat()}
@@ -602,6 +656,10 @@ async def mfa_verify(body: MfaCodeRequest, request: Request, db: AsyncSession = 
         await mfa_lib.record_challenge_failure(redis, claims["jti"])
         await record_login_failure(redis, user.email)
         bound.warning("auth.mfa.verify_failed")
+        await audit_service.record_audit_independent(
+            actor_id=user.id, actor_type="client" if user.client_engagement_id else "user",
+            actor_label=user.email, tenant_id=user.tenant_id, action="auth.mfa.challenge_failed",
+            outcome="failure", resource_type="user", resource_id=user.id)
         raise _bad_code()
 
     await mfa_lib.spend_challenge(redis, claims["jti"])
@@ -613,6 +671,7 @@ async def mfa_verify(body: MfaCodeRequest, request: Request, db: AsyncSession = 
                      resource_id=str(user.id), detail={"remaining": len(remaining or [])}, ip=client_ip(request))
     await db.flush()
     tokens = await _issue_session(user, redis, bound)
+    await _audit_sign_in_success(user, method=f"password+{'recovery_code' if kind == 'recovery' else 'authenticator'}")
     bound.info("auth.login.success", method=f"password+{kind}")
     return tokens
 

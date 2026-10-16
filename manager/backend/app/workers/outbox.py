@@ -529,8 +529,9 @@ def main() -> None:
         from app.workers.reaper import run_reaper
         from app.workers.sla_watch import run_sla_watch
         from app.workers.acceptance_watch import run_acceptance_watch
+        from app.workers.audit_retention import run_audit_retention
         await asyncio.gather(run_worker(stop), run_reaper(stop), run_sla_watch(stop),
-                             run_acceptance_watch(stop))
+                             run_acceptance_watch(stop), run_audit_retention(stop))
 
     asyncio.run(_run())
 

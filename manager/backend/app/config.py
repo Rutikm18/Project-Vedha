@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     sla_watch_interval_seconds: int = 900
     # How often accepted findings whose acceptance expired are reopened (0 disables it).
     acceptance_watch_interval_seconds: int = 3600
+    # How often the worker removes audit entries past each organisation's retention period.
+    audit_retention_interval_seconds: int = 86400
 
     # Neo4j (attack-path graph store — optional; engine falls back to in-memory NetworkX)
     neo4j_uri: str = "bolt://localhost:7687"

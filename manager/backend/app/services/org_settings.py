@@ -24,8 +24,9 @@ from sqlalchemy import select
 
 from app.models.tenant_settings import TenantSettings
 
-SECTIONS = ("auth", "scan", "customer-defaults")
-_COLUMN = {"auth": "auth_policy", "scan": "scan_policy", "customer-defaults": "customer_defaults"}
+SECTIONS = ("auth", "scan", "customer-defaults", "audit")
+_COLUMN = {"auth": "auth_policy", "scan": "scan_policy", "customer-defaults": "customer_defaults",
+           "audit": "audit_policy"}
 
 _HHMM = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 _SEVERITIES = ("critical", "high", "medium", "low", "info")
@@ -151,7 +152,16 @@ class CustomerDefaults(_Strict):
         return list(dict.fromkeys(v))
 
 
-_MODELS: dict[str, type[_Strict]] = {"auth": AuthPolicy, "scan": ScanPolicy, "customer-defaults": CustomerDefaults}
+class AuditPolicy(_Strict):
+    # How long audit-log entries are kept before the retention job removes them. The
+    # floor is the legal minimum (CERT-In: a rolling 180 days) and cannot be lowered;
+    # PCI DSS asks 12 months, HIPAA documentation 6 years, so the default is a year.
+    retention_days: int = Field(default=365, ge=180, le=3650)
+
+
+_MODELS: dict[str, type[_Strict]] = {
+    "auth": AuthPolicy, "scan": ScanPolicy, "customer-defaults": CustomerDefaults, "audit": AuditPolicy,
+}
 
 
 # ── storage ─────────────────────────────────────────────────────────────────────
@@ -177,7 +187,8 @@ async def put_section(db: Any, tenant_id: uuid.UUID, section: str, value: _Stric
         select(TenantSettings).where(TenantSettings.tenant_id == tenant_id)
     )).scalar_one_or_none()
     if row is None:
-        row = TenantSettings(tenant_id=tenant_id, auth_policy={}, scan_policy={}, customer_defaults={})
+        row = TenantSettings(tenant_id=tenant_id, auth_policy={}, scan_policy={}, customer_defaults={},
+                             audit_policy={})
         db.add(row)
     setattr(row, _COLUMN[section], value.model_dump(mode="json"))
     row.updated_by = actor[:64]

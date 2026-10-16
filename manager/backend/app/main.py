@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 
+from app.audit_middleware import AuditContextMiddleware
 from app.auth.middleware import TenantIsolationMiddleware
 from app.auth.router import router as auth_router
 from app.auth.startup import StartupAbortError, run_startup_diagnostics
@@ -58,6 +59,7 @@ from app.routers.engagement_report import router as engagement_report_router
 from app.routers.sla_policy import engagement_router as engagement_sla_policy_router
 from app.routers.sla_policy import router as sla_policy_router
 from app.routers.scan_schedules import router as scan_schedules_router
+from app.routers.audit_logs import router as audit_logs_router
 from app.routers.validation import router as validation_router
 from app.routers.vuln_scans import router as vuln_router
 from app.version import get_version
@@ -227,6 +229,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Inside TenantIsolationMiddleware: request.state has the authenticated claims by then.
+app.add_middleware(AuditContextMiddleware)
 app.add_middleware(TenantIsolationMiddleware)
 app.add_middleware(GzipRequestMiddleware)
 # Outermost: every response, including 401/403 from the auth layer, carries the headers.
@@ -304,6 +308,7 @@ app.include_router(activity_router)
 app.include_router(analytics_router)
 app.include_router(users_router)
 app.include_router(scan_schedules_router)
+app.include_router(audit_logs_router)
 
 
 # ── P2: Prometheus metrics — request latency/count/in-progress at /metrics, so

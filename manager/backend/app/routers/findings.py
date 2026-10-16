@@ -44,6 +44,7 @@ from app.services.risk_inputs import exposure_source, risk_inputs, strongest_exp
 from app.services.risk_rank import compute_risk_rank, explain_risk_rank
 from app.routers.sla_policy import resolve_windows
 from app.services.deadlines import engagement_windows
+from app.utils.csv_safe import csv_cell
 from app.utils.pagination import paginate_query
 from app.detection.resolution import normalize_port
 
@@ -1046,18 +1047,6 @@ async def compare_scans(
         db, current_user.tenant_id, a, b, engagement_id=engagement_id)
 
 
-_FORMULA_LEAD = ("=", "+", "-", "@", "\t", "\r")
-
-
-def _csv_cell(value):
-    """A spreadsheet must never run a finding title as a formula."""
-    if value is None:
-        return ""
-    if isinstance(value, str) and value.startswith(_FORMULA_LEAD):
-        return "'" + value
-    return value
-
-
 def compare_to_csv(result: ScanCompareOut) -> str:
     """One row per finding with its bucket and each scan's recorded severity, score and
     status. 'Before' is scan A and 'After' is scan B."""
@@ -1075,7 +1064,7 @@ def compare_to_csv(result: ScanCompareOut) -> str:
         return f.asset_ip or f.asset_hostname or ""
 
     def line(bucket: str, f: FindingOut, before=None, after=None, delta=None):
-        w.writerow([_csv_cell(v) for v in (
+        w.writerow([csv_cell(v) for v in (
             bucket, str(f.id), f.title, host(f), ";".join(f.cve_ids or []),
             getattr(f.severity, "value", f.severity), f.risk_rank,
             before.severity if before else None, after.severity if after else None,

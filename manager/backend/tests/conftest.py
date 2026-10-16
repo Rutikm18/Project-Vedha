@@ -59,3 +59,18 @@ def _outbound_dns_stub(monkeypatch):
 
     monkeypatch.setattr(outbound, "_getaddrinfo", lambda host, port: [
         (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port or 0))])
+
+
+@pytest.fixture(autouse=True)
+def audit_sink(monkeypatch):
+    """Audit entries written in their own transaction (failed sign-ins, denied requests)
+    go to a list instead of a database. Tests read the list to assert what was recorded."""
+    from app.services import audit
+
+    written: list = []
+
+    async def _capture(entry):
+        written.append(entry)
+
+    monkeypatch.setattr(audit, "_commit_entry", _capture)
+    return written
