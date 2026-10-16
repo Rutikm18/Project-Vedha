@@ -36,10 +36,15 @@ export function PageShell({
   // a clipped, broken chip, so flag the overflow and let CSS fade the edge.
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const [headerOverflows, setHeaderOverflows] = useState(false);
+  const [headerSliver, setHeaderSliver] = useState(false);
   useEffect(() => {
     const el = headerScrollRef.current;
     if (!el) return;
-    const measure = () => setHeaderOverflows(el.scrollWidth > el.clientWidth + 1);
+    const measure = () => {
+      setHeaderOverflows(el.scrollWidth > el.clientWidth + 1);
+      // Too narrow to read even one chip: show none rather than a clipped sliver.
+      setHeaderSliver(el.scrollWidth > 0 && el.clientWidth < 110);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
@@ -150,7 +155,7 @@ export function PageShell({
           {/* Left */}
           <div className="vedha-page-header-left" style={{
             display: "flex", alignItems: "center", gap: 8,
-            flex: "0 1 460px", minWidth: 0, overflow: "hidden",
+            flex: "0 4 340px", minWidth: 120, overflow: "hidden",
           }}>
             <button
               className="md:hidden touch-icon"
@@ -186,7 +191,11 @@ export function PageShell({
                 fontSize: 14,
                 fontWeight: 650,
                 color: "var(--text-primary)",
-                flexShrink: 0,
+                flexShrink: 1,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
                 letterSpacing: "-0.01em",
                 margin: 0,
               }}>
@@ -220,19 +229,21 @@ export function PageShell({
               out stay pinned and always reachable. */}
           <div className="vedha-page-header-tools" style={{
             display: "flex", alignItems: "center", gap: 10,
-            flex: "1 1 520px", minWidth: 0, justifyContent: "flex-end", overflow: "hidden",
+            flex: "1 1 auto", minWidth: 0, justifyContent: "flex-end", overflow: "hidden",
           }}>
-            <div className="vedha-page-header-scroll" ref={headerScrollRef} data-overflow={headerOverflows ? "true" : undefined} style={{
+            {/* Page actions come first and never scroll away with the chips: the
+                title ellipsizes, then the chips scroll, before a primary action is
+                ever clipped. (Phones: this strip scrolls on its own.) */}
+            {headerActions && (
+              <div className="vedha-page-header-actions" style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 1 auto", minWidth: 0 }}>
+                {headerActions}
+              </div>
+            )}
+            <div className="vedha-page-header-scroll" ref={headerScrollRef} data-overflow={headerOverflows ? "true" : undefined} data-sliver={headerSliver ? "true" : undefined} style={{
               display: "flex", alignItems: "center", gap: 10, minWidth: 0,
               width: 0, flex: "1 1 auto",
               overflowX: "auto", scrollbarWidth: "none",
             }}>
-            {headerActions && (
-              <div className="vedha-page-header-actions" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                {headerActions}
-              </div>
-            )}
-
             {/* Status items */}
             {statusItems?.map((item, i) => {
               const tone = item.color ?? "var(--text-primary)";
@@ -429,9 +440,12 @@ const SHELL_RESPONSIVE_STYLES = `
 .vedha-page-header-left { flex-shrink: 0; max-width: 100%; }
 .vedha-page-header-tools { max-width: 100%; min-width: 0; overflow-x: auto; }
 .vedha-page-header-tools > * { flex-shrink: 0; }
+.vedha-page-header-tools > .vedha-page-header-actions { flex-shrink: 1; overflow-x: auto; scrollbar-width: none; }
+.vedha-page-header-actions::-webkit-scrollbar { display: none; }
 
 /* Tablet: 768px–1023px — sidebar always visible, but content is tighter */
 .vedha-page-header-scroll::-webkit-scrollbar { display: none; }
+.vedha-page-header-scroll[data-sliver="true"] { opacity: 0; pointer-events: none; }
 .vedha-page-header-scroll[data-overflow="true"] {
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
   mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
@@ -441,7 +455,7 @@ const SHELL_RESPONSIVE_STYLES = `
 @media (max-width: 1360px) {
   .vedha-page-title-divider, .vedha-page-subtitle { display: none; }
   .vedha-page-header-left { flex-basis: 220px !important; }
-  .vedha-page-header-tools { flex-basis: 460px !important; }
+  .vedha-page-header-tools { flex-basis: auto !important; }
   .vedha-page-account span { max-width: 104px !important; }
 }
 
