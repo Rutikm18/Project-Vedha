@@ -188,3 +188,19 @@ guidance on dense tables, saved views and density, and public write-ups of Linea
 and Vercel interface conventions (keyboard-first, subtle borders, colour reserved
 for meaning). Wiz-, Snyk- and CrowdStrike-specific UI teardowns were not found in
 searchable form; claims about those products are not relied on here.
+
+## Scan comparison
+
+Compare is a two-scan diff the operator sets up on purpose: nothing is
+pre-selected, the same scan cannot fill both sides, and a baseline that ran after
+the target is flagged with a swap control. The server decides the buckets:
+
+- New (in the target, not the baseline), Fixed (the reverse), Changed (in both,
+  but severity, risk score or status moved) and Unchanged. The view opens on the
+  worst news first, and each bucket is a tab rather than a squeezed column so it
+  reads the same on a phone.
+- Each scan shows what it saw in total (severity bar, average risk). Severity,
+  risk and status come from the snapshot each scan recorded, never from today's
+  finding, except for older scans that predate snapshots; those say so.
+- Lists are capped on screen; CSV and JSON exports carry every row, and Print /
+  PDF prints only the comparison.

@@ -63,7 +63,7 @@ test("mapCompareResult buckets and counts both sides", () => {
   });
   assert.equal(out.a?.reference, "SCN-A");
   assert.equal(out.b?.reference, "SCN-B");
-  assert.deepEqual(out.counts, { new: 2, fixed: 1, stillPresent: 3 });
+  assert.deepEqual(out.counts, { new: 2, fixed: 1, stillPresent: 3, changed: 0 });
   assert.equal(out.new.length, 2);
   assert.equal(out.fixed.length, 1);
   assert.equal(out.stillPresent.length, 3);

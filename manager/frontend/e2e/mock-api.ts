@@ -66,6 +66,36 @@ const finding = {
   },
 };
 
+const scans = [
+  { jobId: "job-new", reference: "SCN-261016-NEWEST", useCaseId: "uc_network_va", intensity: "normal", scannedAt: "2026-10-16T08:00:00Z", status: "completed", findings: 4 },
+  { jobId: "job-old", reference: "SCN-261009-OLDER0", useCaseId: "uc_network_va", intensity: "normal", scannedAt: "2026-10-09T08:00:00Z", status: "completed", findings: 3 },
+];
+
+const scanRef = (reference: string, scannedAt: string) => ({
+  reference, useCaseId: "uc_network_va", intensity: "normal", scannedAt, jobId: null, runId: null,
+});
+
+// GET /findings/compare, mapped by the BFF: 1 new, 1 fixed, 1 changed, 1 unchanged.
+const compareResult = {
+  a: scanRef("SCN-261009-OLDER0", "2026-10-09T08:00:00Z"),
+  b: scanRef("SCN-261016-NEWEST", "2026-10-16T08:00:00Z"),
+  counts: { new: 1, fixed: 1, stillPresent: 2, changed: 1 },
+  summaryA: { total: 3, bySeverity: { CRITICAL: 0, HIGH: 2, MEDIUM: 1, LOW: 0, INFO: 0 }, averageRisk: 540, fromSnapshot: true },
+  summaryB: { total: 3, bySeverity: { CRITICAL: 1, HIGH: 1, MEDIUM: 1, LOW: 0, INFO: 0 }, averageRisk: 610, fromSnapshot: true },
+  new: [{ ...finding, id: "cmp-new", title: "Redis exposed without authentication" }],
+  fixed: [{ ...finding, id: "cmp-fixed", title: "SMBv1 enabled", severity: "HIGH" }],
+  stillPresent: [
+    { ...finding, id: "cmp-moved", title: "Outdated OpenSSH" },
+    { ...finding, id: "cmp-same", title: "TLS 1.0 accepted", severity: "MEDIUM" },
+  ],
+  changed: [{
+    finding: { ...finding, id: "cmp-moved", title: "Outdated OpenSSH" },
+    before: { severity: "MEDIUM", riskScore: 400, status: "OPEN" },
+    after: { severity: "HIGH", riskScore: 520, status: "OPEN" },
+    severityChanged: true, statusChanged: false, riskDelta: 120,
+  }],
+};
+
 // What GET /findings/{id}/risk-explanation returns for the finding above (critical, KEV, 9.8, EPSS 82%).
 const riskExplanation = {
   model_version: "risk-rank-v1", score: 940, max: 1000, severity: "critical",
@@ -188,10 +218,9 @@ export async function mockApi(route: Route) {
   if (path === "/api/findings/groups") return json(route, {
     items: [], total: 0, page: 1, pageSize: 100, pages: 1,
   });
-  if (path === "/api/findings/assets" || path === "/api/findings/scans") return json(route, []);
-  if (path === "/api/findings/compare") return json(route, {
-    a: null, b: null, new: [], resolved: [], persistent: [], summary: {},
-  });
+  if (path === "/api/findings/assets") return json(route, []);
+  if (path === "/api/findings/scans") return json(route, scans);
+  if (path === "/api/findings/compare") return json(route, compareResult);
   if (/^\/api\/findings\/[^/]+\/risk-explanation$/.test(path)) return json(route, riskExplanation);
   if (path.startsWith("/api/findings/")) return json(route, finding);
 

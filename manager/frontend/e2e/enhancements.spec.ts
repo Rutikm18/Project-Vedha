@@ -291,3 +291,29 @@ test("a finding shows the full working of its risk score and priority", async ({
   await expect(calc.getByText(/3 inputs were not recorded/)).toBeVisible();
   await expect(calc.getByText("Decided this")).toBeVisible();
 });
+
+test("comparing two scans starts empty, then separates new, fixed, changed and unchanged", async ({ page }) => {
+  await page.goto("/findings");
+  await page.getByText("More filters", { exact: false }).click();
+  await page.getByRole("button", { name: "Compare scans", exact: true }).click();
+  const panel = page.getByRole("region", { name: "Compare two scans" });
+  // Nothing is pre-selected: the operator chooses both scans.
+  await expect(panel.getByLabel("Baseline (earlier scan)")).toHaveValue("");
+  await expect(panel.getByLabel("Target (later scan)")).toHaveValue("");
+  await panel.getByLabel("Baseline (earlier scan)").selectOption("SCN-261009-OLDER0");
+  await panel.getByLabel("Target (later scan)").selectOption("SCN-261016-NEWEST");
+  await expect(panel.getByText("1 new, 1 fixed, 1 changed between SCN-261009-OLDER0 and SCN-261016-NEWEST.")).toBeVisible();
+  // Opens on the worst news; the other buckets are one click away.
+  await expect(panel.getByRole("tab", { name: /New/ })).toHaveAttribute("aria-selected", "true");
+  await expect(panel.getByText("Redis exposed without authentication")).toBeVisible();
+  await panel.getByRole("tab", { name: /Changed/ }).click();
+  await expect(panel.getByText("Severity medium → high")).toBeVisible();
+  await expect(panel.getByText("Risk 400 → 520 (+120)")).toBeVisible();
+  await panel.getByRole("tab", { name: /Unchanged/ }).click();
+  await expect(panel.getByText("TLS 1.0 accepted")).toBeVisible();
+  await expect(panel.getByText("Outdated OpenSSH")).toHaveCount(0);
+  // Exports are real links to the server's uncapped file.
+  await expect(panel.getByRole("link", { name: "CSV" })).toHaveAttribute("href", /\/api\/findings\/compare\/export\?a=SCN-261009-OLDER0&b=SCN-261016-NEWEST&format=csv/);
+  // The same scan cannot be both sides.
+  await expect(panel.getByLabel("Target (later scan)").locator("option", { hasText: "SCN-261009-OLDER0" })).toHaveJSProperty("disabled", true);
+});

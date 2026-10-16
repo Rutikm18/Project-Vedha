@@ -336,6 +336,28 @@ export function mapScanRef(ref: any) {
   };
 }
 
+function mapCompareSnapshot(snap: any) {
+  return {
+    severity: snap?.severity ? String(snap.severity).toUpperCase() : null,
+    riskScore: snap?.risk_score != null ? Number(snap.risk_score) : null,
+    status: snap?.status
+      ? (FIND_STATUS_TO_UI[String(snap.status).toLowerCase()] ?? String(snap.status).toUpperCase())
+      : null,
+  };
+}
+
+function mapCompareSummary(sum: any) {
+  if (!sum) return null;
+  const bySeverity: Record<string, number> = {};
+  for (const [k, v] of Object.entries(sum.by_severity ?? {})) bySeverity[k.toUpperCase()] = Number(v) || 0;
+  return {
+    total: sum.total ?? 0,
+    bySeverity,
+    averageRisk: sum.average_risk ?? null,
+    fromSnapshot: sum.from_snapshot !== false,
+  };
+}
+
 /** Backend /findings/compare result → the UI compare shape. Shared by the BFF
  *  proxy (manager surface) and the portal transport so both map identically. */
 export function mapCompareResult(data: any) {
@@ -346,10 +368,21 @@ export function mapCompareResult(data: any) {
       new: data?.counts?.new ?? 0,
       fixed: data?.counts?.fixed ?? 0,
       stillPresent: data?.counts?.still_present ?? 0,
+      changed: data?.counts?.changed ?? 0,
     },
+    summaryA: mapCompareSummary(data?.summary_a),
+    summaryB: mapCompareSummary(data?.summary_b),
     new: (data?.new ?? []).map(toUiFinding),
     fixed: (data?.fixed ?? []).map(toUiFinding),
     stillPresent: (data?.still_present ?? []).map(toUiFinding),
+    changed: (data?.changed ?? []).map((c: any) => ({
+      finding: toUiFinding(c.finding),
+      before: mapCompareSnapshot(c.before),
+      after: mapCompareSnapshot(c.after),
+      severityChanged: Boolean(c.severity_changed),
+      statusChanged: Boolean(c.status_changed),
+      riskDelta: c.risk_delta ?? null,
+    })),
   };
 }
 
