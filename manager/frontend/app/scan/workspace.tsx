@@ -186,19 +186,13 @@ function HudFrame({ active, radius = 14, children, style }: { active: boolean; r
    FLEET STRIP (probe health)
 ══════════════════════════════════════════════════════ */
 
-function FleetStrip({ probes, loading }: { probes: Probe[]; loading: boolean }) {
+function FleetStrip({ probes, loading, fleetHref }: { probes: Probe[]; loading: boolean; fleetHref: string }) {
   const online = probes.filter((p) => p.online).length;
   const busy   = probes.filter((p) => p.current_job_id).length;
   const idle   = online - busy;
 
   return (
     <div className="scn-fleet" style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 18px", borderRadius: 13, background: "var(--bg-panel)", border: "0.5px solid var(--border-subtle)", flexWrap: "wrap", position: "relative", overflow: "hidden" }}>
-      {/* live heartbeat trace */}
-      <div style={{ position: "absolute", left: 0, top: 0, width: 220, height: 28, opacity: 0.45, pointerEvents: "none" }}>
-        <svg viewBox="0 0 220 28" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
-          <path d="M0,14 L55,14 L63,4 L71,24 L79,14 L220,14" fill="none" stroke="var(--nominal-color)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
         <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8 }}>
@@ -213,7 +207,9 @@ function FleetStrip({ probes, loading }: { probes: Probe[]; loading: boolean }) 
       {loading ? (
         <span className="scn-fleet-message" style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading…</span>
       ) : !probes.length ? (
-        <span className="scn-fleet-message" style={{ fontSize: 12, color: "var(--text-muted)" }}>No vedha-agents registered — deploy one to begin</span>
+        <span className="scn-fleet-message" style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          No vedha-agents registered yet — a scan needs one inside the network. <Link href={fleetHref} style={{ color: "var(--accent)", fontWeight: 600, whiteSpace: "nowrap" }}>Add an agent →</Link>
+        </span>
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -985,7 +981,7 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
             <button type="button" className="btn btn-secondary" disabled={loadingData} onClick={() => setSetupAttempt((attempt) => attempt + 1)}>{loadingData ? "Retrying…" : "Retry setup"}</button>
           </div>
         )}
-        {!setupErrors["Probe inventory"] && <FleetStrip probes={probes} loading={loadingData} />}
+        {!setupErrors["Probe inventory"] && <FleetStrip probes={probes} loading={loadingData} fleetHref={surface === "portal" ? "/portal/fleet" : "/fleet"} />}
 
         <NetworkVaHero
           uc={useCases.find((u) => u.use_case_id === NETWORK_VA_ID)}
@@ -1071,8 +1067,11 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
                 </div>
               ) : (
                 <div style={{ padding: "32px 20px", textAlign: "center" }}>
-                  <Crosshair size={22} color="var(--text-faint)" style={{ marginBottom: 8 }} />
-                  <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>Pick a scan on the left<br />to configure the launch.</div>
+                  <Crosshair size={22} color="var(--text-faint)" style={{ display: "block", margin: "0 auto 8px" }} />
+                  <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                    No scan type is available from the manager yet.<br />
+                    <button type="button" className="btn btn-secondary" style={{ marginTop: 10 }} disabled={loadingData} onClick={() => setSetupAttempt((attempt) => attempt + 1)}>{loadingData ? "Refreshing…" : "Refresh setup"}</button>
+                  </div>
                 </div>
               )}
 

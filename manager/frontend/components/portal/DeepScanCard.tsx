@@ -10,7 +10,7 @@
    explanation, not the gate. */
 
 import { useState } from "react";
-import { Crosshair, Loader, Play } from "lucide-react";
+import { ChevronDown, Crosshair, Loader, Play } from "lucide-react";
 import type { Entitlement } from "../../lib/entitlements";
 
 /** Client-side pre-check for a single asset. Returns a sentence, or null. */
@@ -107,9 +107,11 @@ export function DeepScanCard({ plan, scope, probeReady, launching, onLaunch }: {
     : null;
 
   return (
-    <section className="dsc" aria-labelledby="deep-scan-title">
+    // Collapsed by default: a deep scan is a specialist, single-host action, so it
+    // stays one line tall until opened and the main campaign form keeps the room.
+    <details className="dsc">
       <style>{STYLES}</style>
-      <header>
+      <summary>
         <span className="dsc-icon"><Crosshair size={17} /></span>
         <div>
           <h3 id="deep-scan-title">Deep scan · one host</h3>
@@ -117,8 +119,10 @@ export function DeepScanCard({ plan, scope, probeReady, launching, onLaunch }: {
             (banners, OS, TLS / SMB / database / RDP) on whatever it finds.</p>
         </div>
         <span className="dsc-left">{copy.badge}</span>
-      </header>
+        <ChevronDown size={16} className="dsc-chevron" aria-hidden />
+      </summary>
 
+      <div className="dsc-body">
       <dl className="dsc-facts" aria-label="What a deep scan covers">
         <div><dt>Hosts</dt><dd>1</dd></div>
         <div><dt>TCP ports</dt><dd>65,535</dd></div>
@@ -156,7 +160,8 @@ export function DeepScanCard({ plan, scope, probeReady, launching, onLaunch }: {
       <p id="deep-scan-msg" className="dsc-msg" role={blocked || (touched && problem) ? "alert" : undefined}>
         {blocked ?? (touched ? problem : null) ?? copy.footer}
       </p>
-    </section>
+      </div>
+    </details>
   );
 }
 
@@ -169,11 +174,18 @@ function exampleHost(cidr: string): string {
 }
 
 const STYLES = `
-.dsc { border-radius: 14px; border: 0.5px solid color-mix(in srgb, var(--sev-critical-color) 30%, var(--border-subtle)); background: var(--bg-panel); padding: 16px 18px; display: grid; gap: 12px; box-shadow: var(--shadow-md); }
-.dsc header { display: flex; align-items: flex-start; gap: 12px; }
+.dsc { border-radius: 14px; border: 0.5px solid color-mix(in srgb, var(--sev-critical-color) 30%, var(--border-subtle)); background: var(--bg-panel); padding: 14px 18px; box-shadow: var(--shadow-sm); }
+.dsc > summary { display: flex; align-items: center; gap: 12px; cursor: pointer; list-style: none; border-radius: 8px; }
+.dsc > summary::-webkit-details-marker { display: none; }
+.dsc > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.dsc-chevron { flex: 0 0 auto; color: var(--text-muted); transition: transform 180ms ease; }
+.dsc[open] .dsc-chevron { transform: rotate(180deg); }
+.dsc[open] > summary { margin-bottom: 14px; align-items: flex-start; }
+.dsc-body { display: grid; gap: 12px; }
+@media (prefers-reduced-motion: reduce) { .dsc-chevron { transition: none; } }
 .dsc-icon { width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--sev-critical-color); background: color-mix(in srgb, var(--sev-critical-color) 9%, transparent); border: 0.5px solid color-mix(in srgb, var(--sev-critical-color) 30%, transparent); }
 .dsc h3 { margin: 0; font-size: 14px; color: var(--text-primary); }
-.dsc header p { margin: 3px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; max-width: 640px; }
+.dsc > summary p { margin: 3px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; max-width: 640px; }
 .dsc-left { margin-left: auto; white-space: nowrap; font: 700 11px var(--font-mono); color: var(--text-secondary); border: 0.5px solid var(--border-subtle); border-radius: 99px; padding: 3px 10px; }
 .dsc-facts { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .dsc-facts div { padding: 8px 10px; border-radius: 9px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); }
@@ -193,5 +205,5 @@ const STYLES = `
 .dsc-form button:disabled { opacity: 0.45; cursor: not-allowed; }
 .dsc-msg { margin: 0; font-size: 11.5px; color: var(--text-muted); }
 .dsc-msg[role="alert"] { color: var(--sev-high-color); }
-@media (max-width: 640px) { .dsc header { flex-wrap: wrap; } .dsc-left { margin-left: 0; } .dsc-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .dsc > summary { flex-wrap: wrap; } .dsc-left { margin-left: 0; } .dsc-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 `;
