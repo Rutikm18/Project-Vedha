@@ -173,6 +173,17 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
 
   const request = data.requests.find((row) => row.request_id === selected) ?? null;
   const capabilities = useMemo(() => request?.capabilities ?? [], [request]);
+  // The page follows the operator's next step, not a fixed template: with no agent
+  // yet, onboarding leads; once agents exist, devices waiting for approval come
+  // first, then the agents themselves, and the activity log last.
+  const hasAgents = agents.length > 0;
+  const hasPending = data.requests.length > 0;
+  const order = {
+    pending: hasPending ? 1 : hasAgents ? 4 : 3,
+    connected: 2,
+    addAgent: hasAgents ? 3 : 1,
+    jobs: 5,
+  };
   const onlineCount = useMemo(() => agents.filter((a) => a.online).length, [agents]);
 
   // Operator: set the agent's access expiry to now + `days`, or null to clear it.
@@ -237,15 +248,15 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
       <div className="flt-page">
 
         {/* ── All jobs across every probe (filter by probe + engagement) ── */}
-        <section className="flt-card">
+        <section className="flt-card" style={{ order: order.jobs }}>
           <FleetJobs surface={surface} />
         </section>
 
         {/* ── Add an agent: install token + one command (served by this manager) ── */}
-        <AddAgent surface={surface} api={api} />
+        <div style={{ order: order.addAgent }}><AddAgent surface={surface} api={api} /></div>
 
         {/* ── Connected probes (live status) ── */}
-        <section className="flt-card flt-card-flush">
+        <section className="flt-card flt-card-flush" style={{ order: order.connected }}>
           <header className="flt-list-head">
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Server size={15} color="var(--accent)" />
@@ -357,7 +368,7 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
         </section>
 
         {/* ── Pending + Approve ── */}
-        <div className="flt-grid">
+        <div className="flt-grid" style={{ order: order.pending }}>
 
           {/* Pending requests */}
           <section className="flt-card flt-card-flush">
@@ -472,7 +483,9 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
 
 
 const STYLES = `
-.flt-page { padding: 18px; overflow-y: auto; height: 100%; display: grid; gap: 14px; }
+/* The shell already pads the page; a second 18px here made Fleet's cards narrower than every other page's. */
+.flt-page { display: grid; gap: 14px; }
+.flt-page > * { min-width: 0; }
 
 .flt-card { border: 0.5px solid var(--border-subtle); border-radius: 12px; background: var(--bg-panel); padding: 16px; }
 .flt-card-flush { padding: 0; overflow: hidden; }
@@ -487,7 +500,7 @@ const STYLES = `
 .flt-cmd-label { color: var(--text-secondary); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 .flt-install { display: flex; gap: 8px; align-items: stretch; }
 .flt-code { flex: 1; min-width: 0; padding: 11px; border-radius: 8px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); color: var(--accent); font: 11px var(--font-mono); overflow-x: auto; white-space: nowrap; }
-.flt-warn { margin: 8px 0 0; color: var(--sev-medium-color); font-size: 10.5px; line-height: 1.4; }
+.flt-warn { margin: 8px 0 12px; color: var(--sev-medium-color); font-size: 10.5px; line-height: 1.4; }
 
 .flt-icon-btn { width: 40px; height: 40px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); color: var(--text-secondary); cursor: pointer; transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease; }
 .flt-icon-btn:hover { color: var(--accent); border-color: var(--border-accent); background: var(--accent-ghost); }

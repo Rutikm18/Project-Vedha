@@ -38,6 +38,12 @@ const STATE_LABEL: Record<InstallToken["state"], string> = {
   revoked: "revoked",
 };
 
+/** One sentence with exactly one closing full stop, whatever the server sent. */
+export function sentence(text: string | null | undefined): string {
+  const t = (text ?? "").trim().replace(/[.\s]+$/, "");
+  return t ? `${t}.` : "";
+}
+
 export type InstallOs = "linux" | "windows";
 
 /** Whether the published release can be installed on Windows (and the manager says so). */
@@ -213,7 +219,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
             <strong>The agent installer is not available yet.</strong>
             {surface === "manager" ? (
               <>
-                {" "}{info.reason}. Nothing can be installed until one signed release is published. One command does the
+                {" "}{sentence(info.reason)} Nothing can be installed until one signed release is published. One command does the
                 whole job (build, sign, upload, set the keys on the manager, restart it):
                 <div className="flt-install" style={{ marginTop: 6 }}>
                   <code className="flt-code">{publishAdvice().windows}</code>
@@ -246,7 +252,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
         <p className="flt-warn">MANAGER_PUBLIC_URL is not set on the API, so commands use {info.manager_url || "this request's address"}. Set it to the public API URL (for example https://api.your-domain.com).</p>
       )}
       {blocked && info?.blocker && (
-        <div className="aa-note" role="status"><AlertTriangle size={14} /><div>{info.blocker}.</div></div>
+        <div className="aa-note" role="status"><AlertTriangle size={14} /><div>{sentence(info.blocker)}</div></div>
       )}
 
       {noTokenCommands.length > 0 && (
@@ -475,7 +481,8 @@ export const ADD_AGENT_STYLES = `
 .flt-card, .aa-note > div, .aa-result > *, .aa-result .flt-cmds, .aa-result .flt-cmd { min-width: 0; }
 .aa-warn { border-color: var(--sev-medium-color); }
 .aa-form + .aa-note { margin: 12px 0 0; }
-.aa-form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.aa-form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.aa-form > .aa-submit { grid-column: 1 / -1; justify-self: start; }
 .aa-submit { grid-column: auto; padding: 0 16px; white-space: nowrap; }
 .aa-result { margin-top: 14px; display: grid; gap: 8px; padding: 12px; border-radius: 10px; border: 0.5px solid var(--border-accent); background: var(--accent-ghost); }
 .aa-result-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
