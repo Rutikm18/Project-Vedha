@@ -15,7 +15,7 @@ says so. Your hardware will differ: **rehearse on a restored backup of your own 
 | Phase | Revision | What it changes | Measured (3M run-finding rows, 2M audit rows) | What waits while it runs | Rolling back |
 |---|---|---|---|---|---|
 | 1 | 0066 | 3 nullable columns on `detection_run_findings` (per-scan severity, risk score, status) | 1.2 s | Anything touching that table, for a moment. A long-running transaction makes the migration queue, and everything behind it queues too (section 3). | 0.9 s. Drops the snapshot values; compare falls back to "in both scans" for those findings. |
-| 2 | **0067** | 11 columns on `audit_logs`; gives old entries a tenant; builds the tamper-evident hash chain; 3 indexes, 3 triggers, 3 functions | **320 to 360 s (about 3 minutes per million audit rows)**, 11 GB of WAL, table 5 times larger until cleaned up | **Every audit write, and every audit read, for the whole run.** Logins, scans, report exports and every other action that records an entry hang. | 0.9 s. Drops tenant scope, outcome, request context and the chain. Entries are kept; the next upgrade recomputes the chain. |
+| 2 | **0067** | 11 columns on `audit_logs`; gives old entries a tenant; builds the tamper-evident hash chain; 3 indexes, 3 triggers, 3 functions | **about 180 s (about 1.5 minutes per million audit rows)**, 12 to 13 GB of WAL, table about 3 times larger until cleaned up | **Every audit write, and every audit read, for the whole run.** Logins, scans, report exports and every other action that records an entry hang. | 0.9 s. Drops tenant scope, outcome, request context and the chain. Entries are kept; the next upgrade recomputes the chain. |
 | 3 | 0068 | 1 JSONB column on `tenant_settings` (retention policy), default `{}` | 0.9 s | A moment | 0.9 s. Drops saved retention settings. |
 
 Phases 1 and 3 are safe to run with the application up. **Phase 2 needs a maintenance window.**
@@ -28,16 +28,18 @@ Phases 1 and 3 are safe to run with the application up. **Phase 2 needs a mainte
    application is quiet. Phase 2 can be undone with `alembic downgrade 0066` (section 5), but a
    backup is what protects you from a mistake around it.
 3. **Size the window for phase 2.** `SELECT count(*) FROM audit_logs;` then budget about
-   **3 minutes per million rows** for the migration, about **15 seconds per million** to clean up,
-   and about **10 seconds per million** to verify. Fewer than about 50,000 rows is a matter of seconds,
-   and then running all three together is reasonable (an estimate; the smallest rehearsal was 2M rows).
-4. **Disk and WAL.** The migration rewrites every audit row several times. Measured at 2M rows:
-   `audit_logs` grew from 550 MB to about 2.9 GB (including indexes) and 11 GB of WAL was
-   written. Keep free disk above 6 times the table's size, and if you archive WAL or replicate,
-   expect 11 GB per 2M audit rows to be shipped.
+   **1.5 minutes per million rows** for the migration, about **10 seconds per million** to clean up,
+   and about **10 to 15 seconds per million** to verify. Fewer than about 50,000 rows is a matter of
+   seconds, and then running all three together is reasonable (an estimate; the smallest rehearsal was
+   2M rows).
+4. **Disk and WAL.** The migration rewrites every audit row once. Measured at 2M rows: `audit_logs`
+   grew from 550 MB to about 1.6 GB (including indexes) and 12 to 13 GB of WAL was written. Keep
+   free disk above 4 times the table's size, and if you archive WAL or replicate, expect about 13 GB
+   per 2M audit rows to be shipped.
 5. **Database role.** The role that runs migrations must own `audit_logs`,
-   `detection_run_findings` and `tenant_settings`, and be allowed to create functions, triggers
-   and indexes (the table owner can). PostgreSQL 11 or later is required (`sha256()`,
+   `detection_run_findings` and `tenant_settings`, and be allowed to create functions, triggers,
+   indexes (the table owner can) and temporary tables (every role can, unless `TEMPORARY` on the
+   database was revoked). PostgreSQL 11 or later is required (`sha256()`,
    `hashtextextended()`); production runs 16.
 6. **Role settings that matter.**
    ```sql
@@ -107,8 +109,9 @@ SELECT count(*) AS audit_rows, pg_size_pretty(pg_total_relation_size('audit_logs
 ```
 
 Stopping the writers is not required for correctness: a blocked insert waits and then succeeds
-(the rehearsal's writer lost nothing; its one stalled insert took 361.6 s). It is advisable because
-requests that audit would otherwise hang until their own timeouts.
+(the rehearsal's writer lost nothing; its one stalled insert waited out the whole run, 361.6 s with the
+earlier, slower version of 0067). It is advisable because requests that audit would otherwise hang
+until their own timeouts.
 
 ### 4.2 Apply
 
@@ -116,20 +119,23 @@ requests that audit would otherwise hang until their own timeouts.
 $COMPOSE run --rm --no-deps migrate alembic upgrade 0067
 ```
 
-Where the time goes (2M rows, first run):
+Where the time goes (2M rows, first run, 182 s in all):
 
 | Step | Seconds |
 |---|---|
-| Give old entries a tenant, through their engagement | 24 |
-| Give old entries a tenant, through the acting user | 44 |
-| Set `actor_type` on every entry | 77 |
-| Build the hash chain, oldest first, per tenant | 197 |
-| Build the three indexes | 20 |
+| Work out each entry's tenant, actor type and place in its chain, oldest first per tenant (into a temporary table) | 58 |
+| Write those values, once per entry | 114 |
+| Build the three indexes | 9 |
+
+The first version of 0067 wrote every entry three times (tenant, actor type, then once more per entry
+inside the chain loop). On two copies of the same database it took 377 s and 21 GB of WAL against
+177 s and 13 GB for this one, and the two left every entry's tenant, actor type, chain position and
+both hashes identical (one digest over all 2M entries).
 
 All of it is one transaction. **A failure at any point leaves the database exactly at 0066**: tested
 by killing it at 20 s with a `statement_timeout`; the audit table kept its original 9 columns and no
-function or trigger remained. Fix the cause and run the same command again. The aborted attempt
-leaves dead rows behind, so run `VACUUM audit_logs;` before retrying.
+function, trigger or temporary table remained. Fix the cause and run the same command again. An
+attempt that fails while writing leaves dead rows behind, so run `VACUUM audit_logs;` before retrying.
 
 ### 4.3 Check
 
@@ -160,14 +166,14 @@ the integrity result.
 
 ### 4.4 Clean up
 
-0067 rewrites every row several times, so the table is several times larger than it needs to be
-(550 MB became 2.7 GB, then 953 MB once cleaned):
+0067 rewrites every row once, so the table is about three times larger than it needs to be
+(550 MB became 1.6 GB, then 951 MB once cleaned):
 
 ```sql
-VACUUM (FULL, ANALYZE) audit_logs;     -- 22 s at 2M rows; exclusive lock, so do it inside the window
+VACUUM (FULL, ANALYZE) audit_logs;     -- 17 s at 2M rows; exclusive lock, so do it inside the window
 ```
 
-Plain `VACUUM (ANALYZE) audit_logs;` (11 s) frees the dead rows for reuse but does not shrink the file.
+Plain `VACUUM (ANALYZE) audit_logs;` frees the dead rows for reuse but does not shrink the file.
 The chains stay valid after `VACUUM FULL` (re-verified).
 
 ### 4.5 Start the new application
@@ -190,7 +196,8 @@ $COMPOSE run --rm --no-deps migrate alembic downgrade 0066     # 0.9 s
 
 What is lost: tenant scope, outcome, actor type and label, request id, user agent, the before/after
 `changes`, and the whole hash chain. What is kept: every audit entry, in its original columns, and the
-table becomes editable again. Running 0067 a second time rebuilds all of it (it took 320 s the second time).
+table becomes editable again. Running 0067 a second time rebuilds all of it, identically (200 s the second
+time, on a table still holding the first run's dead rows).
 
 ## 5. Phase 3: 0068 (audit retention setting)
 
@@ -261,13 +268,19 @@ volume; table growth and both kinds of `VACUUM`; chain verification of all 21 ch
 purge switch; an unupgraded writer after 0067; rollback of 0067 and re-upgrade; failure injection
 mid-0067; the earlier-numbering restamps (two of the four rows in section 7).
 
+**The single-pass backfill, re-rehearsed.** The 0067 described above writes each audit entry once.
+Against the first version, on two copies of the same 2M-row database: same final rows (one digest over
+all of them), all 21 chains verified, `VACUUM FULL` to the same size, the injected failure at 20 s again
+left 0066 untouched, and a re-apply after rollback reproduced the same digest. The live writer, the
+unupgraded writer and the restamps were not repeated: the triggers, the functions and the revision
+numbers did not change.
+
 **Not done:**
 - The `docker compose run` commands (no Docker here).
-- Streaming replicas, WAL archiving or point-in-time recovery under 11 GB of WAL.
+- Streaming replicas, WAL archiving or point-in-time recovery under 13 GB of WAL.
 - Production hardware, a production-sized `shared_buffers`, or concurrent real traffic.
-- Tables much larger than 2M audit rows. Time and WAL grew linearly across the two runs, so 10M rows
-  would be roughly 30 minutes and 55 GB of WAL (an extrapolation). If your audit table is that large,
-  the backfill can be rewritten as a single pass; ask for that before the window, not during it.
+- Tables much larger than 2M audit rows. Time and WAL grow with the row count, so 10M rows would be
+  roughly 15 minutes and 65 GB of WAL (an extrapolation).
 
 To repeat the rehearsal on a scratch database:
 

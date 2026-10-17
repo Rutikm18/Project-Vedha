@@ -66,7 +66,7 @@ make full                        # rebuilds the stack AND runs migrations (gets 
 ```
 `make full` runs `alembic upgrade head`, so migration **0065** (the `agent_install_codes`
 table) is applied automatically. `main` also carries migrations 0066 to 0068, and 0067 locks
-`audit_logs` for about 3 minutes per million entries. On a server with a large audit log, apply
+`audit_logs` for about 1.5 minutes per million entries. On a server with a large audit log, apply
 those first, one at a time, with [migrations-0066-0068-rollout.md](migrations-0066-0068-rollout.md).
 Confirm the API is healthy before moving on:
 ```bash

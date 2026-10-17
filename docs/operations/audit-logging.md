@@ -72,6 +72,6 @@ documentation. Set the period to what your own obligations require.
 * Migration 0067 gives existing entries a tenant (through their engagement, else their acting user) and chains them oldest first.
   Entries whose tenant cannot be found stay in the platform chain and are visible to no organisation.
 * Run the migration with a database role that may create triggers and functions.
-* **Migration 0067 locks `audit_logs` for its whole run**: about 3 minutes per million entries, with every audit
+* **Migration 0067 locks `audit_logs` for its whole run**: about 1.5 minutes per million entries, with every audit
   write and read waiting. Apply it in a maintenance window, one phase at a time, following
   [migrations-0066-0068-rollout.md](migrations-0066-0068-rollout.md) (measured timings, checks and rollback for each phase).
