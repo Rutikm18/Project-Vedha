@@ -12,8 +12,9 @@ This runbook makes that live on the server you already run. It does **not** crea
 server. Each step is tagged **[MAC]**, **[SERVER]** (your Linux manager host) or
 **[WINDOWS-ONCE]** (any Windows box / throwaway VM / CI — needed only to compile the agent).
 
-Built in: branch `feat/windows-zero-knowledge-install` (install codes, `/agent/redeem`,
-`-Code` installer, `get.$DOMAIN` facade, Fleet card). See the
+Built on branch `feat/windows-zero-knowledge-install` and merged into `main` on 17 Oct
+(`500bff5a`): install codes, `/agent/redeem`, `-Code` installer, `get.$DOMAIN` facade, Fleet card.
+Everything below uses `main`. See the
 [plan](../planning/2026-10-13-windows-agent-zero-knowledge-install.md).
 
 ---
@@ -28,7 +29,7 @@ Built in: branch `feat/windows-zero-knowledge-install` (install codes, `/agent/r
 | One Windows box, once | to compile `vedha-agent.exe` (Nuitka can't cross-compile from macOS) |
 
 ### Footguns (read once — each has bitten a real install)
-1. **The branch isn't pushed yet.** Nothing works until you push it and the server pulls it.
+1. **The server must run `main` from 17 Oct or later.** Nothing works until it pulls that code.
 2. **DNS must resolve before Caddy runs**, or the TLS certificate (ACME) fails.
 3. **`MANAGER_PUBLIC_URL` must be the facade** (`https://get.vedhasec.com`) in both `install.sh`
    and the publish step — whichever runs last wins, so keep them equal.
@@ -37,13 +38,10 @@ Built in: branch `feat/windows-zero-knowledge-install` (install codes, `/agent/r
 
 ---
 
-## Step 0 — push the branch · **[MAC]**
+## Step 0 — nothing to push · **[MAC]**
 
-```bash
-cd "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha"
-git push -u origin feat/windows-zero-knowledge-install
-```
-(Or merge it to `main` first if you prefer; then the server pulls `main`.)
+The work is on `main` (merged 17 Oct, `500bff5a`), so there is no branch to push. The server
+pulls `main` in Step 2.
 
 ---
 
@@ -63,11 +61,14 @@ SSH to the server and update the checkout the manager runs from, then rebuild + 
 ```bash
 cd /opt/Project-Vedha            # wherever the manager checkout lives
 git fetch origin
-git checkout feat/windows-zero-knowledge-install   # or: git pull origin main (if merged)
-make full                        # rebuilds the stack AND runs migrations (gets /agent/redeem + migration 0063)
+git checkout main && git pull origin main
+make full                        # rebuilds the stack AND runs migrations (gets /agent/redeem + migration 0065)
 ```
-`make full` runs `alembic upgrade head`, so migration **0063** (the `agent_install_codes`
-table) is applied automatically. Confirm the API is healthy before moving on:
+`make full` runs `alembic upgrade head`, so migration **0065** (the `agent_install_codes`
+table) is applied automatically. `main` also carries migrations 0066 to 0068, and 0067 locks
+`audit_logs` for about 3 minutes per million entries. On a server with a large audit log, apply
+those first, one at a time, with [migrations-0066-0068-rollout.md](migrations-0066-0068-rollout.md).
+Confirm the API is healthy before moving on:
 ```bash
 curl -fsS http://127.0.0.1:8000/health && echo OK
 ```
@@ -100,7 +101,6 @@ On any Windows 10/11 box (a throwaway AWS Windows EC2 you terminate afterward is
 ```powershell
 git clone https://github.com/Rutikm18/Project-Vedha.git
 cd Project-Vedha
-git checkout feat/windows-zero-knowledge-install
 powershell -ExecutionPolicy Bypass -File probe\windows\build-agent-exe.ps1
 powershell -ExecutionPolicy Bypass -File probe\windows\package-zip.ps1 -Release
 # → produces probe\windows\dist\vedha-agent-win.zip  (copy this one file to the Mac)

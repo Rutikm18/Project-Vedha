@@ -27,7 +27,7 @@ param(
   [Parameter(Mandatory = $true)][string]$Server,          # user@host of the manager server (ssh)
   [Parameter(Mandatory = $true)][string]$ManagerUrl,      # https://get.vedhasec.com (the facade)
   [string]$ReleaseDir = '/opt/vedha/manager/agent-releases',
-  [string]$Branch = 'feat/windows-zero-knowledge-install',
+  [string]$Branch = 'main',                                 # the zero-knowledge install work is merged into main
   [string]$RepoUrl = 'https://github.com/Rutikm18/Project-Vedha.git',
   [string]$WorkDir = '',
   [switch]$SkipBuild,     # reuse the compiled agent already in the work folder (installer-only re-publish)

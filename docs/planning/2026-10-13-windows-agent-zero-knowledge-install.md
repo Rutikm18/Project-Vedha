@@ -1,6 +1,6 @@
 # Windows agent — zero-knowledge one-command install (plan)
 
-Date: 2026-10-13 · Status: **BUILT on branch `feat/windows-zero-knowledge-install` (not pushed).**
+Date: 2026-10-13 · Status: **BUILT on branch `feat/windows-zero-knowledge-install`; merged into `main` on 17 Oct (`500bff5a`). Its migration is now 0065, not 0063.**
 Supersedes the "VIP token" sketch (see §2, why it was wrong).
 
 > **As-built note (13 Oct).** Two refinements emerged during implementation and are the shipped
