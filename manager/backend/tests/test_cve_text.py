@@ -83,3 +83,15 @@ def test_version_matched_cve_is_a_missing_patch_whatever_its_title_says():
     p = SimpleNamespace(title="OpenSSH weak ciphers offered", cve_ids=None,
                         description="", remediation="", evidence={"rule_id": "POSTURE-SSH-X"})
     assert classify_finding(p) == "outdated_ssh"
+
+
+def test_ssvc_decision_is_named_in_the_description():
+    d = {**_BANNER, "ssvc": {"decision": "Track*", "exploitation": "poc",
+                             "automatable": "no", "technical_impact": "total"}}
+    assert ("CISA SSVC: Track* (exploitation poc, automatable no, technical impact total)."
+            in cve_description(d))
+
+
+def test_unknown_ssvc_decision_is_not_echoed():
+    d = {**_BANNER, "ssvc": {"decision": "<b>Now</b>", "exploitation": "poc"}}
+    assert "SSVC" not in cve_description(d)

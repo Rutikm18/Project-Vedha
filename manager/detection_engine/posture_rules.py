@@ -596,9 +596,23 @@ def _ike_aggressive(f: Fact) -> Optional[dict]:
     return None
 
 
+# Community names that conventionally carry WRITE access on devices that ship them.
+_RW_CONVENTION_COMMUNITIES = frozenset({"private", "write", "admin", "secret", "manager"})
+
+
 def _snmp_default(f: Fact) -> Optional[dict]:
+    """A default community answered. The scanner never sends a SET, so this proves READ
+    access only; a community conventionally used for write ("private") is named as
+    such, never claimed as proven write access (testing-round gap 12)."""
     c = _d(f).get("community")
-    return {"community": c} if c in _DEFAULT_COMMUNITIES else None
+    if c not in _DEFAULT_COMMUNITIES:
+        return None
+    out = {"community": c, "access_proven": "read",
+           "write_access": "not tested (the scanner never sends an SNMP SET)"}
+    if str(c).lower() in _RW_CONVENTION_COMMUNITIES:
+        out["note"] = (f"community '{c}' is conventionally the read-write community; "
+                       "write access was not tested")
+    return out
 
 
 # ── canonical condition key (cross-producer identity) ─────────────────────────

@@ -31,6 +31,7 @@ _PRODUCT_NAMES = {
     "squid": "Squid", "cups": "CUPS", "jenkins": "Jenkins", "docker": "Docker",
     "internet_information_services": "Microsoft IIS", "caddy": "Caddy",
 }
+_SSVC_DECISIONS = {"Track", "Track*", "Attend", "Act"}
 _SAFE = re.compile(r"[^0-9A-Za-z.+~:_\-\[\]\(\), ]")
 _CVE = re.compile(r"^(?:CVE-\d{4}-\d{4,7}|[A-Z]{2,10}-[\w.-]{1,40})$")
 
@@ -82,6 +83,12 @@ def cve_description(d: dict) -> str:
             f"the affected range for {cve} in the vulnerability database")
     rng = _clean(d.get("matched_range"), 80)
     text += f" ({rng})." if rng else "."
+    ssvc = d.get("ssvc") if isinstance(d.get("ssvc"), dict) else None
+    if ssvc and ssvc.get("decision") in _SSVC_DECISIONS:
+        text += (f" CISA SSVC: {ssvc['decision']} (exploitation "
+                 f"{_clean(ssvc.get('exploitation'), 10) or 'unknown'}, automatable "
+                 f"{_clean(ssvc.get('automatable'), 5) or 'unknown'}, technical impact "
+                 f"{_clean(ssvc.get('technical_impact'), 10) or 'unknown'}).")
     if d.get("source_confidence") != "authoritative" and d.get("version_scheme") != "package":
         text += (" A distribution may have backported the fix without changing the "
                  "version this service reports, so confirm the installed package before "

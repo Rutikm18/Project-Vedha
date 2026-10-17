@@ -202,6 +202,9 @@ class Finding:
     product: str | None = None
     vendor: str | None = None
     distro: str | None = None
+    # CISA SSVC decision (Track / Track* / Attend / Act) and its inputs with their
+    # sources (ssvc.assess) — the BOD 26-04 view, alongside `priority`.
+    ssvc: dict | None = None
 
     def __post_init__(self) -> None:
         # Structural guarantee, not a convention: no evidence, no Finding.

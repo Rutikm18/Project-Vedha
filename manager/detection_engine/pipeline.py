@@ -38,6 +38,7 @@ from models import Finding
 from exploitability import apply_to_findings as apply_exploitability
 from posture_rules import (PostureFinding, detect_all as detect_posture_all,
                            detect_all_traced, summarize_traces, verdict_for_rule)
+from ssvc import assess as assess_ssvc, load_ssvc
 from verifier import deception_score, verify
 from vuln_db import VulnDB, load_snapshot
 
@@ -73,6 +74,7 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
     tuple is unchanged.
     """
     vuln_db = vuln_db or load_snapshot()
+    ssvc_db = load_ssvc()
     kev_db = kev_db or load_kev()
     epss_db = epss_db or load_epss()
     exposure = exposure or {}
@@ -129,6 +131,7 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
         f.internet_facing = exp.get("internet_facing")
         f.auth_enforced = exp.get("auth_enforced")
         enrich_finding(f, vuln_db, kev_db, epss_db)
+        f.ssvc = assess_ssvc(f.cve_id, f.cvss_vector, f.kev, f.internet_facing, ssvc_db)
         # Phase 3 — every finding passes through the verifier exactly once,
         # AFTER auth_enforced/exposure is set (verify reads it). Anti-FP:
         # only ever lowers confidence / downgrades state, never raises.

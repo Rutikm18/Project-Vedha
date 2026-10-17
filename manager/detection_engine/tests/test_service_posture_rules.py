@@ -340,3 +340,11 @@ def test_upnp_rules_fire_through_detect_posture():
                            "usn": "uuid:1::urn:schemas-upnp-org:service:WANIPConnection:1"}))
     rules = sorted(f.rule_id for f in PR.detect_posture(a))
     assert rules == ["POSTURE-UPNP-IGD-EXPOSED"]
+
+
+def test_snmp_private_community_never_claims_proven_write():
+    ev = P._snmp_default(_fact("snmp_scan", {"community": "private"}, port=161))
+    assert ev["access_proven"] == "read"
+    assert "not tested" in ev["write_access"] and "not tested" in ev["note"]
+    ev = P._snmp_default(_fact("snmp_scan", {"community": "public"}, port=161))
+    assert ev["access_proven"] == "read" and "note" not in ev
