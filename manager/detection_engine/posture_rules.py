@@ -723,9 +723,13 @@ def _ssh_terrapin(f: Fact) -> Optional[dict]:
 # a practical attack, not just deprecation. Anything else ssh-audit fails (SHA-1 MACs and
 # signatures, RIPEMD, SEED, a 1024-bit group on its own, ...) is LEGACY: worth retiring, not
 # an emergency. A stock current OpenSSH still offers hmac-sha1, so it must not read as High.
+# The NIST curves (ecdh-sha2-nistp*, ecdsa-sha2-nistp*) fail in ssh-audit as "suspected as
+# being backdoored": a trust concern with no practical attack, and every default OpenSSH
+# offers them, so "backdoored" is deliberately NOT here (it put almost every Linux host on
+# the High rule). Those entries fall through to the LEGACY rule.
 _SSH_BROKEN_REASON = re.compile(
     r"rc4|3des|blowfish|cast|broken des|\bdes cipher|md5|no encryption|logjam|small ecc|"
-    r"untrusted|backdoored", re.IGNORECASE)
+    r"untrusted", re.IGNORECASE)
 _SSH_BROKEN_ALGO = re.compile(
     r"^(arcfour|3des|des-|blowfish|cast128|none$|diffie-hellman-group1-sha1|hmac-md5)",
     re.IGNORECASE)
@@ -1341,11 +1345,14 @@ RULES: list[PostureRule] = [
         "POSTURE-SSH-LEGACY-ALGORITHMS", "SSH offers legacy algorithms",
         "low", "CWE-327", "T1040", "weak_crypto", ("ssh_scan",), _ssh_legacy_algos,
         "Retire the deprecated algorithms (SHA-1 MACs, CBC ciphers, 1024-bit DH groups) from "
-        "KexAlgorithms, Ciphers and MACs in sshd_config when clients allow. Nothing here has a "
+        "KexAlgorithms, Ciphers and MACs in sshd_config when clients allow; prefer curve25519 / "
+        "ed25519 over the NIST curves where your policy requires it. Nothing here has a "
         "practical attack today; this is hygiene, not an emergency.",
         fp_notes="Every algorithm ssh-audit fails is deprecated or weak-by-policy but none is on "
                  "the broken list (RC4, 3DES, DES, Blowfish, MD5, Logjam-class groups). A stock "
-                 "current OpenSSH offers hmac-sha1 and lands here, not under the High rule.",
+                 "current OpenSSH offers hmac-sha1 and the NIST curves (failed by ssh-audit as "
+                 "\"suspected backdoored\", a trust concern, not an attack) and lands here, "
+                 "not under the High rule.",
         requires=("ssh_confirmed", "failures")),
     PostureRule(
         "POSTURE-FTP-ANONYMOUS-LOGIN", "FTP allows anonymous login",
