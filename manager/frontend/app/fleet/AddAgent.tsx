@@ -253,6 +253,11 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
   }
 
   const host = managerHost(info?.manager_url ?? "");
+  // Only an https:// manager can be put into a Windows command; say plainly when it is not.
+  const managerUrl = info?.manager_url ?? "";
+  const secure = !managerUrl || managerUrl.startsWith("https://");
+  const winBlocker = info?.windows_command_blocker
+    || "This manager address cannot be embedded safely in a Windows command. Set MANAGER_PUBLIC_URL to the manager's https:// address.";
   const hasWindows = windowsOffered(info);
   const target: InstallOs = hasWindows ? os : "linux";
   const winCommands = windowsCommands(created?.commands);
@@ -270,7 +275,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
           <strong id="add-agent-title" className="flt-head-title">Add a vedha-agent</strong>
           <div className="flt-head-sub">
             Runs on a Linux host with Docker{hasWindows ? " or on a Windows host" : ""} inside the network you want assessed. It only connects
-            out to <span className="flt-mono">{host}</span> over HTTPS — no inbound ports.
+            out to <span className="flt-mono">{host}</span> over {secure ? "HTTPS" : "plain HTTP"} — no inbound ports.
           </div>
         </div>
       </div>
@@ -318,6 +323,9 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
 
       {surface === "manager" && info && !info.manager_url_configured && (
         <p className="flt-warn">MANAGER_PUBLIC_URL is not set on the API, so commands use {info.manager_url || "this request's address"}. Set it to the public API URL (for example https://api.your-domain.com).</p>
+      )}
+      {hasWindows && info?.windows_command_blocker && (
+        <div className="aa-note aa-warn" role="status"><AlertTriangle size={14} /><div>{info.windows_command_blocker}</div></div>
       )}
       {blocked && info?.blocker && (
         <div className="aa-note" role="status"><AlertTriangle size={14} /><div>{sentence(info.blocker)}</div></div>
@@ -431,7 +439,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
           {target === "windows" ? (
             <div className="flt-cmds">
               {winCommands.length === 0 && (
-                <p className="aa-small">This manager address cannot be embedded safely in a Windows command. Use the https:// address of the manager.</p>
+                <div className="aa-note aa-warn" role="alert"><AlertTriangle size={14} /><div>{winBlocker}</div></div>
               )}
               {winCommands.map((c) => (
                 <div className="flt-cmd" key={c.key}>
@@ -523,7 +531,7 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
                   </button>
                 </div>
               ) : (
-                <p className="aa-small">This manager address cannot be embedded safely in a Windows command. Set MANAGER_PUBLIC_URL to the https:// facade address (for example https://get.your-domain.com).</p>
+                <div className="aa-note aa-warn" role="alert"><AlertTriangle size={14} /><div>{createdCode.command_blocker || winBlocker}</div></div>
               )}
               <p className="aa-small">
                 Works once, until {formatExact(createdCode.expires_at)}. The client needs nothing else &mdash; no IP, no key, no manager name.

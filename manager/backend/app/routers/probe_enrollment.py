@@ -1279,7 +1279,11 @@ async def create_install_code(
     db: DB,
     current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
 ):
-    from app.routers.agent_distribution import manager_url_for, windows_install_code_command
+    from app.routers.agent_distribution import (
+        manager_url_for,
+        windows_command_blocker,
+        windows_install_code_command,
+    )
 
     now = datetime.now(timezone.utc)
     engagement_id = None
@@ -1339,6 +1343,8 @@ async def create_install_code(
         "code": raw,  # shown once
         "command": windows_install_code_command(manager_url, raw),
         "manager_url_configured": manager_url_configured,
+        # Why "command" is empty, with the address and the fix ('' when it is not).
+        "command_blocker": windows_command_blocker(manager_url, manager_url_configured),
     }
     await db.commit()  # Fleet lists codes right after creating one; raw code shown once
     return out

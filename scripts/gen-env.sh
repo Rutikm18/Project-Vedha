@@ -178,6 +178,12 @@ PUBIP="$(detect_public_ip)"
 if [ -n "$(get TLS_DOMAIN)" ]; then
   # enable-tls.sh owns the public URLs once HTTPS is on — don't revert to http://<ip>.
   echo "[gen-env] HTTPS enabled — MANAGER_PUBLIC_URL stays $(get MANAGER_PUBLIC_URL)"
+elif case "$(get MANAGER_PUBLIC_URL)" in https://*) true ;; *) false ;; esac; then
+  # An https:// address was set on purpose — by deploy/aws/install.sh (the get.<domain>
+  # facade, which writes no TLS_DOMAIN), set-public-url.sh, or by hand. Never downgrade
+  # it to http://<ip>: the Windows agent only talks to an https:// manager, so the
+  # downgrade silently removed every Windows install command from Fleet → Add agent.
+  echo "[gen-env] MANAGER_PUBLIC_URL is https:// — keeping $(get MANAGER_PUBLIC_URL) (and CORS_ORIGINS)"
 elif [ -n "$PUBIP" ]; then
   APORT="$(get API_PORT)";      APORT="${APORT:-18080}"
   FPORT="$(get FRONTEND_PORT)"; FPORT="${FPORT:-3000}"

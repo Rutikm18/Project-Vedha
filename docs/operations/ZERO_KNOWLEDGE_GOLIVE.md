@@ -253,4 +253,14 @@ into the scripts**, so a fresh server is far fewer steps. On a new box:
   and `icacls <key> /inheritance:r /grant:r "$env:USERNAME:R"` so Windows SSH accepts it.
 - **`MANAGER_PUBLIC_URL`** must be the facade — `install.sh` sets it from `DOMAIN` automatically now; only
   override if you front the manager differently.
+- **Fleet → Add agent shows no Windows command** ("This manager address cannot be embedded safely in a
+  Windows command", and the page names the raw IP, e.g. `16.4.75.44`): `MANAGER_PUBLIC_URL` is a plain
+  `http://` address. The Windows installer only talks to `https://`, so the manager withholds both
+  Windows commands. Cause seen in the field: `make full` / `make aws-up` ran `scripts/gen-env.sh`, which
+  (before the 17 Oct fix) replaced the facade with `http://<public-ip>` because `install.sh` writes no
+  `TLS_DOMAIN`. Fix on the server, from the app dir:
+  `sudo ./deploy/aws/set-public-url.sh --url https://get.vedhasec.com` (writes it, recreates the API,
+  checks the facade serves the manifest over https), then reload Add agent. The page now prints the exact
+  address it rejected and this fix. A bare IP with Caddy's self-signed `tls internal` certificate is
+  `https://` but Windows does not trust it, so the install still fails — use the domain facade.
 - **Server size:** 1 GB RAM is below comfortable for the full console; **2 GB+** (e.g. t3.small) is recommended.

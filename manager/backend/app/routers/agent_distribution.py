@@ -125,6 +125,32 @@ _SAFE_ARG = re.compile(r"[A-Za-z0-9:/._~+=@%-]+")
 _INSTALL_CODE_RE = re.compile(r"vac_[A-Za-z0-9_\-]{16,}")
 
 
+def windows_command_blocker(manager_url: str, configured: bool = True) -> str:
+    """Why this manager address cannot go into a Windows command, or '' when it can.
+
+    The Windows installer refuses anything but https:// (the install token and
+    everything the agent sends must be encrypted), so a plain-http address gets
+    no Windows command at all. This says exactly which address was rejected and
+    how to fix it, so the Fleet page never shows a bare "cannot be embedded"."""
+    manager = manager_url.rstrip("/")
+    fix = ("Set MANAGER_PUBLIC_URL on the manager to its https:// address — the facade, for example "
+           "https://get.your-domain.com — then recreate the API. On the server: "
+           "sudo ./deploy/aws/set-public-url.sh --url https://get.your-domain.com")
+    if not manager:
+        return "MANAGER_PUBLIC_URL is not set and this request has no address to use. " + fix
+    if not manager.startswith("https://"):
+        source = "MANAGER_PUBLIC_URL is" if configured else (
+            "MANAGER_PUBLIC_URL is not set, so this request's address is used:")
+        return (f"{source} {manager}, which is not https://. The Windows installer only talks to an "
+                f"https:// manager, so no Windows command can be made. " + fix + ". "
+                "If it was https:// before, a run of scripts/gen-env.sh (make full / make aws-up) "
+                "replaced it with the server's plain-http IP — this version of gen-env keeps https.")
+    if not _SAFE_ARG.fullmatch(manager):
+        return (f"The manager address {manager} holds characters that cannot be pasted into a Windows "
+                "command safely. Use a plain https://host or https://host:port address.")
+    return ""
+
+
 def windows_install_code_command(manager_url: str, code: str) -> str:
     """The ONE line an operator pastes to a Windows client for the zero-knowledge
     install. The only identity in it is the generic facade URL (passed as -Manager
@@ -505,7 +531,16 @@ def release_status(*, detailed: bool, request: Request | None = None) -> dict:
     """What Fleet shows about the published release. Operators see why a release
     is unavailable; customers get a neutral message."""
     manager_url, configured = manager_url_for(request)
-    body: dict = {"manager_url": manager_url, "manager_url_configured": configured}
+    blocker = windows_command_blocker(manager_url, configured)
+    body: dict = {
+        "manager_url": manager_url,
+        "manager_url_configured": configured,
+        # Why Windows install commands are withheld for this address ('' = they are not).
+        # Operators get the address and the fix; customers a neutral line.
+        "windows_command_blocker": blocker if (detailed or not blocker) else (
+            "Windows install commands are not available from this manager yet — "
+            "your Vedha team needs to finish its https:// setup."),
+    }
     try:
         release = load_current_release()
     except agent_release.ReleaseUnavailable as exc:
