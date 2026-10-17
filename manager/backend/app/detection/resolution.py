@@ -145,6 +145,19 @@ def finding_coverage(
     return False, COVERAGE_NO_DIMENSION
 
 
+def matcher_changed(finding, matcher_revision: str | None) -> bool:
+    """True when a CVE finding was produced by a different CVE-matcher revision than
+    this run's. Findings from before the revision existed carry none and count as
+    different. Posture findings (no CVE ids) and runs with no revision are never
+    affected."""
+    if not matcher_revision or not getattr(finding, "cve_ids", None):
+        return False
+    ev = getattr(finding, "evidence", None)
+    if not isinstance(ev, dict) or ev.get("rule_id") or ev.get("correlation") is True:
+        return False
+    return str(ev.get("matcher_revision") or "") != str(matcher_revision)
+
+
 def resolution_threshold(severity: FindingSeverity) -> int:
     """Consecutive coverage-proven clean runs required before auto-close.
     critical/high demand a SECOND confirmation — a premature 'you're safe' on a
@@ -182,6 +195,7 @@ async def evaluate_resolutions(
     db: AsyncSession, engagement_id: uuid.UUID, run, coverage: dict, now: datetime,
     *, evaluated_checks: set[tuple[str, str, int | None]] | None = None,
     identified_products: dict[str, set[str]] | None = None,
+    matcher_revision: str | None = None,
     skips: dict[str, int] | None = None,
 ) -> int:
     """Apply decide_resolution to every engine-managed open/confirmed finding
@@ -191,7 +205,10 @@ async def evaluate_resolutions(
 
     A finding counts as covered only when its host is in `coverage` AND
     finding_coverage finds this run's evidence for it. Omitted evidence sets are
-    empty, so nothing resolves. `skips`, when given, is filled with a count per
+    empty, so nothing resolves. A CVE finding produced by a different CVE-matcher
+    revision than this run's (``matcher_revision``) is treated like a changed
+    vuln-DB basis: its absence may be the new logic, not a fix, so it never
+    auto-resolves. `skips`, when given, is filled with a count per
     skip reason."""
     covered = set(coverage.get("assets") or [])
     evaluated_checks = evaluated_checks or set()
@@ -213,7 +230,7 @@ async def evaluate_resolutions(
             run.vuln_db_version is not None
             and finding.detected_db_version is not None
             and finding.detected_db_version != run.vuln_db_version
-        )
+        ) or matcher_changed(finding, matcher_revision)
         is_covered, coverage_reason = finding_coverage(
             ip=ip, evidence=finding.evidence, cve_ids=finding.cve_ids,
             host_covered=ip in covered, evaluated_checks=evaluated_checks,

@@ -184,6 +184,24 @@ class Finding:
     # (matcher._fixed_bound). None for last_affected / unbounded ranges — the
     # remediation plan then says "confirm the fixed version", never guesses.
     fixed_version: str | None = None
+    # matcher.MATCHER_REVISION that produced this finding (None for findings not
+    # produced by the matcher, e.g. correlate.py composites).
+    matcher_revision: str | None = None
+    # The fix in the observed version's own terms (matcher._fix_for_scheme):
+    # "upstream" -> an upstream release ("9.8p1"); "package" -> a Debian package
+    # version. fixed_version_raw is the snapshot bound it came from.
+    fixed_version_raw: str | None = None
+    matched_range: str | None = None   # the snapshot interval, e.g. "[0, 1:9.8p1-1)"
+    version_scheme: str | None = None
+    # Where the product was observed: the fact's port/protocol (every port the same
+    # CVE was seen on, after dedup) and the product named in the CPE. Lets the
+    # manager show "OpenSSH 9.6p1 on 22/tcp" instead of "not recorded".
+    port: int | None = None
+    proto: str | None = None
+    ports: list[int] = field(default_factory=list)
+    product: str | None = None
+    vendor: str | None = None
+    distro: str | None = None
 
     def __post_init__(self) -> None:
         # Structural guarantee, not a convention: no evidence, no Finding.

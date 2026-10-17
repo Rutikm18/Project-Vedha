@@ -33,13 +33,18 @@ from cpe_normalizer import CPECandidate, normalize
 from enrichment import enrich_finding
 from enrichment_db import EpssDB, KevDB, load_epss, load_kev
 from ingest import IngestResult, ingest_files
-from matcher import match_candidate
+from matcher import MATCHER_REVISION, match_candidate
 from models import Finding
 from exploitability import apply_to_findings as apply_exploitability
 from posture_rules import (PostureFinding, detect_all as detect_posture_all,
                            detect_all_traced, summarize_traces, verdict_for_rule)
 from verifier import deception_score, verify
 from vuln_db import VulnDB, load_snapshot
+
+
+# match_basis values that are product presence, not a version-range vulnerability:
+# kept out of the customer-facing `cve` set (see run_full_detection).
+PRODUCT_PRESENCE_BASES = frozenset({"range-open", "range-distro"})
 
 
 def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
@@ -86,6 +91,8 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
                 raw_text = extract_raw_text(fact)
                 if raw_text:
                     fact_candidates = propose_candidates(fact, raw_text, ai_client, cache=ai_cache)
+            for c in fact_candidates:
+                c.port, c.proto = fact.port, fact.proto
             candidates.extend(fact_candidates)
         candidates_by_asset[ip] = candidates
         for c in candidates:
@@ -233,8 +240,11 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
     # CVEs. It is not discarded: it is returned under `cve_product_presence`
     # (and counted) so the signal remains traceable and a future UI can surface
     # it as a low-priority "product present — verify patch level" rollup.
-    product_presence = [f for f in cve_findings if f.match_basis == "range-open"]
-    cve_findings = [f for f in cve_findings if f.match_basis != "range-open"]
+    # The same holds for `range-distro`: a banner that names a backporting distro
+    # build (Ubuntu, RHEL, "(Debian)" with no package revision) cannot show which
+    # fixes are in, so its version matches are product presence too.
+    product_presence = [f for f in cve_findings if f.match_basis in PRODUCT_PRESENCE_BASES]
+    cve_findings = [f for f in cve_findings if f.match_basis not in PRODUCT_PRESENCE_BASES]
     return {
         "cve": cve_findings,
         "cve_product_presence": product_presence,
@@ -246,6 +256,7 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
         # What was re-identified, per asset: the evidence a CVE finding needs
         # before its absence from this run can count as clean.
         "identified_products": identified_products_from(candidates_by_asset),
+        "matcher_revision": MATCHER_REVISION,
         "ingest": ingest_result,
         "counts": {
             "cve": len(cve_findings),

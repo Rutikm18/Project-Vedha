@@ -45,6 +45,9 @@ from app.discovery.finding_translator import (
     merge_signals, prune_stale_signals, stronger_severity,
 )
 from app.detection.attack_paths import attack_path_findings
+from app.detection.cve_text import (
+    cve_description, cve_remediation, is_engine_notes_description,
+)
 from app.detection.prioritization import _posture_risk_on_manager_scale
 from app.detection.resolution import (
     build_coverage, evaluate_resolutions, host_of, normalize_port,
@@ -299,7 +302,10 @@ def detect_all_from_facts_traced(
                     # NOT persisted — what auto-resolution may count as re-checked.
                     "evaluated_checks": _evaluated_checks(res.get("posture_traces")),
                     "identified_products": _identified_products(
-                        res.get("identified_products"))}
+                        res.get("identified_products")),
+                    # The CVE matcher's logic revision: a CVE finding stamped
+                    # with another one is not auto-resolved by its absence.
+                    "matcher_revision": res.get("matcher_revision")}
             _log_ingest_health(census, len(cve) + len(posture))
             return cve, posture, meta
         except ImportError:                          # older engine: CVE-only
@@ -310,7 +316,7 @@ def detect_all_from_facts_traced(
             # customer-facing CVE — withhold it here too so this degraded path
             # cannot reintroduce the banner-host flood.
             cve = [f.to_dict() for f in findings
-                   if getattr(f, "match_basis", None) != "range-open"]
+                   if getattr(f, "match_basis", None) not in ("range-open", "range-distro")]
             return cve, [], empty_meta
     except Exception as exc:  # noqa: BLE001
         # The CVE track can fail on its own (e.g. a missing/oversized NVD snapshot);
@@ -370,6 +376,16 @@ _POSTURE_SEV = {
     "medium": FindingSeverity.medium, "low": FindingSeverity.low,
     "info": FindingSeverity.info,
 }
+
+
+def _backfill_cve_text(finding, d: dict) -> None:
+    """A CVE finding created before cve_text existed has no remediation and the
+    matcher's raw notes as its description. Fill those on reaffirmation; never touch
+    text a person wrote or edited."""
+    if not finding.remediation:
+        finding.remediation = cve_remediation(d)
+    if not finding.description or is_engine_notes_description(finding.description):
+        finding.description = cve_description(d)
 
 
 def _posture_title(p: dict) -> str:
@@ -1025,6 +1041,7 @@ async def create_findings_from_facts(
                         d,
                         previous_evidence=dup.evidence,
                     )
+                    _backfill_cve_text(dup, d)
                     dup.last_seen = now
                     dup.detection_run_id = run.id
                     dup.resolution_miss_count = 0   # re-observed → out of the resolution window
@@ -1044,6 +1061,7 @@ async def create_findings_from_facts(
                         {**(previous_evidence or {}), **d, "regression": True},
                         previous_evidence=previous_evidence,
                     )
+                    _backfill_cve_text(regressed, d)
                     touched.append(regressed)
                     reaffirmed += 1
                     # Reopened rows leave the regression set and join the open one.
@@ -1057,7 +1075,8 @@ async def create_findings_from_facts(
                     asset_id=asset_id,
                     cve_ids=[cve] if d.get("cve_id") else None,
                     title=title,
-                    description="; ".join(d.get("notes") or []) or None,
+                    description=cve_description(d),
+                    remediation=cve_remediation(d),
                     cvss_score=Decimal(str(d["cvss_score"])) if d.get("cvss_score") is not None else None,
                     cvss_vector=d.get("cvss_vector"),
                     epss_score=Decimal(str(d["epss_score"])) if d.get("epss_score") is not None else None,
@@ -1134,6 +1153,7 @@ async def create_findings_from_facts(
                 db, engagement_id, run, coverage, now,
                 evaluated_checks=detect_meta.get("evaluated_checks") or set(),
                 identified_products=detect_meta.get("identified_products") or {},
+                matcher_revision=detect_meta.get("matcher_revision"),
                 skips=skips)
             # Counts only: why nothing auto-closed, readable by an operator.
             coverage["resolution_skips"] = dict(sorted(skips.items()))

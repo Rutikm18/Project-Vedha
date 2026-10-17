@@ -80,7 +80,16 @@ def classify_finding(finding: Any) -> str:
     """Map a finding to a KB category key using title/description/CVE hints.
 
     Deterministic and order-sensitive (first match wins); returns "generic" when
-    nothing matches so there is always a recipe to serve."""
+    nothing matches so there is always a recipe to serve.
+
+    A version-matched CVE finding (CVE ids, a CPE, no rule id) is a missing patch,
+    whatever its prose mentions: its title names the product ("CVE-2024-6387 —
+    openssh") and its remediation may name a port (3389), which would otherwise route
+    a patch to SSH hardening or RDP exposure advice."""
+    ev = getattr(finding, "evidence", None)
+    if (_cves(finding) and isinstance(ev, dict) and ev.get("cpe")
+            and not ev.get("rule_id") and not ev.get("correlation")):
+        return "missing_patch"
     text = _text(finding)
     for category, needles in _CATEGORY_KEYWORDS:
         if any(n in text for n in needles):
