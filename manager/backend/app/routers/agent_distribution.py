@@ -473,12 +473,18 @@ async def redeem_install_code(body: RedeemInput, request: Request, db: DB, redis
     code.redeemed_at = now
     code.redeemed_ip = client_ip(request)[:45]
     code.minted_token_id = token.id
+    # The caller is anonymous, so nothing in the request names a tenant: take it
+    # from the code, or the entry lands where no organisation can read it.
     record_audit(
         db,
         actor_id=f"install-code:{code.id}",
+        actor_type="anonymous",
+        actor_label=f"install code {code.code_prefix}",
         action="agent.install_code.redeemed",
         resource_type="agent_install_code",
         resource_id=code.id,
+        tenant_id=code.tenant_id,
+        engagement_id=code.engagement_id,
         detail={"token_id": str(token.id)},
         ip=code.redeemed_ip,
     )

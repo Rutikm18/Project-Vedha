@@ -254,6 +254,24 @@ def test_redeem_happy_mints_vet_and_burns_the_code(monkeypatch):
     assert "agent.install_code.redeemed" in actions
 
 
+def test_redeem_is_audited_in_the_code_s_own_organisation(monkeypatch):
+    """The redeemer is anonymous, so the request carries no tenant. The entry must still
+    belong to the code's organisation, or no one there can ever read it."""
+    _pin_manager(monkeypatch)
+    engagement = _engagement()
+    raw = "vac_" + "e" * 22
+    code = _code(raw, tenant_id=engagement.tenant_id, engagement_id=engagement.id, site_id=None)
+    db = FakeDB(code, engagement, [])
+    asyncio.run(ad.redeem_install_code(ad.RedeemInput(code=raw), _request(), db, _redis()))
+
+    entry = next(row for row in db.of(AuditLog) if row.action == "agent.install_code.redeemed")
+    assert entry.tenant_id == engagement.tenant_id
+    assert entry.engagement_id == engagement.id
+    assert entry.actor_type == "anonymous"
+    assert entry.actor_label == f"install code {raw[:12]}"
+    assert entry.ip_address == "198.51.100.7"
+
+
 def test_redeem_rate_limiter_down_fails_closed(monkeypatch):
     _pin_manager(monkeypatch)
     from unittest.mock import AsyncMock, MagicMock

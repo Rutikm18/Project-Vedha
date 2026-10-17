@@ -65,6 +65,9 @@ CATALOG: dict[str, ActionInfo] = {
     "entitlement.adjusted": _A("access_control", "Customer plan adjusted", True),
     "agent.access_expiry.set": _A("access_control", "Probe access expiry set"),
     "agent.revoked": _A("access_control", "Probe access revoked"),
+    "agent.install_code.created": _A("access_control", "Agent install code created"),
+    "agent.install_code.revoked": _A("access_control", "Agent install code revoked"),
+    "agent.install_code.redeemed": _A("access_control", "Agent install code redeemed"),
     # findings
     "finding.updated": _A("findings", "Finding changed", True),
     "finding.reopened": _A("findings", "Finding reopened", True),
