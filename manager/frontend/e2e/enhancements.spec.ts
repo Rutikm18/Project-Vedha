@@ -107,16 +107,16 @@ test("setup retry preserves typed scope and distinguishes failed probe inventory
   await page.route("**/api/scan/use-cases", (route) => respond(route, catalog));
   await page.route("**/api/scan/probes", (route) => respond(route, failed ? { error: "Probe inventory unavailable" } : probes, failed ? 503 : 200));
   await page.goto("/scan");
-  await expect(page.getByText("Scan setup is unavailable")).toBeVisible();
+  await expect(page.getByText("Could not verify scan setup")).toBeVisible();
   await expect(page.getByText("Probe inventory: Probe inventory unavailable")).toBeVisible();
   await page.locator("#scan-scope").fill("192.0.2.20");
-  await expect(page.getByRole("button", { name: "Launch Scan", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Launch scan", exact: true })).toBeDisabled();
   await page.screenshot({ path: testInfo.outputPath("scan-unavailable.png") });
   failed = false;
   await page.getByRole("button", { name: "Retry setup" }).click();
-  await expect(page.getByText("Scan setup is unavailable")).toHaveCount(0);
+  await expect(page.getByText("Could not verify scan setup")).toHaveCount(0);
   await expect(page.locator("#scan-scope")).toHaveValue("192.0.2.20");
-  await expect(page.getByRole("button", { name: "Launch Scan", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Launch scan", exact: true })).toBeEnabled();
 });
 
 test("job polling failure keeps the job and retries without launching again", async ({ page }) => {
@@ -127,7 +127,7 @@ test("job polling failure keeps the job and retries without launching again", as
   await page.route("**/api/scan/launch", (route) => { launches++; return respond(route, { job_id: "job-e2e", status: "pending" }); });
   await page.route("**/api/scan/jobs/job-e2e", (route) => respond(route, failed ? { error: "Status unavailable" } : { job_id: "job-e2e", engagement_id: "e2e", status: "running", use_case_id: "uc_network_va", result: null }, failed ? 503 : 200));
   await page.goto("/scan");
-  await page.getByRole("button", { name: "Launch Scan", exact: true }).click();
+  await page.getByRole("button", { name: "Launch scan", exact: true }).click();
   await expect(page.getByText("Job status may be out of date")).toBeVisible();
   failed = false;
   await page.getByRole("button", { name: "Retry job status" }).click();
