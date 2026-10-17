@@ -33,7 +33,7 @@ def escalate(sev: str, steps: int = 1) -> str:
 @dataclass(frozen=True)
 class PortRisk:
     category: str        # backdoor | container | datastore | database | cleartext
-                         #  | remote_access | admin_ui
+                         #  | remote_access | admin_ui | printer
     service: str         # human name
     severity: str        # BASE severity (internal). internet-facing escalates +1.
     cwe: str
@@ -167,11 +167,55 @@ _ADMIN_UI = {
     15672: "RabbitMQ management",
     10000: "Webmin",
     8006: "Proxmox VE",
-    9100: "JetDirect / Prometheus node-exporter",
     50070: "Hadoop NameNode UI",
     8088: "Hadoop/YARN ResourceManager",
     16010: "HBase master UI",
 }
+
+
+# ── 9100: raw printing (JetDirect / PJL) unless the probe saw HTTP ────────────
+# On a printer, 9100 is the raw print port: anyone who can reach it can print and
+# speak PJL (read/write the printer's file system, change settings, capture jobs),
+# with no authentication. It is NOT a web UI, which is what the old "JetDirect /
+# Prometheus node-exporter" admin-UI label claimed on every printer. Prometheus
+# node-exporter also defaults to 9100, but it answers HTTP: when the probe observed
+# HTTP (or named the exporter) the port is a metrics endpoint instead.
+_RAW_PRINT_PORT = 9100
+_NODE_EXPORTER_TOKENS = ("nodeexporter", "prometheus")
+
+
+def _is_http_metrics(banner: str | None, service: str | None, product: str | None) -> bool:
+    seen = _normalized(product, service)
+    if any(t in seen for t in _NODE_EXPORTER_TOKENS):
+        return True
+    if (service or "").lower() in ("http", "https"):
+        return True
+    return bool(banner) and banner.lstrip().upper().startswith("HTTP/")
+
+
+# ── BOD 23-02: networked management interfaces ────────────────────────────────
+# CISA BOD 23-02 requires a networked management interface reachable from the
+# internet to be removed from it (or put behind an access-control point) within 14
+# days. These classes are management planes: an internet-facing one is High at
+# least, whatever its internal base severity (the +1 internet step alone left an
+# internet-exposed Webmin or VNC at Medium).
+MANAGEMENT_CATEGORIES = frozenset({"remote_access", "admin_ui", "container", "printer"})
+INTERNET_MANAGEMENT_FLOOR = "high"
+
+
+def exposure_severity(category: str, base: str, internet: bool) -> tuple[str, bool]:
+    """(severity, bod_23_02) for an exposed-service finding.
+
+    Internal: the base severity. Internet-facing: one step up, and for a management
+    interface at least High (BOD 23-02), flagged so the report can say why."""
+    if not internet:
+        return base, False
+    sev = escalate(base)
+    if category in MANAGEMENT_CATEGORIES:
+        if _SEV_ORDER.index(sev) < _SEV_ORDER.index(INTERNET_MANAGEMENT_FLOOR):
+            sev = INTERNET_MANAGEMENT_FLOOR
+        return sev, True
+    return sev, False
 
 
 def _banner_confirms_backdoor(banner: str | None) -> bool:
@@ -290,6 +334,18 @@ def classify_port(port: int, banner: str | None = None,
         return PortRisk("admin_ui", _ADMIN_UI[port], "low", "CWE-284", "T1190",
                         "Admin/dev web interface exposed — confirm authentication "
                         "and that it should be reachable from this segment.")
+    if port == _RAW_PRINT_PORT:
+        if _is_http_metrics(banner, service, product):
+            return PortRisk("admin_ui", "Prometheus node-exporter metrics (unauthenticated "
+                            "host telemetry)", "low", "CWE-200", "T1082",
+                            "Metrics endpoint answering without authentication — it "
+                            "discloses host inventory and load; restrict it to the "
+                            "monitoring server.")
+        return PortRisk("printer", "raw printing / PJL (JetDirect)", "low", "CWE-306", "T1046",
+                        "Raw print port: anyone who can reach it can print and send PJL "
+                        "commands (read the printer's stored files, change settings) with "
+                        "no authentication. Allow it only from print servers, and "
+                        "disable PJL file-system access where the printer supports it.")
     return None
 
 
@@ -303,7 +359,7 @@ def catalog_categories() -> dict[int, str]:
     be shown "no longer an exposed service" from its state, so only these findings
     auto-resolve without fresh banner evidence."""
     ports = set().union(_BACKDOOR, _CONTAINER, _DATASTORE, _DATABASE,
-                        _CLEARTEXT, _REMOTE, _ADMIN_UI)
+                        _CLEARTEXT, _REMOTE, _ADMIN_UI, {_RAW_PRINT_PORT})
     out: dict[int, str] = {}
     for p in ports:
         risk = classify_port(p, None)

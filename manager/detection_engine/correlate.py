@@ -69,6 +69,9 @@ def dedup_findings(findings: list[Finding]) -> list[Finding]:
         for note in f.notes:
             if note not in existing.notes:
                 existing.notes.append(note)
+        for port in getattr(f, "ports", None) or []:
+            if port not in existing.ports:
+                existing.ports.append(port)
         # Authoritative evidence upgrades the merged finding; it is never
         # downgraded by also having been seen from a weaker source.
         if f.source_confidence == SourceConfidence.authoritative:

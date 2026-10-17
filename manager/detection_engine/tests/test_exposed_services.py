@@ -329,3 +329,52 @@ def test_plain_reachability_ports_stay_medium():
 def test_xdmcp_is_catalogued():
     # was missing entirely, so an open display manager fell to the generic rule
     assert 177 in PI.catalog_categories()
+
+
+# ── 9100 and BOD 23-02 (management interfaces exposed to the internet) ────────
+class TestRawPrintPort:
+    def test_9100_is_raw_printing_not_an_admin_ui(self):
+        r = PI.classify_port(9100)
+        assert r.category == "printer" and "PJL" in r.service
+        assert "admin" not in r.service.lower()
+
+    def test_9100_answering_http_is_node_exporter_metrics(self):
+        for kw in ({"service": "http"}, {"product": "Prometheus node_exporter"},
+                   {"banner": "HTTP/1.1 200 OK\r\nContent-Type: text/plain"}):
+            r = PI.classify_port(9100, kw.get("banner"), service=kw.get("service"),
+                                 product=kw.get("product"))
+            assert r.category == "admin_ui" and "node-exporter" in r.service, kw
+
+    def test_printer_finding_title_names_the_print_port(self):
+        a = _asset(_fact("port_scan", 9100, {}))
+        (f,) = P.detect_exposed_services(a)
+        assert f.rule_id == "POSTURE-EXPOSED-PRINTER"
+        assert f.title.startswith("Printer raw-print port open on 9100")
+        assert f.severity == "low"
+
+
+class TestManagementInterfaceExposure:
+    def test_internal_management_ui_keeps_its_base_severity(self):
+        assert PI.exposure_severity("admin_ui", "low", False) == ("low", False)
+
+    def test_internet_management_interface_is_at_least_high(self):
+        assert PI.exposure_severity("admin_ui", "low", True) == ("high", True)
+        assert PI.exposure_severity("remote_access", "medium", True) == ("high", True)
+        assert PI.exposure_severity("printer", "low", True) == ("high", True)
+        assert PI.exposure_severity("container", "high", True) == ("critical", True)
+
+    def test_non_management_class_only_steps_up(self):
+        assert PI.exposure_severity("database", "medium", True) == ("high", False)
+        assert PI.exposure_severity("cleartext", "low", True) == ("medium", False)
+
+    def test_internet_facing_webmin_finding_carries_the_bod_basis(self):
+        a = _asset(_fact("port_scan", 10000, {}))
+        (f,) = P.detect_exposed_services(a, {"10.0.0.5": {"internet_facing": True}})
+        assert f.severity == "high"
+        assert f.evidence["bod_23_02"] is True
+        assert "BOD 23-02" in f.evidence["severity_basis"]
+
+    def test_internal_finding_has_no_bod_marker(self):
+        a = _asset(_fact("port_scan", 10000, {}))
+        (f,) = P.detect_exposed_services(a)
+        assert "bod_23_02" not in f.evidence

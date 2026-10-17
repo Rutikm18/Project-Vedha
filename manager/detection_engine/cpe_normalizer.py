@@ -68,6 +68,16 @@ class CPECandidate:
                                     # CPE vocabulary name) and whatever binary
                                     # package name was actually observed. See
                                     # _PACKAGE_TO_CPE's module-level comment.
+    distro: str | None = None       # build origin the banner itself names
+                                    # ("debian", "ubuntu", "rhel", "windows", ...);
+                                    # None = no distro marker (an upstream build as
+                                    # far as the network can tell). See detect_build.
+    port: int | None = None         # the observing fact's port / protocol, stamped
+    proto: str | None = None        # by pipeline.run_pipeline (carried onto Findings)
+    distro_revision: str | None = None  # Debian package revision the banner carries
+                                    # ("2+deb12u3" from "OpenSSH_9.2p1 Debian-2+deb12u3"),
+                                    # which lets matcher.py compare the real package
+                                    # version. Only ever set with distro == "debian".
 
     def cpe23(self) -> str:
         ver = self.version_normalized or self.version_raw or "*"
@@ -246,6 +256,53 @@ _SSH_BANNER_RE = re.compile(r"SSH-[\d.]+-OpenSSH_([\w.]+)")
 # "product/version" header shape, e.g. "nginx/1.18.0 (Ubuntu)", "Boa/0.93.15".
 _HTTP_SERVER_RE = re.compile(r"^([A-Za-z][\w.-]*?)/([\d][\w.+-]*)")
 
+# ── build origin from the banner text (gap: banner-version CVE noise) ─────────
+# A distro keeps the upstream version string and backports security fixes, so a
+# banner version from a distro build says nothing about which fixes are in. The
+# banner often names the build though, and for Debian it even carries the package
+# revision. Read-only parsing of attacker-controllable text: bounded inputs, simple
+# anchored regexes, the result only ever LOWERS how much a version match is trusted
+# (or, for a Debian revision, makes the comparison exact).
+_DEBIAN_REV = r"([0-9][0-9A-Za-z.+~]{0,40})"
+_BUILD_PATTERNS: tuple[tuple[re.Pattern, str, bool], ...] = (
+    # (pattern, distro, group 1 is a Debian revision)
+    (re.compile(r"OpenSSH_for_Windows", re.I), "windows", False),
+    (re.compile(r"OpenSSH_[\w.]+\s+(?:Debian|Raspbian)-" + _DEBIAN_REV), "debian", True),
+    (re.compile(r"-MariaDB-(?:1:)?" + r"(0\+deb\d+u\d+[0-9A-Za-z.+~]{0,20})", re.I), "debian", True),
+    (re.compile(r"ubuntu", re.I), "ubuntu", False),          # also "-0ubuntu0.22.04.1"
+    (re.compile(r"\b(?:debian|raspbian|\+deb\d+u)", re.I), "debian", False),
+    (re.compile(r"red ?hat|\brhel\b|centos|rocky|almalinux|oracle linux|\bel[789]\b|fedora|amazon",
+                re.I), "rhel", False),
+    (re.compile(r"freebsd", re.I), "freebsd", False),
+    (re.compile(r"\bsuse\b|\bsles\b|opensuse", re.I), "suse", False),
+)
+
+
+def detect_build(*texts: str | None) -> tuple[str | None, str | None]:
+    """(distro, debian_revision) the banner text names, or (None, None).
+
+    "SSH-2.0-OpenSSH_9.2p1 Debian-2+deb12u3" -> ("debian", "2+deb12u3")
+    "SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.10" -> ("ubuntu", None)
+    "Apache/2.4.57 (Debian)" -> ("debian", None)
+    "220 (vsFTPd 3.0.3)" -> (None, None)
+    """
+    blob = " ".join(t[:300] for t in texts if isinstance(t, str) and t)
+    if not blob:
+        return None, None
+    for pattern, distro, has_rev in _BUILD_PATTERNS:
+        m = pattern.search(blob)
+        if m:
+            return distro, (m.group(1) if has_rev else None)
+    return None, None
+
+
+def _clean_ssh_version(version: str | None) -> str | None:
+    """'for_Windows_9.5' (Microsoft's port banner) -> '9.5'; anything else unchanged."""
+    if version and not version[:1].isdigit():
+        m = re.search(r"(\d[\w.]*)$", version)
+        return m.group(1) if m else None
+    return version
+
 
 def normalize_banner(fact: Fact) -> list[CPECandidate]:
     """service_banner.py's parsed product/version (or raw banner) -> CPE.
@@ -260,6 +317,14 @@ def normalize_banner(fact: Fact) -> list[CPECandidate]:
     data = fact.data
     product = (data.get("product") or "").lower()
     version = data.get("version")
+    if product == "openssh":
+        version = _clean_ssh_version(version)
+    # Only the identifying line is read for the build: the HTTP Server header for
+    # an HTTP answer, else the first line (SSH ident, FTP/SMTP greeting). Never the
+    # full banner: a page body or a hostname saying "ubuntu" says nothing about
+    # how THIS daemon was built, and would hide an upstream build's CVEs.
+    ident = data.get("http_server") if data.get("http_status") else data.get("first_line")
+    distro, revision = detect_build(ident)
     mapped = _HEADER_PRODUCT_TO_CPE.get(product) if product else None
     if mapped and version:
         osv_key, vendor, cpe_product = mapped
@@ -268,17 +333,22 @@ def normalize_banner(fact: Fact) -> list[CPECandidate]:
             version_raw=version, version_normalized=version,
             confidence="low", source_confidence=fact.source_confidence,
             basis=f"service banner: {product} {version}", source_ref=fact.ref(),
+            distro=distro, distro_revision=revision,
         )]
 
     text = data.get("first_line") or data.get("banner") or ""
     m = _SSH_BANNER_RE.search(text)
     if not m:
         return []
+    ssh_version = _clean_ssh_version(m.group(1))
+    if not ssh_version:
+        return []
     return [CPECandidate(
         vendor="openbsd", product="openssh", lookup_key="openssh",
-        version_raw=m.group(1), version_normalized=m.group(1),
+        version_raw=ssh_version, version_normalized=ssh_version,
         confidence="low", source_confidence=fact.source_confidence,
         basis=f"SSH banner: {text[:80]!r}", source_ref=fact.ref(),
+        distro=distro, distro_revision=revision,
     )]
 
 
@@ -296,6 +366,7 @@ def normalize_web(fact: Fact) -> list[CPECandidate]:
                 version_raw=m.group(2), version_normalized=m.group(2),
                 confidence="low", source_confidence=fact.source_confidence,
                 basis=f"HTTP Server header: {server!r}", source_ref=fact.ref(),
+                distro=detect_build(server)[0],
             ))
     for hint in fact.data.get("tech_hints") or []:
         mapped = _TECH_HINT_TO_CPE.get(hint)
@@ -335,12 +406,17 @@ def normalize_db(fact: Fact) -> list[CPECandidate]:
         return []
     osv_key, vendor, product, confidence = mapped
     version = fact.data.get("server_version")
+    distro, revision = detect_build(version) if isinstance(version, str) else (None, None)
 
     if engine == "mysql/mariadb":
         is_really_mariadb = bool(version) and "mariadb" in version.lower()
         if not is_really_mariadb:
             return []  # no safe OSV match available for this engine string
         confidence = "high"  # the suffix makes this unambiguous, not "medium"
+        # MariaDB announces "5.5.5-<real version>-MariaDB..." on the wire (a prefix
+        # kept for old replication clients). Read as-is the version is 5.5.5, which
+        # matched every MariaDB CVE since 2012 (accuracy lab, 17 Oct).
+        version = re.sub(r"^5\.5\.5-(?=\d)", "", version)
 
     return [CPECandidate(
         vendor=vendor, product=product, lookup_key=osv_key,
@@ -349,6 +425,7 @@ def normalize_db(fact: Fact) -> list[CPECandidate]:
         source_confidence=fact.source_confidence,
         basis=f"db_scan engine={engine!r} version={version!r}",
         source_ref=fact.ref(),
+        distro=distro, distro_revision=revision,
     )]
 
 

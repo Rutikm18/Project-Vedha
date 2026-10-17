@@ -1581,7 +1581,9 @@ def _finding(
         asset=_asset(asset),
         cve_ids=list(finding.cve_ids or []),
         cwe_ids=cwe_ids,
-        mitre_techniques=list(finding.mitre_techniques or []),
+        # One technique once, whatever the producers stored ("T1210 T1210" in the
+        # first test report: a merged signal re-added an id already present).
+        mitre_techniques=_dedupe(str(t).strip().upper() for t in (finding.mitre_techniques or [])),
         cvss_score=finding.cvss_score,
         cvss_vector=finding.cvss_vector,
         epss_score=finding.epss_score,
@@ -2013,6 +2015,23 @@ def _compliance_rollup(
     )
 
 
+def _testing_outside_window(engagement: ReportEngagement, findings: list[ReportFinding]) -> bool:
+    """True when a finding was observed before the engagement's start or after its end.
+    No window recorded, or no observation times: nothing to compare (False)."""
+    start, end = engagement.start_time, engagement.end_time
+    if start is None and end is None:
+        return False
+
+    def utc(value: datetime) -> datetime:
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+    seen = [utc(t) for f in findings for t in (f.first_seen, f.last_seen) if t is not None]
+    if not seen:
+        return False
+    return ((start is not None and min(seen) < utc(start))
+            or (end is not None and max(seen) > utc(end)))
+
+
 def _readiness(
     engagement: ReportEngagement,
     findings: list[ReportFinding],
@@ -2027,6 +2046,10 @@ def _readiness(
     report_gaps = list(engagement.metadata_gaps)
     if not findings:
         report_gaps.append("findings_absent")
+    if _testing_outside_window(engagement, findings):
+        # The stated assessment window does not contain when the evidence was
+        # actually observed (testing-round gap 13: a window ending before the scan).
+        report_gaps.append("assessment_window_excludes_testing")
     if compliance.mapping_count == 0:
         report_gaps.append("compliance_rollup_absent")
     if snapshot_guarantee == "best_effort":

@@ -127,6 +127,13 @@ def verify(finding: Finding, *, reachability: str = "open",
     if finding.match_basis == "range-open":
         penalize(25, "open_ended_range", "open-ended range, no upper version bound")
 
+    # Distro build named by the banner (Ubuntu, RHEL, "Apache (Debian)", ...) with no
+    # package revision: the distro backports fixes under the same upstream version,
+    # so the version match is product presence. matcher already reports it as
+    # `potential`/`range-distro`; the penalty keeps its confidence number honest.
+    if finding.match_basis in ("range-distro", "range-branch"):
+        penalize(25, "distro_build", "distro build, backported fixes not visible in banner")
+
     # AI-normalized candidates get extra scrutiny — capped, never trusted
     # like a rule-based or credentialed match.
     if finding.ai_assisted:

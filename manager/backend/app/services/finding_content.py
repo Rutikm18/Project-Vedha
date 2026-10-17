@@ -355,6 +355,37 @@ _CONTENT: dict[str, dict[str, str]] = {
             "eavesdropped."
         ),
     },
+    "upnp_igd": {
+        "technical": (
+            "The device answered SSDP discovery as a UPnP Internet Gateway Device. IGD "
+            "lets any client that can reach it add, list and remove port mappings on the "
+            "gateway, with no authentication."
+        ),
+        "impact": (
+            "Malware on any internal host can open inbound ports through the gateway to "
+            "itself or to other internal hosts; a WAN-facing IGD can be abused from the "
+            "internet to proxy traffic (\"UPnProxy\")."
+        ),
+        "business": (
+            "the perimeter can be opened from inside without a change request, bypassing "
+            "the firewall policy the business relies on."
+        ),
+    },
+    "upnp_exposure": {
+        "technical": (
+            "A UPnP/SSDP responder answered a unicast M-SEARCH and points to a device "
+            "description that discloses make, model and firmware."
+        ),
+        "impact": (
+            "The responder helps an attacker inventory devices and firmware, can be used "
+            "for SSDP reflection, and some implementations accept CallStranger-style "
+            "(CVE-2020-12695) subscription callbacks to arbitrary URLs."
+        ),
+        "business": (
+            "unmanaged consumer-grade discovery on business segments widens the attack "
+            "surface and leaks inventory detail."
+        ),
+    },
     "netbios_exposure": {
         "technical": (
             "The NetBIOS name service (UDP/137) answered a node-status query, disclosing the "
@@ -677,7 +708,7 @@ _RULE_CATEGORY: dict[str, str] = {
     "POSTURE-CWMP-EXPOSED": "open_mgmt_port", "POSTURE-DEFAULT-CRED-CANDIDATE": "default_credentials",
     "POSTURE-FTP-ANONYMOUS-LOGIN": "anon_ftp",
     "POSTURE-EXPOSED-CONTAINER": "container_api", "POSTURE-EXPOSED-REMOTE_ACCESS": "open_mgmt_port",
-    "POSTURE-EXPOSED-ADMIN_UI": "open_mgmt_port",
+    "POSTURE-EXPOSED-ADMIN_UI": "open_mgmt_port", "POSTURE-EXPOSED-PRINTER": "open_mgmt_port",
     "CORR-NTLM-RELAY-PATH": "smb_signing", "CORR-LEGACY-WINDOWS-SURFACE": "smbv1",
     "CORR-CLEARTEXT-CLUSTER": "cleartext_protocol", "CORR-DB-UNAUTH-EXPOSED": "unauth_datastore",
     "CORR-SNMP-PUBLIC-LATERAL": "snmp_exposure", "CORR-AD-EXPOSURE": "ldap_anonymous",
@@ -696,6 +727,7 @@ _RULE_CATEGORY: dict[str, str] = {
     "POSTURE-DB-CLEARTEXT-TRANSPORT": "cleartext_protocol",
     "POSTURE-EXPOSED-BACKDOOR": "suspicious_listener",
     "POSTURE-SIP-EXPOSED": "sip_exposure",
+    "POSTURE-UPNP-IGD-EXPOSED": "upnp_igd", "POSTURE-UPNP-EXPOSED": "upnp_exposure",
     "POSTURE-SNMPV3-NOAUTH-USER": "snmpv3_noauth",
     "POSTURE-FTP-ANONYMOUS-WRITE": "ftp_anonymous_write",
     "POSTURE-UNIDENTIFIED-SERVICE": "unidentified_service",
@@ -760,6 +792,10 @@ _CAUSE: dict[str, dict[str, Any]] = {
                             "preconditions": ["Network access to the port"]},
     "sip_exposure": {"root_cause": "The SIP service is reachable from networks other than the trunks and phones that need it.",
                      "preconditions": ["Network access to the SIP port"]},
+    "upnp_igd": {"root_cause": "UPnP IGD is enabled on the gateway (often a factory default) and answers on this segment.",
+                 "preconditions": ["Network access to UDP/1900 and the device's HTTP control port"]},
+    "upnp_exposure": {"root_cause": "UPnP/SSDP discovery is enabled on a device where nothing needs it.",
+                      "preconditions": ["Network access to UDP/1900"]},
     "netbios_exposure": {"root_cause": "NetBIOS over TCP/IP is enabled and reachable beyond the segment that needs Windows name resolution.",
                          "preconditions": ["Network access to UDP/137"]},
     "mdns_exposure": {"root_cause": "The multicast-DNS responder answers queries that did not originate on its local link.",

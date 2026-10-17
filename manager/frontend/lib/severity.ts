@@ -9,7 +9,9 @@ export type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
 export type FindingStatus =
   | "OPEN" | "CONFIRMED" | "REMEDIATED" | "ACCEPTED" | "FALSE_POSITIVE";
 export type ExploitMaturity = "WEAPONIZED" | "POC" | "THEORETICAL";
-export type DetectionCoverage = "COVERED" | "PARTIAL" | "BLIND";
+// NOT_TESTED: no SOC detection validation has run for the finding (a scanner finding
+// says nothing about whether the SIEM/EDR would see the attack).
+export type DetectionCoverage = "COVERED" | "PARTIAL" | "BLIND" | "NOT_TESTED";
 
 const RED = "var(--sev-critical-color)";
 const ORANGE = "var(--sev-high-color)";
@@ -82,7 +84,11 @@ export const MATURITY_COLOR: Record<ExploitMaturity, string> = {
 };
 
 export const COVERAGE_COLOR: Record<DetectionCoverage, string> = {
-  COVERED: GREEN, PARTIAL: AMBER, BLIND: RED,
+  COVERED: GREEN, PARTIAL: AMBER, BLIND: RED, NOT_TESTED: SLATE,
+};
+
+export const COVERAGE_LABEL: Record<DetectionCoverage, string> = {
+  COVERED: "Covered", PARTIAL: "Partial", BLIND: "Blind", NOT_TESTED: "Not tested",
 };
 
 export const PRIORITY_COLOR: Record<string, string> = {

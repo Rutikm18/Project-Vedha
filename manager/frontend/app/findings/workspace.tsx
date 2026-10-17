@@ -39,7 +39,7 @@ import { findingChoice, findingFlag, findingPage, writeFindingParam } from "../.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowLeft, BadgeCheck, Brain, Check, CheckCircle,
-  ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, EyeOff, FileText, Flag,
+  ChevronDown, ChevronLeft, ChevronRight, CircleDashed, Copy, ExternalLink, EyeOff, FileText, Flag,
   GitCompare, Keyboard, Layers, Link2, List, ListChecks, LoaderCircle, Radar, RefreshCw, RotateCcw,
   Search, Server, Shield, SlidersHorizontal, Tag, Terminal, Wrench, X,
 } from "lucide-react";
@@ -71,7 +71,7 @@ import { usePortalEntitlement } from "../../lib/portal-client";
 import { presentEvidence, type EvidenceArtifact } from "../../lib/evidence-presentation";
 import { copyText } from "../../lib/clipboard";
 import {
-  SEV_COLOR, STATUS_COLOR, STATUS_LABEL, MATURITY_COLOR, COVERAGE_COLOR,
+  SEV_COLOR, STATUS_COLOR, STATUS_LABEL, MATURITY_COLOR, COVERAGE_COLOR, COVERAGE_LABEL,
   PRIORITY_COLOR, PRIORITY_LABEL, KILL_CHAIN_PHASE_COLOR, riskScoreColor, epssColor, SEV_PALETTE,
 } from "../../lib/severity";
 
@@ -79,7 +79,7 @@ import {
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
 type FindingStatus = "OPEN" | "CONFIRMED" | "REMEDIATED" | "ACCEPTED" | "FALSE_POSITIVE";
 type ExploitMaturity = "WEAPONIZED" | "POC" | "THEORETICAL";
-type DetectionCoverage = "COVERED" | "PARTIAL" | "BLIND";
+type DetectionCoverage = "COVERED" | "PARTIAL" | "BLIND" | "NOT_TESTED";
 type Priority = "P0" | "P1" | "P2" | "P3" | "P4" | "P5";
 const FINDINGS_PER_PAGE = 20;
 const AGENT_REFRESH_FEEDBACK_MS = 2_000;
@@ -478,8 +478,10 @@ function StatusBadge({ s }: { s: FindingStatus }) {
 
 function DetectionPill({ cov }: { cov: DetectionCoverage }) {
   const c = COVERAGE_COLOR[cov];
-  const Icon = cov === "COVERED" ? CheckCircle : cov === "PARTIAL" ? Shield : EyeOff;
-  const copy = cov === "COVERED" ? "Detection covered" : cov === "PARTIAL" ? "Partial detection" : "Detection blind";
+  const Icon = cov === "COVERED" ? CheckCircle : cov === "PARTIAL" ? Shield
+    : cov === "NOT_TESTED" ? CircleDashed : EyeOff;
+  const copy = cov === "COVERED" ? "Detection covered" : cov === "PARTIAL" ? "Partial detection"
+    : cov === "NOT_TESTED" ? "Detection not tested" : "Detection blind";
   return (
     <span className="chip" title={copy} style={{ color: c, background: tint(c, TINT.fill), borderColor: tint(c, TINT.hairline) }}>
       <Icon size={10} aria-hidden /> {copy}
@@ -1134,7 +1136,7 @@ function FindingOverview({
         <section>
           <h3>Detection and timing</h3>
           <dl>
-            <div><dt>Coverage</dt><dd>{finding.detectionCoverage}</dd></div>
+            <div><dt>Coverage</dt><dd>{COVERAGE_LABEL[finding.detectionCoverage] ?? finding.detectionCoverage}</dd></div>
             <div><dt>Verification</dt><dd>{finding.verificationState || "Unassessed"}</dd></div>
             <div><dt>Confidence</dt><dd>{confidence}</dd></div>
             <div><dt>First seen</dt><dd>{new Date(finding.discoveredAt).toLocaleString()}</dd></div>
@@ -1274,7 +1276,7 @@ function IntelPanel({ finding }: { finding: Finding }) {
                 <li key={m.id}>
                   <code>{m.id}</code>
                   <span>{m.name}</span>
-                  <b style={{ color: COVERAGE_COLOR[f.detectionCoverage] }}>{f.detectionCoverage}</b>
+                  <b style={{ color: COVERAGE_COLOR[f.detectionCoverage] }}>{COVERAGE_LABEL[f.detectionCoverage] ?? f.detectionCoverage}</b>
                 </li>
               ))}
             </ul>

@@ -151,3 +151,21 @@ class TestUrgency:
     def test_poc_total_automatable_is_track_star(self):
         f = _finding({"internet_facing": True}, severity="critical", validated=True)
         assert P.urgency_for(build_context(f, _asset(criticality="low"), None), "critical")["label"] == "track_star"
+
+
+class TestEngineCveRecord:
+    """The detection engine's CVE record as now persisted (port, product, upstream fix)
+    gives a fix step with no placeholder: the field case was "openssh 9.6p1 on
+    FS01:not recorded"."""
+
+    def test_banner_cve_fix_step_has_no_placeholder(self):
+        ev = {"cve_id": "CVE-2024-6387", "product": "openssh", "matched_version": "9.6p1",
+              "port": 22, "ports": [22], "proto": "tcp", "fixed_version": "9.8p1",
+              "fixed_version_raw": "1:9.8p1-1", "version_scheme": "upstream",
+              "cpe": "cpe:2.3:a:openbsd:openssh:9.6p1:*:*:*:*:*:*:*"}
+        f = _finding(ev, cve_ids=["CVE-2024-6387"])
+        plan = P.build_plan(f, build_context(f, _asset(os="Linux", os_version="Debian 12"), None))
+        fix = next(s for s in plan["steps"] if s["tier"] == "fix")
+        assert "openssh 9.6p1 on FS01:22 is in the affected range" in fix["description"]
+        assert "not recorded" not in fix["description"]
+        assert plan["target_state"] == "openssh ≥ 9.8p1"

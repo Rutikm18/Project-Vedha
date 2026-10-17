@@ -33,13 +33,19 @@ from cpe_normalizer import CPECandidate, normalize
 from enrichment import enrich_finding
 from enrichment_db import EpssDB, KevDB, load_epss, load_kev
 from ingest import IngestResult, ingest_files
-from matcher import match_candidate
+from matcher import MATCHER_REVISION, match_candidate
 from models import Finding
 from exploitability import apply_to_findings as apply_exploitability
 from posture_rules import (PostureFinding, detect_all as detect_posture_all,
                            detect_all_traced, summarize_traces, verdict_for_rule)
+from ssvc import assess as assess_ssvc, load_ssvc
 from verifier import deception_score, verify
 from vuln_db import VulnDB, load_snapshot
+
+
+# match_basis values that are product presence, not a version-range vulnerability:
+# kept out of the customer-facing `cve` set (see run_full_detection).
+PRODUCT_PRESENCE_BASES = frozenset({"range-open", "range-distro", "range-branch"})
 
 
 def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
@@ -68,6 +74,7 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
     tuple is unchanged.
     """
     vuln_db = vuln_db or load_snapshot()
+    ssvc_db = load_ssvc()
     kev_db = kev_db or load_kev()
     epss_db = epss_db or load_epss()
     exposure = exposure or {}
@@ -86,6 +93,8 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
                 raw_text = extract_raw_text(fact)
                 if raw_text:
                     fact_candidates = propose_candidates(fact, raw_text, ai_client, cache=ai_cache)
+            for c in fact_candidates:
+                c.port, c.proto = fact.port, fact.proto
             candidates.extend(fact_candidates)
         candidates_by_asset[ip] = candidates
         for c in candidates:
@@ -122,6 +131,7 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
         f.internet_facing = exp.get("internet_facing")
         f.auth_enforced = exp.get("auth_enforced")
         enrich_finding(f, vuln_db, kev_db, epss_db)
+        f.ssvc = assess_ssvc(f.cve_id, f.cvss_vector, f.kev, f.internet_facing, ssvc_db)
         # Phase 3 — every finding passes through the verifier exactly once,
         # AFTER auth_enforced/exposure is set (verify reads it). Anti-FP:
         # only ever lowers confidence / downgrades state, never raises.
@@ -180,6 +190,47 @@ def _os_by_asset(ingest_result: IngestResult) -> dict[str, dict]:
     return out
 
 
+def host_os_summary(ingest_result: IngestResult) -> dict[str, dict]:
+    """{asset_ip: {os, os_version, source}} — the best OS identification each host's
+    facts support, for the manager's asset record (testing-round gap 7: the report's
+    asset table read "not recorded" although the scan had identified the OS).
+
+    Preference: the distribution release read from the SSH banner ("Ubuntu 16.04",
+    the same parser the end-of-life rule uses) > a Windows release from SMB > the
+    TTL-family guess. Assets with no OS signal are omitted."""
+    from os_release_intel import release_from_ssh_fact
+    out: dict[str, dict] = {}
+    for ip, asset in ingest_result.assets.items():
+        best, best_rank = None, -1.0
+        for f in asset.facts:
+            d = f.data if isinstance(f.data, dict) else {}
+            if f.scanner == "ssh_scan":
+                rel = release_from_ssh_fact(d)
+                if rel:
+                    name, _, ver = rel["os_release"].partition(" ")
+                    cand, rank = {"os": name, "os_version": ver or None,
+                                  "source": "ssh_banner"}, 3.0
+                else:
+                    continue
+            elif isinstance(d.get("os_release"), str) and d["os_release"].strip():
+                release = d["os_release"].strip()
+                family = "Windows" if release.lower().startswith("windows") else release
+                cand = {"os": family[:100], "os_version": release[:100], "source": f.scanner}
+                rank = 2.0 + float(d.get("os_confidence") or d.get("confidence") or 0.0)
+            elif (isinstance(d.get("os_guess"), str) and d["os_guess"].strip()
+                  and d["os_guess"].strip().lower() != "unknown"):
+                cand = {"os": d["os_guess"].strip()[:100], "os_version": None,
+                        "source": f.scanner}
+                rank = float(d.get("confidence") or 0.0)
+            else:
+                continue
+            if rank > best_rank:
+                best, best_rank = cand, rank
+        if best:
+            out[ip] = best
+    return out
+
+
 def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
                        kev_db: KevDB | None = None, epss_db: EpssDB | None = None,
                        exposure: dict[str, dict] | None = None,
@@ -233,8 +284,11 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
     # CVEs. It is not discarded: it is returned under `cve_product_presence`
     # (and counted) so the signal remains traceable and a future UI can surface
     # it as a low-priority "product present — verify patch level" rollup.
-    product_presence = [f for f in cve_findings if f.match_basis == "range-open"]
-    cve_findings = [f for f in cve_findings if f.match_basis != "range-open"]
+    # The same holds for `range-distro`: a banner that names a backporting distro
+    # build (Ubuntu, RHEL, "(Debian)" with no package revision) cannot show which
+    # fixes are in, so its version matches are product presence too.
+    product_presence = [f for f in cve_findings if f.match_basis in PRODUCT_PRESENCE_BASES]
+    cve_findings = [f for f in cve_findings if f.match_basis not in PRODUCT_PRESENCE_BASES]
     return {
         "cve": cve_findings,
         "cve_product_presence": product_presence,
@@ -246,6 +300,8 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
         # What was re-identified, per asset: the evidence a CVE finding needs
         # before its absence from this run can count as clean.
         "identified_products": identified_products_from(candidates_by_asset),
+        "matcher_revision": MATCHER_REVISION,
+        "host_os": host_os_summary(ingest_result),
         "ingest": ingest_result,
         "counts": {
             "cve": len(cve_findings),

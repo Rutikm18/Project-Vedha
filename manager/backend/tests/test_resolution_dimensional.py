@@ -470,12 +470,13 @@ async def test_create_findings_wires_the_evidence_and_records_skip_reasons():
     checks = {(R, X, 22)}
     products = {X: {"apache:http_server"}}
     meta = {"coverage": {}, "verdicts": {}, "evaluated_checks": checks,
-            "identified_products": products}
+            "identified_products": products, "matcher_revision": "2"}
 
     async def _fake_eval(db, eid, run, coverage, now, *, evaluated_checks,
-                         identified_products, skips):
+                         identified_products, matcher_revision, skips):
         assert evaluated_checks == checks
         assert identified_products == products
+        assert matcher_revision == "2"
         skips["rule not re-evaluated on this port"] = 3
         return 0
 
@@ -553,3 +554,51 @@ async def test_exposed_service_finding_stays_open_without_its_own_port_recheck()
     assert f.status == FindingStatus.open
     assert f.resolution_miss_count == 0
     assert skips == {"rule not re-evaluated on this port": 1}
+
+
+# ── a CVE-matcher logic change is not a fix ───────────────────────────────────
+# Matcher revision 2 changed which CVEs a banner version matches. A CVE finding the
+# old matcher produced and the new one no longer reports is absent because of the
+# logic, not because anyone patched: it must not be auto-closed as remediated.
+
+async def _evaluate_rev(findings, *, matcher_revision, skips=None):
+    db = _db_returning([(f, X) for f in findings])
+    return await evaluate_resolutions(
+        db, uuid.uuid4(), _run(), {"assets": [X]}, _NOW,
+        identified_products={X: {"apache:http_server"}},
+        matcher_revision=matcher_revision, skips=skips)
+
+
+@pytest.mark.asyncio
+async def test_cve_finding_from_an_older_matcher_is_not_auto_resolved():
+    f = _cve(severity=FindingSeverity.low)            # no matcher_revision: pre-revision
+    skips: dict = {}
+    resolved = await _evaluate_rev([f], matcher_revision="2", skips=skips)
+    assert resolved == 0
+    assert f.status == FindingStatus.open
+    assert list(skips) == ["absent under a changed vuln-DB basis; not a confirmed fix"]
+
+
+@pytest.mark.asyncio
+async def test_cve_finding_from_the_same_matcher_still_auto_resolves():
+    f = _cve(severity=FindingSeverity.low)
+    f.evidence = {**f.evidence, "matcher_revision": "2"}
+    resolved = await _evaluate_rev([f], matcher_revision="2")
+    assert resolved == 1
+    assert f.status == FindingStatus.remediated
+
+
+@pytest.mark.asyncio
+async def test_matcher_revision_never_blocks_posture_findings():
+    f = _posture(443, severity=FindingSeverity.low)
+    db = _db_returning([(f, X)])
+    resolved = await evaluate_resolutions(
+        db, uuid.uuid4(), _run(), {"assets": [X]}, _NOW,
+        evaluated_checks={(R, X, 443)}, matcher_revision="2")
+    assert resolved == 1
+
+
+@pytest.mark.asyncio
+async def test_no_run_revision_keeps_the_old_behaviour():
+    f = _cve(severity=FindingSeverity.low)
+    assert await _evaluate_rev([f], matcher_revision=None) == 1

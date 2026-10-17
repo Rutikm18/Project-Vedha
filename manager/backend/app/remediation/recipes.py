@@ -1348,6 +1348,26 @@ _E: list[Recipe] = [
         "Restrict {port} to admin hosts.",
         V("port_scan", "{ip}:{port} not reachable from untrusted segments", "filtered"),
         ("CWE-284", "MITRE T1133"), effort="low"),
+
+    Recipe(
+        "POSTURE-EXPOSED-PRINTER", 1, "Restrict the raw print port on {host}:{port}", "mitigation",
+        "mitigate", "Raw printing (9100) reachable only from the print servers",
+        (
+            _FIREWALL_CONTAIN,
+            S("fix", "Allow raw printing only from the print servers",
+              "The raw print port on {host}:{port} accepts print jobs and PJL commands from "
+              "anyone who can reach it, with no authentication.",
+              gen=("ACL {port}/tcp on the printer (or its switch port) to the print servers",
+                   "Route user printing through the print server (IPP/SMB) instead of direct 9100"),
+              risk="low", rollback="Restore the previous printer ACL"),
+            S("hardening", "Disable PJL file-system and configuration access",
+              "PJL can read stored jobs and files and change settings on many printers.",
+              gen=("In the printer's admin settings, disable PJL file-system access and "
+                   "PJL configuration changes, and set an admin password",)),
+        ),
+        "Allow {port}/tcp to the printer only from the print servers.",
+        V("port_scan", "{ip}:{port} not reachable from user and untrusted segments", "filtered"),
+        ("CWE-306", "MITRE T1046"), effort="low"),
 ]
 
 
@@ -1419,6 +1439,43 @@ _P_UDP: list[Recipe] = [
         V("udp_scan", "SIP OPTIONS to {ip}:{port}/udp from an untrusted network gets no SIP reply",
           "No response / filtered"),
         ("CWE-200", "MITRE T1595.002"), effort="low"),
+
+    Recipe(
+        "POSTURE-UPNP-IGD-EXPOSED", 1, "Turn off UPnP IGD on the gateway {host}", "mitigation",
+        "mitigate", "No UPnP Internet Gateway Device answering on this segment or the WAN",
+        (
+            S("containment", "Remove port mappings nobody owns",
+              "List the gateway's current UPnP port mappings and delete any that no approved "
+              "service needs.",
+              gen=("In the router/firewall admin UI, open the UPnP mapping table and remove unknown mappings",),
+              rollback="Re-add a mapping only with a change request naming its owner."),
+            S("fix", "Disable UPnP IGD",
+              "Turn off UPnP/IGD on {host} ({ip}); where a consumer segment needs it, enable it "
+              "on that VLAN only, never on the WAN interface.",
+              net=("Disable UPnP IGD (or limit it to the consumer VLAN) in the gateway configuration",),
+              gen=("Disable UPnP Internet Gateway Device support on {ip}",),
+              rollback="Re-enable UPnP on the one VLAN that needs it."),
+        ),
+        "Publish inbound services only through reviewed static NAT rules.",
+        V("iot_scan", "Unicast M-SEARCH to {ip}:1900/udp gets no InternetGatewayDevice reply",
+          "No IGD in the SSDP reply"),
+        ("CWE-306", "MITRE T1599"), effort="low"),
+
+    Recipe(
+        "POSTURE-UPNP-EXPOSED", 1, "Disable UPnP/SSDP on {host}", "mitigation",
+        "mitigate", "UPnP/SSDP off, or limited to the segment that needs discovery",
+        (
+            S("fix", "Turn off UPnP discovery",
+              "Disable UPnP/SSDP on {host} ({ip}) unless a documented use needs it, and block "
+              "UDP/1900 between segments.",
+              net=("Block UDP/1900 between VLANs and at the perimeter",),
+              gen=("Disable UPnP / SSDP / DLNA discovery in the device settings of {ip}",),
+              rollback="Re-enable discovery on the device."),
+        ),
+        "Keep discovery protocols on the segment that uses them.",
+        V("iot_scan", "Unicast M-SEARCH to {ip}:1900/udp gets no reply from an untrusted segment",
+          "No SSDP reply"),
+        ("CWE-200", "MITRE T1046"), effort="low"),
 
     Recipe(
         "POSTURE-NETBIOS-EXPOSED", 1, "Close the NetBIOS name service on {host}", "mitigation",

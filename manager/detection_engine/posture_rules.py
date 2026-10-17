@@ -583,6 +583,50 @@ def _xdmcp_exposed(f: Fact):
             "status": _reply_text(d.get("xdmcp_status"))}
 
 
+# UPnP Internet Gateway Device markers: the device / service types a gateway announces.
+_UPNP_IGD = re.compile(r"InternetGatewayDevice|WAN(?:IP|PPP)Connection|WANCommonInterfaceConfig",
+                       re.IGNORECASE)
+
+
+def _ssdp_answer(f: Fact) -> Optional[dict]:
+    """iot_scan's unicast M-SEARCH reply (UDP 1900): None unless the device really
+    answered SSDP (a ST / USN / LOCATION header came back)."""
+    if f.port != 1900:
+        return None
+    d = _d(f)
+    if not any(str(d.get(k) or "").strip() for k in ("st", "usn", "location")):
+        return None
+    return d
+
+
+def _upnp_summary(d: dict) -> dict:
+    dev = d.get("upnp_device") if isinstance(d.get("upnp_device"), dict) else {}
+    return {"server": str(d.get("server") or "")[:120] or None,
+            "st": str(d.get("st") or "")[:160] or None,
+            "device_type": str(dev.get("device_type") or "")[:160] or None,
+            "manufacturer": str(dev.get("manufacturer") or "")[:80] or None,
+            "model_name": str(dev.get("model_name") or "")[:80] or None}
+
+
+def _is_igd(d: dict) -> bool:
+    dev = d.get("upnp_device") if isinstance(d.get("upnp_device"), dict) else {}
+    blob = " ".join(str(x or "") for x in (d.get("st"), d.get("usn"), dev.get("device_type")))
+    return bool(_UPNP_IGD.search(blob))
+
+
+def _upnp_igd_exposed(f: Fact) -> Optional[dict]:
+    """A UPnP Internet Gateway Device answering discovery: any host that can reach it can
+    ask the gateway, without authentication, to open inbound port mappings."""
+    d = _ssdp_answer(f)
+    return _upnp_summary(d) if d is not None and _is_igd(d) else None
+
+
+def _upnp_exposed(f: Fact) -> Optional[dict]:
+    """Any other UPnP device answering unicast M-SEARCH (the IGD case is its own rule)."""
+    d = _ssdp_answer(f)
+    return _upnp_summary(d) if d is not None and not _is_igd(d) else None
+
+
 def _ike_aggressive(f: Fact) -> Optional[dict]:
     """An IKEv1 responder whose reply used the AGGRESSIVE exchange (type 4). With a pre-shared
     key, aggressive mode sends the identity and an authentication hash in the clear, which can be
@@ -598,9 +642,23 @@ def _ike_aggressive(f: Fact) -> Optional[dict]:
     return None
 
 
+# Community names that conventionally carry WRITE access on devices that ship them.
+_RW_CONVENTION_COMMUNITIES = frozenset({"private", "write", "admin", "secret", "manager"})
+
+
 def _snmp_default(f: Fact) -> Optional[dict]:
+    """A default community answered. The scanner never sends a SET, so this proves READ
+    access only; a community conventionally used for write ("private") is named as
+    such, never claimed as proven write access (testing-round gap 12)."""
     c = _d(f).get("community")
-    return {"community": c} if c in _DEFAULT_COMMUNITIES else None
+    if c not in _DEFAULT_COMMUNITIES:
+        return None
+    out = {"community": c, "access_proven": "read",
+           "write_access": "not tested (the scanner never sends an SNMP SET)"}
+    if str(c).lower() in _RW_CONVENTION_COMMUNITIES:
+        out["note"] = (f"community '{c}' is conventionally the read-write community; "
+                       "write access was not tested")
+    return out
 
 
 # ── canonical condition key (cross-producer identity) ─────────────────────────
@@ -769,9 +827,13 @@ def _ssh_terrapin(f: Fact) -> Optional[dict]:
 # a practical attack, not just deprecation. Anything else ssh-audit fails (SHA-1 MACs and
 # signatures, RIPEMD, SEED, a 1024-bit group on its own, ...) is LEGACY: worth retiring, not
 # an emergency. A stock current OpenSSH still offers hmac-sha1, so it must not read as High.
+# The NIST curves (ecdh-sha2-nistp*, ecdsa-sha2-nistp*) fail in ssh-audit as "suspected as
+# being backdoored": a trust concern with no practical attack, and every default OpenSSH
+# offers them, so "backdoored" is deliberately NOT here (it put almost every Linux host on
+# the High rule). Those entries fall through to the LEGACY rule.
 _SSH_BROKEN_REASON = re.compile(
     r"rc4|3des|blowfish|cast|broken des|\bdes cipher|md5|no encryption|logjam|small ecc|"
-    r"untrusted|backdoored", re.IGNORECASE)
+    r"untrusted", re.IGNORECASE)
 _SSH_BROKEN_ALGO = re.compile(
     r"^(arcfour|3des|des-|blowfish|cast128|none$|diffie-hellman-group1-sha1|hmac-md5)",
     re.IGNORECASE)
@@ -1252,6 +1314,28 @@ RULES: list[PostureRule] = [
                  "PBX/SBC is normal; the finding is about who can reach it.",
         requires=()),
     PostureRule(
+        "POSTURE-UPNP-IGD-EXPOSED", "UPnP Internet Gateway Device exposed", "medium",
+        "CWE-306", "T1599", "exposure", ("iot_scan",), _upnp_igd_exposed,
+        "Turn off UPnP IGD on the router or firewall (or restrict it to a trusted consumer "
+        "VLAN), and never answer UPnP on the WAN side. Review the current port-mapping table "
+        "and remove mappings nobody owns: malware uses IGD to open inbound ports without any "
+        "authentication (and, WAN-facing, to proxy traffic: \"UPnProxy\").",
+        fp_notes="Fires only when the device announced an Internet Gateway Device / WAN "
+                 "connection service in its SSDP reply or description. A consumer router on "
+                 "a home or guest segment is expected; the finding is about who can reach it.",
+        requires=()),
+    PostureRule(
+        "POSTURE-UPNP-EXPOSED", "UPnP / SSDP responder exposed", "low", "CWE-200", "T1046",
+        "exposure", ("iot_scan",), _upnp_exposed,
+        "Disable UPnP/SSDP on devices that do not need discovery, and block UDP/1900 between "
+        "segments and at the perimeter. SSDP answers reveal device make, model and firmware, "
+        "and exposed responders are used for reflection and CallStranger-style "
+        "(CVE-2020-12695) callback abuse.",
+        fp_notes="Fires on a real SSDP reply (ST/USN/LOCATION present) to a unicast "
+                 "M-SEARCH. Printers, TVs and media devices commonly answer on a LAN; an "
+                 "Internet Gateway Device is the separate, higher rule.",
+        requires=()),
+    PostureRule(
         "POSTURE-NETBIOS-EXPOSED", "NetBIOS name service exposed", "low", "CWE-200", "T1046",
         "exposure", ("udp_scan",), _netbios_exposed,
         "Block UDP/137 (and 138/139) from untrusted networks and disable NetBIOS over TCP/IP on "
@@ -1405,11 +1489,14 @@ RULES: list[PostureRule] = [
         "POSTURE-SSH-LEGACY-ALGORITHMS", "SSH offers legacy algorithms",
         "low", "CWE-327", "T1040", "weak_crypto", ("ssh_scan",), _ssh_legacy_algos,
         "Retire the deprecated algorithms (SHA-1 MACs, CBC ciphers, 1024-bit DH groups) from "
-        "KexAlgorithms, Ciphers and MACs in sshd_config when clients allow. Nothing here has a "
+        "KexAlgorithms, Ciphers and MACs in sshd_config when clients allow; prefer curve25519 / "
+        "ed25519 over the NIST curves where your policy requires it. Nothing here has a "
         "practical attack today; this is hygiene, not an emergency.",
         fp_notes="Every algorithm ssh-audit fails is deprecated or weak-by-policy but none is on "
                  "the broken list (RC4, 3DES, DES, Blowfish, MD5, Logjam-class groups). A stock "
-                 "current OpenSSH offers hmac-sha1 and lands here, not under the High rule.",
+                 "current OpenSSH offers hmac-sha1 and the NIST curves (failed by ssh-audit as "
+                 "\"suspected backdoored\", a trust concern, not an attack) and lands here, "
+                 "not under the High rule.",
         requires=("ssh_confirmed", "failures")),
     PostureRule(
         "POSTURE-FTP-ANONYMOUS-LOGIN", "FTP allows anonymous login",
@@ -1927,6 +2014,7 @@ _EXPOSED_TITLES = {
     "cleartext":     "Cleartext protocol exposed on {port} ({svc})",
     "remote_access": "Remote-access service exposed on {port} ({svc})",
     "admin_ui":      "Admin/dev interface exposed on {port} ({svc})",
+    "printer":       "Printer raw-print port open on {port} ({svc})",
 }
 
 
@@ -1998,7 +2086,7 @@ def detect_exposed_services_traced(
     port that was NOT re-scanned gets no trace, so its finding stays open —
     absence of evidence is never a clean miss."""
     from port_intel import (catalog_categories, classify_port,  # standalone, no cycle
-                            escalate)
+                            exposure_severity)
 
     exposure = exposure or {}
     exp = exposure.get(asset.ip, {})
@@ -2060,7 +2148,7 @@ def detect_exposed_services_traced(
                     reason="open port re-identified as a benign occupant"))
             continue
         internet = (port in externally) or bool(exp_internet)
-        severity = escalate(risk.severity) if internet else risk.severity
+        severity, bod_23_02 = exposure_severity(risk.category, risk.severity, internet)
         # A port scan proves the port is open, not what runs on it. Only a protocol-level
         # observation (service_banner's identified protocol / Basic-over-cleartext flag)
         # supports CONFIRMED; a bare port or a banner string is an inference → SUSPECTED.
@@ -2077,6 +2165,12 @@ def detect_exposed_services_traced(
                               "service": risk.service, "internet_facing": internet,
                               "evidence_basis": basis,
                               DEDUP_KEY: condition_key(CLASS_EXPOSED, port, "tcp")}
+        if bod_23_02:
+            # Internet-facing management interface: why it is at least High.
+            ev["bod_23_02"] = True
+            ev["severity_basis"] = ("internet-facing management interface "
+                                    "(CISA BOD 23-02: remove from the internet or put "
+                                    "behind an access-control point within 14 days)")
         if banners.get(port):
             ev["banner"] = banners[port]
         if svc_labels.get(port):

@@ -115,6 +115,11 @@ EPSS_URL = "https://api.first.org/data/v1/epss"
 EPSS_FULL_URL = "https://epss.cyentia.com/epss_scores-current.csv.gz"
 DEFAULT_KEV_PATH = Path(__file__).parent / "snapshots" / "kev_snapshot.json"
 DEFAULT_EPSS_PATH = Path(__file__).parent / "snapshots" / "epss_snapshot.json"
+# CISA Vulnrichment: per-CVE SSVC decision points (Exploitation, Automatable,
+# Technical Impact) — the inputs BOD 26-04 prioritises on. One JSON file per CVE.
+VULNRICHMENT_URL = "https://raw.githubusercontent.com/cisagov/vulnrichment/develop"
+DEFAULT_SSVC_PATH = Path(__file__).parent / "snapshots" / "ssvc_snapshot.json"
+_SSVC_MAX_BYTES = 2 * 1024 * 1024
 
 
 def sync_kev_snapshot(out_path: str | Path = DEFAULT_KEV_PATH) -> dict:
@@ -220,6 +225,92 @@ def sync_epss_full(out_path: str | Path = DEFAULT_EPSS_PATH, min_epss: float = 0
     return snapshot
 
 
+def vulnrichment_path(cve_id: str) -> str | None:
+    """'CVE-2024-6387' -> '2024/6xxx/CVE-2024-6387.json' (the repository layout)."""
+    import re
+    m = re.fullmatch(r"CVE-(\d{4})-(\d{4,7})", cve_id.strip().upper())
+    if not m:
+        return None
+    return f"{m.group(1)}/{int(m.group(2)) // 1000}xxx/CVE-{m.group(1)}-{m.group(2)}.json"
+
+
+_SSVC_VALUES = {
+    "exploitation": {"none", "poc", "active"},
+    "automatable": {"yes", "no"},
+    "technical_impact": {"partial", "total"},
+}
+
+
+def parse_vulnrichment(doc: dict) -> dict | None:
+    """The CISA ADP SSVC options of one CVE record, validated against the SSVC
+    vocabulary: {exploitation, automatable, technical_impact, timestamp} or None."""
+    for adp in ((doc or {}).get("containers") or {}).get("adp") or []:
+        for metric in adp.get("metrics") or []:
+            other = metric.get("other") or {}
+            if other.get("type") != "ssvc":
+                continue
+            content = other.get("content") or {}
+            out: dict = {}
+            for option in content.get("options") or []:
+                for key, value in option.items():
+                    k = key.strip().lower().replace(" ", "_")
+                    v = str(value).strip().lower()
+                    if k in _SSVC_VALUES and v in _SSVC_VALUES[k]:
+                        out[k] = v
+            if len(out) == 3:
+                out["timestamp"] = str(content.get("timestamp") or "")[:40]
+                return out
+    return None
+
+
+def sync_ssvc_snapshot(cve_ids: list[str], out_path: str | Path = DEFAULT_SSVC_PATH,
+                       workers: int = 8) -> dict:
+    """CISA Vulnrichment SSVC decision points for the CVEs the vuln snapshot can
+    produce. A CVE CISA has not enriched is simply absent (the engine then derives
+    the points from CVSS and says so). Bounded: one small file per CVE, capped size."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    def fetch(cve: str) -> tuple[str, dict | None]:
+        rel = vulnrichment_path(cve)
+        if rel is None:
+            return cve, None
+        req = urllib.request.Request(f"{VULNRICHMENT_URL}/{rel}",
+                                     headers={"User-Agent": "detection-engine-sync/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=15, context=_ssl_context()) as resp:
+                body = resp.read(_SSVC_MAX_BYTES + 1)
+            if len(body) > _SSVC_MAX_BYTES:
+                return cve, None
+            return cve, parse_vulnrichment(json.loads(body.decode()))
+        except urllib.error.HTTPError as exc:
+            if exc.code != 404:
+                print(f"  WARN: {cve}: HTTP {exc.code}", file=sys.stderr)
+            return cve, None
+        except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+            print(f"  WARN: {cve}: {exc}", file=sys.stderr)
+            return cve, None
+
+    records: dict[str, dict] = {}
+    with ThreadPoolExecutor(max_workers=max(1, min(workers, 16))) as pool:
+        for cve, rec in pool.map(fetch, sorted(set(cve_ids))):
+            if rec:
+                records[cve] = rec
+    snapshot = {
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "source": "cisagov/vulnrichment (CISA ADP SSVC)",
+        "cve_count": len(records),
+        "content_hash": _content_hash(records),
+        "records": records,
+    }
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as fh:
+        json.dump(snapshot, fh, indent=1, sort_keys=True)
+    print(f"wrote {out_path} — SSVC for {len(records)}/{len(set(cve_ids))} CVEs, "
+          f"hash {snapshot['content_hash'][:12]}", file=sys.stderr)
+    return snapshot
+
+
 def _all_known_cve_ids(vuln_snapshot_path: str | Path = DEFAULT_SNAPSHOT_PATH) -> list[str]:
     with Path(vuln_snapshot_path).open() as fh:
         snap = json.load(fh)
@@ -233,7 +324,7 @@ def _all_known_cve_ids(vuln_snapshot_path: str | Path = DEFAULT_SNAPSHOT_PATH) -
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("target", nargs="?", default="vulns",
-                        choices=["vulns", "kev", "epss", "all"],
+                        choices=["vulns", "kev", "epss", "ssvc", "all"],
                         help="which snapshot(s) to refresh (default: vulns)")
     parser.add_argument("--ecosystem", default="Debian:12")
     parser.add_argument("--products", default=None,
@@ -252,6 +343,12 @@ def main() -> None:
     if args.target in ("epss", "all"):
         # Full catalog now, not the per-CVE subset — see sync_epss_full().
         sync_epss_full(min_epss=args.epss_min)
+    if args.target in ("ssvc", "all"):
+        import re
+        cves = sorted({c for c in _all_known_cve_ids()
+                       if re.fullmatch(r"CVE-\d{4}-\d{4,7}", c)}
+                      | set(json.load(DEFAULT_KEV_PATH.open())["cve_ids"]))
+        sync_ssvc_snapshot(cves)
 
 
 if __name__ == "__main__":

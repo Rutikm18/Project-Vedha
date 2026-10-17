@@ -43,6 +43,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,
 FORMAT = "vedha-intel-bundle/1"
 SNAPSHOT_NAMES = frozenset({
     "osv_debian_snapshot.json", "nvd_cpe_snapshot.json", "kev_snapshot.json", "epss_snapshot.json",
+    "ssvc_snapshot.json",
 })
 MAX_FILE_BYTES = 256 * 1024 * 1024
 MAX_TOTAL_BYTES = 512 * 1024 * 1024
