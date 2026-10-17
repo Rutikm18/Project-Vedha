@@ -16,9 +16,16 @@ depends_on = None
 
 
 def upgrade():
-    op.create_unique_constraint(
-        "uq_engagement_id_tenant", "engagements", ["id", "tenant_id"]
-    )
+    # Idempotent: tolerate a replay on a divergent DB (the table may already exist,
+    # or have been dropped leaving the function/constraint behind). Skip when present.
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if insp.has_table("attack_assessment_snapshots"):
+        return
+    if "uq_engagement_id_tenant" not in {c["name"] for c in insp.get_unique_constraints("engagements")}:
+        op.create_unique_constraint(
+            "uq_engagement_id_tenant", "engagements", ["id", "tenant_id"]
+        )
     op.create_table(
         "attack_assessment_snapshots",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -89,7 +96,7 @@ def upgrade():
     for statement in enable_statements("attack_assessment_snapshots"):
         op.execute(statement)
     op.execute("""
-        CREATE FUNCTION protect_attack_assessment_snapshot() RETURNS trigger AS $$
+        CREATE OR REPLACE FUNCTION protect_attack_assessment_snapshot() RETURNS trigger AS $$
         BEGIN
           IF (NEW.id, NEW.created_at, NEW.tenant_id, NEW.engagement_id, NEW.idempotency_key, NEW.request_sequence, NEW.input_hash,
               NEW.effective_as_of, NEW.known_at_cutoff, NEW.normalization_version,

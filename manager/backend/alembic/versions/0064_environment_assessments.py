@@ -16,6 +16,12 @@ depends_on = None
 
 
 def upgrade():
+    # Idempotent: this migration can be replayed on a DB where the table was
+    # dropped during a migration-renumber recovery (which leaves the standalone
+    # function behind). Skip when the table is already present; otherwise create
+    # it, and use CREATE OR REPLACE for the function so a leftover one is reused.
+    if sa.inspect(op.get_bind()).has_table("environment_assessments"):
+        return
     op.create_table(
         "environment_assessments",
         sa.Column("id", pg.UUID(as_uuid=True), primary_key=True),
@@ -74,7 +80,7 @@ def upgrade():
     for statement in enable_statements("environment_assessments"):
         op.execute(statement)
     op.execute("""
-      CREATE FUNCTION protect_environment_assessment() RETURNS trigger AS $$
+      CREATE OR REPLACE FUNCTION protect_environment_assessment() RETURNS trigger AS $$
       BEGIN
         IF (NEW.id,NEW.created_at,NEW.tenant_id,NEW.idempotency_key,NEW.request_sequence,NEW.engagement_ids,NEW.input_hash,NEW.effective_as_of,NEW.input_document)
           IS DISTINCT FROM
