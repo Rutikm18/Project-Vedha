@@ -107,12 +107,57 @@ State/identity/logs live under `C:\ProgramData\vedha-agent\`.
 | `install.ps1` / `install.cmd` | install from an unpacked package (what the one-command installer runs after verifying it) |
 | `uninstall.ps1` / `uninstall.cmd` | remove the background task |
 | `probe.env.template` | documents the config the script sets |
+| `python-env.ps1` | which Python the build may use (3.10-3.12); shared by `build-agent-exe.ps1` and `publish-release.ps1` |
 | `README-CUSTOMER.txt` | short in-repo customer note |
 
 **Advanced (optional, for sealed distribution to untrusted customers):**
 `build-agent-exe.ps1` (Nuitka, agent code only, no readable source) + `package-zip.ps1` build a `vedha-agent\` folder with `vedha-agent.exe` and a
 ZIP (see the exe launchers `run.cmd` / `install.ps1`). Not needed for the git flow
 above.
+
+---
+
+## When the build stops
+
+`publish-release.ps1` and `build-agent-exe.ps1` run on **your** Windows PC. Two failures account for
+most stops. Both are checked or explained by the scripts now, but the fix is on your machine.
+
+**`FATAL: Error, cannot use '--mingw64' on Python version 3.13 or higher.`**
+The build environment (`probe\windows\.venv-win`) was made with Python 3.13 or newer. Nuitka cannot
+use MinGW there, and MinGW is what compiles impacket's large generated modules (MSVC runs out of heap
+space on them). The build needs Python 3.10, 3.11 or 3.12; 3.12 is what CI uses. The scripts now stop
+before the long step with this message, also for an environment that already exists. To fix it:
+
+```powershell
+py -0p                                       # which Pythons are installed
+winget install --id Python.Python.3.12 -e    # only if there is no 3.12
+Remove-Item -Recurse -Force probe\windows\.venv-win
+```
+
+Then run the script again; it picks `py -3.12` by itself, even when `python` on the PATH is newer.
+
+**`Could not install packages due to an OSError: [Errno 22] Invalid argument: '...\.venv-win\Scripts\DumpNTLMInfo.py'`**
+(or another impacket script, or "Access is denied"). Installing impacket copies about 70 of its example
+scripts (`secretsdump.py`, `ntlmrelayx.py`, ...) into `.venv-win\Scripts`. Antivirus tends to flag
+those as hacking tools and block the write. The agent never uses them. To check, without waiting for a
+20-minute build:
+
+```powershell
+.\probe\windows\.venv-win\Scripts\python.exe -m pip install impacket
+Get-MpThreatDetection | Sort-Object InitialDetectionTime -Descending |
+    Select-Object -First 5 InitialDetectionTime, Resources
+```
+
+If the detections name files in `.venv-win\Scripts`, exclude that one folder (elevated PowerShell; this
+is a decision for whoever owns the PC, and on a company-managed PC it is IT's), delete the folder, run
+the script again, and remove the exclusion once you are done building:
+
+```powershell
+Add-MpPreference -ExclusionPath "$PWD\probe\windows\.venv-win"
+Remove-MpPreference -ExclusionPath "$PWD\probe\windows\.venv-win"
+```
+
+If nothing is detected, the cause is something else: send the full pip output.
 
 ---
 
