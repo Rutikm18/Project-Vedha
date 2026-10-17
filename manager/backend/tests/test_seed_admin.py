@@ -423,6 +423,7 @@ class TestSignInForm:
         from scripts.seed_admin import _seed_once
 
         db = AsyncMock()
+        db.add = MagicMock()          # Session.add is synchronous
         db.execute = AsyncMock(side_effect=[_result(None), _result(None), _result(None)])
         with patch("scripts.seed_admin.AsyncSessionLocal", return_value=_session_for(db)), \
              patch("scripts.seed_admin._verify_hash", return_value=True):

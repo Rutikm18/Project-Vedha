@@ -13,6 +13,9 @@ export interface AgentInstallInfo {
   reason?: string;
   manager_url: string;
   manager_url_configured: boolean;
+  /** Why Windows install commands are withheld for this manager address (for example a
+   *  plain-http MANAGER_PUBLIC_URL), with the fix; empty or absent when they are offered. */
+  windows_command_blocker?: string;
   /** Portal only: whether this engagement can take an agent right now. */
   can_add_agent?: boolean;
   blocker?: string | null;
@@ -77,6 +80,8 @@ export interface InstallCode {
   code?: string;
   command?: string;
   manager_url_configured?: boolean;
+  /** Why `command` is empty (the rejected address and the fix); empty when it is set. */
+  command_blocker?: string;
 }
 
 export interface FleetEngagementOption {

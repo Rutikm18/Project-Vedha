@@ -408,3 +408,49 @@ class TestWindowsCommands:
         import secrets
         token = "vet_" + secrets.token_urlsafe(32)
         assert "windows_powershell" in dist.install_commands("https://m.example.com", token)
+
+
+# ── why Windows commands are withheld (Fleet → Add agent) ────────────────────
+
+class TestWindowsCommandBlocker:
+    def test_https_manager_has_no_blocker(self):
+        assert dist.windows_command_blocker("https://get.vedhasec.com") == ""
+        assert dist.windows_command_blocker("https://16.4.75.44:8443/") == ""
+
+    def test_plain_http_names_the_address_and_the_fix(self):
+        # The field case: gen-env.sh rewrote the facade to the server's plain-http IP.
+        why = dist.windows_command_blocker("http://16.4.75.44")
+        assert "http://16.4.75.44" in why and "not https://" in why
+        assert "MANAGER_PUBLIC_URL" in why and "set-public-url.sh" in why
+        assert "gen-env" in why
+
+    def test_unset_url_says_the_request_address_was_used(self):
+        why = dist.windows_command_blocker("http://api:8000", configured=False)
+        assert "MANAGER_PUBLIC_URL is not set" in why and "http://api:8000" in why
+        assert "MANAGER_PUBLIC_URL is not set" in dist.windows_command_blocker("", configured=False)
+
+    def test_unsafe_characters_are_explained(self):
+        assert "cannot be pasted" in dist.windows_command_blocker("https://m.example.com/'; calc; '")
+
+    def test_blocker_agrees_with_the_command_builders(self):
+        # Never a blocker with commands, never no-commands without a blocker.
+        for url in ["https://get.vedhasec.com", "http://16.4.75.44", "https://m x", ""]:
+            has_cmds = bool(dist.windows_install_commands(url, "vet_ok"))
+            assert has_cmds == (dist.windows_command_blocker(url) == ""), url
+
+    def test_release_status_carries_the_blocker_for_operators_only(self, world, monkeypatch):
+        world.build()
+        monkeypatch.setattr(dist, "get_settings",
+                            lambda: _settings(world, manager_public_url="http://16.4.75.44"))
+        operator = dist.release_status(detailed=True)
+        assert "http://16.4.75.44" in operator["windows_command_blocker"]
+        customer = dist.release_status(detailed=False)
+        assert customer["windows_command_blocker"]
+        assert "16.4.75.44" not in customer["windows_command_blocker"]   # no address handed to customers
+
+    def test_release_status_has_an_empty_blocker_for_https(self, world, monkeypatch):
+        world.build()
+        monkeypatch.setattr(dist, "get_settings",
+                            lambda: _settings(world, manager_public_url="https://get.vedhasec.com"))
+        assert dist.release_status(detailed=True)["windows_command_blocker"] == ""
+        assert dist.release_status(detailed=False)["windows_command_blocker"] == ""
