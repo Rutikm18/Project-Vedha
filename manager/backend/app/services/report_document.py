@@ -16,8 +16,9 @@ import inspect
 import re
 import uuid
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import datetime, timezone
+from decimal import Decimal
 from itertools import pairwise
 from typing import Any, Literal
 from urllib.parse import urlparse
@@ -43,6 +44,7 @@ from app.models.finding_event import FindingEvent
 from app.models.remediation_plan import RemediationPlan
 from app.models.scan_job import ScanJob
 from app.models.scan_result import ScanResult
+from app.models.service import Service
 from app.models.sla_policy import SlaPolicy
 from app.models.user import User
 from app.schemas.finding import FindingEventOut
@@ -80,7 +82,7 @@ from app.schemas.report_document import (
     ReportSummary,
     ReportVerification,
 )
-from app.services import finding_events, sla
+from app.services import finding_events, risk_context, sla
 from app.services.evidence_integrity import (
     content_for_integrity,
     verify_canonical_sha256,
@@ -1389,6 +1391,7 @@ def _finding(
     sla_windows: dict[str, int],
     assignee_emails: dict[uuid.UUID, str],
     compliance_profile: EngagementProfile,
+    risk_rank: int | None = None,
 ) -> ReportFinding:
     evidence = normalize_evidence(finding.evidence)
     lifecycle = _timeline(finding, event_rows)
@@ -1582,7 +1585,9 @@ def _finding(
         cvss_score=finding.cvss_score,
         cvss_vector=finding.cvss_vector,
         epss_score=finding.epss_score,
-        risk_score=finding.risk_score,
+        # The 0-1000 rank the Findings page quotes. The stored column is only what the last
+        # prioritisation run wrote, so it is the fallback for callers that supply no rank.
+        risk_score=Decimal(risk_rank) if risk_rank is not None else finding.risk_score,
         exploitable=bool(finding.exploitable),
         exploit_validated=bool(finding.exploit_validated),
         detection_status=str(_value(finding.detection_status)),
@@ -2048,6 +2053,7 @@ def build_report_document(
     engagement_asset_tags: set[str] | None = None,
     coverage_run: DetectionRun | None = None,
     coverage_job: Any | None = None,
+    risk_ranks: dict[uuid.UUID, int] | None = None,
     snapshot_kind: Literal[
         "postgresql_repeatable_read_read_only",
         "sqlite_read_transaction",
@@ -2064,6 +2070,7 @@ def build_report_document(
     generated_at = generated_at.astimezone(timezone.utc)
     scan_results = scan_results or {}
     assignee_emails = assignee_emails or {}
+    risk_ranks = risk_ranks or {}
     profile = profile_from_roe(getattr(engagement, "rules_of_engagement", None))
     if engagement_asset_tags is None:
         # Direct/pure callers can still derive the context from supplied rows.
@@ -2103,6 +2110,7 @@ def build_report_document(
             sla_windows,
             assignee_emails,
             profile,
+            risk_ranks.get(finding.id),
         )
         for finding, asset in finding_rows
     ]
@@ -2163,6 +2171,47 @@ async def _start_report_snapshot(
     if dialect_name == "sqlite":
         return "sqlite_read_transaction", "transactional_snapshot"
     return "best_effort_read_session", "best_effort"
+
+
+async def _canonical_risk_ranks(
+    db: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    engagement_id: uuid.UUID,
+    finding_rows: Sequence[tuple[Finding, Asset | None]],
+) -> dict[uuid.UUID, int]:
+    """finding id -> the 0-1000 rank the Findings page shows for it.
+
+    The assets are the ones already loaded for the report; only their service exposure is
+    read here, and that read is tenant-scoped through the engagement like every other report
+    fact. A report that quoted the stored score would disagree with the page it was
+    generated from whenever an asset's criticality or exposure changed after the last
+    prioritisation run."""
+    assets = {asset.id: asset for _, asset in finding_rows if asset is not None}
+    exposures: dict[uuid.UUID, list[str | None]] = defaultdict(list)
+    if assets:
+        service_rows = (
+            await db.execute(
+                select(Service.asset_id, Service.exposure)
+                .join(Asset, Asset.id == Service.asset_id)
+                .join(Engagement, Engagement.id == Asset.engagement_id)
+                .where(
+                    Service.asset_id.in_(list(assets)),
+                    Asset.engagement_id == engagement_id,
+                    Engagement.tenant_id == tenant_id,
+                )
+            )
+        ).all()
+        for asset_id, exposure in service_rows:
+            exposures[asset_id].append(exposure)
+    context = risk_context.build_context(
+        ((a.id, a.ip_address, a.hostname, a.criticality) for a in assets.values()),
+        exposures,
+    )
+    return {
+        finding.id: risk_context.rank_for(finding, context)
+        for finding, _ in finding_rows
+    }
 
 
 async def load_report_document(
@@ -2391,6 +2440,9 @@ async def load_report_document(
                 )
             )
         ).scalar_one_or_none()
+    risk_ranks = await _canonical_risk_ranks(
+        db, tenant_id=tenant_id, engagement_id=engagement_id, finding_rows=finding_rows
+    )
     return build_report_document(
         engagement=engagement,
         finding_rows=list(finding_rows),
@@ -2404,6 +2456,7 @@ async def load_report_document(
         engagement_asset_tags=engagement_asset_tags,
         coverage_run=coverage_run,
         coverage_job=coverage_job,
+        risk_ranks=risk_ranks,
         snapshot_kind=snapshot_kind,
         snapshot_guarantee=snapshot_guarantee,
     )

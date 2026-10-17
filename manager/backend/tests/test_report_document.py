@@ -22,6 +22,8 @@ from app.services.evidence_integrity import (
     CANONICAL_SHA256_BASIS,
     canonical_content_sha256,
 )
+from app.services.risk_inputs import risk_inputs
+from app.services.risk_rank import compute_risk_rank
 from app.services.report_document import (
     _chunks,
     _detection_provenance,
@@ -1732,6 +1734,7 @@ async def test_loader_explicitly_tenant_scopes_every_report_fact_query():
             result(scalar_rows=[scan_result]),
             result(scalar=None),
             result(scalar=None),   # latest completed detection run (coverage sheet)
+            result(rows=[]),       # service exposure behind each finding's risk rank
         ]
     )
 
@@ -1755,6 +1758,102 @@ async def test_loader_explicitly_tenant_scopes_every_report_fact_query():
         assert "JOIN engagements" in statement
         assert "engagements.tenant_id" in statement
         assert "engagement_id" in statement
+    # The exposure read behind the risk rank has no tenant column of its own, so it must
+    # reach the tenant through the asset's engagement like every other report fact.
+    services = next(sql for sql in statements if "FROM services" in sql)
+    assert "JOIN assets" in services
+    assert "JOIN engagements" in services
+    assert "engagements.tenant_id" in services
+    assert "assets.engagement_id" in services
+
+
+def test_report_quotes_the_supplied_rank_over_the_stored_score():
+    engagement = _engagement()
+    asset = _asset(engagement.id)
+    finding = _finding(engagement.id, asset.id, None)
+    kwargs = dict(
+        engagement=engagement,
+        finding_rows=[(finding, asset)],
+        event_rows=[],
+        remediation_plan_rows=[],
+        resolution_runs={},
+        generated_at=NOW,
+        sla_windows={"critical": 24, "high": 72, "medium": 168, "low": 720, "info": 0},
+    )
+
+    ranked = build_report_document(**kwargs, risk_ranks={finding.id: 412})
+    assert ranked.findings[0].risk_score == Decimal(412)
+
+    # A caller that supplies no rank keeps what the last prioritisation run stored.
+    stored = build_report_document(**kwargs)
+    assert stored.findings[0].risk_score == Decimal("750.00")
+    other = build_report_document(**kwargs, risk_ranks={uuid.uuid4(): 12})
+    assert other.findings[0].risk_score == Decimal("750.00")
+
+
+@pytest.mark.asyncio
+async def test_loader_ranks_each_finding_with_its_assets_real_context():
+    tenant_id = uuid.uuid4()
+    engagement = _engagement(tenant_id=tenant_id)
+    run_id = uuid.uuid4()
+    scan_result_id = uuid.uuid4()
+    asset = _asset(engagement.id, criticality=AssetCriticality.critical)
+    finding = _finding(
+        engagement.id,
+        asset.id,
+        run_id,
+        status=FindingStatus.open,
+        detection_run_id=run_id,
+        initial_detection_run_id=run_id,
+    )
+    run = _run(run_id, engagement.id, scan_result_id=scan_result_id)
+    scan_result = _scan_result(scan_result_id, engagement.id)
+
+    def result(*, scalar=None, rows=None, scalar_rows=None):
+        value = MagicMock()
+        value.scalar_one_or_none.return_value = scalar
+        value.all.return_value = rows or []
+        value.scalars.return_value.all.return_value = scalar_rows or []
+        return value
+
+    async def load(exposures):
+        db = MagicMock()
+        db.get_bind.return_value = SimpleNamespace(dialect=SimpleNamespace(name="test"))
+        db.execute = AsyncMock(
+            side_effect=[
+                result(scalar=engagement),
+                result(rows=[(finding, asset)]),
+                result(scalar_rows=[asset.tags]),
+                result(scalar_rows=[]),
+                result(scalar_rows=[]),
+                result(scalar_rows=[run]),
+                result(scalar_rows=[scan_result]),
+                result(scalar=None),
+                result(scalar=None),
+                result(rows=exposures),
+            ]
+        )
+        document = await load_report_document(
+            db, tenant_id=tenant_id, engagement_id=engagement.id, generated_at=NOW
+        )
+        assert document is not None
+        return document.findings[0].risk_score
+
+    # The same rank the Findings page computes from this asset's criticality and the
+    # strongest exposure among its services (external beats internal).
+    expected = {
+        None: compute_risk_rank(
+            **risk_inputs(finding, asset_criticality="critical", exposure=None)
+        ),
+        "external": compute_risk_rank(
+            **risk_inputs(finding, asset_criticality="critical", exposure="external")
+        ),
+    }
+    assert expected[None] != expected["external"]
+    assert await load([]) == Decimal(expected[None])
+    assert await load(
+        [(asset.id, "internal_only"), (asset.id, "external")]
+    ) == Decimal(expected["external"])
 
 
 @pytest.mark.asyncio

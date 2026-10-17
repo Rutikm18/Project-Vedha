@@ -40,6 +40,7 @@ from app.services.finding_groups import GroupRow, build_groups
 from app.services.finding_priority import severity_order_case
 from app.services import deadlines, sla as sla_service
 from app.services.finding_priority import explain_priority
+from app.services import risk_context
 from app.services.risk_inputs import exposure_source, risk_inputs, strongest_exposure
 from app.services.risk_rank import compute_risk_rank, explain_risk_rank
 from app.routers.sla_policy import resolve_windows
@@ -216,29 +217,8 @@ async def _scan_outcomes(
     return best
 
 
-async def _asset_risk_context(db: AsyncSession, findings: list[Finding]) -> dict:
-    """Per-asset identity, criticality and strongest service exposure for a page of
-    findings: THREE bulk queries however many rows, never one per row. Everything the
-    risk rank needs about the asset comes from here, in every list-shaped response."""
-    ids = {f.asset_id for f in findings if f.asset_id is not None}
-    ctx: dict = {}
-    if not ids:
-        return ctx
-    rows = (await db.execute(
-        select(Asset.id, Asset.ip_address, Asset.hostname, Asset.criticality)
-        .where(Asset.id.in_(ids))
-    )).all()
-    svc = (await db.execute(
-        select(Service.asset_id, Service.exposure).where(Service.asset_id.in_(ids))
-    )).all()
-    grouped: dict = {}
-    for aid, exp in svc:
-        grouped.setdefault(aid, []).append(exp)
-    for aid, ip, host, crit in rows:
-        ctx[aid] = {"ip": ip, "hostname": host,
-                    "criticality": getattr(crit, "value", crit),
-                    "exposure": strongest_exposure(grouped.get(aid, []))}
-    return ctx
+# The asset context and rank now live in services/risk_context.py (the report needs them too).
+_asset_risk_context = risk_context.asset_risk_context
 
 
 async def _sla_states(db: AsyncSession, findings: list[Finding]) -> dict:
@@ -268,17 +248,8 @@ def priority_for(finding: Finding, sla_state: str | None) -> dict:
         epss_score=inputs["epss_score"], sla_state=sla_state, status=finding.status)
 
 
-def _rank_for(finding: Finding, ctx: dict) -> int:
-    a = ctx.get(finding.asset_id, {})
-    return compute_risk_rank(**risk_inputs(
-        finding, asset_criticality=a.get("criticality"), exposure=a.get("exposure")))
-
-
-async def risk_ranks_for(db: AsyncSession, findings: list[Finding]) -> dict:
-    """finding id → the canonical rank. For list-shaped responses that do not go
-    through FindingOut (the customer portal's legacy rows)."""
-    ctx = await _asset_risk_context(db, findings)
-    return {f.id: _rank_for(f, ctx) for f in findings}
+_rank_for = risk_context.rank_for
+risk_ranks_for = risk_context.risk_ranks_for
 
 
 async def _with_asset_identity(db: AsyncSession, findings: list[Finding]) -> list[FindingOut]:
