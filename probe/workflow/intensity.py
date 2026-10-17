@@ -129,9 +129,9 @@ def intensity_first_pass(
 
 
 #: The UDP services standard/stealth sample: every one the manager has a rule for (DNS, NTP,
-#: NetBIOS, SNMP, IKE, IPMI, SSDP, SIP, mDNS, memcached). The wide set is every service the UDP
-#: scanner has a probe for (adds TFTP and IKE NAT-T).
-_UDP_NARROW = (53, 123, 137, 161, 500, 623, 1900, 5060, 5353, 11211)
+#: NetBIOS, SNMP, XDMCP, IKE, IPMI, SSDP, SIP, mDNS, memcached). The wide set is every service
+#: the UDP scanner has a probe for (adds TFTP and IKE NAT-T).
+_UDP_NARROW = (53, 123, 137, 161, 177, 500, 623, 1900, 5060, 5353, 11211)
 
 
 def intensity_udp_ports(name: str | None) -> list[int] | None:

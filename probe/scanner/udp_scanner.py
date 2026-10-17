@@ -8,6 +8,7 @@ valid, READ-ONLY protocol request and look for a positive reply:
   DNS    (53)   — A-query for 'example.com'; recursion + open-resolver flag
   NTP    (123)  — mode-3 client request; follows with monlist check (amplification)
   SNMP   (161)  — SNMPv1 GET sysDescr, community 'public'
+  XDMCP  (177)  — Query; a Willing reply means the display manager offers a remote X login
   NetBIOS(137)  — node-status wildcard request
   IKE    (500)  — minimal IKEv2 IKE_SA_INIT probe; version fingerprint
   IKE-NAT(4500) — IKE-in-UDP-encapsulation (RFC 3948)
@@ -164,6 +165,12 @@ def _mdns_probe() -> bytes:
     return header + question
 
 
+def _xdmcp_probe() -> bytes:
+    """XDMCP Query (X Display Manager Control Protocol 1.0): version 1, opcode 2, one byte
+    of body, zero authentication names. The same bytes nmap sends; a Query opens no session."""
+    return struct.pack("!HHH", 1, 2, 1) + b"\x00"
+
+
 # ── Response interpreters ─────────────────────────────────────────────────────
 
 def interpret_ntp_monlist(reply: bytes) -> bool:
@@ -254,6 +261,43 @@ def interpret_mdns(reply: bytes) -> dict:
     return {"mdns_response": is_response, "answer_count": ancount}
 
 
+# Replies to a Query: Willing carries authentication-name, hostname and status; Unwilling
+# carries hostname and status. Each is an ARRAY8 (2-byte length, then the bytes).
+_XDMCP_REPLIES = {5: ("willing", ("xdmcp_auth", "xdmcp_hostname", "xdmcp_status")),
+                  6: ("unwilling", ("xdmcp_hostname", "xdmcp_status"))}
+_XDMCP_TEXT_MAX = 128
+
+
+def _xdmcp_text(raw: bytes) -> str:
+    """The target chose these bytes: decode, replace anything unprintable, cap the length."""
+    text = raw[:_XDMCP_TEXT_MAX * 4].decode("utf-8", "replace")
+    return "".join(ch if ch.isprintable() else "?" for ch in text)[:_XDMCP_TEXT_MAX]
+
+
+def interpret_xdmcp(reply: bytes) -> dict:
+    """Parse a Willing or Unwilling answer to our Query. Anything else (another version or
+    opcode, a length that does not add up, trailing bytes) is not XDMCP and returns {}."""
+    if len(reply) < 6:
+        return {}
+    version, opcode, length = struct.unpack("!HHH", reply[:6])
+    body = reply[6:]
+    if version != 1 or opcode not in _XDMCP_REPLIES or length != len(body):
+        return {}
+    label, names = _XDMCP_REPLIES[opcode]
+    out: dict = {"xdmcp_opcode": label}
+    pos = 0
+    for name in names:
+        if pos + 2 > len(body):
+            return {}
+        size = struct.unpack("!H", body[pos:pos + 2])[0]
+        pos += 2
+        if pos + size > len(body):
+            return {}
+        out[name] = _xdmcp_text(body[pos:pos + size])
+        pos += size
+    return out if pos == len(body) else {}
+
+
 # ── Probe registry ────────────────────────────────────────────────────────────
 
 # (service_name, payload_bytes)
@@ -264,6 +308,7 @@ UDP_PROBES: dict[int, tuple[str, bytes | None]] = {
     123:   ("ntp",       _ntp_probe()),
     137:   ("netbios-ns", _netbios_probe()),
     161:   ("snmp",      _snmp_probe()),
+    177:   ("xdmcp",     _xdmcp_probe()),
     500:   ("ike",       _ike_probe()),
     623:   ("ipmi",      _ipmi_probe()),
     1900:  ("ssdp",      _ssdp_probe()),
@@ -389,6 +434,8 @@ class UDPScanner(BaseScanner):
             result_data.update(interpret_ssdp(data))
         elif svc == "mdns":
             result_data.update(interpret_mdns(data))
+        elif svc == "xdmcp":
+            result_data.update(interpret_xdmcp(data))
 
         return ScanResult(
             self.name, target, port=port, proto="udp", status="open",
@@ -404,7 +451,7 @@ class UDPScanner(BaseScanner):
 
 def main() -> None:
     parser = base_argparser(
-        "UDP service scanner (DNS/NTP/SNMP/NetBIOS/IKE/SIP/TFTP/IPMI/SSDP/mDNS)")
+        "UDP service scanner (DNS/NTP/SNMP/XDMCP/NetBIOS/IKE/SIP/TFTP/IPMI/SSDP/mDNS)")
     parser.add_argument("-p", "--ports", default=None,
                         help="UDP ports to probe (default: all known ports)")
     parser.add_argument("--max-retries", type=int, default=2,

@@ -77,6 +77,21 @@ def test_every_backdoor_port_is_swept():
     assert not missing, f"unscanned backdoor/C2 ports: {missing}"
 
 
+def test_xdmcp_is_asked_over_udp_where_it_answers():
+    """The sweep above reaches the catalogue's XDMCP entry (177) over TCP, but XDMCP is a
+    UDP protocol: a display manager only answers an XDMCP Query on UDP/177. The catalogue
+    named it while no scan asked, so its rule could never fire. Every intensity, and the
+    engine default, must probe it."""
+    from scanner.udp_scanner import UDP_PROBES
+    from workflow.gates import UDP_PORTS
+    from workflow.intensity import intensity_udp_ports
+
+    assert UDP_PROBES[177][0] == "xdmcp"
+    assert 177 in UDP_PORTS
+    for intensity in ("light", "standard", "deep"):
+        assert 177 in intensity_udp_ports(intensity), intensity
+
+
 def test_va_risk_ports_are_all_actually_in_the_risk_catalog():
     """Reverse direction: VA_RISK_PORTS must not accumulate ports the manager has
     no rule for — that is scan cost buying nothing."""

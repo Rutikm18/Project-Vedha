@@ -274,6 +274,49 @@ class TestUdpServiceRules:
         assert "POSTURE-IKE-AGGRESSIVE-MODE" not in self._rules(main)
         assert "POSTURE-IKE-AGGRESSIVE-MODE" not in self._rules(v2)
 
+    # XDMCP (UDP/177): decided by the reply to the agent's Query; silence decides nothing.
+    _XDMCP_RULES = ("POSTURE-XDMCP-WILLING", "POSTURE-XDMCP-EXPOSED")
+
+    @staticmethod
+    def _xdmcp(opcode=None, status="open"):
+        if status == "open":
+            data = {"service": "xdmcp", "responded": True}
+            if opcode:
+                data.update(xdmcp_opcode=opcode, xdmcp_hostname="lab-ws01",
+                            xdmcp_status="Linux 6.1.0 load 0.42")
+        else:   # what the agent sends for no reply / ICMP unreachable
+            data = {"service_guess": "xdmcp", "responded": False}
+        return _fact("udp_scan", 177, data, status=status, proto="udp")
+
+    def _xdmcp_outcomes(self, fact):
+        _findings, traces = P.detect_posture_traced(_asset(fact))
+        return {t.outcome for t in traces if t.rule_id in self._XDMCP_RULES}
+
+    def test_xdmcp_willing_is_high_and_unwilling_is_low(self):
+        willing = [f for f in P.detect_posture(_asset(self._xdmcp("willing")))
+                   if f.rule_id in self._XDMCP_RULES]
+        assert [(f.rule_id, f.severity, f.state) for f in willing] == [
+            ("POSTURE-XDMCP-WILLING", "high", "confirmed")]
+        assert willing[0].evidence["dedup_key"] == "exposed:177/udp"
+        assert willing[0].evidence["hostname"] == "lab-ws01"
+        unwilling = [f for f in P.detect_posture(_asset(self._xdmcp("unwilling")))
+                     if f.rule_id in self._XDMCP_RULES]
+        assert [(f.rule_id, f.severity) for f in unwilling] == [("POSTURE-XDMCP-EXPOSED", "low")]
+        # one condition per host and port, whichever answer the display manager gave
+        assert unwilling[0].evidence["dedup_key"] == willing[0].evidence["dedup_key"]
+
+    def test_xdmcp_needs_an_xdmcp_reply(self):
+        # something answered on 177, but not with XDMCP: no finding, and a real verdict
+        assert not self._rules(self._xdmcp()) & set(self._XDMCP_RULES)
+        assert self._xdmcp_outcomes(self._xdmcp()) == {P.OUTCOME_NO_MATCH}
+
+    def test_silence_on_177_is_undetermined_never_clean(self):
+        # no reply is open|filtered: it must not count as the re-check that clears a finding
+        assert self._xdmcp_outcomes(self._xdmcp(status="open|filtered")) == {P.OUTCOME_NO_EVIDENCE}
+
+    def test_a_closed_177_is_a_clean_recheck(self):
+        assert self._xdmcp_outcomes(self._xdmcp(status="closed")) == {P.OUTCOME_NO_MATCH}
+
     def test_exposure_rules_share_the_exposed_class_with_port_intel(self):
         assert P.weakness_class_for("POSTURE-SIP-EXPOSED", "exposure") == "exposed"
         assert P.weakness_class_for("POSTURE-IKE-AGGRESSIVE-MODE", "weak_crypto") == "ike-aggressive-mode"

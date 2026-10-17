@@ -1520,6 +1520,53 @@ _P_UDP: list[Recipe] = [
         ("CWE-200", "MITRE T1046"), effort="low"),
 
     Recipe(
+        "POSTURE-XDMCP-WILLING", 1, "Turn off XDMCP remote logins on {host}", "mitigation",
+        "mitigate", "The display manager answers no XDMCP query; remote desktops go through SSH or a VPN",
+        (
+            S("containment", "Block XDMCP at the boundary",
+              "Drop UDP/177 to {host} ({ip}) from every network that should not open a desktop on it.",
+              lin=("sudo ufw deny 177/udp",),
+              net=("Deny udp/177 to {ip} from <untrusted-subnet> at the upstream firewall",),
+              gen=("Block UDP 177 to {ip} from untrusted networks",),
+              rollback="Remove the rule to restore the previous reachability."),
+            S("fix", "Disable XDMCP in the display manager",
+              "Switch XDMCP off in the display manager on {host} and restart it.",
+              lin=("# GDM: in /etc/gdm3/custom.conf (or /etc/gdm/custom.conf) under [xdmcp] set  Enable=false",
+                   "# LightDM: in /etc/lightdm/lightdm.conf under [XDMCPServer] set  enabled=false",
+                   "# xdm: in /etc/X11/xdm/xdm-config set  DisplayManager.requestPort: 0",
+                   "sudo systemctl restart display-manager"),
+              gen=("Disable XDMCP in the display manager's configuration and restart it",),
+              downtime="open graphical sessions on {host} end when the display manager restarts",
+              rollback="Re-enable XDMCP and restart the display manager"),
+        ),
+        "Use SSH with X11 forwarding, or VNC/RDP behind a VPN, for remote desktops.",
+        V("udp_scan", "An XDMCP Query to {ip}:{port}/udp gets no Willing reply", "No reply / closed"),
+        ("CWE-319", "MITRE T1021"), effort="low"),
+
+    Recipe(
+        "POSTURE-XDMCP-EXPOSED", 1, "Close XDMCP on {host}", "mitigation",
+        "mitigate", "XDMCP not reachable from networks that do not need it",
+        (
+            S("containment", "Block XDMCP at the boundary",
+              "Drop UDP/177 to {host} ({ip}) from untrusted networks.",
+              net=("Deny udp/177 to {ip} from <untrusted-subnet> at the upstream firewall",),
+              gen=("Block UDP 177 to {ip} from untrusted networks",)),
+            S("fix", "Disable XDMCP if nobody needs it",
+              "The display manager on {host} refused this host but still runs XDMCP; its access list "
+              "(Xaccess) decides who else it serves. Switch XDMCP off unless remote X logins are required.",
+              lin=("# GDM: under [xdmcp] in /etc/gdm3/custom.conf set  Enable=false",
+                   "# LightDM: under [XDMCPServer] in /etc/lightdm/lightdm.conf set  enabled=false",
+                   "sudo systemctl restart display-manager"),
+              gen=("Disable XDMCP in the display manager's configuration",),
+              downtime="open graphical sessions end when the display manager restarts",
+              rollback="Re-enable XDMCP and restart the display manager"),
+        ),
+        "Keep remote X logins off by default; review Xaccess wherever XDMCP must stay on.",
+        V("udp_scan", "An XDMCP Query to {ip}:{port}/udp from an untrusted network gets no reply",
+          "No reply / closed"),
+        ("CWE-200", "MITRE T1046"), effort="low"),
+
+    Recipe(
         "POSTURE-IKE-AGGRESSIVE-MODE", 1, "Disable IKE aggressive mode on {host}", "mitigation",
         "mitigate", "IKEv1 aggressive mode disabled; IKEv2 or main mode with strong authentication",
         (

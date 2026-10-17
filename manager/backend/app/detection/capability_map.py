@@ -102,6 +102,8 @@ _RULE_CAPABILITY: dict[str, str] = {
     "POSTURE-NETBIOS-EXPOSED": RECON,
     "POSTURE-MDNS-EXPOSED": RECON,
     "POSTURE-SIP-EXPOSED": RECON,
+    "POSTURE-XDMCP-WILLING": RECON,        # a login screen is offered; a credential is still needed
+    "POSTURE-XDMCP-EXPOSED": RECON,
     "POSTURE-UNIDENTIFIED-SERVICE": RECON,
 }
 

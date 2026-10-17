@@ -79,6 +79,6 @@ def test_udp_breadth_scales_with_intensity():
     from scanner.udp_scanner import UDP_PROBES
     assert intensity_udp_ports("deep") == sorted(UDP_PROBES)          # wide
     narrow = intensity_udp_ports("standard")
-    assert set(narrow) == {53, 123, 137, 161, 500, 623, 1900, 5060, 5353, 11211}   # every service the manager has a rule for
+    assert set(narrow) == {53, 123, 137, 161, 177, 500, 623, 1900, 5060, 5353, 11211}   # every service the manager has a rule for
     assert intensity_udp_ports("light") == narrow
     assert len(intensity_udp_ports("deep")) > len(narrow)
