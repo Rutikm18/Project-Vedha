@@ -117,3 +117,14 @@ test("the suggested risk owner reaches the UI model", () => {
   });
   assert.equal(finding.assetContext?.suggestedRiskOwner, "Platform SRE");
 });
+
+test("a scanner finding with no SOC validation reads 'not tested', never covered", () => {
+  // testing-round gap 13: every scanner finding used to arrive as `detected`, so
+  // engagements read 100% detection coverage and no blind spots.
+  const base = { id: "f", title: "t", severity: "high", status: "open",
+                 created_at: "2026-09-01T00:00:00Z" };
+  assert.equal(toUiFinding({ ...base, detection_status: "unknown" }).detectionCoverage, "NOT_TESTED");
+  assert.equal(toUiFinding({ ...base }).detectionCoverage, "NOT_TESTED");
+  assert.equal(toUiFinding({ ...base, detection_status: "detected" }).detectionCoverage, "COVERED");
+  assert.equal(toUiFinding({ ...base, detection_status: "missed" }).detectionCoverage, "BLIND");
+});

@@ -115,7 +115,7 @@ class TestUpstreamBuild:
         db = _db({"vsftpd": [_rec("CVE-2099-0004", "vsftpd",
                                   ("Debian:12", [{"introduced": "0"}, {"fixed": "9.0-1"}]))]})
         (f,) = match_candidate("10.0.0.1", _cand("1.0"), db)
-        assert f.matcher_revision == MATCHER_REVISION == "2"
+        assert f.matcher_revision == MATCHER_REVISION == "4"
 
     def test_authoritative_dpkg_order_is_unchanged(self):
         # The host's own package version keeps exact dpkg semantics.
@@ -340,3 +340,123 @@ class TestFixVersionAndLocation:
         assert (d["port"], d["proto"], d["product"]) == (21, "tcp", "vsftpd")
         assert d["ports"] == [21, 2121]
         assert d["fixed_version"] == "3.0.5"
+
+
+# ── OpenSSH builds that omit the portable suffix (lab finding, 17 Oct) ────────
+# Alpine, macOS and Microsoft's port announce "OpenSSH_10.3", not "OpenSSH_10.3p1".
+# The accuracy lab's current OpenSSH 10.3 showed five CVEs "fixed in 10.3p1".
+
+class TestPortableSuffix:
+    def _db(self, fixed):
+        return _db({"openssh": [_rec("CVE-2099-0100", "openssh",
+                                     ("Debian:13", [{"introduced": "0"}, {"fixed": fixed}]))]})
+
+    def test_p1_fix_is_already_in_any_build_of_that_release(self):
+        assert match_candidate("10.0.0.1", _cand("10.3", "openssh"), self._db("1:10.3p1-1")) == []
+
+    def test_older_release_still_matches(self):
+        assert match_candidate("10.0.0.1", _cand("10.2", "openssh"), self._db("1:10.3p1-1"))
+
+    def test_p2_fix_cannot_be_judged_from_a_suffixless_banner(self):
+        # "9.3" may be 9.3p1 (vulnerable) or 9.3p2 (fixed): no claim either way.
+        assert match_candidate("10.0.0.1", _cand("9.3", "openssh"), self._db("1:9.3p2-1")) == []
+
+    def test_suffixed_banner_is_unchanged(self):
+        assert match_candidate("10.0.0.1", _cand("9.3p1", "openssh"), self._db("1:9.3p2-1"))
+        assert match_candidate("10.0.0.1", _cand("9.3p2", "openssh"), self._db("1:9.3p2-1")) == []
+
+
+# ── matcher revision 4: lab findings on Redis / MariaDB (17 Oct) ──────────────
+
+class TestRevisionShapes:
+    @pytest.mark.parametrize("rev,first", [
+        ("1", True), ("0", True), ("0.1", True), (None, True),
+        ("1~deb11u1", True), ("1~bpo11+1", True),
+        ("1+deb12u1", False),      # stable/security update: Debian's own patch
+        ("1~deb12u4", False),      # 4th update of a stable rebuild
+        ("1~bpo11+2", False),
+        ("3", False), ("12+deb11u1", False), ("0.2", False),
+    ])
+    def test_first_packaging(self, rev, first):
+        from matcher import _revision_is_first_packaging
+        assert _revision_is_first_packaging(rev) is first
+
+    def test_patched_rebuild_does_not_clear_the_upstream_release(self):
+        db = _db({"redis": [_rec("CVE-2099-0200", "redis",
+                                 ("Debian:12", [{"introduced": "0"}, {"fixed": "5:7.0.15-1~deb12u4"}]))]})
+        f = _cves(match_candidate("10.0.0.1", _cand("7.0.15", "redis"), db))
+        assert f["CVE-2099-0200"].match_basis == "range"
+
+
+class TestReleaseLines:
+    # RediShell-shaped: Debian 12 patched 7.0.15; Debian 13 fixed it by moving to 8.0.
+    _REDIS = {"redis": [_rec("CVE-2025-49844", "redis",
+                             ("Debian:12", [{"introduced": "0"}, {"fixed": "5:7.0.15-1~deb12u6"}]),
+                             ("Debian:13", [{"introduced": "0"}, {"fixed": "5:8.0.2-3+deb13u1"}]))]}
+
+    def test_fix_only_on_a_newer_line_is_product_presence(self):
+        (f,) = match_candidate("10.0.0.1", _cand("7.2.16", "redis"), _db(self._REDIS))
+        assert f.match_basis == "range-branch" and f.state == FindingState.potential
+        assert any("another redis release line" in n for n in f.notes)
+
+    def test_fix_on_the_banners_own_line_is_a_finding(self):
+        (f,) = match_candidate("10.0.0.1", _cand("7.0.11", "redis"), _db(self._REDIS))
+        assert f.match_basis == "range"
+
+    def test_single_line_product_is_unaffected(self):
+        # OpenSSH: 9.6p1 vs a fix in 9.8p1 is a real version signal.
+        db = _db(_REGRESSHION_DEBIAN)
+        (f,) = match_candidate("10.0.0.1", _cand("9.5p1", "openssh"), db)
+        assert f.match_basis == "range"
+
+    def test_debian_cve_ids_merge(self):
+        db = _db({"redis": [
+            {"id": "DEBIAN-CVE-2025-46817",
+             "affected": [{"package": {"name": "redis", "ecosystem": "Debian:12"},
+                           "ranges": [{"type": "ECOSYSTEM",
+                                       "events": [{"introduced": "0"}, {"fixed": "5:7.0.15-1~deb12u9"}]}]}]},
+            _rec("CVE-2025-46817", "redis",
+                 ("Debian:12", [{"introduced": "0"}, {"fixed": "5:7.0.15-1~deb12u9"}]))]})
+        found = match_candidate("10.0.0.1", _cand("7.0.11", "redis"), db)
+        assert [f.cve_id for f in found] == ["CVE-2025-46817"]
+
+
+def test_mariadb_wire_compat_prefix_is_not_the_version():
+    # MariaDB's handshake says "5.5.5-10.11.19-MariaDB-ubu2204" (a replication
+    # compatibility prefix). Read as 5.5.5 it matched every MariaDB CVE since 2012.
+    from cpe_normalizer import normalize_db
+    fact = Fact(scanner="db_scan", target="10.0.0.9", timestamp="", port=3306, proto="tcp",
+                status="open",
+                data={"engine": "mysql/mariadb",
+                      "server_version": "5.5.5-10.11.19-MariaDB-ubu2204"},
+                evidence=None, error=None, source_confidence=SourceConfidence.inferred,
+                source_file="f", source_line=1)
+    (c,) = normalize_db(fact)
+    assert c.version_raw == "10.11.19-MariaDB-ubu2204"
+    assert c.distro is None          # MariaDB's own repository build: upstream versions
+
+
+# ── host OS summary (testing-round gap 7: asset table said "not recorded") ────
+
+def test_host_os_prefers_the_ssh_banner_release(tmp_path):
+    import json
+    from ingest import ingest_files
+    from pipeline import host_os_summary
+    rows = [
+        {"scanner": "os_fingerprint", "target": "10.0.0.30", "timestamp": "t", "port": None,
+         "proto": None, "status": "observed", "evidence": None, "error": None,
+         "data": {"os_guess": "Linux/Unix/macOS", "confidence": 0.7}},
+        {"scanner": "ssh_scan", "target": "10.0.0.30", "timestamp": "t", "port": 22,
+         "proto": "tcp", "status": "open", "evidence": None, "error": None,
+         "data": {"ssh_confirmed": True, "software": "OpenSSH_7.2p2",
+                  "banner": {"software": "OpenSSH_7.2p2", "comments": "Ubuntu-4ubuntu2.10",
+                             "raw": "SSH-2.0-OpenSSH_7.2p2 Ubuntu-4ubuntu2.10"}}},
+        {"scanner": "os_fingerprint", "target": "10.0.0.31", "timestamp": "t", "port": None,
+         "proto": None, "status": "observed", "evidence": None, "error": None,
+         "data": {"os_guess": "unknown", "confidence": 0.0}},
+    ]
+    p = tmp_path / "f.jsonl"
+    p.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    got = host_os_summary(ingest_files([str(p)]))
+    assert got["10.0.0.30"] == {"os": "Ubuntu", "os_version": "16.04", "source": "ssh_banner"}
+    assert "10.0.0.31" not in got                       # "unknown" is not an OS

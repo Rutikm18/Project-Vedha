@@ -38,6 +38,7 @@ TECHNIQUES: dict[str, tuple[str, str]] = {
     "T1040": ("Network Sniffing", "Credential Access"),
     "T1046": ("Network Service Discovery", "Discovery"),
     "T1082": ("System Information Discovery", "Discovery"),
+    "T1599": ("Network Boundary Bridging", "Defense Evasion"),
     "T1071.001": ("Application Layer Protocol: Web Protocols", "Command and Control"),
     "T1078": ("Valid Accounts", "Initial Access"),
     "T1078.001": ("Valid Accounts: Default Accounts", "Initial Access"),

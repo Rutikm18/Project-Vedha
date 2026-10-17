@@ -1441,6 +1441,43 @@ _P_UDP: list[Recipe] = [
         ("CWE-200", "MITRE T1595.002"), effort="low"),
 
     Recipe(
+        "POSTURE-UPNP-IGD-EXPOSED", 1, "Turn off UPnP IGD on the gateway {host}", "mitigation",
+        "mitigate", "No UPnP Internet Gateway Device answering on this segment or the WAN",
+        (
+            S("containment", "Remove port mappings nobody owns",
+              "List the gateway's current UPnP port mappings and delete any that no approved "
+              "service needs.",
+              gen=("In the router/firewall admin UI, open the UPnP mapping table and remove unknown mappings",),
+              rollback="Re-add a mapping only with a change request naming its owner."),
+            S("fix", "Disable UPnP IGD",
+              "Turn off UPnP/IGD on {host} ({ip}); where a consumer segment needs it, enable it "
+              "on that VLAN only, never on the WAN interface.",
+              net=("Disable UPnP IGD (or limit it to the consumer VLAN) in the gateway configuration",),
+              gen=("Disable UPnP Internet Gateway Device support on {ip}",),
+              rollback="Re-enable UPnP on the one VLAN that needs it."),
+        ),
+        "Publish inbound services only through reviewed static NAT rules.",
+        V("iot_scan", "Unicast M-SEARCH to {ip}:1900/udp gets no InternetGatewayDevice reply",
+          "No IGD in the SSDP reply"),
+        ("CWE-306", "MITRE T1599"), effort="low"),
+
+    Recipe(
+        "POSTURE-UPNP-EXPOSED", 1, "Disable UPnP/SSDP on {host}", "mitigation",
+        "mitigate", "UPnP/SSDP off, or limited to the segment that needs discovery",
+        (
+            S("fix", "Turn off UPnP discovery",
+              "Disable UPnP/SSDP on {host} ({ip}) unless a documented use needs it, and block "
+              "UDP/1900 between segments.",
+              net=("Block UDP/1900 between VLANs and at the perimeter",),
+              gen=("Disable UPnP / SSDP / DLNA discovery in the device settings of {ip}",),
+              rollback="Re-enable discovery on the device."),
+        ),
+        "Keep discovery protocols on the segment that uses them.",
+        V("iot_scan", "Unicast M-SEARCH to {ip}:1900/udp gets no reply from an untrusted segment",
+          "No SSDP reply"),
+        ("CWE-200", "MITRE T1046"), effort="low"),
+
+    Recipe(
         "POSTURE-NETBIOS-EXPOSED", 1, "Close the NetBIOS name service on {host}", "mitigation",
         "mitigate", "NetBIOS name service not reachable from untrusted networks",
         (

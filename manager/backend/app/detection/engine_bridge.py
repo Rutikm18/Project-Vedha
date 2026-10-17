@@ -68,6 +68,12 @@ logger = structlog.get_logger()
 # (app.workers.outbox.DETECTION_RUN_STALE_SEC) so a run is never reaped early.
 DETECTION_RUN_LEASE_SEC = 10 * 60
 
+# A scanner finding says nothing about whether the SOC would DETECT the attack:
+# `detection_status` is that SOC verdict (detected / prevented / missed), set only by
+# detection validation. Until then it is unknown — stamping `detected` here made every
+# engagement read 100% detection coverage (testing-round gap 13; migration 0069).
+_SCANNER_DETECTION_STATUS = DetectionStatus.unknown
+
 # Finding statuses that count as "still current" (the live risk set) after a run.
 _CURRENT_STATUSES = (FindingStatus.open, FindingStatus.confirmed, FindingStatus.accepted)
 
@@ -305,7 +311,9 @@ def detect_all_from_facts_traced(
                         res.get("identified_products")),
                     # The CVE matcher's logic revision: a CVE finding stamped
                     # with another one is not auto-resolved by its absence.
-                    "matcher_revision": res.get("matcher_revision")}
+                    "matcher_revision": res.get("matcher_revision"),
+                    # NOT persisted as-is — fills empty Asset.os / os_version.
+                    "host_os": res.get("host_os") or {}}
             _log_ingest_health(census, len(cve) + len(posture))
             return cve, posture, meta
         except ImportError:                          # older engine: CVE-only
@@ -316,7 +324,7 @@ def detect_all_from_facts_traced(
             # customer-facing CVE — withhold it here too so this degraded path
             # cannot reintroduce the banner-host flood.
             cve = [f.to_dict() for f in findings
-                   if getattr(f, "match_basis", None) not in ("range-open", "range-distro")]
+                   if getattr(f, "match_basis", None) not in ("range-open", "range-distro", "range-branch")]
             return cve, [], empty_meta
     except Exception as exc:  # noqa: BLE001
         # The CVE track can fail on its own (e.g. a missing/oversized NVD snapshot);
@@ -393,6 +401,38 @@ def _is_catalog_relabel(prev_ev: dict, incoming: dict) -> bool:
     return (bool(new_rule) and old_rule != new_rule
             and str(new_rule).startswith("POSTURE-EXPOSED-")
             and (port, old_rule) in _CATALOG_RELABELS)
+
+
+# The probe's TTL-family labels (scanner/os_fingerprint.py): a guess, not an
+# identification, so a later banner/SMB identification may replace it.
+_TTL_OS_FAMILIES = frozenset({"Linux/Unix/macOS", "Network/Embedded"})
+
+
+async def _promote_host_os(db, engagement_id, host_os: dict, *, cache, identity) -> int:
+    """Fill an asset's EMPTY os / os_version from the engine's per-host OS summary.
+    A value already on the asset (typed by an operator, or from a discovery job) is
+    never overwritten. Returns how many assets were updated."""
+    updated = 0
+    for ip, info in (host_os or {}).items():
+        if not isinstance(info, dict) or not info.get("os"):
+            continue
+        asset = await _resolve_asset(db, engagement_id, ip, cache=cache, identity=identity)
+        if asset is None:
+            continue
+        changed = False
+        new_os = str(info["os"])[:100]
+        weak_guess = asset.os in _TTL_OS_FAMILIES and info.get("source") != "os_fingerprint"
+        if not asset.os or (weak_guess and asset.os != new_os):
+            # Empty, or only the TTL-family guess an earlier run stored, now
+            # superseded by a banner/SMB identification.
+            asset.os = new_os
+            asset.os_version = None if weak_guess else asset.os_version
+            changed = True
+        if not asset.os_version and info.get("os_version") and asset.os == str(info["os"])[:100]:
+            asset.os_version = str(info["os_version"])[:100]
+            changed = True
+        updated += int(changed)
+    return updated
 
 
 def _backfill_cve_text(finding, d: dict) -> None:
@@ -629,7 +669,7 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                 severity=_POSTURE_SEV.get(p.get("severity"), FindingSeverity.info),
                 status=(FindingStatus.confirmed if state == "confirmed"
                         else FindingStatus.open),
-                detection_status=DetectionStatus.detected,
+                detection_status=_SCANNER_DETECTION_STATUS,
                 mitre_techniques=[p["mitre"]] if p.get("mitre") else None,
                 remediation=p.get("remediation"),
                 evidence=p,
@@ -777,7 +817,7 @@ async def _persist_attack_paths(
                 description=d.get("description"),
                 severity=d["severity"],
                 status=FindingStatus.open,
-                detection_status=DetectionStatus.detected,
+                detection_status=_SCANNER_DETECTION_STATUS,
                 mitre_techniques=d.get("mitre_techniques"),
                 remediation=d.get("remediation"),
                 evidence=evidence,
@@ -1107,7 +1147,7 @@ async def create_findings_from_facts(
                     epss_score=Decimal(str(d["epss_score"])) if d.get("epss_score") is not None else None,
                     severity=_PRIORITY_TO_SEVERITY.get(d.get("priority"), FindingSeverity.info),
                     status=FindingStatus.confirmed if state == "confirmed" else FindingStatus.open,
-                    detection_status=DetectionStatus.detected,
+                    detection_status=_SCANNER_DETECTION_STATUS,
                     evidence=d,
                     first_seen=now,
                     last_seen=now,
@@ -1124,6 +1164,14 @@ async def create_findings_from_facts(
                 open_index[(asset_id, title)] = new_finding
             except Exception as exc:  # noqa: BLE001 — one bad finding must not sink the batch
                 logger.warning("detection_finding.create_failed", error=str(exc))
+
+        # The OS each host was identified as, onto empty asset fields (gap 7: the
+        # report's asset table said "not recorded" while the scan knew the OS).
+        try:
+            await _promote_host_os(db, engagement_id, detect_meta.get("host_os") or {},
+                                   cache=asset_cache, identity=identity)
+        except Exception as exc:  # noqa: BLE001 — never sinks the run
+            logger.warning("host_os.promote_failed", error=str(exc))
 
         # ── Posture / config-exposure track (the VERIFIED scanners' findings) ──
         # SMBv1, RDP-without-NLA, deprecated TLS, exposed RPC, UDP amplifiers — the

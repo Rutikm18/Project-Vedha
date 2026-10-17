@@ -537,6 +537,50 @@ def _mdns_exposed(f: Fact) -> Optional[dict]:
     return None
 
 
+# UPnP Internet Gateway Device markers: the device / service types a gateway announces.
+_UPNP_IGD = re.compile(r"InternetGatewayDevice|WAN(?:IP|PPP)Connection|WANCommonInterfaceConfig",
+                       re.IGNORECASE)
+
+
+def _ssdp_answer(f: Fact) -> Optional[dict]:
+    """iot_scan's unicast M-SEARCH reply (UDP 1900): None unless the device really
+    answered SSDP (a ST / USN / LOCATION header came back)."""
+    if f.port != 1900:
+        return None
+    d = _d(f)
+    if not any(str(d.get(k) or "").strip() for k in ("st", "usn", "location")):
+        return None
+    return d
+
+
+def _upnp_summary(d: dict) -> dict:
+    dev = d.get("upnp_device") if isinstance(d.get("upnp_device"), dict) else {}
+    return {"server": str(d.get("server") or "")[:120] or None,
+            "st": str(d.get("st") or "")[:160] or None,
+            "device_type": str(dev.get("device_type") or "")[:160] or None,
+            "manufacturer": str(dev.get("manufacturer") or "")[:80] or None,
+            "model_name": str(dev.get("model_name") or "")[:80] or None}
+
+
+def _is_igd(d: dict) -> bool:
+    dev = d.get("upnp_device") if isinstance(d.get("upnp_device"), dict) else {}
+    blob = " ".join(str(x or "") for x in (d.get("st"), d.get("usn"), dev.get("device_type")))
+    return bool(_UPNP_IGD.search(blob))
+
+
+def _upnp_igd_exposed(f: Fact) -> Optional[dict]:
+    """A UPnP Internet Gateway Device answering discovery: any host that can reach it can
+    ask the gateway, without authentication, to open inbound port mappings."""
+    d = _ssdp_answer(f)
+    return _upnp_summary(d) if d is not None and _is_igd(d) else None
+
+
+def _upnp_exposed(f: Fact) -> Optional[dict]:
+    """Any other UPnP device answering unicast M-SEARCH (the IGD case is its own rule)."""
+    d = _ssdp_answer(f)
+    return _upnp_summary(d) if d is not None and not _is_igd(d) else None
+
+
 def _ike_aggressive(f: Fact) -> Optional[dict]:
     """An IKEv1 responder whose reply used the AGGRESSIVE exchange (type 4). With a pre-shared
     key, aggressive mode sends the identity and an authentication hash in the clear, which can be
@@ -1208,6 +1252,28 @@ RULES: list[PostureRule] = [
         "credential brute force and toll fraud.",
         fp_notes="Fires only when the service returned a real SIP status line. An expected "
                  "PBX/SBC is normal; the finding is about who can reach it.",
+        requires=()),
+    PostureRule(
+        "POSTURE-UPNP-IGD-EXPOSED", "UPnP Internet Gateway Device exposed", "medium",
+        "CWE-306", "T1599", "exposure", ("iot_scan",), _upnp_igd_exposed,
+        "Turn off UPnP IGD on the router or firewall (or restrict it to a trusted consumer "
+        "VLAN), and never answer UPnP on the WAN side. Review the current port-mapping table "
+        "and remove mappings nobody owns: malware uses IGD to open inbound ports without any "
+        "authentication (and, WAN-facing, to proxy traffic: \"UPnProxy\").",
+        fp_notes="Fires only when the device announced an Internet Gateway Device / WAN "
+                 "connection service in its SSDP reply or description. A consumer router on "
+                 "a home or guest segment is expected; the finding is about who can reach it.",
+        requires=()),
+    PostureRule(
+        "POSTURE-UPNP-EXPOSED", "UPnP / SSDP responder exposed", "low", "CWE-200", "T1046",
+        "exposure", ("iot_scan",), _upnp_exposed,
+        "Disable UPnP/SSDP on devices that do not need discovery, and block UDP/1900 between "
+        "segments and at the perimeter. SSDP answers reveal device make, model and firmware, "
+        "and exposed responders are used for reflection and CallStranger-style "
+        "(CVE-2020-12695) callback abuse.",
+        fp_notes="Fires on a real SSDP reply (ST/USN/LOCATION present) to a unicast "
+                 "M-SEARCH. Printers, TVs and media devices commonly answer on a LAN; an "
+                 "Internet Gateway Device is the separate, higher rule.",
         requires=()),
     PostureRule(
         "POSTURE-NETBIOS-EXPOSED", "NetBIOS name service exposed", "low", "CWE-200", "T1046",

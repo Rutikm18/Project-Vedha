@@ -44,7 +44,7 @@ from vuln_db import VulnDB, load_snapshot
 
 # match_basis values that are product presence, not a version-range vulnerability:
 # kept out of the customer-facing `cve` set (see run_full_detection).
-PRODUCT_PRESENCE_BASES = frozenset({"range-open", "range-distro"})
+PRODUCT_PRESENCE_BASES = frozenset({"range-open", "range-distro", "range-branch"})
 
 
 def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
@@ -187,6 +187,47 @@ def _os_by_asset(ingest_result: IngestResult) -> dict[str, dict]:
     return out
 
 
+def host_os_summary(ingest_result: IngestResult) -> dict[str, dict]:
+    """{asset_ip: {os, os_version, source}} — the best OS identification each host's
+    facts support, for the manager's asset record (testing-round gap 7: the report's
+    asset table read "not recorded" although the scan had identified the OS).
+
+    Preference: the distribution release read from the SSH banner ("Ubuntu 16.04",
+    the same parser the end-of-life rule uses) > a Windows release from SMB > the
+    TTL-family guess. Assets with no OS signal are omitted."""
+    from os_release_intel import release_from_ssh_fact
+    out: dict[str, dict] = {}
+    for ip, asset in ingest_result.assets.items():
+        best, best_rank = None, -1.0
+        for f in asset.facts:
+            d = f.data if isinstance(f.data, dict) else {}
+            if f.scanner == "ssh_scan":
+                rel = release_from_ssh_fact(d)
+                if rel:
+                    name, _, ver = rel["os_release"].partition(" ")
+                    cand, rank = {"os": name, "os_version": ver or None,
+                                  "source": "ssh_banner"}, 3.0
+                else:
+                    continue
+            elif isinstance(d.get("os_release"), str) and d["os_release"].strip():
+                release = d["os_release"].strip()
+                family = "Windows" if release.lower().startswith("windows") else release
+                cand = {"os": family[:100], "os_version": release[:100], "source": f.scanner}
+                rank = 2.0 + float(d.get("os_confidence") or d.get("confidence") or 0.0)
+            elif (isinstance(d.get("os_guess"), str) and d["os_guess"].strip()
+                  and d["os_guess"].strip().lower() != "unknown"):
+                cand = {"os": d["os_guess"].strip()[:100], "os_version": None,
+                        "source": f.scanner}
+                rank = float(d.get("confidence") or 0.0)
+            else:
+                continue
+            if rank > best_rank:
+                best, best_rank = cand, rank
+        if best:
+            out[ip] = best
+    return out
+
+
 def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
                        kev_db: KevDB | None = None, epss_db: EpssDB | None = None,
                        exposure: dict[str, dict] | None = None,
@@ -257,6 +298,7 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
         # before its absence from this run can count as clean.
         "identified_products": identified_products_from(candidates_by_asset),
         "matcher_revision": MATCHER_REVISION,
+        "host_os": host_os_summary(ingest_result),
         "ingest": ingest_result,
         "counts": {
             "cve": len(cve_findings),

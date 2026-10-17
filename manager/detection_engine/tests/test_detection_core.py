@@ -549,14 +549,16 @@ class TestMatchCandidate:
     def test_inferred_bounded_stays_suspected_range(self):
         # A bounded match from an inferred source is still a real version signal —
         # it stays `suspected` under the normal `range` basis (not demoted).
-        records = {"nginx": [{
+        # (A single-release-line product: for a multi-branch one such as nginx a
+        # fix on another line is product presence — see test_banner_version_matching.)
+        records = {"vsftpd": [{
             "id": "OSV-9", "upstream": ["CVE-2023-0009"],
-            "affected": [{"package": {"name": "nginx"}, "ranges": [
+            "affected": [{"package": {"name": "vsftpd"}, "ranges": [
                 {"type": "ECOSYSTEM", "events": [{"introduced": "1.0"}, {"fixed": "2.0"}]}
             ]}]
         }]}
         db = _mock_vuln_db(records)
-        c = _candidate(version="1.5", lookup_key="nginx", product="nginx")
+        c = _candidate(version="1.5", lookup_key="vsftpd", product="vsftpd")
         findings = match_candidate("10.0.0.1", c, db)
         assert findings[0].state == FindingState.suspected
         assert findings[0].match_basis == "range"

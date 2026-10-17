@@ -1,0 +1,154 @@
+{
+  "ssh-terrapin": {
+    "ip": "172.31.250.11",
+    "port": 2222,
+    "role": "positive",
+    "why": "OpenSSH 9.3p2 (built before the Dec 2023 fix): offers chacha20-poly1305 without kex-strict, so Terrapin applies. Stock algorithms only: nothing on the broken list.",
+    "expect": [
+      "POSTURE-SSH-TERRAPIN",
+      "CVE-2023-48795"
+    ],
+    "absent": [
+      "POSTURE-SSH-WEAK-ALGORITHMS"
+    ]
+  },
+  "ssh-current": {
+    "ip": "172.31.250.12",
+    "port": 2222,
+    "role": "clean control",
+    "why": "OpenSSH 10.3 advertises kex-strict-s-v00@openssh.com: Terrapin does not apply, and stock algorithms must not read as High. Its banner omits the portable suffix (OpenSSH_10.3), which must still read as 10.3p1: no CVE.",
+    "absent": [
+      "POSTURE-SSH-TERRAPIN",
+      "POSTURE-SSH-WEAK-ALGORITHMS",
+      "CVE-2023-48795",
+      "CVE-2024-6387"
+    ],
+    "cve_max": 0
+  },
+  "eol-ubuntu1604": {
+    "ip": "172.31.250.21",
+    "port": 22,
+    "role": "positive",
+    "why": "Ubuntu 16.04 (standard support ended April 2021), named by the SSH banner. An Ubuntu build backports fixes, so its banner version must not produce customer CVE findings.",
+    "expect": [
+      "POSTURE-OS-END-OF-LIFE"
+    ],
+    "cve_max": 0
+  },
+  "supported-debian12": {
+    "ip": "172.31.250.22",
+    "port": 22,
+    "role": "clean control",
+    "why": "Debian 12 is supported. Its banner carries the package revision, so CVEs are judged on the exact package: a current package must not show regreSSHion or Terrapin.",
+    "absent": [
+      "POSTURE-OS-END-OF-LIFE",
+      "POSTURE-SSH-TERRAPIN",
+      "POSTURE-SSH-WEAK-ALGORITHMS",
+      "CVE-2024-6387",
+      "CVE-2023-48795"
+    ]
+  },
+  "tls-weak": {
+    "ip": "172.31.250.31",
+    "port": 443,
+    "role": "positive",
+    "why": "TLS 1.0/1.1 enabled, 3DES offered, 1024-bit RSA, certificate expired 30 days ago, self-signed.",
+    "expect": [
+      "POSTURE-TLS-DEPRECATED-VERSION",
+      "POSTURE-TLS-EXPIRED-CERT",
+      "POSTURE-TLS-WEAK-KEY",
+      "POSTURE-TLS-SELF-SIGNED"
+    ],
+    "known_gaps": {
+      "POSTURE-TLS-WEAK-CIPHER": "agent: the TLS scanner records only the server's preferred cipher per version, so 3DES offered beside a stronger preferred suite is never seen (no cipher enumeration). The manager rule is proven by tls-anon."
+    }
+  },
+  "tls-anon": {
+    "ip": "172.31.250.33",
+    "port": 443,
+    "role": "positive",
+    "why": "TLS 1.2 whose only cipher is anonymous ECDH, AECDH-AES256-SHA (no server authentication): proves the manager's weak-cipher rule end to end.",
+    "expect": [
+      "POSTURE-TLS-WEAK-CIPHER"
+    ],
+    "absent": [
+      "POSTURE-TLS-DEPRECATED-VERSION",
+      "POSTURE-TLS-EXPIRED-CERT",
+      "POSTURE-TLS-WEAK-KEY"
+    ]
+  },
+  "tls-strong": {
+    "ip": "172.31.250.32",
+    "port": 443,
+    "role": "clean control",
+    "why": "TLS 1.2/1.3 only, ECDHE with AEAD ciphers, 2048-bit, in date. Self-signed is the one true finding.",
+    "expect": [
+      "POSTURE-TLS-SELF-SIGNED"
+    ],
+    "absent": [
+      "POSTURE-TLS-DEPRECATED-VERSION",
+      "POSTURE-TLS-WEAK-CIPHER",
+      "POSTURE-TLS-EXPIRED-CERT",
+      "POSTURE-TLS-WEAK-KEY",
+      "POSTURE-TLS-WEAK-SIGNATURE"
+    ]
+  },
+  "redis-noauth": {
+    "ip": "172.31.250.41",
+    "port": 6379,
+    "role": "positive",
+    "why": "Redis 7.2 with protected mode off and no password: anyone on the segment can read and write it. Redis 7.2.16 is a current 7.2 release: CVEs fixed only on the 8.0 line are not evidence against it (product presence, not findings).",
+    "expect": [
+      "POSTURE-DB-UNAUTHENTICATED-ACCESS",
+      "POSTURE-EXPOSED-DATASTORE"
+    ],
+    "cve_max": 0
+  },
+  "redis-auth": {
+    "ip": "172.31.250.42",
+    "port": 6379,
+    "role": "clean control",
+    "why": "Redis 7.2 with requirepass: reachable (an exposure finding is fair) but not unauthenticated.",
+    "absent": [
+      "POSTURE-DB-UNAUTHENTICATED-ACCESS"
+    ]
+  },
+  "mongo-noauth": {
+    "ip": "172.31.250.43",
+    "port": 27017,
+    "role": "positive",
+    "why": "MongoDB 7.0 started without --auth: unauthenticated access.",
+    "expect": [
+      "POSTURE-DB-UNAUTHENTICATED-ACCESS"
+    ],
+    "settle": 6
+  },
+  "mariadb": {
+    "ip": "172.31.250.44",
+    "port": 3306,
+    "role": "clean control (auth) / positive (exposure)",
+    "why": "MariaDB 10.11 with a root password: reachable database, password required. The official image ships without TLS configured. 10.11.19 is current on the 10.11 LTS line; the wire version's 5.5.5- prefix must not be read as the version.",
+    "expect": [
+      "POSTURE-EXPOSED-DATABASE",
+      "POSTURE-DB-CLEARTEXT-TRANSPORT"
+    ],
+    "absent": [
+      "POSTURE-DB-UNAUTHENTICATED-ACCESS"
+    ],
+    "settle": 10,
+    "cve_max": 0
+  },
+  "postgres": {
+    "ip": "172.31.250.45",
+    "port": 5432,
+    "role": "clean control (auth) / positive (exposure)",
+    "why": "PostgreSQL 16 with a password: reachable database, password required.",
+    "expect": [
+      "POSTURE-EXPOSED-DATABASE"
+    ],
+    "absent": [
+      "POSTURE-DB-UNAUTHENTICATED-ACCESS"
+    ],
+    "settle": 6
+  }
+}

@@ -334,7 +334,7 @@ export function FindingReport({ finding, ordinal, open, onToggle, mode = "assess
                 <li data-hot={f.internetReachable || undefined}>
                   <b>Exposure</b>{f.internetReachable === true ? "internet-facing" : f.internetReachable === false ? "internal only" : "not recorded"}
                 </li>
-                <li><b>Detection coverage</b>{f.detectionCoverage ? f.detectionCoverage.toLowerCase() : "not recorded"}</li>
+                <li><b>Detection coverage</b>{f.detectionCoverage ? f.detectionCoverage.toLowerCase().replace("_", " ") : "not recorded"}</li>
               </ul>
 
               {a.vector && (

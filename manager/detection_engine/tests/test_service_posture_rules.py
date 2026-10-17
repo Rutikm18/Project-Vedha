@@ -301,3 +301,42 @@ def test_nist_curves_beside_a_broken_cipher_still_high():
                   "reasons": ["using broken & deprecated 3DES cipher"]}]}
     ev = _fire("POSTURE-SSH-WEAK-ALGORITHMS", facts, "ssh_scan")
     assert ev["weak_count"] == 1 and ev["weak"][0]["algorithm"] == "3des-cbc"
+
+
+# ── UPnP / SSDP (STATUS P1-4 item 2: the IoT scanner collected it, no rule read it) ──
+_SSDP_CORPUS = {"upnp": True, "server": "Linux/3.14 UPnP/1.0", "st": "upnp:rootdevice",
+                "location": "http://192.168.1.90:80/desc.xml"}       # probe_corpus/iot_scan.json
+
+
+def _ssdp_fact(data, port=1900):
+    return _fact("iot_scan", data, port=port)
+
+
+def test_ssdp_responder_is_the_low_exposure_rule():
+    ev = P._upnp_exposed(_ssdp_fact(_SSDP_CORPUS))
+    assert ev and ev["server"] == "Linux/3.14 UPnP/1.0"
+    assert P._upnp_igd_exposed(_ssdp_fact(_SSDP_CORPUS)) is None
+
+
+def test_internet_gateway_device_is_its_own_rule_and_only_that():
+    igd = {**_SSDP_CORPUS, "st": "urn:schemas-upnp-org:device:InternetGatewayDevice:1"}
+    assert P._upnp_igd_exposed(_ssdp_fact(igd))["st"].endswith("InternetGatewayDevice:1")
+    assert P._upnp_exposed(_ssdp_fact(igd)) is None
+    via_description = {**_SSDP_CORPUS, "upnp_device": {
+        "device_type": "urn:schemas-upnp-org:device:InternetGatewayDevice:2",
+        "manufacturer": "ACME", "model_name": "R1"}}
+    ev = P._upnp_igd_exposed(_ssdp_fact(via_description))
+    assert ev["manufacturer"] == "ACME"
+
+
+def test_no_ssdp_answer_or_other_port_never_fires():
+    assert P._upnp_exposed(_ssdp_fact({"upnp": True})) is None          # no headers back
+    assert P._upnp_exposed(_ssdp_fact(_SSDP_CORPUS, port=5353)) is None  # mDNS fact
+
+
+def test_upnp_rules_fire_through_detect_posture():
+    import posture_rules as PR
+    a = _asset(_ssdp_fact({**_SSDP_CORPUS,
+                           "usn": "uuid:1::urn:schemas-upnp-org:service:WANIPConnection:1"}))
+    rules = sorted(f.rule_id for f in PR.detect_posture(a))
+    assert rules == ["POSTURE-UPNP-IGD-EXPOSED"]

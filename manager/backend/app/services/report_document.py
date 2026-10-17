@@ -1581,7 +1581,9 @@ def _finding(
         asset=_asset(asset),
         cve_ids=list(finding.cve_ids or []),
         cwe_ids=cwe_ids,
-        mitre_techniques=list(finding.mitre_techniques or []),
+        # One technique once, whatever the producers stored ("T1210 T1210" in the
+        # first test report: a merged signal re-added an id already present).
+        mitre_techniques=_dedupe(str(t).strip().upper() for t in (finding.mitre_techniques or [])),
         cvss_score=finding.cvss_score,
         cvss_vector=finding.cvss_vector,
         epss_score=finding.epss_score,

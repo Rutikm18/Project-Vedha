@@ -131,7 +131,7 @@ def verify(finding: Finding, *, reachability: str = "open",
     # package revision: the distro backports fixes under the same upstream version,
     # so the version match is product presence. matcher already reports it as
     # `potential`/`range-distro`; the penalty keeps its confidence number honest.
-    if finding.match_basis == "range-distro":
+    if finding.match_basis in ("range-distro", "range-branch"):
         penalize(25, "distro_build", "distro build, backported fixes not visible in banner")
 
     # AI-normalized candidates get extra scrutiny — capped, never trusted

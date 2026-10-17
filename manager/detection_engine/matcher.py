@@ -62,6 +62,7 @@ def _safe_compare(a: str, b: str) -> int | None:
 #     patch: that is why a banner match is only ever `suspected`, backport-possible).
 _REPACK_SUFFIX = re.compile(r"[+~.](?:dfsg|ds|repack)\d*$", re.IGNORECASE)
 _FIRST_PACKAGING = re.compile(r"^(?:0|1|0\.1)$")
+_PORTABLE_SUFFIX = re.compile(r"p(\d+)")
 
 
 # Bump when a change to this module can change WHICH CVEs a given input matches.
@@ -69,7 +70,54 @@ _FIRST_PACKAGING = re.compile(r"^(?:0|1|0\.1)$")
 # matcher" as "fixed" (app/detection/resolution.py).
 #   1  dpkg comparison for every source (implicit before this constant existed)
 #   2  banner versions compared upstream-to-upstream / Debian-revision / distro build
-MATCHER_REVISION = "2"
+#   3  a banner without OpenSSH's portable suffix ("10.3") equals "10.3p1"
+#   4  "+debNuM"/"~debNuM" (M>1) revisions are Debian patches; multi-branch products
+#      need a fix on the banner's own line; DEBIAN-CVE ids merge with CVE ids
+MATCHER_REVISION = "4"
+
+
+# Products that maintain several release lines at once: a fix known only on a NEWER
+# line (Debian 13 moved Redis to 8.0) says nothing about whether the banner's own line
+# (Redis 7.2, which upstream fixed in 7.2.11) has it. For these, an upstream banner
+# match is only a version signal when the fix is on the banner's own line. Keyed by
+# the OSV source package (CPECandidate.lookup_key).
+_MULTI_BRANCH = frozenset({
+    "redis", "mariadb", "postgresql-15", "openssl", "bind9", "samba", "nginx",
+    "squid", "tomcat9", "jetty9", "python-werkzeug", "exim4", "dovecot", "postfix",
+})
+
+
+def _branch(version: str | None, lookup_key: str) -> tuple[int, ...] | None:
+    """The release line of an upstream version: major.minor ("7.2.16" -> (7, 2)),
+    PostgreSQL 10+ by major alone, OpenSSL 1.x by three parts ("1.1.1f" -> (1,1,1))."""
+    nums = [int(n) for n in re.findall(r"\d+", (version or "").split("-", 1)[0])[:3]]
+    if not nums:
+        return None
+    if lookup_key.startswith("postgresql") and nums[0] >= 10:
+        return tuple(nums[:1])
+    if lookup_key == "openssl" and nums[0] < 3:
+        return tuple(nums[:3])
+    return tuple(nums[:2])
+
+
+def _fix_on_other_line(interval: str | None, version: str, lookup_key: str) -> bool:
+    """True when the matched interval's fixed bound is on a different release line
+    than the banner version (multi-branch products only)."""
+    if lookup_key not in _MULTI_BRANCH:
+        return False
+    fixed = _fixed_bound(interval) or (interval or "").strip("[]").split(",")[-1].strip()
+    if not fixed or fixed == "unbounded":
+        return False
+    upstream, _ = _split_bound(fixed)
+    a, b = _branch(version, lookup_key), _branch(upstream, lookup_key)
+    return a is not None and b is not None and a != b
+
+
+def _canonical_id(record_id: str) -> str:
+    """'DEBIAN-CVE-2025-46817' (a record with no upstream list) -> 'CVE-2025-46817', so
+    it merges with the same CVE from another record instead of duplicating it."""
+    m = re.fullmatch(r"DEBIAN-(CVE-\d{4}-\d{4,7})", record_id or "")
+    return m.group(1) if m else record_id
 
 
 def _debian_release(revision: str | None) -> int | None:
@@ -93,10 +141,17 @@ def banner_upstream(version: str) -> str:
 
 
 def _revision_is_first_packaging(revision: str | None) -> bool:
+    """True when a Debian revision means "upstream release X as first packaged":
+    "1", "0", "0.1", a stable rebuild of it ("1~deb11u1", "1~bpo11+1"). False for
+    Debian's own fixes on top: "1+deb12u1" (stable/security update), "1~deb12u4"
+    (the 4th update of that rebuild), "3", "12+deb11u1"."""
     if revision is None:
         return True          # a bound with no revision IS an upstream version
-    base = re.split(r"[~+]", revision, maxsplit=1)[0]
-    return bool(_FIRST_PACKAGING.match(base))
+    base, _, tail = revision.partition("~")
+    if not _FIRST_PACKAGING.match(base):
+        return False         # includes "1+deb12u1": a "+" update carries a patch
+    m = re.fullmatch(r"(?:deb\d+u|bpo\d+\+)(\d+)", tail)
+    return not (m and int(m.group(1)) > 1)
 
 
 def _upstream_compare(version: str, bound: str, *, fixed: bool = False) -> int | None:
@@ -110,7 +165,18 @@ def _upstream_compare(version: str, bound: str, *, fixed: bool = False) -> int |
     upstream, revision = _split_bound(bound)
     if not upstream:
         return None
-    c = dpkg_compare(version, upstream)
+    portable = _PORTABLE_SUFFIX.fullmatch(upstream[len(version):]) \
+        if upstream.startswith(version) else None
+    if portable:
+        # The banner omits OpenSSH's portable suffix ("OpenSSH_10.3" from Alpine,
+        # macOS, Windows) and the bound is that release plus "pN". Every build of the
+        # release is at least p1, so p1 counts as equal; p2+ cannot be told apart
+        # ("9.3" may be 9.3p1 or 9.3p2), so no claim is made either way.
+        if portable.group(1) != "1":
+            return None
+        c = 0
+    else:
+        c = dpkg_compare(version, upstream)
     if c == 0 and fixed and not _revision_is_first_packaging(revision):
         return -1
     return c
@@ -351,6 +417,7 @@ def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[
     else:
         compare_version = banner_upstream(version)
     release = _debian_release(candidate.distro_revision) if debian_rev else None
+    upstream_mode = not is_authoritative and not debian_rev
     if not is_authoritative and not compare_version[:1].isdigit():
         # A banner "version" that does not start with a digit ("", "for_Windows_9.5"
         # before cleaning, a hostile string) has no order against a version bound:
@@ -365,7 +432,7 @@ def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[
     # CVE. Insertion order is preserved for deterministic output.
     agg: dict[str, dict] = {}
     for rec in records:
-        cve_ids = rec.get("upstream") or [rec["id"]]
+        cve_ids = rec.get("upstream") or [_canonical_id(rec["id"])]
         for aff in rec.get("affected", []):
             if aff.get("package", {}).get("name") != candidate.lookup_key:
                 continue
@@ -380,15 +447,22 @@ def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[
                     continue
             matched, interval, range_kind = _version_in_ranges(
                 compare_version, aff.get("ranges", []),
-                upstream=not is_authoritative and not debian_rev, debian_rev=debian_rev)
+                upstream=upstream_mode, debian_rev=debian_rev)
             for cve_id in cve_ids:
                 slot = agg.setdefault(cve_id, {"bounded": None, "open": None, "affected": [],
-                                               "entries": 0, "entries_matched": 0})
+                                               "entries": 0, "entries_matched": 0,
+                                               "other_line": None})
                 slot["affected"].append(aff)
                 slot["entries"] += 1
                 slot["entries_matched"] += 1 if matched else 0
-                if matched and range_kind in ("bounded", "capped") and slot["bounded"] is None:
-                    slot["bounded"] = interval
+                if matched and range_kind in ("bounded", "capped"):
+                    # Prefer a fix on the banner's own release line (multi-branch
+                    # products); remember one on another line in case it is all there is.
+                    if upstream_mode and _fix_on_other_line(interval, compare_version,
+                                                            candidate.lookup_key):
+                        slot["other_line"] = slot["other_line"] or interval
+                    elif slot["bounded"] is None:
+                        slot["bounded"] = interval
                 elif matched and range_kind == "open" and slot["open"] is None:
                     slot["open"] = interval
 
@@ -396,8 +470,16 @@ def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[
     for cve_id, slot in agg.items():
         if debian_rev and release is None and slot["entries_matched"] < slot["entries"]:
             continue  # some Debian release already ships this exact package fixed
+        other_line = False
         if slot["bounded"] is not None:
             interval, open_ended = slot["bounded"], False
+        elif slot["other_line"] is not None and not (
+                slot["open"] is not None and _upstream_past_a_fix(compare_version, slot["affected"])):
+            # Only fixed on another release line of a multi-branch product: whether
+            # the banner's own line has a backport is unknown -> product presence.
+            interval, open_ended, other_line = slot["other_line"], False, True
+        elif slot["other_line"] is not None:
+            continue
         elif slot["open"] is not None:
             # Open-ended match only. For an inferred (banner) source, consult the
             # upstream NVD/CPE companion: if a bounded upstream range confidently
@@ -424,6 +506,8 @@ def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[
             state, basis = FindingState.potential, "range-open"
         elif distro_build:
             state, basis = FindingState.potential, "range-distro"
+        elif other_line:
+            state, basis = FindingState.potential, "range-branch"
         else:
             state = FindingState.confirmed if is_authoritative else FindingState.suspected
             basis = "range"
@@ -459,6 +543,10 @@ def match_candidate(asset_ip: str, candidate: CPECandidate, db: VulnDB) -> list[
                   + ([f"Debian package {compare_version} read from the banner, "
                       f"compared within Debian {release or '(all releases agree)'}"]
                      if debian_rev else [])
+                  + ([f"fixed on another {candidate.product} release line "
+                      f"({_fixed_bound(interval) or interval}); whether this line "
+                      "has a backported fix is unknown from the version alone — "
+                      "verify against the vendor advisory"] if other_line else [])
                   + ([f"{candidate.distro} build: the banner version cannot show "
                       "backported fixes — product presence; verify the patch level "
                       "with a credentialed scan"] if distro_build else [])

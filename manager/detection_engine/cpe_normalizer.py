@@ -413,6 +413,10 @@ def normalize_db(fact: Fact) -> list[CPECandidate]:
         if not is_really_mariadb:
             return []  # no safe OSV match available for this engine string
         confidence = "high"  # the suffix makes this unambiguous, not "medium"
+        # MariaDB announces "5.5.5-<real version>-MariaDB..." on the wire (a prefix
+        # kept for old replication clients). Read as-is the version is 5.5.5, which
+        # matched every MariaDB CVE since 2012 (accuracy lab, 17 Oct).
+        version = re.sub(r"^5\.5\.5-(?=\d)", "", version)
 
     return [CPECandidate(
         vendor=vendor, product=product, lookup_key=osv_key,

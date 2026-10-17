@@ -90,7 +90,7 @@ const SEV_TO_UI: Record<string, string> = {
 };
 // FastAPI DetectionStatus → UI DetectionCoverage
 const DETECTION_TO_UI: Record<string, string> = {
-  detected: "COVERED", prevented: "COVERED", missed: "BLIND", unknown: "PARTIAL",
+  detected: "COVERED", prevented: "COVERED", missed: "BLIND", unknown: "NOT_TESTED",
 };
 const FIND_STATUS_TO_UI: Record<string, string> = {
   open: "OPEN",
@@ -227,7 +227,7 @@ export function toUiFinding(api: any): any {
     activelyExploited: api.actively_exploited ?? api.kev_listed ?? false,
     exploitedInWild: api.actively_exploited ?? false,
     exploitValidated: api.exploit_validated ?? false,
-    detectionCoverage: DETECTION_TO_UI[api.detection_status] ?? "PARTIAL",
+    detectionCoverage: DETECTION_TO_UI[api.detection_status] ?? "NOT_TESTED",
     detectionNote: api.detection_note ?? undefined,
     fpProbability: api.fp_probability ?? 0,
     fpProbabilityRecorded: api.fp_probability != null,
