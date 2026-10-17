@@ -1,6 +1,6 @@
 import asyncio
-import gzip
 import logging
+import zlib
 from contextlib import asynccontextmanager
 
 import structlog
@@ -150,6 +150,27 @@ app = FastAPI(
 _GZIP_MAX_COMPRESSED_BYTES = 32 * 1024 * 1024    # 32 MB compressed input ceiling
 _GZIP_MAX_DECOMPRESSED_BYTES = 128 * 1024 * 1024  # 128 MB decompressed ceiling
 
+class GzipTooLarge(ValueError):
+    """The inflated body would exceed the limit."""
+
+
+def bounded_gunzip(data: bytes, limit: int) -> bytes:
+    """Inflate a (possibly multi-member) gzip body, stopping once `limit` bytes
+    have been produced. gzip.decompress inflates everything before the size can
+    be checked, so a few MB of zeros would expand to GBs in memory — and this runs
+    before authentication."""
+    out = bytearray()
+    while data:
+        inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        out += inflater.decompress(data, limit + 1 - len(out))
+        if len(out) > limit or inflater.unconsumed_tail:
+            raise GzipTooLarge
+        if not inflater.eof:
+            raise EOFError("truncated gzip member")
+        data = inflater.unused_data.lstrip(b"\x00")  # trailing padding is allowed
+    return bytes(out)
+
+
 # ── gzip request decoding ─────────────────────────────────────────────────────
 # Probes gzip large scan-result payloads (a /24 sweep is MBs of JSON). Starlette
 # decodes Content-Encoding on *responses* but not *requests*, so without this a
@@ -186,17 +207,16 @@ class GzipRequestMiddleware:
             elif msg["type"] == "http.disconnect":
                 break
         try:
-            body = gzip.decompress(b"".join(chunks))
-        except (OSError, EOFError):
-            # Not valid gzip — reject cleanly rather than corrupting the route.
-            return await JSONResponse(
-                {"detail": "malformed gzip request body"}, status_code=400,
-            )(scope, receive, send)
-
-        if len(body) > _GZIP_MAX_DECOMPRESSED_BYTES:
+            body = bounded_gunzip(b"".join(chunks), _GZIP_MAX_DECOMPRESSED_BYTES)
+        except GzipTooLarge:
             return await JSONResponse(
                 {"detail": "decompressed request body too large"},
                 status_code=413,
+            )(scope, receive, send)
+        except (OSError, EOFError, zlib.error):
+            # Not valid gzip — reject cleanly rather than corrupting the route.
+            return await JSONResponse(
+                {"detail": "malformed gzip request body"}, status_code=400,
             )(scope, receive, send)
 
         # Rewrite headers: drop content-encoding, fix content-length.

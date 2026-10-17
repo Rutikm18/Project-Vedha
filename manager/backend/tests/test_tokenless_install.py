@@ -178,9 +178,28 @@ def test_the_right_code_is_accepted_with_or_without_the_dash_and_in_any_case(mon
 
 def test_with_the_switch_off_the_old_one_click_approval_still_works_without_a_code(monkeypatch):
     _settings(monkeypatch)
+    monkeypatch.setattr(pe, "_single_tenant_mode", AsyncMock(return_value=True))   # a one-customer Manager
     monkeypatch.setattr(pe, "_provision_agent_for_site", AsyncMock(return_value=SimpleNamespace(id=uuid.uuid4())))
     monkeypatch.setattr(pe, "_next_probe_name", AsyncMock(return_value="vedha_agent_02"))
     assert _approve(_row())["probe_name"] == "vedha_agent_02"
+
+
+def test_on_a_shared_manager_one_click_without_a_code_cannot_claim_an_unclaimed_device(monkeypatch):
+    _settings(monkeypatch)
+    monkeypatch.setattr(pe, "_single_tenant_mode", AsyncMock(return_value=False))  # several tenants
+    with pytest.raises(HTTPException) as exc:
+        _approve(_row())
+    assert exc.value.status_code == 403 and "more than one tenant" in exc.value.detail
+
+
+@pytest.mark.parametrize("tokenless", [False, True])
+def test_on_a_shared_manager_the_devices_own_code_still_claims_it(monkeypatch, tokenless):
+    """The code is the proof that the operator holds the device, the same proof POST /approve takes."""
+    _settings(monkeypatch, agent_allow_tokenless_install=tokenless)
+    monkeypatch.setattr(pe, "_single_tenant_mode", AsyncMock(return_value=False))
+    monkeypatch.setattr(pe, "_provision_agent_for_site", AsyncMock(return_value=SimpleNamespace(id=uuid.uuid4())))
+    monkeypatch.setattr(pe, "_next_probe_name", AsyncMock(return_value="vedha_agent_03"))
+    assert _approve(_row(), user_code=CODE)["probe_name"] == "vedha_agent_03"
 
 
 # ── the open request queue is capped ─────────────────────────────────────────

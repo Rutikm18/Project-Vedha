@@ -14,7 +14,10 @@ from fastapi.testclient import TestClient
 
 from app.security_headers import SecurityHeadersMiddleware
 from app.services import notifications
-from app.utils.outbound import UnsafeOutboundURL, validate_outbound_url
+from app.services import outbound_guard as og
+from app.services.outbound_guard import OutboundBlocked, check_url
+
+_REAL_RESOLVE = og._resolve     # conftest swaps in a stub resolver for every other test
 
 
 # ── SSRF guard ────────────────────────────────────────────────────────────────
@@ -32,40 +35,38 @@ from app.utils.outbound import UnsafeOutboundURL, validate_outbound_url
     "",
 ])
 def test_always_refused(url):
-    with pytest.raises(UnsafeOutboundURL):
-        validate_outbound_url(url, allow_private=True)
+    with pytest.raises(OutboundBlocked):
+        check_url(url)
 
 
 @pytest.mark.parametrize("url", ["http://10.0.0.5/hook", "http://192.168.1.10/", "http://[fd00::1]/"])
 def test_private_refused_unless_allowed(url):
-    with pytest.raises(UnsafeOutboundURL):
-        validate_outbound_url(url)
-    assert validate_outbound_url(url, allow_private=True) == url      # self-hosted Jira on a LAN
+    with pytest.raises(OutboundBlocked):
+        check_url(url, public_only=True)            # a Slack webhook / critical webhook
+    assert check_url(url) == url                    # self-hosted Jira on a LAN (the default policy)
 
 
 def test_public_literal_allowed():
     url = "https://93.184.216.34/services/T000/B000/xxx"
-    assert validate_outbound_url(url) == url
+    assert check_url(url, public_only=True) == url
 
 
 def test_hostname_resolving_to_internal_address_refused(monkeypatch):
-    import socket
-    from app.utils import outbound
-    monkeypatch.setattr(outbound, "_getaddrinfo",
-                        lambda *a, **k: [(socket.AF_INET, 0, 0, "", ("169.254.169.254", 0))])
-    with pytest.raises(UnsafeOutboundURL):
-        validate_outbound_url("https://totally-legit.example.com/hook", allow_private=True)
+    import ipaddress
+    monkeypatch.setattr(og, "_resolve", lambda host, port: [ipaddress.ip_address("169.254.169.254")])
+    with pytest.raises(OutboundBlocked):
+        check_url("https://totally-legit.example.com/hook")
 
 
 def test_unresolvable_host_refused(monkeypatch):
     import socket
-    from app.utils import outbound
 
     def boom(*a, **k):
         raise socket.gaierror("nope")
-    monkeypatch.setattr(outbound, "_getaddrinfo", boom)
-    with pytest.raises(UnsafeOutboundURL):
-        validate_outbound_url("https://does-not-exist.invalid/")
+    monkeypatch.setattr(og, "_resolve", _REAL_RESOLVE)
+    monkeypatch.setattr(og.socket, "getaddrinfo", boom)
+    with pytest.raises(OutboundBlocked):
+        check_url("https://does-not-exist.invalid/")
 
 
 def test_delivery_re_checks_at_send_time():

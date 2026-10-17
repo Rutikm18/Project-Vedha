@@ -231,43 +231,10 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
                 media_type="application/json",
             )
 
-        if payload.get("role") == "agent" and payload.get("typ") == "device_access":
-            if payload.get("aud") != "vedha-probe-api":
-                return Response(
-                    content='{"detail":"Wrong device token audience"}',
-                    status_code=401,
-                    media_type="application/json",
-                )
-            try:
-                async with AsyncSessionLocal() as db:
-                    agent = (await db.execute(
-                        select(Agent).where(
-                            Agent.id == uuid.UUID(str(payload.get("sub"))),
-                            Agent.tenant_id == uuid.UUID(str(payload.get("tenant_id"))),
-                        )
-                    )).scalar_one_or_none()
-            except Exception as exc:
-                logger.error("auth.device_lookup_failed", error=str(exc))
-                return Response(content='{"detail":"Device authentication unavailable"}', status_code=503, media_type="application/json")
-            if (
-                agent is None
-                or agent.lifecycle_status != "active"
-                or agent.credential_generation != payload.get("credential_generation")
-            ):
-                return Response(
-                    content='{"detail":"Device credential revoked, disabled, or stale"}',
-                    status_code=401,
-                    media_type="application/json",
-                )
-            # Access expiry set from Fleet. An in-flight scan may still upload its
-            # finished hosts (result/chunk routes); every other device route is
-            # refused so no new work starts.
-            if is_expired(agent.access_expires_at) and not path_allows_after_expiry(path):
-                return Response(
-                    content=f'{{"detail":{json.dumps(EXPIRED_MESSAGE)}}}',
-                    status_code=403,
-                    media_type="application/json",
-                )
+        if payload.get("role") == "agent":
+            rejection = await self._check_agent_credential(payload, path)
+            if rejection is not None:
+                return rejection
 
         request.state.user_id = payload["sub"]
         request.state.tenant_id = payload["tenant_id"]
@@ -286,6 +253,58 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         structlog.contextvars.clear_contextvars()
         return response
+
+    async def _check_agent_credential(self, payload: dict, path: str) -> Response | None:
+        """Every agent token is checked against the live agent row, so Fleet's
+        disable and access-expiry controls hold for it.
+
+        Device tokens (typ=device_access) must also match the current credential
+        generation. Legacy agent JWTs (from /agents/register, valid for a year)
+        used to skip this lookup entirely, so an expired or removed probe kept
+        polling for new jobs until the token itself lapsed.
+        """
+        device = payload.get("typ") == "device_access"
+        if device and payload.get("aud") != "vedha-probe-api":
+            return Response(
+                content='{"detail":"Wrong device token audience"}',
+                status_code=401,
+                media_type="application/json",
+            )
+        try:
+            agent_id = uuid.UUID(str(payload.get("sub")))
+            tenant_id = uuid.UUID(str(payload.get("tenant_id")))
+        except ValueError:
+            agent_id = tenant_id = None
+        agent = None
+        if agent_id is not None:
+            try:
+                async with AsyncSessionLocal() as db:
+                    agent = (await db.execute(
+                        select(Agent).where(Agent.id == agent_id, Agent.tenant_id == tenant_id)
+                    )).scalar_one_or_none()
+            except Exception as exc:
+                logger.error("auth.device_lookup_failed", error=str(exc))
+                return Response(content='{"detail":"Device authentication unavailable"}', status_code=503, media_type="application/json")
+        if (
+            agent is None
+            or agent.lifecycle_status != "active"
+            or (device and agent.credential_generation != payload.get("credential_generation"))
+        ):
+            return Response(
+                content='{"detail":"Device credential revoked, disabled, or stale"}',
+                status_code=401,
+                media_type="application/json",
+            )
+        # Access expiry set from Fleet. An in-flight scan may still upload its
+        # finished hosts (result/chunk routes); every other device route is
+        # refused so no new work starts.
+        if is_expired(agent.access_expires_at) and not path_allows_after_expiry(path):
+            return Response(
+                content=f'{{"detail":{json.dumps(EXPIRED_MESSAGE)}}}',
+                status_code=403,
+                media_type="application/json",
+            )
+        return None
 
     async def _authenticate_pat(self, token: str, path: str, method: str) -> dict | None:
         token_hash = hash_pat_token(token)

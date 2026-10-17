@@ -25,7 +25,7 @@ from app.models.engagement import Engagement
 from app.models.enums import FindingSeverity, FindingStatus
 from app.models.finding import Finding
 from app.utils.hash import dedup_hash
-from app.utils.outbound import validate_outbound_url
+from app.services.outbound_guard import check_url
 from app.vuln.enrichment import VulnEnrichmentService
 
 logger = structlog.get_logger()
@@ -153,8 +153,8 @@ async def _fire_critical_webhook(
         return
 
     try:
-        await asyncio.to_thread(validate_outbound_url, webhook_url)
-    except ValueError as exc:
+        await asyncio.to_thread(check_url, webhook_url, public_only=True)
+    except ValueError as exc:     # OutboundBlocked is a ValueError
         logger.warning("enrichment.webhook.blocked", error=str(exc))
         return
 

@@ -3,10 +3,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
+import structlog
 from fastapi import HTTPException, status
 
 from app.config import get_settings
 
+logger = structlog.get_logger()
 settings = get_settings()
 
 _ALGORITHM = settings.jwt_algorithm
@@ -98,4 +100,8 @@ def decode_token(token: str) -> dict[str, Any]:
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
     except jwt.InvalidTokenError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token: {e}")
+        # The library's reason (bad signature, wrong algorithm, malformed segment...)
+        # helps someone probing the verifier more than it helps a client: keep it in
+        # the log, answer with a fixed message.
+        logger.info("auth.token_invalid", reason=type(e).__name__)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")

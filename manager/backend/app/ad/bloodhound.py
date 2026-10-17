@@ -74,14 +74,18 @@ class BloodHoundCollector:
         username = credentials.get("username", "")
         password = credentials.get("password", "")
 
+        # The password must not be on the command line: /proc/<pid>/cmdline is readable
+        # by every local user. With no -p, bloodhound-python reads it with getpass,
+        # which falls back to stdin when there is no controlling terminal (hence
+        # start_new_session below). Values use the -x=VALUE form so one that starts
+        # with "-" can never be parsed as another option.
         cmd = [
             self.COLLECTOR_BIN,
-            "-u", username,
-            "-p", password,
-            "-d", domain,
-            "-dc", dc_ip,
-            "-ns", dc_ip,
-            "-c", ",".join(collection_methods),
+            f"-u={username}",
+            f"-d={domain}",
+            f"-dc={dc_ip}",
+            f"-ns={dc_ip}",
+            f"-c={','.join(collection_methods)}",
             # No --zip: bloodhound-python writes individual JSON files we ingest directly.
         ]
         # bloodhound-python writes output to CWD; run inside output_dir.
@@ -91,11 +95,15 @@ class BloodHoundCollector:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 cwd=self._output_dir,
+                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                start_new_session=True,
             )
             try:
-                _stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=float(timeout_sec))
+                _stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(input=f"{password}\n".encode()), timeout=float(timeout_sec),
+                )
             except asyncio.TimeoutError:
                 proc.kill()
                 logger.error("ad.bloodhound.collect.timeout")

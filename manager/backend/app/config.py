@@ -176,6 +176,30 @@ class Settings(BaseSettings):
     sla_hours_low: int = 720      # 30 days
     sla_hours_info: int = 0       # no SLA
 
+    # Outbound calls to tenant-configured endpoints (SIEM/EDR, Jira, ServiceNow, Slack
+    # webhook, SMTP). Loopback, link-local (169.254/16 incl. the cloud metadata service)
+    # and other special-purpose addresses are refused in every mode, so a tenant admin
+    # cannot aim the Manager at itself or at the metadata service. Private addresses
+    # (RFC 1918, ULA, CGNAT) are allowed by default because on-prem Jira, ServiceNow,
+    # SIEM, EDR and mail servers live there; Slack and critical-webhook targets must
+    # still be public. OUTBOUND_ALLOW_PRIVATE_NETWORKS=false is the strict mode: private
+    # targets are refused (and https is required) unless the host is named in
+    # OUTBOUND_HOST_ALLOWLIST (comma-separated).
+    outbound_allow_private_networks: bool = True
+    outbound_host_allowlist: str = ""
+
+    # Metasploit RPC (msfrpcd) used by the exploit engine. Fixed by the operator:
+    # never taken from an API request, or any tester could point the Manager at an
+    # arbitrary host/port and read the connection error back. No default password
+    # (the stock "msf" is refused); with none set, exploit routes answer 503.
+    # msfrpcd ships a self-signed certificate: set MSF_RPC_CA_BUNDLE to its CA, or
+    # MSF_RPC_TLS_VERIFY=false to accept it deliberately (logged at connect time).
+    msf_rpc_host: str = "127.0.0.1"
+    msf_rpc_port: int = 55553
+    msf_rpc_password: str = ""
+    msf_rpc_tls_verify: bool = True
+    msf_rpc_ca_bundle: str = ""
+
     # Legacy shared-secret bootstrap is unsafe for multi-tenant production. It is
     # disabled even when an old key remains in the environment unless a developer
     # deliberately enables the compatibility flag. Device-key enrollment replaces

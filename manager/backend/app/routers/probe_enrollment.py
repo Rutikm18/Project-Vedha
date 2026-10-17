@@ -134,6 +134,23 @@ def _verify_signature(public_key_b64: str, message: str, signature_b64: str) -> 
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid device proof-of-possession signature") from exc
 
 
+async def _single_tenant_mode(db) -> bool:
+    """True when this Manager serves exactly one active tenant.
+
+    A new device's enrollment request is unclaimed (tenant_id NULL) until someone
+    approves it, and anyone can file one without logging in. With one tenant,
+    "unclaimed" can only mean theirs, so the fleet list may show it and one-click
+    approval may claim it. With several tenants it is anyone's: listing it, or
+    letting a tenant claim it by id, would let tenant A adopt a probe sitting in
+    tenant B's network. There the operator must prove they hold the device by
+    typing the user code it displays (POST /approve), or use an enroll token.
+    """
+    active = (await db.execute(
+        select(func.count()).select_from(Tenant).where(Tenant.is_active.is_(True))
+    )).scalar_one()
+    return active == 1
+
+
 async def _rate_limit(redis, request: Request, bucket: str, limit: int) -> None:
     # Proxy-aware: behind Caddy the socket peer is Caddy for every probe.
     source = client_ip(request)
@@ -824,11 +841,13 @@ async def list_enrollment_requests(
     db: DB,
     current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
 ):
+    visible = ProbeEnrollmentRequest.tenant_id == current_user.tenant_id
+    if await _single_tenant_mode(db):
+        visible = visible | ProbeEnrollmentRequest.tenant_id.is_(None)
     rows = (await db.execute(
         select(ProbeEnrollmentRequest)
         .where(
-            (ProbeEnrollmentRequest.tenant_id == current_user.tenant_id)
-            | (ProbeEnrollmentRequest.tenant_id.is_(None)),
+            visible,
             ProbeEnrollmentRequest.state.in_(["awaiting_approval", "approved"]),
         )
         .order_by(ProbeEnrollmentRequest.created_at)
@@ -901,7 +920,7 @@ async def approve_request_simple(
         .where(ProbeEnrollmentRequest.id == request_id)
         .with_for_update()
     )).scalar_one_or_none()
-    if row is None:
+    if row is None or (row.tenant_id is not None and row.tenant_id != current_user.tenant_id):
         raise HTTPException(404, "Enrollment request not found")
     if row.expires_at <= now:
         row.state = "expired"
@@ -910,6 +929,7 @@ async def approve_request_simple(
         raise HTTPException(409, f"Enrollment request is already {row.state}")
 
     supplied = (body.user_code or "").replace("-", "").strip().upper()
+    code_verified = False
     if supplied or getattr(get_settings(), "agent_allow_tokenless_install", False):
         if not supplied:
             raise HTTPException(422, "Enter the code shown on the machine: approvals need it while tokenless install is on")
@@ -917,6 +937,18 @@ async def approve_request_simple(
             logger.warning("probe_enrollment.approval_code_mismatch", request_id=str(row.id),
                            user_id=str(current_user.user_id))
             raise HTTPException(403, "That code does not match this device. Check the code on the machine and try again")
+        code_verified = True
+
+    # An unclaimed request is anyone's on a Manager that serves several tenants. Without
+    # the device's own code (the same proof POST /approve asks for) it cannot be claimed
+    # by id from the list; with it, the operator has shown they hold the device.
+    if row.tenant_id is None and not code_verified and not await _single_tenant_mode(db):
+        raise HTTPException(
+            403,
+            "This Manager serves more than one tenant, so a device request cannot be "
+            "claimed from the list. Approve it with the code the device displays "
+            "(POST /probe-enrollment/approve) or enroll it with an enroll token.",
+        )
 
     # Auto-fill everything the operator would otherwise type; blanks fall back to
     # the device's own reported data so the subset-check in _provision always passes.
@@ -957,7 +989,7 @@ async def approve_enrollment(
         .with_for_update()
     )).scalar_one_or_none()
     now = datetime.now(timezone.utc)
-    if row is None:
+    if row is None or (row.tenant_id is not None and row.tenant_id != current_user.tenant_id):
         raise HTTPException(404, "Enrollment code not found")
     if row.expires_at <= now:
         row.state = "expired"

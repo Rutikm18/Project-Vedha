@@ -55,6 +55,21 @@ x-backend-env: &backend-env
   NEO4J_URI: bolt://neo4j:7687
   NEO4J_USER: ${NEO4J_USER:-neo4j}
   NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
+  # SSRF policy for tenant-configured outbound targets (SIEM/EDR, Jira, ServiceNow,
+  # Slack webhook, SMTP). Loopback, link-local/metadata and reserved addresses are always
+  # refused. Private addresses are allowed by default (on-prem SIEM/Jira/mail servers);
+  # Slack and critical-webhook targets must be public. Set OUTBOUND_ALLOW_PRIVATE_NETWORKS=false
+  # for strict mode (https only, private refused) and name the few private hosts you need
+  # in OUTBOUND_HOST_ALLOWLIST (comma-separated).
+  OUTBOUND_ALLOW_PRIVATE_NETWORKS: ${OUTBOUND_ALLOW_PRIVATE_NETWORKS:-true}
+  OUTBOUND_HOST_ALLOWLIST: ${OUTBOUND_HOST_ALLOWLIST:-}
+  # Metasploit RPC for the exploit engine. No default password: exploit routes answer
+  # 503 until MSF_RPC_PASSWORD is set to a strong, non-default value.
+  MSF_RPC_HOST: ${MSF_RPC_HOST:-127.0.0.1}
+  MSF_RPC_PORT: ${MSF_RPC_PORT:-55553}
+  MSF_RPC_PASSWORD: ${MSF_RPC_PASSWORD:-}
+  MSF_RPC_TLS_VERIFY: ${MSF_RPC_TLS_VERIFY:-true}
+  MSF_RPC_CA_BUNDLE: ${MSF_RPC_CA_BUNDLE:-}
   # Empty = automatic premium-first chain over every configured key
   # (anthropic -> openai -> gemini -> groq -> openrouter); LLM_CHAIN sets the
   # order (docs/adr/0004-ai-fallback-chain.md). A value in LLM_PROVIDER is tried
