@@ -647,7 +647,7 @@ _RULE_CATEGORY: dict[str, str] = {
     "POSTURE-CWMP-EXPOSED": "open_mgmt_port", "POSTURE-DEFAULT-CRED-CANDIDATE": "default_credentials",
     "POSTURE-FTP-ANONYMOUS-LOGIN": "anon_ftp",
     "POSTURE-EXPOSED-CONTAINER": "container_api", "POSTURE-EXPOSED-REMOTE_ACCESS": "open_mgmt_port",
-    "POSTURE-EXPOSED-ADMIN_UI": "open_mgmt_port",
+    "POSTURE-EXPOSED-ADMIN_UI": "open_mgmt_port", "POSTURE-EXPOSED-PRINTER": "open_mgmt_port",
     "CORR-NTLM-RELAY-PATH": "smb_signing", "CORR-LEGACY-WINDOWS-SURFACE": "smbv1",
     "CORR-CLEARTEXT-CLUSTER": "cleartext_protocol", "CORR-DB-UNAUTH-EXPOSED": "unauth_datastore",
     "CORR-SNMP-PUBLIC-LATERAL": "snmp_exposure", "CORR-AD-EXPOSURE": "ldap_anonymous",

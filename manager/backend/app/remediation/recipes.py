@@ -1348,6 +1348,26 @@ _E: list[Recipe] = [
         "Restrict {port} to admin hosts.",
         V("port_scan", "{ip}:{port} not reachable from untrusted segments", "filtered"),
         ("CWE-284", "MITRE T1133"), effort="low"),
+
+    Recipe(
+        "POSTURE-EXPOSED-PRINTER", 1, "Restrict the raw print port on {host}:{port}", "mitigation",
+        "mitigate", "Raw printing (9100) reachable only from the print servers",
+        (
+            _FIREWALL_CONTAIN,
+            S("fix", "Allow raw printing only from the print servers",
+              "The raw print port on {host}:{port} accepts print jobs and PJL commands from "
+              "anyone who can reach it, with no authentication.",
+              gen=("ACL {port}/tcp on the printer (or its switch port) to the print servers",
+                   "Route user printing through the print server (IPP/SMB) instead of direct 9100"),
+              risk="low", rollback="Restore the previous printer ACL"),
+            S("hardening", "Disable PJL file-system and configuration access",
+              "PJL can read stored jobs and files and change settings on many printers.",
+              gen=("In the printer's admin settings, disable PJL file-system access and "
+                   "PJL configuration changes, and set an admin password",)),
+        ),
+        "Allow {port}/tcp to the printer only from the print servers.",
+        V("port_scan", "{ip}:{port} not reachable from user and untrusted segments", "filtered"),
+        ("CWE-306", "MITRE T1046"), effort="low"),
 ]
 
 

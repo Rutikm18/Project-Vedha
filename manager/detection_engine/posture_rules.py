@@ -1870,6 +1870,7 @@ _EXPOSED_TITLES = {
     "cleartext":     "Cleartext protocol exposed on {port} ({svc})",
     "remote_access": "Remote-access service exposed on {port} ({svc})",
     "admin_ui":      "Admin/dev interface exposed on {port} ({svc})",
+    "printer":       "Printer raw-print port open on {port} ({svc})",
 }
 
 
@@ -1941,7 +1942,7 @@ def detect_exposed_services_traced(
     port that was NOT re-scanned gets no trace, so its finding stays open —
     absence of evidence is never a clean miss."""
     from port_intel import (catalog_categories, classify_port,  # standalone, no cycle
-                            escalate)
+                            exposure_severity)
 
     exposure = exposure or {}
     exp = exposure.get(asset.ip, {})
@@ -2003,7 +2004,7 @@ def detect_exposed_services_traced(
                     reason="open port re-identified as a benign occupant"))
             continue
         internet = (port in externally) or bool(exp_internet)
-        severity = escalate(risk.severity) if internet else risk.severity
+        severity, bod_23_02 = exposure_severity(risk.category, risk.severity, internet)
         # A port scan proves the port is open, not what runs on it. Only a protocol-level
         # observation (service_banner's identified protocol / Basic-over-cleartext flag)
         # supports CONFIRMED; a bare port or a banner string is an inference → SUSPECTED.
@@ -2020,6 +2021,12 @@ def detect_exposed_services_traced(
                               "service": risk.service, "internet_facing": internet,
                               "evidence_basis": basis,
                               DEDUP_KEY: condition_key(CLASS_EXPOSED, port, "tcp")}
+        if bod_23_02:
+            # Internet-facing management interface: why it is at least High.
+            ev["bod_23_02"] = True
+            ev["severity_basis"] = ("internet-facing management interface "
+                                    "(CISA BOD 23-02: remove from the internet or put "
+                                    "behind an access-control point within 14 days)")
         if banners.get(port):
             ev["banner"] = banners[port]
         if svc_labels.get(port):

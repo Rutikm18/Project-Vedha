@@ -378,6 +378,23 @@ _POSTURE_SEV = {
 }
 
 
+# (port, superseded exposed-service rule) pairs the port catalog has relabelled.
+# 9100 was "JetDirect / Prometheus node-exporter" under ADMIN_UI on every printer; it
+# is raw printing (POSTURE-EXPOSED-PRINTER) unless HTTP was observed.
+_CATALOG_RELABELS = {(9100, "POSTURE-EXPOSED-ADMIN_UI")}
+
+
+def _is_catalog_relabel(prev_ev: dict, incoming: dict) -> bool:
+    try:
+        port = int(incoming.get("port") or prev_ev.get("port") or 0)
+    except (TypeError, ValueError):
+        return False
+    old_rule, new_rule = prev_ev.get("rule_id"), incoming.get("rule_id")
+    return (bool(new_rule) and old_rule != new_rule
+            and str(new_rule).startswith("POSTURE-EXPOSED-")
+            and (port, old_rule) in _CATALOG_RELABELS)
+
+
 def _backfill_cve_text(finding, d: dict) -> None:
     """A CVE finding created before cve_text existed has no remediation and the
     matcher's raw notes as its description. Fill those on reaffirmation; never touch
@@ -543,6 +560,14 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             if dup is not None:
                 new_sev = _POSTURE_SEV.get(p.get("severity"), FindingSeverity.info)
                 prev_ev = dup.evidence if isinstance(dup.evidence, dict) else {}
+                if _is_catalog_relabel(prev_ev, p):
+                    # Our own port catalog corrected its label for this port: the
+                    # open finding takes the corrected title (it is the same
+                    # producer, not a second signal). Severity never goes down.
+                    dup.title = title
+                    dup.severity = stronger_severity(dup.severity, new_sev)
+                    prev_ev = {**{k: v for k, v in prev_ev.items() if k != "signals"},
+                               "rule_id": p.get("rule_id")}
                 different_producer = bool(condition) and (
                     dup.title != title or prev_ev.get("rule_id") != p.get("rule_id"))
                 if different_producer or prev_ev.get("signals"):
