@@ -384,6 +384,36 @@ _CONTENT: dict[str, dict[str, str]] = {
             "parties."
         ),
     },
+    "xdmcp_login": {
+        "technical": (
+            "The X display manager answered an XDMCP query with Willing: it offers a graphical "
+            "login session to the host that asked. XDMCP and the X11 session it starts are not "
+            "encrypted."
+        ),
+        "impact": (
+            "Anyone who can reach UDP/177 gets a login screen to guess passwords against, and "
+            "anyone on the network path can read the session, including the password typed at "
+            "the login screen and every keystroke after it."
+        ),
+        "business": (
+            "a remote graphical login reachable outside the VPN and any multi-factor control, "
+            "with credentials crossing the network in cleartext."
+        ),
+    },
+    "xdmcp_exposure": {
+        "technical": (
+            "The X display manager answered an XDMCP query with Unwilling: XDMCP is running and "
+            "reachable, although it declined to offer this host a login."
+        ),
+        "impact": (
+            "The display manager discloses its host name and status, and its access list alone "
+            "decides which other hosts it will offer an unencrypted remote login."
+        ),
+        "business": (
+            "a legacy remote-login service runs where it is probably not needed, one access-list "
+            "change away from exposing logins."
+        ),
+    },
     "ike_aggressive": {
         "technical": (
             "The VPN gateway answered in IKEv1 aggressive mode. With a pre-shared key, "
@@ -671,6 +701,8 @@ _RULE_CATEGORY: dict[str, str] = {
     "POSTURE-UNIDENTIFIED-SERVICE": "unidentified_service",
     "POSTURE-NETBIOS-EXPOSED": "netbios_exposure",
     "POSTURE-MDNS-EXPOSED": "mdns_exposure",
+    "POSTURE-XDMCP-WILLING": "xdmcp_login",
+    "POSTURE-XDMCP-EXPOSED": "xdmcp_exposure",
     "POSTURE-IKE-AGGRESSIVE-MODE": "ike_aggressive",
 }
 
@@ -732,6 +764,10 @@ _CAUSE: dict[str, dict[str, Any]] = {
                          "preconditions": ["Network access to UDP/137"]},
     "mdns_exposure": {"root_cause": "The multicast-DNS responder answers queries that did not originate on its local link.",
                       "preconditions": ["Network access to UDP/5353"]},
+    "xdmcp_login": {"root_cause": "XDMCP is enabled in the display manager and its access list (Xaccess) lets this host request a session.",
+                    "preconditions": ["Network access to UDP/177", "A password to guess, or a network position that can read the session"]},
+    "xdmcp_exposure": {"root_cause": "XDMCP is enabled in the display manager and UDP/177 is reachable from networks that should not reach it.",
+                       "preconditions": ["Network access to UDP/177"]},
     "ike_aggressive": {"root_cause": "The VPN gateway accepts IKEv1 aggressive mode, often left enabled for compatibility with pre-shared-key peers.",
                        "preconditions": ["Network access to UDP/500", "A weak or guessable pre-shared key for the offline attack to succeed"]},
     "unidentified_service": {"root_cause": "A service listens on a port that no probe could identify; its owner and purpose are not recorded.",

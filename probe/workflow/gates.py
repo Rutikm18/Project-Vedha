@@ -57,6 +57,9 @@ VA_RISK_PORTS = [
     # (A4): BGP, SLP, AFP, EPMD, Cisco Smart Install, Radmin. Swept so the unidentified-port
     # fact exists for them; the manager decides what each one means.
     179, 427, 548, 4369, 4786, 4899,
+    # XDMCP (177): the manager's catalogue names a TCP listener here. The display manager
+    # itself answers on UDP/177, which udp_scan asks with an XDMCP Query (UDP_PORTS).
+    177,
 ]
 
 # Port-TRIGGERED branches (A2): the IoT/mobile checks run on any profile, but only for a
@@ -82,7 +85,8 @@ AI_PORTS = {11434, 8000, 8080, 5000, 3000, 1234, 8001, 7860, 11435}  # DEFAULT_A
 # Every service udp_scanner has a probe for (UDP_PROBES.keys()). The default used to be five
 # of the twelve, so TFTP, IKE, IPMI, SSDP, SIP and mDNS were never asked even though the
 # manager has rules for them. A test pins this to UDP_PROBES so it cannot fall behind again.
-UDP_PORTS = {53, 69, 123, 137, 161, 500, 623, 1900, 4500, 5060, 5353, 11211}
+# 177 is XDMCP, a UDP protocol: this is where a display manager actually answers.
+UDP_PORTS = {53, 69, 123, 137, 161, 177, 500, 623, 1900, 4500, 5060, 5353, 11211}
 SNMP_PORTS = {161}
 SSH_PORTS = {22, 2222}
 LDAP_PORTS = {389, 636, 3268, 3269}

@@ -98,4 +98,5 @@ jobs:
             tests/test_branch_registry.py \
             tests/test_tier1_wiring_gate.py \
             tests/test_risk_port_coverage.py \
-            tests/test_tls_port_coverage.py
+            tests/test_tls_port_coverage.py \
+            tests/test_xdmcp.py

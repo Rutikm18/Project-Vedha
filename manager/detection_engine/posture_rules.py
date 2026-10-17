@@ -537,6 +537,52 @@ def _mdns_exposed(f: Fact) -> Optional[dict]:
     return None
 
 
+def _reply_text(value: Any, limit: int = 128) -> str:
+    """A string the scanned host chose (via the agent): printable only, and short."""
+    return "".join(ch if ch.isprintable() else "?" for ch in str(value or "")[:limit])
+
+
+def _xdmcp_reply(f: Fact):
+    """The display manager's answer to the agent's XDMCP Query (UDP/177), as fact data;
+    Undetermined when the Query met silence; None when the fact is not about XDMCP, the
+    port is closed, or what answered was not XDMCP."""
+    d = _d(f)
+    if str(d.get("service") or d.get("service_guess") or "").lower() != "xdmcp":
+        return None
+    if f.status == "open|filtered":
+        # Silence on UDP: a display manager that ignored us, or a firewall that dropped the
+        # Query. It proves nothing, so it must never be the re-check that clears a finding.
+        return Undetermined("no reply to the XDMCP Query (open|filtered)")
+    if f.status != "open" or d.get("responded") is not True:
+        return None
+    return d
+
+
+def _xdmcp_willing(f: Fact):
+    """XDMCP answered Willing: this display manager offers a remote X login to the host that
+    asked, and XDMCP and the X session it starts are unencrypted."""
+    d = _xdmcp_reply(f)
+    if not isinstance(d, dict):
+        return d
+    if d.get("xdmcp_opcode") != "willing":
+        return None
+    return {"hostname": _reply_text(d.get("xdmcp_hostname")),
+            "status": _reply_text(d.get("xdmcp_status")),
+            "authentication": _reply_text(d.get("xdmcp_auth")) or None}
+
+
+def _xdmcp_exposed(f: Fact):
+    """XDMCP answered Unwilling: the display manager is running and reachable but declined
+    this host. Its access list decides who else it would offer a login to."""
+    d = _xdmcp_reply(f)
+    if not isinstance(d, dict):
+        return d
+    if d.get("xdmcp_opcode") != "unwilling":
+        return None
+    return {"hostname": _reply_text(d.get("xdmcp_hostname")),
+            "status": _reply_text(d.get("xdmcp_status"))}
+
+
 def _ike_aggressive(f: Fact) -> Optional[dict]:
     """An IKEv1 responder whose reply used the AGGRESSIVE exchange (type 4). With a pre-shared
     key, aggressive mode sends the identity and an authentication hash in the clear, which can be
@@ -1221,6 +1267,24 @@ RULES: list[PostureRule] = [
         "the responder (Avahi/Bonjour) on servers that do not need service discovery. It "
         "discloses hostnames and services and can be used as a reflection source.",
         fp_notes="Fires only when a unicast query got an mDNS response (QR bit set).",
+        requires=()),
+    PostureRule(
+        "POSTURE-XDMCP-WILLING", "XDMCP display manager offers a remote X login", "high",
+        "CWE-319", "T1021", "exposure", ("udp_scan",), _xdmcp_willing,
+        "Disable XDMCP in the display manager (GDM: Enable=false under [xdmcp] in "
+        "/etc/gdm3/custom.conf; LightDM: enabled=false under [XDMCPServer]; xdm: "
+        "DisplayManager.requestPort: 0) and block UDP/177 at the network boundary. For remote "
+        "desktops use SSH with X11 forwarding, or VNC/RDP behind a VPN.",
+        fp_notes="Fires only on an XDMCP Willing reply to the agent's Query: the display "
+                 "manager itself offered this host a login. Silence neither raises nor clears it.",
+        requires=()),
+    PostureRule(
+        "POSTURE-XDMCP-EXPOSED", "XDMCP display manager reachable", "low", "CWE-200",
+        "T1046", "exposure", ("udp_scan",), _xdmcp_exposed,
+        "Disable XDMCP if remote X logins are not needed; otherwise restrict it with the "
+        "display manager's access list (Xaccess) and block UDP/177 from untrusted networks.",
+        fp_notes="Fires on an XDMCP Unwilling reply: the service runs and answers but refused "
+                 "this host. Its access list may still offer other hosts a login.",
         requires=()),
     PostureRule(
         "POSTURE-IKE-AGGRESSIVE-MODE", "IKE aggressive mode offered", "medium", "CWE-522",
