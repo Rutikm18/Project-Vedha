@@ -58,9 +58,11 @@ export function exportMenuPosition(
   return { top: button.bottom + 8, left, width };
 }
 
-export function ReportExportMenu({ engagementId, disabled = false, onPrint }: {
+export function ReportExportMenu({ engagementId, disabled = false, findingIds, onPrint }: {
   engagementId?: string;
   disabled?: boolean;
+  /** When a strict subset is selected, the export is scoped to these finding ids. */
+  findingIds?: string[];
   /** When given, the menu also offers the two print copies, so the page header
    *  carries one control instead of three (three overflowed a phone). */
   onPrint?: (mode: ReportPrintMode) => void;
@@ -84,7 +86,11 @@ export function ReportExportMenu({ engagementId, disabled = false, onPrint }: {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ format, engagementId }),
+        body: JSON.stringify({
+          format,
+          engagementId,
+          ...(findingIds && findingIds.length ? { findingIds } : {}),
+        }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => null) as { error?: string } | null;

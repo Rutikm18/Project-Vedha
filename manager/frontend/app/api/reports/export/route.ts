@@ -13,11 +13,13 @@ export const runtime = "nodejs";
 
 const FORMATS = new Set<ReportExportFormat>(["csv", "xlsx", "pdf", "docx"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ALLOWED_KEYS = new Set(["format", "engagementId"]);
+const ALLOWED_KEYS = new Set(["format", "engagementId", "findingIds"]);
 
 interface ExportBody {
   format: ReportExportFormat;
   engagementId: string;
+  /** Optional finding-selection scope. Only valid ids; absent/empty ⇒ whole engagement. */
+  findingIds?: string[];
 }
 
 function parseBody(value: unknown): ExportBody | null {
@@ -26,6 +28,10 @@ function parseBody(value: unknown): ExportBody | null {
   if (Object.keys(body).some((key) => !ALLOWED_KEYS.has(key))) return null;
   if (typeof body.format !== "string" || !FORMATS.has(body.format as ReportExportFormat)) return null;
   if (typeof body.engagementId !== "string" || !UUID.test(body.engagementId)) return null;
+  if (body.findingIds !== undefined) {
+    if (!Array.isArray(body.findingIds)) return null;
+    if (body.findingIds.some((id) => typeof id !== "string" || !UUID.test(id))) return null;
+  }
   return body as unknown as ExportBody;
 }
 
@@ -43,8 +49,14 @@ export const POST = withBackend(async (request, { token }): Promise<Response> =>
     );
   }
 
+  // A selected-findings export re-fetches the scoped canonical document, so the
+  // export builders stay unchanged: they just receive an already-scoped report
+  // whose metrics and roll-ups Manager recomputed for the subset.
+  const scope = body.findingIds && body.findingIds.length
+    ? `?finding_ids=${encodeURIComponent(body.findingIds.join(","))}`
+    : "";
   const report = await backend<ReportDocument>(
-    `/engagements/${encodeURIComponent(body.engagementId)}/report-document`,
+    `/engagements/${encodeURIComponent(body.engagementId)}/report-document${scope}`,
     { token },
   );
   const file = await buildReportExport(body.format, report);

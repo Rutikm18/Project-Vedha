@@ -75,9 +75,11 @@ function formatDatetime(value?: string): string {
  * Existing review-gated AI workflow. It remains outside the canonical report
  * and is excluded from print: generated prose is never treated as report fact.
  */
-export function AiReportPanel({ engagementId, findingCount }: {
+export function AiReportPanel({ engagementId, findingCount, selectedFindingIds }: {
   engagementId: string;
   findingCount: number;
+  /** When a strict subset is selected, the per-finding write-ups are scoped to these ids. */
+  selectedFindingIds?: string[];
 }) {
   const [jobId, setJobId] = useState("");
 
@@ -115,6 +117,9 @@ export function AiReportPanel({ engagementId, findingCount }: {
       method: "POST",
       body: JSON.stringify({
         maxFindings: Math.min(Math.max(findingCount, 1), 50),
+        ...(selectedFindingIds && selectedFindingIds.length
+          ? { selected_finding_ids: selectedFindingIds }
+          : {}),
       }),
     }),
     onSuccess: (job) => setJobId(job.jobId ?? job.job_id),
@@ -155,10 +160,12 @@ export function AiReportPanel({ engagementId, findingCount }: {
   const [chosen, setChosen] = useState<boolean | null>(null);
   const expanded = chosen ?? needsAttention;
 
-  const summary = draftsQ.isLoading ? "Loading…"
+  const scoped = selectedFindingIds?.length ?? 0;
+  const scopeNote = scoped ? ` Write-ups are scoped to the ${scoped} selected finding${scoped === 1 ? "" : "s"}.` : "";
+  const summary = (draftsQ.isLoading ? "Loading…"
     : active ? "Generating a review-gated draft…"
     : drafts.length ? `${drafts.length} section${drafts.length === 1 ? "" : "s"} awaiting review`
-    : "No sections awaiting review";
+    : "No sections awaiting review") + (scoped ? ` · scoped to ${scoped} selected` : "");
 
   return (
     <section className="arp no-print" aria-labelledby="ai-report-heading">
@@ -189,7 +196,7 @@ export function AiReportPanel({ engagementId, findingCount }: {
         <div id="arp-body" className="arp-body">
           <p className="arp-lead">
             Drafts are written from the engagement&apos;s recorded findings. They stay internal, and out of the
-            report and any export, until a person approves them.
+            report and any export, until a person approves them.{scopeNote}
           </p>
 
           {active && (
