@@ -38,7 +38,7 @@ endif
 # it into the backend image via the VEDHA_VERSION build arg.
 export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
 
-.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed admin-show admin-reset shell venv test probe-build probe-run probe-pat seal seal-parity agent-keygen agent-release agent-publish agent-verify agent-client-kit onprem-bundle clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback prod-diagnose agent-keygen-p256 agent-pull
+.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed admin-show admin-reset shell venv test probe-build probe-run probe-pat seal seal-parity agent-keygen agent-release agent-publish agent-airgap agent-verify agent-client-kit onprem-bundle clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env tls tls-check tls-status tls-rollback prod-diagnose agent-keygen-p256 agent-pull
 
 version: ## Print the current deployed version
 	@echo $(VEDHA_VERSION)
@@ -231,6 +231,10 @@ agent-pull: ## On the manager host: pull the newest signed release from GitHub: 
 agent-publish: ## Copy the built release to the manager: make agent-publish TO=user@host:/path (or a local dir)
 	@test -n "$(TO)" || { echo "TO is required, e.g. TO=ubuntu@1.2.3.4:/opt/Project-Vedha/manager/agent-releases (local dev: TO=manager/agent-releases)"; exit 2; }
 	@$(RELEASE_PY) scripts/agent_release.py publish dist/agent-release --to "$(TO)"
+
+agent-airgap: ## Build the air-gapped customer zip (any OS): make agent-airgap AGENT=path/to/vedha-agent-win.zip MANAGER=https://get.vedhasec.com
+	@test -n "$(AGENT)" -a -n "$(MANAGER)" || { echo "AGENT (the vedha-agent-win.zip or a vedha-agent folder) and MANAGER (the https:// facade URL) are required"; exit 2; }
+	@$(RELEASE_PY) scripts/airgap_package.py --agent "$(AGENT)" --manager "$(MANAGER)" $(if $(VERSION),--version "$(VERSION)",) $(if $(OUT),--out "$(OUT)",)
 
 # The folder you email a client: signed installer + filled-in guide + checksums
 # (never the image). The token and the installer checksum go by another channel.

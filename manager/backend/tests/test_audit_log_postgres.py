@@ -1,8 +1,8 @@
 """The audit trail's tamper evidence, against a real Postgres.
 
-The append-only rule and the hash chain live in database triggers (migration 0066), so
+The append-only rule and the hash chain live in database triggers (migration 0067), so
 only a real database can prove them. Skipped (not failed) when DATABASE_URL is not a
-reachable Postgres that has been migrated to 0066 or later.
+reachable Postgres that has been migrated to 0067 or later.
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ async def session():
         pytest.skip(f"no reachable Postgres: {exc}")
     if not has:
         await engine.dispose()
-        pytest.skip("database is not migrated to 0066")
+        pytest.skip("database is not migrated to 0067")
     async with AsyncSession(engine) as s:
         yield s
         await s.rollback()

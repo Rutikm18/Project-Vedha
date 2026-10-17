@@ -55,6 +55,7 @@ export function createFindingsWorkspaceApi(surface: FindingsWorkspaceSurface) {
   if (surface === "manager") {
     return {
       list: <T>(query: string) => fetchJson<T>(`/api/findings?${query}`),
+      findingIds: <T>(query: string) => fetchJson<T>(`/api/findings/ids?${query}`),
       groups: <T>(query: string) => fetchJson<T>(`/api/findings/groups?${query}`),
       summary: <T>(query: string) => fetchJson<T>(`/api/findings/summary${query ? `?${query}` : ""}`),
       assets: <T>(query: string) => fetchJson<T>(`/api/findings/assets${query ? `?${query}` : ""}`),
@@ -89,6 +90,9 @@ export function createFindingsWorkspaceApi(surface: FindingsWorkspaceSurface) {
         pages: page.pages ?? 1,
       } as T;
     },
+    // Findings export is operator-only for now; the portal stub returns "whole
+    // engagement" so the shared workspace type is satisfied without a portal route.
+    findingIds: async <T>() => ({ finding_ids: null } as T),
     groups: async <T>(query: string) => mapFindingGroupPage(
       await portalApi<ApiFindingGroupPage>(`/workspace/findings/groups?${backendQueryString(query)}`),
     ) as T,

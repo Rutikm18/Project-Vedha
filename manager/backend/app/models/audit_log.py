@@ -14,7 +14,7 @@ class AuditLog(Base):
     No TimestampMixin — updated_at would imply mutability.
     Foreign keys use RESTRICT so records survive engagement/finding deletion.
 
-    Append-only is enforced by the database (migration 0066): a trigger refuses
+    Append-only is enforced by the database (migration 0067): a trigger refuses
     UPDATE/DELETE/TRUNCATE, and another chains each row to the previous one in its
     tenant (chain_key/chain_pos/prev_hash/row_hash, set by the trigger, never by
     callers). Write through app.services.audit.record_audit.

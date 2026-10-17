@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import Select, Text, and_, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -567,9 +567,14 @@ def finding_filters(
 
 async def filtered_finding_ids(
     db: AsyncSession, current_user: AuthUser, engagement_id: uuid.UUID, filters: FindingFilters,
+    *, agent_id: uuid.UUID | None = None,
 ) -> set[uuid.UUID] | None:
-    """Ids of the engagement's findings matching ``filters``; None = no filter."""
-    if not filters.active():
+    """Ids of the engagement's findings matching ``filters``; None = no filter.
+
+    ``agent_id`` is an extra axis the Findings list filters on but ``FindingFilters``
+    does not carry; threaded through so a findings export matches an agent-filtered view.
+    """
+    if not filters.active() and agent_id is None:
         return None
     q, _ = await _filtered_findings(
         select(Finding.id), db, current_user, engagement_id=engagement_id,
@@ -577,7 +582,7 @@ async def filtered_finding_ids(
         asset_ip=filters.asset_ip, scan=filters.scan, search=filters.search,
         detection_status=filters.detection_status, exploit_validated=filters.exploit_validated,
         verification_state=filters.verification_state, needs_review=filters.needs_review,
-        sla_breached=filters.sla_breached,
+        sla_breached=filters.sla_breached, agent_id=agent_id,
     )
     if q is None:
         return set()
@@ -1130,6 +1135,28 @@ async def finding_summary(
         blind=int(blind or 0),
         average_risk=round(float(average_risk or 0)),
     )
+
+
+@router.get(
+    "/ids",
+    summary="Finding ids matching the current filters, for scoping a findings export",
+)
+async def list_finding_ids(
+    db: DB,
+    current_user: AuthUser,
+    engagement_id: uuid.UUID = Query(..., description="Engagement to scope the export to"),
+    agent_id: uuid.UUID | None = Query(default=None),
+    filters: FindingFilters = Depends(finding_filters),
+) -> dict:
+    """The ids the Findings page would export under the active filters.
+
+    ``finding_ids`` is ``null`` when no finding-level filter is active — the
+    caller then exports the whole engagement instead of sending a long id list.
+    Declared before ``/{finding_id}`` so the literal path wins over the UUID
+    parameter route.
+    """
+    ids = await filtered_finding_ids(db, current_user, engagement_id, filters, agent_id=agent_id)
+    return {"finding_ids": None if ids is None else sorted(str(i) for i in ids)}
 
 
 @router.get("/{finding_id}", response_model=FindingOut, summary="Finding detail")

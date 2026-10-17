@@ -1,15 +1,15 @@
 """Audit-log retention setting (tenant_settings.audit_policy).
 
-Revision ID: 0067
-Revises: 0066
+Revision ID: 0068
+Revises: 0067
 """
 
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql as pg
 
-revision = "0067"
-down_revision = "0066"
+revision = "0068"
+down_revision = "0067"
 branch_labels = None
 depends_on = None
 

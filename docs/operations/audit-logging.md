@@ -40,7 +40,7 @@ a handler). Operator user creation and role changes have no endpoint yet; when t
 
 ## Tamper evidence
 
-* A database trigger (`audit_logs_chain`, migration 0066) chains each entry to the previous one in its organisation:
+* A database trigger (`audit_logs_chain`, migration 0067) chains each entry to the previous one in its organisation:
   `row_hash = sha256(previous hash || the entry's fields)`, under an advisory lock, so every writer is chained and none can skip it.
 * A second trigger refuses `UPDATE`, `DELETE` and `TRUNCATE`. The one exception is the retention job, which sets
   `vedha.audit_purge` for its own transaction.
@@ -69,6 +69,6 @@ documentation. Set the period to what your own obligations require.
 
 ## Upgrade notes
 
-* Migration 0066 gives existing entries a tenant (through their engagement, else their acting user) and chains them oldest first.
+* Migration 0067 gives existing entries a tenant (through their engagement, else their acting user) and chains them oldest first.
   Entries whose tenant cannot be found stay in the platform chain and are visible to no organisation.
 * Run the migration with a database role that may create triggers and functions.

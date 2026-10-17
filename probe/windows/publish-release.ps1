@@ -183,7 +183,13 @@ function Invoke-Main {
   if (-not (Test-Path -LiteralPath $py)) {
     $sys = Get-Command python -ErrorAction SilentlyContinue
     if (-not $sys) { throw 'Python was not found. Install Python 3.10 to 3.12 from python.org (tick "Add python.exe to PATH") and run this again.' }
-    $v = (& python -c 'import sys; print("%d.%d" % sys.version_info[:2])').Trim()
+    # `python --version` prints "Python 3.11.5"; parse it in PowerShell. Do NOT use
+    # `python -c '...print("...")...'` here: Windows PowerShell 5.1 strips the inner
+    # double quotes when passing a single-quoted string to a native command, so the
+    # Python source arrives malformed and the whole script dies on the first step.
+    $verText = (& python --version 2>&1 | Out-String)
+    if ($verText -notmatch 'Python\s+(\d+)\.(\d+)') { throw "Could not read the Python version (got: $($verText.Trim()))." }
+    $v = "$($Matches[1]).$($Matches[2])"
     if ($v -notmatch '^3\.(10|11|12)$') { throw "Python $v found; the Windows build needs 3.10, 3.11 or 3.12." }
     Write-Note 'creating the build environment (first time only)'
     Invoke-Native 'python' @('-m', 'venv', $venv) 'Creating the build environment'

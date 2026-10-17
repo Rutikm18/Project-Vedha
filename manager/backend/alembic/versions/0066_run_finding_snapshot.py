@@ -5,15 +5,15 @@ scans but not that its severity or score changed between them. These nullable co
 record the finding as each scan saw it. Rows written before this revision stay NULL and
 compare shows presence only for them.
 
-Revision ID: 0065
-Revises: 0064
+Revision ID: 0066
+Revises: 0065
 """
 
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0065"
-down_revision = "0064"
+revision = "0066"
+down_revision = "0065"
 branch_labels = None
 depends_on = None
 

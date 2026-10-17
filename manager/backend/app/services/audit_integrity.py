@@ -1,6 +1,6 @@
 """Verify the audit trail's hash chain, and purge what retention has expired.
 
-The chain (migration 0066) is built by a database trigger: each entry's row_hash is
+The chain (migration 0067) is built by a database trigger: each entry's row_hash is
 sha256 over the previous entry's hash and its own fields. Verifying recomputes every
 hash with the same SQL function and checks each link, so a changed field, a removed
 entry or an inserted one shows up as the first broken position.

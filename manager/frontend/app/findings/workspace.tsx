@@ -44,6 +44,7 @@ import {
   Search, Server, Shield, SlidersHorizontal, Tag, Terminal, Wrench, X,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
+import { ReportExportMenu } from "../../components/report/ReportExportMenu";
 import { RemediationWorkspaceDialog } from "../../components/findings/RemediationWorkspaceDialog";
 import { previewRemediationWorkspace } from "../../lib/remediation-workspace.client";
 import { PortalShell } from "../../components/portal/PortalShell";
@@ -3538,6 +3539,22 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
 
+  // Finding ids for a filtered export: scopes the report export to exactly what the
+  // Findings page shows. `finding_ids: null` means no finding-level filter is active,
+  // so the whole engagement is exported (no long id list). Operator surface only.
+  const exportFilterSig = (() => {
+    const sig = new URLSearchParams(queryString);
+    for (const k of ["page", "page_size", "sort", "paginated"]) sig.delete(k);
+    return sig.toString();
+  })();
+  const exportIdsQuery = useQuery({
+    queryKey: ["finding-export-ids", surface, exportFilterSig],
+    queryFn: () => api.findingIds<{ finding_ids: string[] | null }>(exportFilterSig),
+    enabled: surface === "manager" && Boolean(engagementId),
+    retry: (count, err) => !isUnauthorized(err) && count < 2,
+  });
+  const exportFindingIds = exportIdsQuery.data?.finding_ids ?? undefined;
+
   /* Grouped view: the SAME filters as the list (copied from its query string),
    * its own page counter that snaps back to 1 whenever the filters change. */
   const queueView = useSyncExternalStore(subscribeToQueueView, getQueueView, getServerQueueView);
@@ -3873,7 +3890,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
         next.add(id);
       }
       if (next.size === MAX_BULK_FINDINGS && currentPageIds.some((id) => !next.has(id))) {
-        showError("Selection limit reached", `The first ${MAX_BULK_FINDINGS} findings were selected. Refine the queue for a different batch.`);
+        showError("Selection limit reached", `The remediation workspace handles up to ${MAX_BULK_FINDINGS} findings per batch, so the first ${MAX_BULK_FINDINGS} are selected. To export all findings, use Export at the top of the page.`);
       }
       return next;
     });
@@ -3918,6 +3935,17 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     <Shell
       title="Findings"
       subtitle="Triage, verify and remediate discovered vulnerabilities"
+      // One export control in the header. The agent refresh status and button sit in the queue
+      // panel (two more header controls overflowed a phone), so only the export belongs here.
+      headerActions={surface === "manager" ? (
+        <span title={!engagementId ? "Select an engagement to export its findings" : undefined}>
+          <ReportExportMenu
+            engagementId={engagementId ?? undefined}
+            findingIds={exportFindingIds}
+            disabled={!engagementId || exportIdsQuery.isFetching}
+          />
+        </span>
+      ) : undefined}
       statusItems={[
         { label: "CRITICAL OPEN",     value: summaryValue(stats.criticalOpen), color: summaryUnavailable ? "var(--text-muted)" : SEV_PALETTE.RED },
         { label: "EXPLOIT CONFIRMED", value: summaryValue(stats.validated),    color: summaryUnavailable ? "var(--text-muted)" : SEV_PALETTE.ORANGE },
