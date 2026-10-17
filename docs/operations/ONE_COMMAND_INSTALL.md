@@ -30,6 +30,54 @@ do them by hand or something fails.
 one line in **any** Command Prompt or PowerShell window on the machine (no need to open it as Administrator:
 when it is not elevated, the installer asks Windows for permission and continues in a new Administrator window). Nothing else.
 
+> **Security review pending (12 Oct 2026).** The kit and `publish-release.ps1 -ConfigureManager` publish over ssh from a PC with a
+> long-lived key, and ssh now trusts a server's host key on first use. The owner flagged the approach as a security problem.
+> Do not rely on it for real customers and do not merge the kit branch until the decisions in
+> [the hand-off note](../planning/2026-10-12-windows-agent-publish-handoff.md) are made. The recommended replacement is a
+> pull-based release (no ssh, the manager verifies signatures), described there.
+
+**The kit has ONE thing to run: `install.cmd`.** Double-click it (or `install.cmd -CheckOnly` to only check). It shows ONE
+screen with the server login, the ssh key file (a `.pem` found automatically in Downloads, `.ssh`, Desktop, Documents or the
+kit folder), the manager address and the no-token choice already filled in: press Enter to accept, or type 1-4 to change one.
+Defaults come from `kit-defaults.json` inside the kit (set when you build it: `make_agent_build_kit.py --default-server
+ubuntu@HOST --default-manager-url https://api.example.com --default-tokenless`) and then from your last run
+(`%USERPROFILE%\.vedha\kit-settings.json`, no secrets). It checks this PC (64-bit Windows, Python 3.10-3.12 which it installs with winget if
+missing, ssh/scp, internet access to the build downloads) and the SERVER (login works, the manager folder with
+`docker-compose.yml` and `.env` is where you said, your login may run docker) BEFORE the long build, then builds,
+signs and publishes. It stops at the first thing it cannot fix and says what to do. Tested here with unit tests and a
+fake `ssh` (healthy, unreachable, wrong folder, docker refused, missing key file); not run on a real Windows PC.
+
+**Only the agent on the Windows PC, not the whole repository:** `python scripts/make_agent_build_kit.py` writes
+`dist/vedha-agent-build-kit-<VERSION>.zip` (about 0.5 MB, 105 files). It holds the agent's own code (only the modules
+`agent_closure.py` lists), the build and publish scripts and the release tool. It does NOT hold the manager, the
+console, the detection engine, the vulnerability rules (`scanner/findings.py`), tests, docs or any key (a test
+fails if any of those get in). Unzip it on the Windows PC and run the same `publish-release.ps1` command from the
+unzipped folder; `KIT-README.txt` inside says how. Tested: the closure check and the release tool both work from a
+fresh unzip with no repository, and the plan (`-DryRun`) runs. The kit must be rebuilt from `main` for each release.
+
+**One command on the publishing PC, kit hosted privately in the cloud:** host the kit zip in a PRIVATE bucket (it holds the
+agent's source), make a time-limited link to it, and paste one command into PowerShell. The command downloads the kit,
+refuses it unless its SHA-256 matches (the checksum is inside the command, so a swapped file is caught), unpacks it
+into `C:\VedhaKit` (over an existing folder: the build environment, a built agent and your keys are never deleted),
+installs Python 3.12 with winget only if no usable Python is present, and runs `publish-release.ps1`.
+
+1. Build the zip and the command: `python scripts/make_agent_build_kit.py --url "<the link>" --server ubuntu@HOST --manager-url https://api.example.com --allow-tokenless`
+   (prints the command with the right checksum; `--url` can be any https link without quotes or spaces).
+2. Upload the zip to a private bucket (S3: Block Public Access ON). Link: console -> object -> Object actions ->
+   Share with a presigned URL (set 1 hour), or `aws s3 presign s3://BUCKET/vedha-agent-build-kit-<VERSION>.zip --expires-in 3600`.
+   Azure SAS and Google Cloud signed URLs work the same way.
+3. Paste the command into PowerShell on the publishing PC. The link in it is a secret until it expires: do not post it.
+4. Delete the object when you are done, or let the link expire. Rebuild and re-upload the kit whenever the agent changes.
+
+Tested here against a local web server: download, checksum check, unpack, publish plan (`-DryRun`); a tampered download
+is refused and nothing is unpacked; an existing build folder survives; links or values that could break out of the
+quotes are refused. Not run on a real Windows PC or with real S3.
+
+**No Windows PC at all (cloud build + automatic sync):** if GitHub Actions works for you, the whole publishing step
+can happen without any PC: GitHub builds and signs the Windows agent, and the manager's `agent-release-sync`
+service picks the signed release up by itself. One-time setup and what it protects:
+[AGENT_DISTRIBUTION](AGENT_DISTRIBUTION.md), "Releasing with CI" and "Automatic release sync".
+
 **No token at all (opt-in, 12 Oct 2026):** add `-AllowTokenlessInstall` to the publish command (it sets
 `AGENT_ALLOW_TOKENLESS_INSTALL=true` on the manager). Fleet -> Add agent then also shows a command with **no `vet_`
 token in it**: it can be pasted on any number of machines. Each one downloads the signed package, installs, connects

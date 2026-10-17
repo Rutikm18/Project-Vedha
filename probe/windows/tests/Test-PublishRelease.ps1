@@ -80,6 +80,21 @@ Assert-Throws { New-VedhaRemoteConfigScript -ComposeDir '/opt/x y' -Lines $lines
 Assert-Throws { New-VedhaRemoteConfigScript -ComposeDir '/opt/x' -Lines @("FOO=bar") } 'unexpected line' 'remote script: only the expected settings are written'
 Assert-Throws { New-VedhaRemoteConfigScript -ComposeDir '/opt/x' -Lines @("MANAGER_PUBLIC_URL=https://a.com'; rm -rf /") } 'unexpected line' 'remote script: injection in a value refused'
 
+# --- the ssh key option ------------------------------------------------------------
+Assert-True  (Test-VedhaSshKeyPath 'C:\Users\WZ\keys\server.pem') 'ssh key: a normal Windows path is accepted'
+Assert-True  (Test-VedhaSshKeyPath 'C:\Users\Some One\.ssh\id_rsa') 'ssh key: spaces and dots in folder names are fine'
+Assert-False (Test-VedhaSshKeyPath 'server.pem') 'ssh key: a relative path is refused'
+Assert-False (Test-VedhaSshKeyPath 'C:\keys\a.pem; calc') 'ssh key: shell characters are refused'
+Assert-False (Test-VedhaSshKeyPath 'C:\keys\..\x.pem') 'ssh key: .. is refused'
+Assert-False (Test-VedhaSshKeyPath "C:\keys\a'b.pem") 'ssh key: quotes are refused'
+Assert-Equal ((Get-VedhaSshArgs 'C:\k\s.pem') -join ' ') '-i C:\k\s.pem -o StrictHostKeyChecking=accept-new' 'ssh key: -i, the path, then the trust option'
+Assert-Equal ((Get-VedhaSshArgs '') -join ' ') '-o StrictHostKeyChecking=accept-new' 'ssh key: with no key only the trust option (no host-key question)'
+
+# --- the python option ----------------------------------------------------------------
+Assert-True  (Test-VedhaPythonExe 'C:\Users\WZ\AppData\Local\Programs\Python\Python312\python.exe') 'python exe: a normal path is accepted'
+Assert-True  (Test-VedhaPythonExe 'C:\Program Files\Python312\python.exe') 'python exe: Program Files is fine'
+foreach ($bad in 'python', 'C:\p\python.bat', 'C:\p\..\python.exe', "C:\p'q\python.exe", 'C:\p;calc\python.exe', 'python.exe') { Assert-False (Test-VedhaPythonExe $bad) "python exe refused: [$bad]" }
+
 # --- the plan ------------------------------------------------------------------
 $full = Get-VedhaPlan -HasServer $true -Configure $true -HasUrl $true -Skip $false
 Assert-Equal $full.Count 8 'plan: all eight steps when everything is given'

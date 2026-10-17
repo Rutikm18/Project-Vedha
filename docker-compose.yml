@@ -203,6 +203,45 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # ── Agent release sync (opt-in: `docker compose --profile release-sync up -d`) ──
+  # Keeps the release store up to date by itself: every AGENT_RELEASE_SYNC_INTERVAL_MINUTES it looks for
+  # a newer SIGNED agent release on GitHub (published by .github/workflows/agent-release.yml), verifies
+  # both signatures against the public keys below and every file against its signed checksum, and only
+  # then installs it. Nothing unsigned or tampered can reach the folder the api serves.
+  # It holds ONLY the two public keys and an optional read-only GitHub token: no database, no Redis,
+  # no JWT secret, no signing key. Pause it by creating an empty file named PAUSE in the release folder.
+  # The folder must be writable by uid 10001:  sudo chown -R 10001:10001 <AGENT_RELEASE_HOST_DIR>
+  agent-release-sync:
+    <<: [*backend-image]
+    profiles: ["release-sync"]
+    command: ["python", "scripts/agent_release.py", "watch", "--to", "/var/lib/vedha/agent-releases"]
+    environment:
+      AGENT_RELEASE_GITHUB_REPO: ${AGENT_RELEASE_GITHUB_REPO:-}
+      # Only for a PRIVATE repository: a fine-grained token with read-only "Contents" on that one repo.
+      AGENT_RELEASE_GITHUB_TOKEN: ${AGENT_RELEASE_GITHUB_TOKEN:-}
+      AGENT_RELEASE_SYNC_INTERVAL_MINUTES: ${AGENT_RELEASE_SYNC_INTERVAL_MINUTES:-15}
+      # false = install new releases but keep serving the current one until you promote it by hand.
+      AGENT_RELEASE_SYNC_AUTO_PROMOTE: ${AGENT_RELEASE_SYNC_AUTO_PROMOTE:-true}
+      AGENT_RELEASE_PUBLIC_KEY: ${AGENT_RELEASE_PUBLIC_KEY:-}
+      AGENT_RELEASE_P256_PUBLIC_KEY: ${AGENT_RELEASE_P256_PUBLIC_KEY:-}
+      TZ: ${VEDHA_TZ:-Asia/Kolkata}
+    volumes:
+      - ${AGENT_RELEASE_HOST_DIR:-./manager/agent-releases}:/var/lib/vedha/agent-releases
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
   # Optional deployment-managed free/open-source runtime. The one-shot init
   # service pulls the selected model into a persistent volume during deployment.
   # Set OLLAMA_BASE_URL=http://ollama:11434 when enabling this profile.

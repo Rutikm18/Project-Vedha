@@ -401,3 +401,200 @@ def test_cli_pull_end_to_end(gh, built, tmp_path, monkeypatch, capsys):
     assert "now the release the manager serves" in capsys.readouterr().out
     assert tool.main(["pull", "--repo", SLUG, "--to", str(store), "--api-url", gh.url,
                       "--public-key", built["ed_pub"]]) == 1             # Windows release, no P-256 key
+
+
+# ── sync: the manager keeps itself up to date (`pull --only-if-newer` and `watch`) ─────────────
+
+def _sync(gh, store, built, **kw):
+    kw.setdefault("token", TOKEN)
+    return tool.pull(repo=SLUG, dest=store, public_key_b64=built["ed_pub"], p256_public_key_b64=built["p256"],
+                     api_url=gh.url, log=lambda *_: None, only_if_newer=True, **kw)
+
+
+def test_a_poll_installs_the_newest_release_then_does_nothing_and_downloads_nothing(gh, built, tmp_path):
+    gh.publish(built["make"]("2.0.1"))
+    store = tmp_path / "s"
+    assert _sync(gh, store, built) == store / "2.0.1"
+    assert (store / "CURRENT").read_text().strip() == "2.0.1"
+    storage_hits = len(gh.storage_auth)
+    assert _sync(gh, store, built) == store / "2.0.1"                  # already installed
+    # a repeat poll fetched only the small manifest files, never the images or the Windows package
+    assert len(gh.storage_auth) - storage_hits <= 3
+
+
+def test_a_poll_never_rolls_back_the_served_release(gh, built, tmp_path):
+    gh.publish(built["make"]("2.0.2"))
+    store = tmp_path / "s"
+    _sync(gh, store, built)
+    gh.releases.clear()
+    gh.publish(built["make"]("2.0.1"))                                  # GitHub's newest is now OLDER than the one served
+    assert _sync(gh, store, built) is None
+    assert (store / "CURRENT").read_text().strip() == "2.0.2" and not (store / "2.0.1").exists()
+
+
+def test_a_newer_release_is_picked_up_and_served_by_itself(gh, built, tmp_path):
+    gh.publish(built["make"]("2.0.3"))
+    store = tmp_path / "s"
+    _sync(gh, store, built)
+    gh.publish(built["make"]("2.0.4"))
+    assert _sync(gh, store, built) == store / "2.0.4"
+    assert (store / "CURRENT").read_text().strip() == "2.0.4" and (store / "2.0.3").is_dir()   # the old one is kept
+
+
+def test_with_no_current_a_poll_installs_but_does_not_serve_and_does_not_redownload(gh, built, tmp_path):
+    gh.publish(built["make"]("2.0.5"))
+    store = tmp_path / "s"
+    _sync(gh, store, built)
+    gh.publish(built["make"]("2.0.6"))
+    _sync(gh, store, built, make_current=False)
+    assert (store / "2.0.6").is_dir() and (store / "CURRENT").read_text().strip() == "2.0.5"
+    _sync(gh, store, built, make_current=False)                         # repeat: still not served
+    assert (store / "CURRENT").read_text().strip() == "2.0.5"
+    _sync(gh, store, built)                                             # the owner turned promotion on: it is promoted
+    assert (store / "CURRENT").read_text().strip() == "2.0.6"
+
+
+def test_a_poll_with_a_tampered_release_installs_nothing_and_raises(gh, built, tmp_path):
+    gh.publish(built["make"]("2.0.7"), tamper=("install.ps1", _flip))
+    store = tmp_path / "s"
+    with pytest.raises(tool.ReleaseError):
+        _sync(gh, store, built)
+    assert _store_is_empty(store)
+
+
+def _watch(gh, store, built, **kw):
+    logs: list[str] = []
+    kw.setdefault("token", TOKEN)
+    kw.setdefault("once", True)
+    tool.watch(repo=SLUG, dest=store, public_key_b64=built["ed_pub"], p256_public_key_b64=built["p256"],
+               api_url=gh.url, log=logs.append, sleep=lambda s: None, **kw)
+    return logs
+
+
+def test_watch_once_installs_and_serves_the_newest_release(gh, built, tmp_path):
+    gh.publish(built["make"]("2.1.0"))
+    store = tmp_path / "s"
+    _watch(gh, store, built)
+    loaded = agent_release.load_release(store, public_key_b64=built["ed_pub"], p256_public_key_b64=built["p256"])
+    assert loaded.version == "2.1.0" and loaded.windows_available
+
+
+def test_a_pause_file_holds_it_still_without_touching_the_network(gh, built, tmp_path):
+    gh.publish(built["make"]("2.1.1"))
+    store = tmp_path / "s"
+    store.mkdir()
+    (store / tool.PAUSE_FILE).write_text("")
+    logs = _watch(gh, store, built)
+    assert any("paused" in line for line in logs)
+    assert gh.api_auth == [] and not (store / "2.1.1").exists()
+    (store / tool.PAUSE_FILE).unlink()
+    _watch(gh, store, built)                                            # resumed
+    assert (store / "CURRENT").read_text().strip() == "2.1.1"
+
+
+def test_watch_survives_failures_backs_off_and_recovers(gh, built, tmp_path):
+    store = tmp_path / "s"
+    calls, sleeps, logs = [], [], []
+
+    def flaky(**kw):
+        calls.append(kw["only_if_newer"])
+        if len(calls) < 4:
+            raise tool.ReleaseError("GitHub is down")
+        raise KeyboardInterrupt                                         # stop the otherwise endless loop in the test
+
+    with pytest.raises(KeyboardInterrupt):
+        tool.watch(repo=SLUG, dest=store, public_key_b64=built["ed_pub"], interval_seconds=60,
+                   sleep=sleeps.append, log=logs.append, pull_fn=flaky)
+    assert calls == [True, True, True, True]                            # always the safe mode: never a rollback
+    assert sleeps == [120, 240, 480]                                    # the delay doubles after each failure
+    assert sum("release sync failed" in line for line in logs) == 3
+
+
+def test_the_backoff_is_capped_at_an_hour(gh, built, tmp_path):
+    sleeps: list[float] = []
+    n = {"i": 0}
+
+    def always_fails(**kw):
+        n["i"] += 1
+        if n["i"] > 12:
+            raise KeyboardInterrupt
+        raise tool.ReleaseError("down")
+
+    with pytest.raises(KeyboardInterrupt):
+        tool.watch(repo=SLUG, dest=tmp_path / "s", public_key_b64=built["ed_pub"], interval_seconds=900,
+                   sleep=sleeps.append, log=lambda *_: None, pull_fn=always_fails)
+    assert max(sleeps) == 3600
+
+
+def test_a_bad_release_is_logged_every_time_and_never_installed(gh, built, tmp_path):
+    gh.publish(built["make"]("2.1.2"), tamper=("manifest.json", _flip))
+    store = tmp_path / "s"
+    sleeps: list[float] = []
+    n = {"i": 0}
+
+    def sleeper(seconds):
+        n["i"] += 1
+        sleeps.append(seconds)
+        if n["i"] >= 2:
+            raise KeyboardInterrupt
+
+    out: list[str] = []
+    with pytest.raises(KeyboardInterrupt):
+        tool.watch(repo=SLUG, dest=store, public_key_b64=built["ed_pub"], p256_public_key_b64=built["p256"],
+                   api_url=gh.url, token=TOKEN, interval_seconds=60, sleep=sleeper, log=out.append)
+    assert sum("release sync failed" in line for line in out) == 2
+    assert _store_is_empty(store)
+
+
+def test_watch_once_exits_non_zero_when_it_could_not_complete(gh, built, tmp_path):
+    store = tmp_path / "s"                                              # GitHub has no agent release at all
+    with pytest.raises(tool.ReleaseError, match="did not complete"):
+        _watch(gh, store, built)
+
+
+def test_a_read_only_release_folder_says_exactly_how_to_fix_it(gh, built, tmp_path, monkeypatch):
+    store = tmp_path / "s"
+    store.mkdir()
+    monkeypatch.setattr(tool.os, "access", lambda *a, **k: False)
+    gh.publish(built["make"]("2.1.3"))
+    out: list[str] = []
+    with pytest.raises(tool.ReleaseError):
+        tool.watch(repo=SLUG, dest=store, public_key_b64=built["ed_pub"], once=True, log=out.append,
+                   sleep=lambda s: None, api_url=gh.url)
+    assert any("not writable" in line and "chown" in line for line in out)
+    assert not (store / "2.1.3").exists()
+
+
+def test_the_cli_watch_reads_the_repo_and_keys_from_the_environment(gh, built, tmp_path, monkeypatch, capsys):
+    gh.publish(built["make"]("2.1.4"))
+    store = tmp_path / "s"
+    monkeypatch.setenv("AGENT_RELEASE_GITHUB_REPO", SLUG)
+    monkeypatch.setenv("AGENT_RELEASE_PUBLIC_KEY", built["ed_pub"])
+    monkeypatch.setenv("AGENT_RELEASE_P256_PUBLIC_KEY", built["p256"])
+    monkeypatch.setenv("AGENT_RELEASE_GITHUB_TOKEN", TOKEN)
+    assert tool.main(["watch", "--once", "--to", str(store), "--api-url", gh.url]) == 0
+    out = capsys.readouterr().out
+    assert "watching acme/vedha every 15 min" in out and "authenticated" in out
+    assert TOKEN not in out                                              # the token is never printed
+    assert (store / "CURRENT").read_text().strip() == "2.1.4"
+
+
+def test_the_cli_watch_clamps_the_interval_and_needs_a_repo_and_a_key(gh, built, tmp_path, monkeypatch, capsys):
+    monkeypatch.delenv("AGENT_RELEASE_GITHUB_REPO", raising=False)
+    monkeypatch.delenv("AGENT_RELEASE_PUBLIC_KEY", raising=False)
+    assert tool.main(["watch", "--once", "--to", str(tmp_path / "s")]) == 1
+    assert "no GitHub repository" in capsys.readouterr().err
+    monkeypatch.setenv("AGENT_RELEASE_GITHUB_REPO", SLUG)
+    assert tool.main(["watch", "--once", "--to", str(tmp_path / "s")]) == 1
+    assert "no release public key" in capsys.readouterr().err
+    monkeypatch.setenv("AGENT_RELEASE_PUBLIC_KEY", built["ed_pub"])
+    gh.publish(built["make"]("2.1.5"))
+    tool.main(["watch", "--once", "--interval-minutes", "1", "--to", str(tmp_path / "s"), "--api-url", gh.url])
+    assert "every 5 min" in capsys.readouterr().out                      # 1 is raised to the 5-minute floor
+
+
+def test_the_copy_inside_the_backend_image_is_the_same_file():
+    """Production hosts only get manager/ (sparse clone), so the sync service runs the tool from the
+    backend image. The copy must never drift from the canonical scripts/agent_release.py."""
+    canonical = (REPO_ROOT / "scripts" / "agent_release.py").read_bytes()
+    assert (REPO_ROOT / "manager" / "backend" / "scripts" / "agent_release.py").read_bytes() == canonical
