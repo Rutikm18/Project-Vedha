@@ -26,6 +26,10 @@
   Fleet by typing that code. Only turn it on if you accept that anyone who can reach the manager can
   download the (signed, secret-free) agent package; approvals always need the code shown on the machine.
 
+  -SshKey C:\path\server.pem names the private key file when your server uses a key pair (AWS does); without it
+  ssh uses its defaults and any key already loaded in ssh-agent. The first connection to a server is trusted and
+  remembered without a question (a server whose key changes later is refused).
+
   Without -Server it stops after step 5 and tells you what is left. -DryRun prints the plan and
   runs nothing. -SkipBuild reuses the agent already built in probe\windows\dist\vedha-agent.
 
@@ -37,6 +41,8 @@
 [CmdletBinding()]
 param(
   [string]$Server = '',                 # user@host of the manager server (ssh)
+  [string]$SshKey = '',                 # private key file for ssh, e.g. C:\Users\you\keys\server.pem (AWS key pairs)
+  [string]$PythonExe = '',              # python.exe to build with when several are installed (3.10, 3.11 or 3.12)
   [string]$ManagerUrl = '',             # https://api.example.com  (MANAGER_PUBLIC_URL, and the final check)
   [string]$RemoteReleaseDir = '/opt/Project-Vedha/manager/agent-releases',
   [string]$RemoteComposeDir = '',       # folder with docker-compose.yml and .env (default: the release folder's parent)
@@ -119,6 +125,27 @@ function New-VedhaRemoteConfigScript {
   return $sh + "`n"
 }
 
+function Test-VedhaSshKeyPath {
+  # A Windows file path of plain characters (it is passed to ssh and scp as one argument, never through a shell).
+  param([string]$Value)
+  return [bool]($Value -match '^[A-Za-z]:\\[A-Za-z0-9 _.()\\-]{1,200}$') -and ($Value -notmatch '\.\.')
+}
+
+function Test-VedhaPythonExe {
+  # A Windows path ending in python.exe, of plain characters (it is run directly, never through a shell).
+  param([string]$Value)
+  return [bool]($Value -match '^[A-Za-z]:\\[A-Za-z0-9 _.()\\-]{1,200}\\python(w)?\.exe$') -and ($Value -notmatch '\.\.')
+}
+
+function Get-VedhaSshArgs {
+  # The ssh/scp options: the key when one was given (otherwise ssh uses its defaults and agent), and the first
+  # connection to a server is trusted and remembered without a question; a server whose key changes later is refused.
+  param([string]$Key)
+  $trust = @('-o', 'StrictHostKeyChecking=accept-new')
+  if ($Key) { return (@('-i', $Key) + $trust) }
+  return $trust
+}
+
 function Get-VedhaPlan {
   # The ordered list of steps for the given options (also what -DryRun prints).
   param([bool]$HasServer, [bool]$Configure, [bool]$HasUrl, [bool]$Skip)
@@ -180,26 +207,41 @@ function Invoke-Main {
   if (-not $KeyDir) { $KeyDir = Join-Path $env:USERPROFILE '.vedha' }
   $venv = Join-Path $winDir '.venv-win'
   $py = Join-Path $venv 'Scripts\python.exe'
+  if ($PythonExe -and -not (Test-VedhaPythonExe $PythonExe)) { throw "-PythonExe must be a Windows path to python.exe (got '$PythonExe')." }
+  if ($PythonExe -and -not (Test-Path -LiteralPath $PythonExe -PathType Leaf)) { throw "The python.exe '$PythonExe' was not found." }
+  if (Test-Path -LiteralPath $py) {
+    # A build environment made earlier with an unsupported Python (3.13, say) cannot build the agent: remake it.
+    $venvVersion = (& $py -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>$null)
+    if ("$venvVersion".Trim() -notmatch '^3\.(10|11|12)$') {
+      Write-Note "the build environment uses Python $venvVersion, which cannot build the agent; recreating it"
+      Remove-Item -LiteralPath $venv -Recurse -Force
+    }
+  }
   if (-not (Test-Path -LiteralPath $py)) {
-    $sys = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $sys) { throw 'Python was not found. Install Python 3.10 to 3.12 from python.org (tick "Add python.exe to PATH") and run this again.' }
-    # `python --version` prints "Python 3.11.5"; parse it in PowerShell. Do NOT use
-    # `python -c '...print("...")...'` here: Windows PowerShell 5.1 strips the inner
-    # double quotes when passing a single-quoted string to a native command, so the
-    # Python source arrives malformed and the whole script dies on the first step.
-    $verText = (& python --version 2>&1 | Out-String)
+    # serene-bardeen's -PythonExe support + main's field fix (cab0c4b3): parse
+    # `--version` rather than `python -c '...'`, which Windows PowerShell 5.1 breaks
+    # by stripping the inner double quotes from a single-quoted native-command arg.
+    $basePython = if ($PythonExe) { $PythonExe } else { 'python' }
+    if (-not $PythonExe -and -not (Get-Command python -ErrorAction SilentlyContinue)) { throw 'Python was not found. Install Python 3.10 to 3.12 from python.org (tick "Add python.exe to PATH") and run this again.' }
+    $verText = (& $basePython --version 2>&1 | Out-String)
     if ($verText -notmatch 'Python\s+(\d+)\.(\d+)') { throw "Could not read the Python version (got: $($verText.Trim()))." }
     $v = "$($Matches[1]).$($Matches[2])"
-    if ($v -notmatch '^3\.(10|11|12)$') { throw "Python $v found; the Windows build needs 3.10, 3.11 or 3.12." }
+    if ($v -notmatch '^3\.(10|11|12)$') { throw "Python $v found; the Windows build needs 3.10, 3.11 or 3.12. If several Pythons are installed, point to the right one with -PythonExe C:\path\to\python.exe" }
     Write-Note 'creating the build environment (first time only)'
-    Invoke-Native 'python' @('-m', 'venv', $venv) 'Creating the build environment'
+    Invoke-Native $basePython @('-m', 'venv', $venv) 'Creating the build environment'
   }
   Invoke-Native $py @('-m', 'pip', 'install', '--quiet', '--upgrade', 'pip', 'cryptography') 'Installing the signing library'
   Write-Ok 'Python and the signing library are ready'
+  if ($SshKey) {
+    if (-not (Test-VedhaSshKeyPath $SshKey)) { throw "-SshKey must be a Windows path such as C:\Users\you\keys\server.pem (got '$SshKey')." }
+    if (-not (Test-Path -LiteralPath $SshKey -PathType Leaf)) { throw "The ssh key file '$SshKey' was not found." }
+    $env:VEDHA_SSH_IDENTITY = $SshKey          # the release tool's own ssh/scp calls use it too
+  }
+  $sshKeyArgs = Get-VedhaSshArgs $SshKey
   if ($Server) {
     foreach ($t in 'ssh', 'scp') { if (-not (Get-Command $t -ErrorAction SilentlyContinue)) { throw "$t was not found. Install it: Settings > Apps > Optional features > OpenSSH Client." } }
     Write-Note "checking that ssh works to $Server (it may ask for your password or key passphrase)"
-    Invoke-Native 'ssh' @('-o', 'ConnectTimeout=15', $Server, 'echo vedha-ssh-ok') "ssh to $Server"
+    Invoke-Native 'ssh' (@('-o', 'ConnectTimeout=15') + $sshKeyArgs + @($Server, 'echo vedha-ssh-ok')) "ssh to $Server"
     Write-Ok "ssh to $Server works"
   }
 
@@ -274,8 +316,8 @@ function Invoke-Main {
     $remote = '/tmp/' + (Split-Path $tmp -Leaf)
     Push-Location (Split-Path $tmp -Parent)      # relative name: scp reads "C:" as a host
     try {
-      Invoke-Native 'scp' @((Split-Path $tmp -Leaf), "${Server}:$remote") 'Copying the configuration script'
-      Invoke-Native 'ssh' @($Server, "sh $remote; rc=`$?; rm -f $remote; exit `$rc") 'Configuring the manager'
+      Invoke-Native 'scp' ($sshKeyArgs + @((Split-Path $tmp -Leaf), "${Server}:$remote")) 'Copying the configuration script'
+      Invoke-Native 'ssh' ($sshKeyArgs + @($Server, "sh $remote; rc=`$?; rm -f $remote; exit `$rc")) 'Configuring the manager'
     } finally {
       Pop-Location
       Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue

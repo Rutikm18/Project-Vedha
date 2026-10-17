@@ -50,7 +50,7 @@ jobs:
 
       - name: PowerShell scripts parse
         run: |
-          foreach ($f in 'windows\build-agent-exe.ps1','windows\install.ps1','windows\uninstall.ps1','windows\package-zip.ps1','windows\publish-release.ps1','windows\tests\Test-PublishRelease.ps1','windows\setup.ps1','windows\tests\Test-Install.ps1','windows\tests\Test-InstallE2E.ps1','windows\hosting\get.ps1','windows\hosting\tests\Test-Get.ps1') {
+          foreach ($f in 'windows\build-agent-exe.ps1','windows\python-env.ps1','windows\install.ps1','windows\uninstall.ps1','windows\package-zip.ps1','windows\publish-release.ps1','windows\tests\Test-PublishRelease.ps1','windows\setup.ps1','windows\tests\Test-Install.ps1','windows\tests\Test-InstallE2E.ps1','windows\hosting\get.ps1','windows\hosting\tests\Test-Get.ps1') {
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errors) | Out-Null
             if ($errors) { $errors | ForEach-Object { Write-Error "$f : $($_.Message)" }; exit 1 }

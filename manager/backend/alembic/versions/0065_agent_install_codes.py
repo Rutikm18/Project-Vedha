@@ -34,6 +34,10 @@ def _uuid_type(bind):
 
 def upgrade() -> None:
     bind = op.get_bind()
+    # Idempotent: this table was created under id 0063 before the renumber to 0065,
+    # so on a divergent DB it can already exist — tolerate the re-run.
+    if sa.inspect(bind).has_table("agent_install_codes"):
+        return
     uuid_type = _uuid_type(bind)
     uuid_default = sa.text("gen_random_uuid()") if bind.dialect.name == "postgresql" else None
     op.create_table(

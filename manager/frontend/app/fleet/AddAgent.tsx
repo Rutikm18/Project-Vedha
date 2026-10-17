@@ -297,6 +297,9 @@ export default function AddAgent({ surface, api }: { surface: FleetWorkspaceSurf
                   <span className="flt-mono">{publishAdvice().linux}</span>, then set{" "}
                   <span className="flt-mono">AGENT_RELEASE_PUBLIC_KEY</span> (and, for Windows,{" "}
                   <span className="flt-mono">AGENT_RELEASE_P256_PUBLIC_KEY</span>) on the manager.
+                  No Windows PC to use? Run the <span className="flt-mono">agent-release</span> workflow on GitHub (it builds and
+                  signs in the cloud) and turn on the manager&apos;s <span className="flt-mono">release-sync</span> service: it
+                  then picks up every new signed release by itself (docs/operations/AGENT_DISTRIBUTION.md, &quot;Automatic release sync&quot;).
                 </span>
               </>
             ) : " Your Vedha team needs to publish it — contact them, then come back to this page."}
