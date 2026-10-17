@@ -35,6 +35,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from passlib.context import CryptContext
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
@@ -47,8 +48,13 @@ from app.database import AsyncSessionLocal
 from app.models.enums import UserRole
 from app.models.tenant import Tenant
 from app.models.user import User
+from app.schemas.auth import LoginRequest
 
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# The type /auth/login validates the address with, so the seeded admin is stored
+# exactly as a sign-in looks it up.
+_LOGIN_EMAIL = TypeAdapter(LoginRequest.model_fields["email"].annotation)
 
 # Passwords that must never be used in production
 _KNOWN_WEAK_PASSWORDS: frozenset[str] = frozenset({
@@ -130,6 +136,21 @@ def _validate_env() -> tuple[str, str, str, bool]:
     return email, password, tenant_name, force_reset
 
 
+# ── Sign-in form of the address ───────────────────────────────────────────────
+
+def _sign_in_email(email: str) -> tuple[str | None, str]:
+    """(the address as /auth/login looks it up, why login refuses it).
+
+    Login lower-cases the domain, so an admin stored as ``Admin@Vedha.IO`` could
+    never sign in, and it refuses special-use domains such as ``corp.local`` or
+    ``lab.test`` outright. The first value is None when login would refuse it.
+    """
+    try:
+        return _LOGIN_EMAIL.validate_python(email), ""
+    except ValidationError as exc:
+        return None, exc.errors()[0].get("msg", "not a valid email address")
+
+
 # ── Hash helpers ──────────────────────────────────────────────────────────────
 
 def _hash(password: str) -> str:
@@ -194,14 +215,32 @@ async def _seed_once(email: str, password: str, tenant_name: str, force_reset: b
     All DB work in a single transaction. Rolls back on any failure.
     Verifies the bcrypt hash after every write.
     """
+    sign_in, refusal = _sign_in_email(email)
     async with AsyncSessionLocal() as db:
         async with db.begin():
             # ── Check existing user ────────────────────────────────────────
             existing_user = (
-                await db.execute(select(User).where(User.email == email))
+                await db.execute(select(User).where(User.email == (sign_in or email)))
             ).scalar_one_or_none()
 
+            if existing_user is None and sign_in and sign_in != email:
+                # Seeded before the address was stored in its sign-in form: that
+                # row can never match a login, so store the form login looks up.
+                existing_user = (
+                    await db.execute(select(User).where(User.email == email))
+                ).scalar_one_or_none()
+                if existing_user:
+                    existing_user.email = sign_in
+                    log_info("seed.admin_email_normalized", user_id=str(existing_user.id),
+                             stored=email, now=sign_in)
+
             if existing_user:
+                if sign_in is None:
+                    # Never fail here: the migrate service runs this on every deploy,
+                    # and an install whose admin cannot sign in must still start.
+                    log_error("seed.admin_cannot_sign_in", email=email, reason=refusal,
+                              hint="Sign-in refuses this address. Set SEED_ADMIN_EMAIL to an "
+                                   "address on a regular domain and run the seeder again.")
                 # ── Drift detection (non-blocking) ─────────────────────────
                 tenant = (
                     await db.execute(
@@ -209,7 +248,7 @@ async def _seed_once(email: str, password: str, tenant_name: str, force_reset: b
                     )
                 ).scalar_one_or_none()
                 if tenant:
-                    await _detect_drift(db, tenant, email)
+                    await _detect_drift(db, tenant, sign_in or email)
 
                 if not force_reset:
                     log_info(
@@ -245,6 +284,13 @@ async def _seed_once(email: str, password: str, tenant_name: str, force_reset: b
                 return
 
             # ── First run: create tenant + admin ──────────────────────────
+            if sign_in is None:
+                raise SeedConfigurationError(
+                    f"SEED_ADMIN_EMAIL={email!r} cannot be used to sign in ({refusal}). "
+                    "Use an address on a regular domain; special-use domains such as "
+                    ".local, .test and .localhost are refused at login."
+                )
+            email = sign_in
             tenant = (
                 await db.execute(select(Tenant).where(Tenant.name == tenant_name))
             ).scalar_one_or_none()

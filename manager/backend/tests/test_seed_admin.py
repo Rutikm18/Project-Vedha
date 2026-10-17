@@ -348,3 +348,101 @@ class TestDriftDetection:
 
         # Should complete without raising
         await _detect_drift(db, tenant, "new-admin@vedha.io")
+
+
+# ── Sign-in form of the seeded address ────────────────────────────────────────
+
+def _result(value):
+    r = MagicMock()
+    r.scalar_one_or_none.return_value = value
+    return r
+
+
+def _session_for(db):
+    begin = MagicMock()
+    begin.__aenter__ = AsyncMock(return_value=None)
+    begin.__aexit__ = AsyncMock(return_value=None)
+    db.begin = MagicMock(return_value=begin)
+    session = MagicMock()
+    session.__aenter__ = AsyncMock(return_value=db)
+    session.__aexit__ = AsyncMock(return_value=None)
+    return session
+
+
+def _drift_results(email):
+    count = MagicMock()
+    count.scalar_one.return_value = 1
+    emails = MagicMock()
+    emails.scalars.return_value.all.return_value = [email]
+    return [count, emails]
+
+
+class TestSignInForm:
+    @pytest.mark.parametrize("email", [
+        "admin@vedha.io", "Admin@Vedha.IO", "  admin@vedha.io ", "admin@corp.local",
+        "admin@lab.test", "admin@localhost", "not-an-email",
+    ])
+    def test_matches_what_login_accepts(self, email):
+        from pydantic import ValidationError
+        from app.schemas.auth import LoginRequest
+        from scripts.seed_admin import _sign_in_email
+
+        try:
+            expected = LoginRequest(email=email, password="x").email
+        except ValidationError:
+            expected = None
+        assert _sign_in_email(email)[0] == expected
+
+    @pytest.mark.asyncio
+    async def test_new_admin_on_a_domain_login_refuses_is_not_created(self):
+        from scripts.seed_admin import _seed_once
+
+        db = AsyncMock()
+        db.execute = AsyncMock(side_effect=[_result(None)])
+        with patch("scripts.seed_admin.AsyncSessionLocal", return_value=_session_for(db)):
+            with pytest.raises(SeedConfigurationError, match="cannot be used to sign in"):
+                await _seed_once("admin@corp.local", "StrongP@ssword1!", "Default Tenant", False)
+        db.add.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_existing_admin_on_a_refused_domain_does_not_stop_a_deploy(self):
+        from scripts.seed_admin import _seed_once
+
+        user = MagicMock(id=uuid.uuid4(), is_active=True, tenant_id=uuid.uuid4())
+        tenant = MagicMock(id=user.tenant_id, is_active=True)
+        db = AsyncMock()
+        db.execute = AsyncMock(side_effect=[_result(user), _result(tenant),
+                                            *_drift_results("admin@corp.local")])
+        with patch("scripts.seed_admin.AsyncSessionLocal", return_value=_session_for(db)):
+            await _seed_once("admin@corp.local", "StrongP@ssword1!", "Default Tenant", False)
+        db.add.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_new_admin_is_stored_as_login_looks_it_up(self):
+        from app.models.user import User
+        from scripts.seed_admin import _seed_once
+
+        db = AsyncMock()
+        db.execute = AsyncMock(side_effect=[_result(None), _result(None), _result(None)])
+        with patch("scripts.seed_admin.AsyncSessionLocal", return_value=_session_for(db)), \
+             patch("scripts.seed_admin._verify_hash", return_value=True):
+            await _seed_once("Admin@Vedha.IO", "StrongP@ssword1!", "Default Tenant", False)
+
+        users = [c.args[0] for c in db.add.call_args_list if isinstance(c.args[0], User)]
+        assert [u.email for u in users] == ["Admin@vedha.io"]
+
+    @pytest.mark.asyncio
+    async def test_admin_stored_before_normalisation_is_fixed_in_place(self):
+        from scripts.seed_admin import _seed_once
+
+        user = MagicMock(id=uuid.uuid4(), is_active=True, tenant_id=uuid.uuid4(),
+                         email="Admin@Vedha.IO")
+        tenant = MagicMock(id=user.tenant_id, is_active=True)
+        db = AsyncMock()
+        db.execute = AsyncMock(side_effect=[_result(None), _result(user), _result(tenant),
+                                            *_drift_results("Admin@vedha.io")])
+        with patch("scripts.seed_admin.AsyncSessionLocal", return_value=_session_for(db)):
+            await _seed_once("Admin@Vedha.IO", "StrongP@ssword1!", "Default Tenant", False)
+
+        assert user.email == "Admin@vedha.io"
+        db.add.assert_not_called()
