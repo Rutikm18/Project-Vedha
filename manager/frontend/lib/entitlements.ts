@@ -149,6 +149,28 @@ export function modeShort(m: ModeAllowance | undefined): string {
   return `${m.left} left`;
 }
 
+/** How the plan strip describes the scan types in the plan.
+ *  - "unlimited": every type in the plan is open with no cap, so one phrase says it all
+ *    (four chips reading "∞" told the customer nothing).
+ *  - "chips": at least one type is capped, used up or switched off, so each is shown. */
+export type ModeSummary =
+  | { kind: "unlimited"; label: string; names: string }
+  | { kind: "chips"; modes: ScanMode[] };
+
+export function modeSummary(e: Pick<Entitlement, "modes"> | null | undefined): ModeSummary {
+  const enabled = SCAN_MODES.filter((m) => e?.modes?.[m]?.enabled);
+  const open = enabled.length > 0
+    && enabled.every((m) => e!.modes[m].can_scan && e!.modes[m].left == null);
+  if (!open) return { kind: "chips", modes: enabled };
+  return {
+    kind: "unlimited",
+    label: enabled.length === SCAN_MODES.length
+      ? "All scan types, unlimited"
+      : `${enabled.length} scan type${enabled.length === 1 ? "" : "s"}, unlimited`,
+    names: enabled.map((m) => MODE_META[m].label).join(", "),
+  };
+}
+
 /** Scan types the customer can run right now, in dial order. */
 export function launchableModes(e: Entitlement | undefined | null): ScanMode[] {
   if (!e) return [];

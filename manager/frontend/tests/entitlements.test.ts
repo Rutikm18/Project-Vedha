@@ -132,3 +132,25 @@ test("deep scan pre-check: one in-scope asset, respecting the repeat policy", ()
   assert.match(deepTargetProblem("10.0.0.5", scope, ["10.0.0.5/32"], true) ?? "", /already had a deep scan/);
   assert.equal(deepTargetProblem("10.0.0.5", scope, ["10.0.0.5/32"], false), null);   // repeats allowed
 });
+
+test("a plan with every scan type open and uncapped reads as one phrase", async () => {
+  const { modeSummary, SCAN_MODES } = await import("../lib/entitlements");
+  const open = { enabled: true, quota: null, used: 0, left: null, can_scan: true, reason: null };
+  const modes = Object.fromEntries(SCAN_MODES.map((m) => [m, open])) as never;
+  assert.deepEqual(modeSummary({ modes }), {
+    kind: "unlimited", label: "All scan types, unlimited", names: "Stealth, Normal, Aggressive, Deep",
+  });
+  const three = { ...(modes as object), deep: { ...open, enabled: false } } as never;
+  assert.equal((modeSummary({ modes: three }) as { label: string }).label, "3 scan types, unlimited");
+});
+
+test("a capped, used-up or switched-off scan type keeps the per-type chips", async () => {
+  const { modeSummary, SCAN_MODES } = await import("../lib/entitlements");
+  const open = { enabled: true, quota: null, used: 0, left: null, can_scan: true, reason: null };
+  const modes = Object.fromEntries(SCAN_MODES.map((m) => [m, open])) as Record<string, typeof open>;
+  const capped = { ...modes, normal: { ...open, quota: 5, used: 2, left: 3 } };
+  assert.deepEqual(modeSummary({ modes: capped as never }), { kind: "chips", modes: ["stealth", "normal", "aggressive", "deep"] });
+  const spent = { ...modes, deep: { ...open, quota: 1, used: 1, left: 0, can_scan: false, reason: "Deep scans used" } };
+  assert.equal(modeSummary({ modes: spent as never }).kind, "chips");
+  assert.deepEqual(modeSummary(null), { kind: "chips", modes: [] });
+});

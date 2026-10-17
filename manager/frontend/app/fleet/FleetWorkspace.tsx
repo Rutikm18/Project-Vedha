@@ -249,7 +249,7 @@ export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspa
 
         {/* ── All jobs across every probe (filter by probe + engagement) ── */}
         <section className="flt-card" style={{ order: order.jobs }}>
-          <FleetJobs surface={surface} />
+          <FleetJobs surface={surface} heading="Scan jobs" />
         </section>
 
         {/* ── Add an agent: install token + one command (served by this manager) ── */}

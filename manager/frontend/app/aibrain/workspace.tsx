@@ -270,7 +270,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
                 <select id="brain-engagement" value={effectiveEngagementId} onChange={(event) => setEngagementId(event.target.value)} disabled={surface === "portal"}>
                   {surface === "manager" && <option value="">No engagement selected</option>}
                   {engagements.map((engagement) => (
-                    <option value={engagement.id} key={engagement.id}>{engagement.name} · {engagement.client || "No client"}</option>
+                    <option value={engagement.id} key={engagement.id}>{engagement.client ? `${engagement.name} · ${engagement.client}` : engagement.name}</option>
                   ))}
                 </select>
               </label>

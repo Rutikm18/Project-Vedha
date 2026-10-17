@@ -425,14 +425,14 @@ export function PageShell({
           padding: "0 18px",
           gap: 12,
         }}>
-          <span style={{ fontSize: 9, color: "var(--text-muted)" }}>Vedha operator console</span>
+          <span style={{ fontSize: 9, color: "var(--text-muted)" }}>{surface === "portal" ? "Vedha customer portal" : "Vedha operator console"}</span>
 
           <div className="vedha-page-footer-time" style={{
             fontFamily: "var(--font-mono)",
             fontSize: 9,
             color: "var(--text-muted)",
           }}>
-            {utcTime} · VEDHA v1.0{surface === "portal" ? " · Customer workspace" : ""}
+            {utcTime} · VEDHA v1.0
           </div>
         </footer>
       </div>

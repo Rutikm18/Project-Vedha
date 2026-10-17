@@ -572,6 +572,15 @@ export function EngagementWorkspace({
       ] : []}
     >
       <div className="engagement-workspace">
+        {/* On a phone the header has no room for three buttons, and the one that matters
+            (Start scan) scrolled out of sight. The same actions sit here instead, full width. */}
+        {engagement && (
+          <div className="engagement-mobile-actions" role="group" aria-label="Engagement actions">
+            <Link className="btn btn-primary engagement-action" href={`${surface === "portal" ? "/portal/scans" : "/scan"}?engagementId=${encodeURIComponent(id)}`}><Play size={14} aria-hidden /> Start scan</Link>
+            <ImportScanButton engagementId={id} surface={surface} />
+            <button type="button" className="btn btn-secondary engagement-action" onClick={() => setEditing(true)}><Pencil size={14} aria-hidden /> Edit details</button>
+          </div>
+        )}
         <div className="engagement-toolbar">
           <Link href={surface === "portal" ? "/portal" : "/engagements"} className="engagement-back"><ArrowLeft size={15} /> {surface === "portal" ? "Dashboard" : "All engagements"}</Link>
           <nav aria-label="Engagement sections" role="tablist">

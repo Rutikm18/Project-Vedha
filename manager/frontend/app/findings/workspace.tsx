@@ -603,15 +603,15 @@ function TriageKey() {
       <summary>
         <span>
           <strong>How Vedha ranks a finding</strong>
-          <small>Severity is impact. Priority is response order. Risk is the manager score out of 1000.</small>
+          <small>Severity is how bad it is. Priority is what to respond to first. Risk is a 0–1000 score for ordering.</small>
         </span>
         <ChevronDown size={16} aria-hidden />
       </summary>
       <div className="findings-triage-key-body">
         <div className="findings-triage-concepts">
           <div><strong>Severity</strong><span>Technical consequence if the weakness is exploited.</span></div>
-          <div><strong>Priority</strong><span>Response order after evidence, exploitability, asset context and SLA.</span></div>
-          <div><strong>Risk</strong><span>Backend-computed ranking signal. It informs judgment, it does not replace it.</span></div>
+          <div><strong>Priority</strong><span>What to respond to first, P0 to P5. Set by severity, whether it is known to be exploited, EPSS and whether the SLA is breached. A closed finding has none.</span></div>
+          <div><strong>Risk</strong><span>A 0–1000 score that orders findings within a severity, from impact, exploitability, asset context and evidence. Open a finding to see the working.</span></div>
         </div>
         <div className="findings-severity-key">
           {severityMeaning.map(({ severity, meaning }) => (

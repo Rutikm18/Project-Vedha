@@ -1069,8 +1069,20 @@ export function SettingsWorkspace({ surface = "manager" }: { surface?: SettingsW
   return (
     <Shell title="Settings" subtitle={surface === "portal" ? "Plan and licence, engagement workspace, assigned probe, AI runtime, and activity" : "Team management, probe fleet, credentials, integrations, and policy configuration"}>
       <div className="settings-layout">
-        <aside className="settings-nav">
+        <aside className="settings-nav" data-many={navSections.length > 6 || undefined}>
           <div className="settings-nav-heading"><Settings2 size={14} /> Configuration</div>
+          {/* Fifteen sections do not fit a phone as a tab strip. Below 960px a long list becomes one
+              grouped menu; a short one (the customer's six) stays as tabs. */}
+          <label className="settings-nav-select">
+            <span className="sr-only">Settings section</span>
+            <select value={section} onChange={(event) => setSection(event.target.value)}>
+              {Array.from(new Set(navSections.map((n) => n.group))).map((group) => (
+                <optgroup key={group} label={group}>
+                  {navSections.filter((n) => n.group === group).map((n) => <option key={n.key} value={n.key}>{n.label}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          </label>
           {navSections.map(({ group, key, label, icon: Icon }, i) => (
             <React.Fragment key={key}>
               {navSections[i - 1]?.group !== group && navSections.length > 6 && <div className="settings-nav-group">{group}</div>}

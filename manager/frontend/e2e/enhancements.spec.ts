@@ -390,3 +390,90 @@ test("operators get the campaign runs and the all-engagement probe queue; custom
   await expect(page.getByText("Probe job queue")).toHaveCount(0);   // their one engagement's jobs are already in the pipeline
   await expect(page.getByText("Campaign runs")).toHaveCount(0);     // probe snapshots carry no engagement identity
 });
+
+test("the customer report shows one section at a time", async ({ page }) => {
+  await page.goto("/portal/reports");
+  const executive = page.locator('[data-report-section="executive"]');
+  const register = page.locator('[data-report-section="findings"]');
+  await expect(executive).toBeVisible();
+  await expect(register).toBeHidden();
+  await expect(page.getByText("Priority actions")).toBeVisible();
+  await expect(page.getByText("Detailed findings register")).toBeHidden();
+
+  await page.getByRole("tab", { name: "All Findings" }).click();
+  await expect(register).toBeVisible();
+  await expect(executive).toBeHidden();
+  await expect(page.getByText("Detailed findings register")).toBeVisible();
+
+  // Print still carries the whole report.
+  await page.emulateMedia({ media: "print" });
+  await expect(executive).toBeVisible();
+  await expect(register).toBeVisible();
+});
+
+test("remediation offers the tracker download only when there is something to track", async ({ page }) => {
+  await page.goto("/remediation");
+  await expect(page.getByRole("link", { name: /Excel tracker/ })).toHaveAttribute("href", /\/remediation\/export\?.*format=xlsx/);
+  await expect(page.getByRole("button", { name: /FIX-01/ })).toBeVisible();
+
+  await page.route("**/api/engagements/e2e/remediation/bundles**", (route) => respond(route, {
+    view: "fix", sla_source: "tenant", generated_at: "2026-09-30T10:00:00Z", bundles: [],
+    summary: { bundles: 0, open_bundles: 0, done_bundles: 0, open_findings: 0, closed_findings: 0, hosts: 0, act: 0 },
+  }));
+  await page.reload();
+  await expect(page.getByText("Nothing to remediate")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Excel tracker/ })).toHaveAttribute("aria-disabled", "true");
+  await expect(page.getByRole("link", { name: /Excel tracker/ })).toHaveCount(0);
+});
+
+test("an engagement's main actions are reachable on every screen size", async ({ page }) => {
+  await page.goto("/portal/scope");
+  // The header on a desktop, a full-width bar in the page on a phone: exactly one is shown.
+  const start = page.getByRole("link", { name: "Start scan" });
+  await expect(start).toBeVisible();
+  await expect(start).toBeInViewport();
+  await expect(page.getByRole("button", { name: "Import evidence" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit details" })).toBeVisible();
+  await expect(start).toHaveAttribute("href", /\/portal\/scans\?engagementId=/);
+});
+
+test("every settings section is reachable at any screen size", async ({ page }) => {
+  await page.goto("/settings");
+  const narrow = (page.viewportSize()?.width ?? 1440) <= 960;
+  if (narrow) {
+    // Fifteen sections become one grouped menu rather than a strip of overlapping tabs.
+    const menu = page.getByRole("combobox", { name: "Settings section" });
+    await expect(menu).toBeVisible();
+    await menu.selectOption("audit-log");
+  } else {
+    await expect(page.getByRole("combobox", { name: "Settings section" })).toBeHidden();
+    await page.getByRole("button", { name: "Audit Log" }).click();
+  }
+  await expect(page.getByRole("heading", { name: "Audit log" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => new URLSearchParams(location.search).get("section"))).toBe("audit-log");
+});
+
+test("a customer's few settings sections stay readable tabs on a phone", async ({ page }) => {
+  await page.goto("/portal/settings");
+  const tabs = page.locator(".settings-nav-button");
+  await expect(tabs.first()).toBeVisible();
+  // Each tab is as wide as its label (they used to collapse to 44px and spill over each other).
+  const widths = await tabs.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().width)));
+  expect(Math.min(...widths)).toBeGreaterThan(60);
+});
+
+test("the AI Brain engagement picker is whole beside Clear and does not invent a client", async ({ page }) => {
+  await page.goto("/portal/assistant");
+  const picker = page.getByRole("combobox", { name: "Ground with engagement evidence" });
+  await expect(picker).toBeVisible();
+  // An engagement with no client is named on its own, not "… · No client".
+  const chosen = await picker.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.textContent ?? "");
+  expect(chosen).not.toMatch(/no client/i);
+  // The picker sits clear of the Clear button at every size.
+  const boxes = await page.evaluate(() => {
+    const select = document.querySelector<HTMLElement>(".brain-context-bar select")!.getBoundingClientRect();
+    const clear = document.querySelector<HTMLElement>(".brain-clear")!.getBoundingClientRect();
+    return { selectRight: select.right, clearLeft: clear.left };
+  });
+  expect(boxes.selectRight).toBeLessThanOrEqual(boxes.clearLeft);
+});

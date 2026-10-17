@@ -37,7 +37,8 @@ export function EmptyState({
   icon: Icon = Inbox, title, hint, action,
 }: { icon?: LucideIcon; title: string; hint?: string; action?: React.ReactNode }) {
   return (
-    <div style={center}>
+    <div className="ds-state" style={center}>
+      <style>{STATE_CSS}</style>
       <Icon size={36} color="var(--adv-border)" strokeWidth={1.5} />
       <div style={{ fontFamily: BODY, fontSize: 13, color: "var(--adv-text)", marginTop: 12 }}>{title}</div>
       {hint && <div style={{ fontFamily: BODY, fontSize: 13, lineHeight: 1.5, color: "var(--adv-text-muted)", marginTop: 4, maxWidth: 360, textAlign: "center" }}>{hint}</div>}
@@ -112,6 +113,15 @@ export function DataState({
   if (isEmpty) return <>{empty ?? <EmptyState title="Nothing here yet" />}</>;
   return <>{children}</>;
 }
+
+/* On a phone an empty panel need not be a screenful: a customer with no data yet sees a dozen of
+   them stacked. Tighter padding and a shorter minimum; the message and the action are unchanged. */
+const STATE_CSS = `
+@media (max-width: 640px) {
+  .ds-state { min-height: 112px !important; padding: 18px 14px !important; }
+  .ds-state > svg { width: 28px; height: 28px; }
+}
+`;
 
 /* ── shared styles ── */
 // Placeholder states (empty / error / unauthorized) must FILL the panel body,

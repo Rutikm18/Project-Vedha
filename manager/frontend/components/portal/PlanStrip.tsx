@@ -9,13 +9,14 @@
 import { AlertTriangle, CalendarClock, FlaskConical, ShieldCheck } from "lucide-react";
 import { usePortalEntitlement } from "../../lib/portal-client";
 import {
-  MODE_META, PLAN_LABEL, SCAN_MODES, STATE_LABEL, daysText, isRunningLow, modeShort, stateColor,
+  MODE_META, PLAN_LABEL, STATE_LABEL, daysText, isRunningLow, modeShort, modeSummary, stateColor,
 } from "../../lib/entitlements";
 
 export function PlanStrip() {
   const { data: e } = usePortalEntitlement();
   if (!e) return null;
 
+  const summary = modeSummary(e);
   const blocked = !e.can_scan;
   const low = isRunningLow(e);
   const tone = blocked ? stateColor(e.state) : low ? "var(--sev-medium-color)" : "var(--accent)";
@@ -31,8 +32,13 @@ export function PlanStrip() {
       </span>
       {e.state !== "unconfigured" && (
         <>
-          {/* One chip per scan type in the plan; types not included are omitted. */}
-          {SCAN_MODES.filter((m) => e.modes?.[m]?.enabled).map((m) => (
+          {/* Everything open and uncapped reads as one phrase; otherwise one chip per scan type in
+              the plan (types not included are omitted). */}
+          {summary.kind === "unlimited" ? (
+            <span className="pst-mode" title={summary.names}>
+              <ShieldCheck size={12} aria-hidden /> {summary.label}
+            </span>
+          ) : summary.modes.map((m) => (
             <span key={m} className="pst-mode" data-empty={!e.modes[m].can_scan}
               title={e.modes[m].reason ?? `${MODE_META[m].label}: ${modeShort(e.modes[m])}`}>
               <i style={{ background: MODE_META[m].color }} aria-hidden />

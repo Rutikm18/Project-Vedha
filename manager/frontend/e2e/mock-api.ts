@@ -169,6 +169,47 @@ const slaItems = Array.from({ length: 8 }, (_, index) => ({
   state: "breached",
 }));
 
+const step = (n: number, tier: string, title: string, description: string, cmds: string[]) => ({
+  step: n, tier, title, description, commands: null, commands_for_os: cmds, pre_checks: [],
+  reboot_required: tier === "fix", downtime: tier === "fix" ? "A short service restart" : "None", rollback: "Re-enable the setting.", risk: "low",
+});
+
+const remediationBundles = {
+  view: "fix", sla_source: "tenant", generated_at: "2026-09-30T10:00:00Z",
+  summary: { bundles: 2, open_bundles: 2, done_bundles: 0, open_findings: 3, closed_findings: 0, hosts: 2, act: 1 },
+  bundles: [
+    {
+      fix_key: "smbv1-disable", ref: "FIX-01", recipe_id: "smbv1", product_family: "windows", title: "Disable SMBv1 on Windows file servers",
+      remediation_type: "vendor_fix", risk_response: "mitigate", target_state: "SMBv1 disabled and not negotiated", effort: "low", remediation_risk: "low",
+      steps_by_os: {
+        windows: [
+          step(1, "containment", "Block TCP 445 from untrusted networks", "Restrict SMB at the perimeter firewall while the fix lands.", ["netsh advfirewall firewall add rule name=BlockSMB dir=in action=block protocol=TCP localport=445"]),
+          step(2, "fix", "Disable the SMBv1 server component", "Turn SMBv1 off on the host.", ["Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force"]),
+        ],
+        linux: [step(1, "fix", "Set the minimum SMB protocol", "Require SMB2 or newer in smb.conf.", ["server min protocol = SMB2"])],
+      },
+      verification_check: { scanner: "smb_scan", check: "SMBv1 negotiation attempt", expected: "The host refuses SMBv1", manual_command: "nmap -p445 --script smb-protocols HOST" },
+      compensating_controls: "Block TCP 445 at the firewall and restrict it to the management network until the host is fixed.",
+      references: [], resolves: ["cmp-f1"], open_finding_ids: ["cmp-f1"], excluded: [], open_count: 2, closed_count: 0,
+      due_at: "2026-10-02T10:00:00Z", due_source: "tenant", urgency: "act", progress: { closed: 0, total: 2 }, status: "open", max_severity: "critical", kev: true,
+      hosts: [
+        { host: "fs-01", ip: "10.10.0.14", os: "Windows Server 2016", os_family: "windows", ports: [445], finding_ids: ["cmp-f1"], status: "open", due_at: "2026-10-02T10:00:00Z", due_source: "tenant", closed_at: null },
+        { host: "fs-02", ip: "10.10.0.15", os: "Windows Server 2012 R2", os_family: "windows", ports: [445], finding_ids: ["cmp-f4"], status: "open", due_at: "2026-10-02T10:00:00Z", due_source: "tenant", closed_at: null },
+      ],
+    },
+    {
+      fix_key: "tls-legacy", ref: "FIX-02", recipe_id: "tls", product_family: null, title: "Disable TLS 1.0 and 1.1",
+      remediation_type: "mitigation", risk_response: "mitigate", target_state: "TLS 1.2 or newer only", effort: "low", remediation_risk: "low",
+      steps_by_os: { generic: [step(1, "fix", "Disable legacy protocols", "Remove TLS 1.0 and 1.1 from the listener.", ["ssl_protocols TLSv1.2 TLSv1.3;"])] },
+      verification_check: { scanner: "tls", check: "Protocol negotiation", expected: "TLS 1.0 and 1.1 are refused", manual_command: "openssl s_client -tls1 -connect HOST:443" },
+      compensating_controls: "Terminate TLS at a gateway that already enforces TLS 1.2.",
+      references: [], resolves: ["cmp-f3"], open_finding_ids: ["cmp-f3"], excluded: [], open_count: 1, closed_count: 0,
+      due_at: "2026-10-30T10:00:00Z", due_source: "tenant", urgency: "track", progress: { closed: 0, total: 1 }, status: "open", max_severity: "medium", kev: false,
+      hosts: [{ host: "web-01", ip: "10.10.0.14", os: "Ubuntu 22.04", os_family: "linux", ports: [443], finding_ids: ["cmp-f3"], status: "open", due_at: "2026-10-30T10:00:00Z", due_source: "tenant", closed_at: null }],
+    },
+  ],
+};
+
 const campaignJobs = [
   { id: "job-run-1111", use_case_id: "uc_network_va", job_type: "network_va", status: "running", phase: "scanning",
     agent_name: "mumbai-dc-probe", result_summary: {}, reference: "SCN-261016-AB12CD",
@@ -262,6 +303,8 @@ export async function mockApi(route: Route) {
     },
   });
   if (path === "/api/engagements/e2e/campaign-progress") return json(route, campaignProgress);
+  if (path === "/api/engagements/e2e/remediation/bundles") return json(route, remediationBundles);
+  if (path === "/api/engagements/e2e/extensions") return json(route, { items: [] });
   if (path.startsWith("/api/engagements/e2e/")) return json(route, {});
 
   if (path === "/api/findings/summary") return json(route, {
@@ -378,6 +421,8 @@ export async function mockApi(route: Route) {
   if (path === "/api/portal/workspace/scan/use-cases") return json(route, []);
   if (path === "/api/portal/workspace/scan/jobs") return json(route, []);
   if (path === "/api/portal/workspace/scan/campaign-progress") return json(route, campaignProgress);
+  if (path === "/api/portal/remediation/bundles") return json(route, remediationBundles);
+  if (path === "/api/portal/extensions") return json(route, { items: [] });
   if (path === "/api/portal/workspace/fleet/jobs") return json(route, []);
   if (path.startsWith("/api/portal/workspace/fleet/agents/") && path.endsWith("/jobs")) return json(route, []);
   if (path === "/api/portal/reports" || path === "/api/portal/scans" || path === "/api/portal/agents" || path === "/api/portal/activity") return json(route, []);

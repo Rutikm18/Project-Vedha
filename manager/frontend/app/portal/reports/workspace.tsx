@@ -20,10 +20,11 @@ import {
 interface ReportContent extends PortalReport { content: string; }
 
 type Tab = "executive" | "findings" | "documents";
-const TABS: Array<{ id: Tab; label: string; icon: React.ElementType }> = [
-  { id: "executive", label: "Executive Summary", icon: BarChart3 },
-  { id: "findings",  label: "All Findings",      icon: FileText },
-  { id: "documents", label: "Documents",          icon: FileArchive },
+// `short` is what a narrow screen shows: icon-only tabs left a customer guessing which was which.
+const TABS: Array<{ id: Tab; label: string; short: string; icon: React.ElementType }> = [
+  { id: "executive", label: "Executive Summary", short: "Summary",   icon: BarChart3 },
+  { id: "findings",  label: "All Findings",      short: "Findings",  icon: FileText },
+  { id: "documents", label: "Documents",         short: "Documents", icon: FileArchive },
 ];
 
 const SEVS = ["critical", "high", "medium", "low", "info"] as const;
@@ -865,7 +866,7 @@ export function PortalReportsWorkspace() {
         background: "var(--bg-panel)", borderRadius: 10,
         border: "1px solid var(--border-subtle)", width: "fit-content",
       }}>
-        {TABS.map(({ id, label, icon: Icon }) => {
+        {TABS.map(({ id, label, short, icon: Icon }) => {
           const active = tab === id;
           return (
             <button
@@ -882,6 +883,7 @@ export function PortalReportsWorkspace() {
             >
               <Icon size={13} />
               <span className="report-tab-label">{label}</span>
+              <span className="report-tab-short" aria-hidden>{short}</span>
             </button>
           );
         })}

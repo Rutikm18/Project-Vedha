@@ -71,6 +71,14 @@ describe("portal live report renderer", () => {
     assert.match(html, /verification may be absent/i);
   });
 
+  test("on screen only the active report section is displayed; print reveals them all", () => {
+    const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+    const hide = css.search(/\.portal-report-tab-pane\[data-active="false"\]\s*{\s*display:\s*none;/);
+    const reveal = css.search(/@media print\s*{\s*\.portal-report-tab-pane\s*{\s*display:\s*block\s*!important;/);
+    assert.ok(hide >= 0, "the inactive section must be hidden on screen");
+    assert.ok(reveal > hide, "the print rule must come after, and override, the screen rule");
+  });
+
   test("reveals every mounted live report section for print", () => {
     const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
     assert.match(

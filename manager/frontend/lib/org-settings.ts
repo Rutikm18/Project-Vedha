@@ -131,6 +131,8 @@ export function applyCustomerDefaults<T extends { lockedSeverities: string[]; lo
     ...draft,
     lockedSeverities: [...(defaults.poc_locked_severities ?? [])],
     lockedFeatures: [...(defaults.poc_locked_features ?? [])],
-    durationDays: defaults.poc_duration_days,
+    // Keep the draft's own length when the defaults do not carry a usable one,
+    // so the length field never loses its value.
+    durationDays: Number.isFinite(defaults.poc_duration_days) ? defaults.poc_duration_days : draft.durationDays,
   };
 }

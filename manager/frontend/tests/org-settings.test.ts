@@ -59,3 +59,9 @@ test("organisation defaults seed a new customer's plan draft without sharing arr
   assert.deepEqual([out.lockedSeverities, out.lockedFeatures, out.durationDays, out.plan], [["critical"], ["reports"], 30, "poc"]);
   assert.notEqual(out.lockedSeverities, draft.lockedSeverities);
 });
+
+test("organisation defaults without a usable length keep the draft's own length", () => {
+  const draft = { lockedSeverities: [] as string[], lockedFeatures: [] as string[], durationDays: 14 };
+  const partial = { poc_locked_severities: [], poc_locked_features: [], support_contact: "" } as unknown as Parameters<typeof applyCustomerDefaults>[1];
+  assert.equal(applyCustomerDefaults(draft, partial).durationDays, 14);
+});

@@ -20,7 +20,11 @@ interface Job {
   created_at: string | null; started_at: string | null; completed_at: string | null;
 }
 
-export default function FleetJobs({ surface = "manager" }: { surface?: FleetWorkspaceSurface }) {
+export default function FleetJobs({ surface = "manager", heading }: {
+  surface?: FleetWorkspaceSurface;
+  /** A title for the feed when the page around it does not already supply one. */
+  heading?: string;
+}) {
   const api = useMemo(() => createFleetWorkspaceApi(surface), [surface]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -62,6 +66,7 @@ export default function FleetJobs({ surface = "manager" }: { surface?: FleetWork
   return (
     <section className="cpg" style={{ gap: 4 }}>
       <style>{CAMPAIGN_CSS}</style>
+      {heading && <div className="cpg-head"><h3>{heading}</h3></div>}
       {/* ── filter bar ── */}
       <div className="cpg-q-filters">
         <span className="cpg-dim" aria-live="polite"><b style={{ color: "var(--accent)" }}>{running}</b> running · {jobs.length} total</span>

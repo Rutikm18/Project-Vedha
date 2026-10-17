@@ -204,3 +204,43 @@ the target is flagged with a swap control. The server decides the buckets:
   finding, except for older scans that predate snapshots; those say so.
 - Lists are capped on screen; CSV and JSON exports carry every row, and Print /
   PDF prints only the comparison.
+
+## Customer portal chrome
+
+The portal uses the product shell, so a customer must never read operator wording in it:
+the footer names the surface ("Vedha customer portal"), not "operator console".
+
+- The plan strip states the plan in one line. When every scan type in the plan is open and
+  uncapped it says so once ("All scan types, unlimited"); four chips reading "∞" told the
+  customer nothing. Per-type chips return as soon as any type is capped, used up or off.
+- The page's main action is never only in the header. A header that cannot hold three
+  buttons scrolls them out of sight, and the one that mattered (Start scan) went with them.
+  Beside the sidebar the header ran out of room at 768px, so up to 900px the engagement
+  actions sit in the page (one row of three; full-width buttons below 680px) and the header
+  keeps the status. Check a header's actions at 768 as well as at 390 and 1440.
+- A report with tabs shows one section at a time. Both sections stay mounted so print and
+  PDF carry the whole report, which is why the screen rule that hides the inactive one has
+  to exist and the print rule has to override it.
+- Tab labels shorten on a narrow screen; they never become icons alone.
+
+## Long lists of sections
+
+A settings area with many sections (fifteen for operators) is one grouped menu below 960px,
+not a strip of tabs; a short set (the customer's six) stays as tabs. Tabs are as wide as
+their label: the 44px touch-target floor is `!important`, so a content-sized control must say
+`min-width: max-content !important` or it collapses and its label spills over its neighbours.
+
+## Campaign views
+
+Pipeline, jobs, findings, raw scanner data and the job queue share one stylesheet
+(`components/campaign/campaign-css.ts`): a card is a bordered panel; a section head is a
+title, a count and an optional aside; a chip is a small labelled value. Severity and status
+always carry a word as well as a colour. Operator-only sections (campaign runs, the
+all-engagement probe queue) do not render for a customer: one is always empty for them and
+the other repeats the jobs already shown in their pipeline.
+
+## Reports (operator)
+
+Export, both print copies and the downloads are one menu ("Export & print"). The engagement
+picker, the draft status and a one-line note share one block, and the AI draft panel is a
+single line until a draft needs review, so the report itself is what the page opens on.

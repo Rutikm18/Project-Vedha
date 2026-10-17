@@ -853,6 +853,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   justify-content: center;
 }
 
+.settings-nav-select { display: none; }
 .settings-nav-heading {
   min-height: 44px;
   padding: 0 13px;
@@ -1265,6 +1266,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 .engagement-workspace { width: min(100%, 1440px); margin: 0 auto; }
 .engagement-actions { display: flex; align-items: center; gap: 8px; }
 .engagement-action { min-height: 36px; white-space: nowrap; text-decoration: none; }
+.engagement-mobile-actions { display: none; }
 .engagement-toolbar {
   min-height: 52px;
   margin-bottom: 22px;
@@ -1575,14 +1577,16 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   .engagement-report-link { display: none; }
   .engagement-toolbar-links { justify-self: start; }
 }
+@media (max-width: 900px) {
+  /* Beside the sidebar the header cannot hold three actions (the last was cut off at 768px), so they
+     move into the page (see .engagement-mobile-actions); the header keeps the status. */
+  .engagement-actions .engagement-action { display: none; }
+  .engagement-mobile-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .engagement-mobile-actions .engagement-action { min-height: 44px; justify-content: center; }
+}
 @media (max-width: 680px) {
-  .engagement-actions .engagement-action:not(:last-child) {
-    width: 34px;
-    padding: 0;
-    justify-content: center;
-    gap: 0;
-    font-size: 0;
-  }
+  .engagement-mobile-actions { grid-template-columns: 1fr 1fr; }
+  .engagement-mobile-actions .btn-primary { grid-column: 1 / -1; }
   .engagement-metric-grid,
   .engagement-detail-grid,
   .engagement-form { grid-template-columns: 1fr; }
@@ -2053,7 +2057,11 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   .assistant-brief > header { flex-wrap: wrap; }
   .assistant-brief-badges { justify-content: flex-start; }
   .brain-starter-grid, .brain-rail { grid-template-columns: 1fr; }
-  .brain-context-bar select { width: 58vw; }
+  /* The picker takes whatever the Clear button leaves, so a long engagement name is not cut off
+     against it at 58vw. */
+  .brain-context-bar > div { flex: 1 1 auto; }
+  .brain-context-bar label { flex: 1 1 0; }
+  .brain-context-bar select { width: 100%; text-overflow: ellipsis; }
   .brain-conversation { padding: 14px; }
   .brain-composer-meta span:last-child { display: none; }
 }
@@ -2236,7 +2244,11 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 
   .settings-nav-button {
     width: auto;
-    min-width: max-content;
+    /* !important: the 44px touch-target floor above is !important too, and it was shrinking
+       every tab to 44px wide so the labels spilled over their neighbours. */
+    min-width: max-content !important;
+    flex: 0 0 auto;
+    white-space: nowrap;
     border-left: 0;
     border-bottom: 2px solid transparent;
   }
@@ -2249,6 +2261,14 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   .settings-field-grid {
     grid-template-columns: 1fr;
   }
+
+  /* A long list of sections is one grouped menu; a short one stays a tab strip. */
+  .settings-nav[data-many="true"] { display: block; padding: 10px; overflow: visible; max-height: none; }
+  .settings-nav[data-many="true"] .settings-nav-heading,
+  .settings-nav[data-many="true"] .settings-nav-group,
+  .settings-nav[data-many="true"] .settings-nav-button { display: none; }
+  .settings-nav[data-many="true"] .settings-nav-select { display: block; }
+  .settings-nav-select select { width: 100%; min-height: 44px; padding: 0 12px; border: 0.5px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); color: var(--text-primary); font: 600 13px var(--font-body); }
 }
 
 /* ─── Badges ─── */
@@ -2459,6 +2479,11 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   .report-section, .report-hero, .report-metric-grid, .report-boundary { margin-left: 12px; margin-right: 12px; }
   .report-finding-stack dl { grid-template-columns: 1fr 1fr; }
 }
+/* Both report sections stay mounted so print/PDF carries the whole report, but on screen the
+   tab bar means what it says: one section at a time. (Without this rule the inactive pane was
+   displayed too, stacking the findings register under the executive summary.) */
+.portal-report-tab-pane[data-active="false"] { display: none; }
+
 @media print {
   .portal-report-tab-pane { display: block !important; }
   .portal-shell,
@@ -2605,8 +2630,9 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   gap: 10px;
 }
 
-/* Tab label — hide on small screens */
+/* Tab label — the long name on wide screens, a short one (never an icon alone) on narrow ones */
 .report-tab-label { display: inline; }
+.report-tab-short { display: none; }
 
 /* Footer */
 .report-foot {
@@ -2635,6 +2661,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   .report-cover-v2 { grid-template-columns: 1fr; gap: 20px; padding: 24px 20px; }
   .report-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .report-tab-label { display: none; }
+  .report-tab-short { display: inline; }
 }
 
 /* Responsive — mobile */

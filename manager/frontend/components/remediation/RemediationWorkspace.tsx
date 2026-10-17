@@ -183,6 +183,8 @@ function RemediationWorkspaceBody({ surface }: { surface: RemediationSurface }) 
 
   const Shell = surface === "portal" ? PortalShell : PageShell;
   const s = bQ.data?.summary;
+  // A tracker is built from the bundles; with none there is nothing to download.
+  const exportable = (s?.bundles ?? 0) > 0;
   return (
     <Shell title="Remediation" subtitle="Fix bundles, owners' checklists and due dates — grounded in what the scan recorded">
       <div className="rm-ws">
@@ -200,12 +202,18 @@ function RemediationWorkspaceBody({ surface }: { surface: RemediationSurface }) 
               <button type="button" aria-pressed={view === "fix"} onClick={() => setView("fix")}><Wrench size={12} aria-hidden /> By fix</button>
               <button type="button" aria-pressed={view === "host"} onClick={() => setView("host")}><Server size={12} aria-hidden /> By host</button>
             </div>
-            {engId && (
+            {engId && (exportable ? (
               <>
                 <a className="btn btn-secondary" href={api.exportUrl(engId, "xlsx")} download><Download size={13} aria-hidden /> Excel tracker</a>
                 <a className="btn btn-secondary" href={api.exportUrl(engId, "csv")} download><Download size={13} aria-hidden /> CSV</a>
               </>
-            )}
+            ) : (
+              // Nothing to put in a tracker yet: say so rather than download an empty file.
+              <>
+                <button type="button" className="btn btn-secondary" aria-disabled="true" title="Nothing to export yet" onClick={(e) => e.preventDefault()}><Download size={13} aria-hidden /> Excel tracker</button>
+                <button type="button" className="btn btn-secondary" aria-disabled="true" title="Nothing to export yet" onClick={(e) => e.preventDefault()}><Download size={13} aria-hidden /> CSV</button>
+              </>
+            ))}
           </div>
         </div>
 
