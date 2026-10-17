@@ -371,6 +371,7 @@ export async function mockApi(route: Route) {
   if (path === "/api/sla-policy") return json(route, { critical_hours: 24, high_hours: 72, medium_hours: 168, low_hours: 336, info_hours: 0, is_custom: false });
 
   if (path === "/api/fleet/enroll-tokens" || path === "/api/portal/workspace/fleet/enroll-tokens") return json(route, []);
+  if (path === "/api/fleet/install-codes") return json(route, []);
   if (path === "/api/fleet/release" || path === "/api/portal/workspace/fleet/install") return json(route, { available: false, manager_url: "https://manager.vedha.test", can_add_agent: false });
   if (path === "/api/portal/findings/locked") return json(route, { counts: {}, total: 0, locked_severities: [] });
   if (path === "/api/portal/workspace/findings/assets" || path === "/api/portal/workspace/findings/scans") return json(route, []);
